@@ -212,6 +212,14 @@ const ports = (
                     from public.ports order by code`)
 ).rows
 console.log(`  ${ports.length} places (${ports.filter((p) => p.kind === 'HARBOUR').length} harbours)`)
+// 0440: THE ROADS ON THE WATER. A harbour whose raster roadstead lies on the chart's drawn land is reached
+// from the point voyage.drawn_roadsteads holds (scripts/build-land-channels.mjs measured it on the chart's
+// own tiles; voyage.water_roadstead answers it for that quay). Read from the applied chain, never re-derived.
+const drawnRoads = new Map(
+  (await db.query(`select to_regclass('voyage.drawn_roadsteads') is not null as has`)).rows[0].has
+    ? (await db.query(`select code, lat::float8 as lat, lon::float8 as lon from voyage.drawn_roadsteads`)).rows.map((r) => [r.code, r])
+    : [],
+)
 
 // ── 3. THE ROADSTEAD of every place, and all-pairs sailed distances between them ───────────────
 // ONE function decides the roadstead — `roadsteadOf` — and it is the twin of voyage.water_roadstead
@@ -260,6 +268,8 @@ function channelFoot(ch, lat, lon) {
 
 /** THE ROADSTEAD. `{ lat, lon, nm, channel }` — channel is null unless the third arm applied. */
 function roadsteadOf(p) {
+  const drawn = drawnRoads.get(p.code)
+  if (drawn) return { lat: drawn.lat, lon: drawn.lon, nm: gcNm(p.lat, p.lon, drawn.lat, drawn.lon), channel: null }
   const s = snapToNav(nav, p.lat, p.lon)
   if (!s) throw new Error(`${p.code} ${p.name}: no sailable water within reach of its coordinate`)
   const idx = s.row * COLS + s.col
@@ -1399,6 +1409,15 @@ w(`  v_clat numeric; v_clon numeric;`)
 w(`  v_nm numeric;`)
 w(`  v_channel text;`)
 w(`begin`)
+w(`  -- 0440: THE ROADS ON THE WATER. A quay whose raster roadstead lies on the land the chart draws is`)
+w(`  -- reached from its drawn roadstead (voyage.drawn_roadsteads), measured on the chart's own tiles.`)
+w(`  select d.lat, d.lon into lat, lon from voyage.drawn_roadsteads d where d.quay_lat = p_lat and d.quay_lon = p_lon;`)
+w(`  if found then`)
+w(`    nm := voyage.gc_distance_nm(p_lat::float8, p_lon::float8, lat::float8, lon::float8)::numeric;`)
+w(`    channel := null;`)
+w(`    return next;`)
+w(`    return;`)
+w(`  end if;`)
 w(`  select * into r from public.sea_raster where id = 1;`)
 w(`  v_row := least(r.rows - 1, greatest(0, floor((90 - p_lat) / r.cell_deg)::int));`)
 w(`  v_col := ((floor((p_lon + 180) / r.cell_deg)::int % r.cols) + r.cols) % r.cols;`)

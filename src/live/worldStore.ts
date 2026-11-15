@@ -87,7 +87,7 @@ import {
   worldReach,
   worldSeaRoster,
 } from '../lib/rpc'
-import { navFromServed, type SeaNav } from '../lib/sea'
+import { coastLand, coastMaskFrom, maskFits, navFromServed, type CoastMaskPayload, type SeaNav } from '../lib/sea'
 import { registerHullClasses } from '../chart'
 import { msUntilEdge, peekResource, readResource, SESSION_MS } from '../store/resourceCache'
 import { READ_MAX_MS, readIntervalMs } from '../domain/readClock'
@@ -459,6 +459,16 @@ const ROSTER_SAVE_EVERY_MS = 60_000
 /** No armadas, switched off: what a company of one fleet reads, and everyone before the first world read. One object, so a selector's answer does not change between reads. */
 const NO_ARMADAS: Armadas = { on: false, max: 0, raid_scale: 0, armadas: [] }
 
+/** The coast mask (src/lib/sea/coastMask.ts), fetched once; null when it cannot be had. */
+async function loadCoastMask(): Promise<CoastMaskPayload | null> {
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}coast/mask.json`)
+    return res.ok ? ((await res.json()) as CoastMaskPayload) : null
+  } catch {
+    return null
+  }
+}
+
 export const useWorld = create<LiveWorld>((set, get) => {
   /**
    * WHAT IS READ BACK AFTER A TRADE — the one spelling, for the two verbs that trade (`issue` and
@@ -765,6 +775,20 @@ export const useWorld = create<LiveWorld>((set, get) => {
       ...(get().phase === 'failed' ? {} : { phase: 'ready' as const }),
       // THE THIRD REAL STEP: the first beat read has answered (with the world published).
       boot: 3,
+    })
+    // THE COAST THE CHART DRAWS, FOR THE COURSE AUTHOR (owner row 352): a static file beside the
+    // coast tiles (public/coast/mask.json). Not waited for and never fatal: until it lands (or if it
+    // never does) a course is the search's own, raster water the server accepts; once it lands the
+    // course author re-sails every course off the drawn land (src/domain/passage proposeCourse).
+    void loadCoastMask().then((payload) => {
+      const nav = get().seaNav
+      if (!payload || !nav || nav.coast) return
+      try {
+        const mask = coastMaskFrom(payload)
+        if (maskFits(mask, nav)) set({ seaNav: { ...nav, coast: coastLand(mask, nav) } })
+      } catch {
+        // a stale or foreign file: the courses stay the search's own
+      }
     })
   },
 
