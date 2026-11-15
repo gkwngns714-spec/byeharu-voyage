@@ -7,7 +7,31 @@ import { formatFixed, formatInt } from '../../lib/format'
  *
  *  It lived inside Note.tsx until 2026-11-12. A refusal is also printed as a caption under a greyed button (the captain's
  *  skill rows, 0355), which is not a Note; the rule is one, so it stands here and both read it. */
-export function refusalWords(locale: Locale, code: string, figures: { have: number; need: number; unit: string } | null | undefined): string | null {
+export function refusalWords(
+  locale: Locale,
+  code: string,
+  figures: { have: number; need: number; unit: string } | null | undefined,
+  served?: string | null,
+): string | null {
+  const words = codeWords(locale, code, figures)
+  if (words === null) return null
+  const name = servedName(served, figures)
+  return name === null ? words : `${name}: ${words}`
+}
+
+/** THE FLEET THE SERVER NAMED. An armada refuses under the name of the fleet that failed (0433:
+ *  `Frota 1-1: Wait 10 / 30 min`, `Almiranta: Crew 6 / 8`). The payload carries no name field, so it is read here, once,
+ *  off the English sentence: the text before its last `: `, kept only when the rest is the have / need line itself —
+ *  an older sentence with a colon in its prose (`X fought 3 minutes ago: one battle in 30`) is not a name. */
+export function servedName(served: string | null | undefined, figures: { have: number; need: number } | null | undefined): string | null {
+  if (!served || !figures || typeof figures.have !== 'number' || typeof figures.need !== 'number') return null
+  const cut = served.lastIndexOf(': ')
+  if (cut <= 0) return null
+  const name = served.slice(0, cut).trim()
+  return name !== '' && /\d[\d.,]* \/ \d/.test(served.slice(cut + 2)) ? name : null
+}
+
+function codeWords(locale: Locale, code: string, figures: { have: number; need: number; unit: string } | null | undefined): string | null {
   if (locale === 'en') return null
   const sentence = translateMaybe(locale, 'codes', code)
   if (sentence === null) return null
