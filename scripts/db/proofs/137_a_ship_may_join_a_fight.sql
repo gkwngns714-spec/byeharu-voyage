@@ -12,6 +12,8 @@
 -- @pass BJ_CLOSE   the battle closes with every joiner freed; the navy's line counts the navy ship, not the pirate that joined
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = case key when 'pirate_strike_from_port' then 'true'::jsonb else to_jsonb(720) end where key in ('pirate_strike_from_port', 'pirate_port_minutes');   -- 0445: this proof's pirate lies at her haunt and raids from it (0427's world, by 0445's two way-back knobs); the cruise and the raid under sail are proof 147's
+
 create function pg_temp.lie_137(p_fleet uuid, p_lat numeric, p_lon numeric) returns void language sql as $f$
   update public.voyages v set status = 'ABORTED' where v.fleet_id = p_fleet and v.status = 'SAILING';
   update public.fleets f set status = 'ANCHORED', port_id = null, lat = p_lat, lon = p_lon, busy_until = null, ready_at = null, version = f.version + 1 where f.id = p_fleet;

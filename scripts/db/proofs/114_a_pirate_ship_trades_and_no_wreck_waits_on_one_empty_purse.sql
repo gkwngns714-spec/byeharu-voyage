@@ -10,7 +10,7 @@
 -- @pass PT_PLAN     her trading side cannot PLAN a sale the sink cannot pay for: bound for a harbour with no purse she plans and buys nothing; with a short purse every plan is within it; with a rich one within what her house holds above the gift's broke line (so buying never makes her broke, and a house at the line buys nothing)
 -- @pass PT_DOOR     nor MAKE one: a cargo bought for a harbour whose purse then runs short is sold only as far as that purse pays (it never goes below nothing) and the rest stays aboard; no sale of hers is below what the goods cost her
 -- @pass PT_DAY      over a simulated day (home, haunt, home, haunt; six fleets of two hubs) the fleets that trade end with more (purse plus cargo at cost) than the same fleets with trading off, every one of them at no loss; the world total does not move
--- @pass PT_JOB      through the pirates' own job: a run steps no more ships after one that traded (her market rows and her harbour's purse are held to the commit) and leaves the pay and the gift to a later minute; a run with no trade pays and gifts
+-- @pass PT_JOB      through the pirates' own job (0445's law): ONE ship of a run trades, and she steps last, after the strikes; the other ships of the run sail without trading and do not wait for her, so nothing runs behind a trade's locks; a run with no trade pays and gifts
 -- @pass PT_REFIT_M  a MERCHANT wrecked with her home's purse empty is mended by the hourly job, paid for by another city of her country; with every city of her country dry she is not mended unpaid and not silent (a row in npc_refit_waits, a REFIT_WAITING event); a purse back, the job mends her
 -- @pass PT_REFIT_N  a NAVY ship wrecked with her station's purse empty is mended the same way, her realm's capital paying
 -- ═══════════════════════════════════════════════════════════════════════════════
@@ -264,15 +264,18 @@ begin
   update public.pirate_ships set laid_up_at = null, unpaid_since = null, wrecked_at = null, sea_id = null, haunt_port = null, haunt_since = null, mission = 'HOME' where fleet_id = any (v_fl);
   update public.players pl set ducats = public.pirate_house_capital(pl.id) where pl.id in (select n.player_id from public.pirate_ships n where n.fleet_id = any (v_fl));
   update public.port_treasury t set ducats = 2000000;
-  update public.pirate_clock set paid_at = v_now, gifted_at = v_now;
+  -- 0445: ONE ship of a run may trade and she steps LAST (public.pirate_trader_step); the others sail in the same run without trading. (Before 0445 the run
+  -- stopped at the first ship that traded and left the strikes, the pay and the gift to the next minute: one sailing a minute.) The pay and the gift are not due here.
+  update public.pirate_clock set paid_at = v_now + interval '41 days', gifted_at = v_now + interval '41 days';
   v_r := public.tick_pirates(v_now + interval '40 days');
-  if (select count(*) from unnest(v_fl) x where public.fleet_stock_at_cost(x) > 0) <> 1 or (select c.paid_at from public.pirate_clock c) <> v_now or (select c.gifted_at from public.pirate_clock c) <> v_now then
-    raise exception 'PROOF 114 FAIL: a run of the job went on after a ship traded, or paid and gifted behind her locks: % (% fleets with cargo)', v_r, (select count(*) from unnest(v_fl) x where public.fleet_stock_at_cost(x) > 0);
+  if (select count(*) from unnest(v_fl) x where public.fleet_stock_at_cost(x) > 0) <> 1 or (v_r #>> '{steps,SAILED}')::int is distinct from 6 or not (v_r ? 'struck')
+     or exists (select 1 from public.fleets f where f.id = any (v_fl) and f.status <> 'SAILING') or coalesce(current_setting('byeharu.pirate_trade_hold', true), '') <> '' then
+    raise exception 'PROOF 114 FAIL: the run did not sail all six with exactly one trader, or left the strikes out, or kept the hold: % (% fleets with cargo)', v_r, (select count(*) from unnest(v_fl) x where public.fleet_stock_at_cost(x) > 0);
   end if;
-  v_r := public.tick_pirates(v_now + interval '40 days 1 minute');
-  if (select count(*) from unnest(v_fl) x where public.fleet_stock_at_cost(x) > 0) <> 2 then
-    raise exception 'PROOF 114 FAIL: the next minute did not step the next trader: %', v_r;
-  end if;
+  update public.voyages set status = 'ABORTED' where fleet_id = any (v_fl) and status = 'SAILING';
+  update public.fleets f set status = 'DOCKED', lat = null, lon = null, ready_at = null, port_id = (select n.home_port from public.pirate_ships n where n.fleet_id = f.id) where f.id = any (v_fl);
+  update public.pirate_ships set sea_id = null, haunt_port = null, haunt_since = null, mission = 'HOME' where fleet_id = any (v_fl);
+  update public.pirate_clock set paid_at = v_now, gifted_at = v_now;
   update public.world_config set value = 'false'::jsonb where key = 'pirates_trade';
   v_r := public.tick_pirates(v_now + interval '40 days 2 minutes');
   update public.world_config set value = 'true'::jsonb where key = 'pirates_trade';
@@ -280,7 +283,7 @@ begin
      or exists (select 1 from public.fleets f where f.id = any (v_fl) and f.status <> 'SAILING') then
     raise exception 'PROOF 114 FAIL: a run with no trade did not step every ship, pay and gift: %', v_r;
   end if;
-  raise notice 'PASS: PT_JOB — six fleets ready to trade: the first run stopped after one had traded and left the pay and the gift; the next minute took the next; a run with no trade stepped the rest, paid and gifted: %', v_r;
+  raise notice 'PASS: PT_JOB — six fleets ready to trade: one run sailed all six, exactly one of them traded (she stepped last, after the strikes), the hold let go; a run with no trade stepped every ship, paid and gifted: %', v_r;
 
   -- ── PT_REFIT_M ── a merchant whose country has a capital that is neither her home nor her yard
   for r in select f.id, h.home_port_id, pl.nation_id, cp.id as cap
