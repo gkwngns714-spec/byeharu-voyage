@@ -17,7 +17,6 @@ import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 
 const OUT = 'docs/dev-log/2026-11-08-drive-audit'
 const WIDE = { width: 1280, height: 800 }
-const SLOT_MS = 900_000
 const COUNTS = 8
 
 test.use({ deviceScaleFactor: 2 })
@@ -70,14 +69,19 @@ function countedWorld(): Promise<Buffer> {
     const who = await pg.query<{ id: string }>(`select id from public.players where is_npc order by id limit 1`)
     if (who.rows.length !== 1) throw new Error('no merchant house to credit')
     const npc = who.rows[0].id
-    // the current slot's start, the instant the last count stands at; the seven before it, one per quarter
+    // A count is keyed by the world's DRIFT SLOT (public.tick_stats: one row a slot), and since 0413 that slot is drift_slot_seconds x 5
+    // (4,500 s in the shipped world), anchored: so every instant here is read from the clock's own counter, never a 15-minute guess.
+    // THE SLOT MUST HOLD STILL (see the test): too near the slot's end, wait past it before counting.
+    const left = await pg.query<{ ms: number }>(`select (extract(epoch from public.clock_start('drift_slot', public.drift_slot_of(now()) + 1) - now()) * 1000)::float8 as ms`)
+    if (left.rows[0].ms < 240_000) await new Promise((r) => setTimeout(r, left.rows[0].ms + 1500))
+    // the current slot's start, the instant the last count stands at; the seven slots before it, each at its own start
     for (let k = COUNTS - 1; k >= 0; k--) {
       await pg.query(`select public.credit($1::uuid, 'DRIVE_AUDIT', 1000)`, [npc])
-      const r = await pg.query<{ w: unknown }>(
-        `select public.tick_stats(to_timestamp(floor(extract(epoch from now()) / 900) * 900) - ($1::int * interval '15 minutes')) as w`,
+      const r = await pg.query<{ w: { note?: string } | null }>(
+        `select public.tick_stats(public.clock_start('drift_slot', public.drift_slot_of(now()) - $1::int)) as w`,
         [k],
       )
-      if (r.rows.length !== 1) throw new Error(`count ${k} wrote nothing`)
+      if (r.rows.length !== 1 || r.rows[0].w?.note) throw new Error(`count ${k} wrote nothing: ${JSON.stringify(r.rows[0]?.w)}`)
     }
   })
 }
@@ -85,10 +89,9 @@ function countedWorld(): Promise<Buffer> {
 test('Stats: a counted world — every drawn series ends at its right edge on a whole period, with no falling last point (rows 289, 294, 295)', async ({ page, request, baseURL }) => {
   test.setTimeout(600_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-  // THE SLOT MUST HOLD STILL: the counts stand at this slot's start; if the quarter turned before the page read them,
+  // THE SLOT MUST HOLD STILL: the counts stand at this slot's start; if the slot turned before the page read them,
   // the tab's own count would add a partial row that no production count ever writes (the cron counts at the edges).
-  const left = SLOT_MS - (Date.now() % SLOT_MS)
-  if (left < 240_000) await new Promise((r) => setTimeout(r, left + 1500))
+  // The wait is in countedWorld: the slot is the world's drift slot, read from its own clock.
   await serveWorldImage(page, await countedWorld())
   await open(page, request, baseURL, 'stats')
   await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })

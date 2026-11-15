@@ -233,7 +233,7 @@ export function PortYard({
         setDetent('half')
         setOpen(hull)
       }}
-      figure={<Figure value={formatDucats(hull.ducats)} unit={t('yard.toBuild')} />}
+      figure={<Figure value={formatDucats(hull.ducats)} />}
       data-testid={`hull-${hull.class}`}
     />
   )

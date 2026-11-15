@@ -101,7 +101,8 @@ export async function serveFightWorld(page: Page, mine = false): Promise<void> {
 
 // ── THE FIGHTS THAT ARE SETTLED IN AN INSTANT: HER OWN RAID, AND A NAVY SHIP AGAINST A PIRATE SHIP ──
 // The same seam (the wrapped minute job, on its first call), the chain's own functions for everything that is judged:
-//   'raid'  her fleet DEPARTS from the harbour she lies in on a two-day passage out and back that began 95 s ago (the real
+//   'raid'  her fleet DEPARTS from the harbour she lies in on a two-day passage out and back that began one voyage-day and 5 s ago
+//           (24 sim-hours at the served time_compression: 450 s since 0413, 90 s before it; it was a fixed 95 s, which 0413 left short of day 1) (the real
 //           `voyage.depart`), day 1 of HER voyages is a raid (the hazard roll alone is pinned; every other voyage rolls as
 //           the chain rolls), and the real `voyage.settle` settles it: the real fight, the real log, kept by 0353 on the
 //           day's own row. The map's read then finds it, a degree and a half west of her harbour's roads.
@@ -181,7 +182,7 @@ export function instantFightWorld(kind: 'raid' | 'navy'): Promise<Buffer> {
                                    'sea_id', (select p.sea_id from public.ports p where p.id = v_port), 'hazard_mult', 1),
                 jsonb_build_object('a', jsonb_build_array(v_lat, v_lon - 1.5), 'b', jsonb_build_array(v_lat, v_lon), 'nm', voyage.fleet_speed(v_fleet) * 24,
                                    'sea_id', (select p.sea_id from public.ports p where p.id = v_port), 'hazard_mult', 1)),
-              v_port, v_port, p_now - interval '95 seconds');
+              v_port, v_port, p_now - make_interval(secs => (24 * 3600 / public.wc_num('time_compression') + 5)::double precision));
             perform voyage.settle(v_fleet, p_now);
             insert into public.spec_instant values (true);
           end if;` : `

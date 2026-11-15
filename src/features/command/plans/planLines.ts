@@ -23,7 +23,7 @@
 // (public.insure_voyage over the cargo then on board); nothing here guesses it.
 
 import { courseLeg, daysAt, type PlanLeg, sailOrigin } from '../../../domain/passage'
-import { formatMiles, formatVoyageDays } from '../../../lib/format'
+import { formatFixed, formatMiles, formatVoyageDays } from '../../../lib/format'
 import type { SeaNav } from '../../../lib/sea'
 import type { BoardPassage, BoardSea, FleetView, GoodBoard, PlanLine, SnapshotPort } from '../../../lib/rpc'
 import type { PlanDraft } from './planDraft'
@@ -130,18 +130,46 @@ export function reachBoard(board: Pick<GoodBoard, 'fleet' | 'reach' | 'supplies'
   }
 }
 
-/** What a sea asks, in plain words (0219) — THE ONE WORDING, read by `reachWords` when the sea closes a city and
- *  by the Plans face's "Can you go there?" rows:
- *
- *    this sea asks title 2 and wave resistance 10 (Macaronesia and the Canary Current)
- *    the seas on the way ask title 4 and wave resistance 30
- *
- *  A refusal names the zone that refuses, with that zone's own asks (`public.sea_refusal`'s figures); without one
- *  the route's most any leg asks is printed. The figures are the server's; nothing is compared here. */
-export function seaAsksWords(sea: BoardSea): string {
+/** What the fleet holds, beside what a sea asks: her served title level and wave resistance (null when unread). */
+export interface SeaHeld {
+  title: number | null
+  wave: number | null
+}
+
+/** One ask of a sea as HAVE / NEED (2026-11-15 owner: shorter words — "just tell me what i have, and what is required"):
+ *  `Waves 12 / 30`, `Title 1 / 2`; the need alone when what she holds is unread. `short`: the server's refusal says this
+ *  ask is short (0396's flags; a refusal without them, an older world's, reads its own two figures). */
+export interface SeaPair {
+  ask: 'wave' | 'title'
+  text: string
+  short: boolean
+}
+
+export function seaPairs(sea: BoardSea, held: SeaHeld | null): SeaPair[] {
   const f = sea.refusal?.figures
-  if (f) return t('desk.seaAsks', { title: f.needs_title, wave: f.needs_wave, zone: f.zone_name })
-  return t('desk.seaRoute', { title: sea.needs_title ?? '—', wave: sea.needs_wave ?? '—' })
+  const pair = (ask: 'wave' | 'title', need: number | null, have: number | null, flag: boolean | undefined): SeaPair | null => {
+    if (need === null) return null
+    const short = !!sea.refusal && (flag ?? (have !== null && have < need))
+    return { ask, text: t(ask === 'wave' ? 'desk.seaTagWaves' : 'desk.seaTagTitle', { n: have === null ? String(need) : `${have} / ${need}` }), short }
+  }
+  return [
+    pair('wave', f ? f.needs_wave : sea.needs_wave, (f ? f.wave : held?.wave) ?? null, f?.short_wave),
+    pair('title', f ? f.needs_title : sea.needs_title, (f ? f.title : held?.title) ?? null, f?.short_title),
+  ].filter((p): p is SeaPair => p !== null)
+}
+
+/** What a sea asks, as HAVE / NEED (0219) — THE ONE WORDING, read by `reachWords` when the sea closes a city and
+ *  by the plan's per-city sea rows:
+ *
+ *    Macaronesia and the Canary Current · Waves 12 / 10 · Title 1 / 2     (a refusal names the zone that refuses)
+ *    Waves 18 / 30 · Title 2 / 4                                          (the route's most any leg asks)
+ *
+ *  The figures are the server's. */
+export function seaAsksWords(sea: BoardSea, held: SeaHeld | null = null): string {
+  const pairs = seaPairs(sea, held)
+    .map((p) => p.text)
+    .join(' · ')
+  return sea.refusal?.figures ? t('desk.seaZone', { zone: sea.refusal.figures.zone_name, pairs }) : pairs
 }
 
 /** Owner row 191 (docs/COMMAND_REDESIGN.md §3): the sea's ask as ONE short tag beside a leg — the server's
@@ -161,21 +189,21 @@ function legWords(nm: number, speedKn: number): string {
   return speedKn > 0 ? formatVoyageDays(daysAt(nm, speedKn)) : formatMiles(nm)
 }
 
+/** Days as HAVE / NEED in one unit: "4.3 / 7.8 days". */
+function daysPair(have: number, need: number): string {
+  return t('format.days', { n: `${formatFixed(have, 1)} / ${formatFixed(need, 1)}` })
+}
+
 /** Why a city cannot be sailed to (0188), in plain words — THE ONE WORDING, read after the city's name and a
  *  dash by the plan builder's note and the best-trade card alike (docs/WORDS.md: no nm, no her, no passage):
  *
- *    this sea asks title 2 and wave resistance 10 (Macaronesia and the Canary Current): you are title 1 and your
- *      fleet holds 12     (0219: the sea conditions bite and the server's sea refusal is the reason)
- *    too far to sail in one go: your navigator can only plan 9.4 days at sea without a stop. A captain with
- *      Navigation 3 could take you there
- *    too far to sail in one go: your navigator can only plan 9.4 days at sea without a stop. No captain can plan
- *      a trip that long, and there are no ports on the way to stop at
- *    Hold too full: 4.3 days of supplies, crossing needs 7.8 days   (0231: her navigation reaches it, her stores
- *      beside her cargo do not; the server's leg_refusal figures)
- *    Hold too full: bought at Guangzhou, the trip has a crossing that needs 7.8 days of supplies; you can carry
- *      4.3 days   (0238: the good is bought first, and no seller is within her stores — the way to the buy city is)
- *    longest leg 21.3 days, can carry 12.0 days   (0231: what her hold carries beside her cargo, not her casks now)
- *  (the owner, 2026-10-19: "What does this mean? make it in simple words")
+ *    (0219, the sea closes it: the closed-sea wording, components/ui/seaWallWords.ts)
+ *    Too far · leg max 9.4 days · needs Navigation 3
+ *    Too far · leg max 9.4 days · no captain or stop reaches
+ *    Supplies 4.3 / 7.8 days · hold full      (0231: her navigation reaches it, her stores beside her cargo do not)
+ *    Supplies 4.3 / 7.8 days · via Guangzhou  (0238: the crossing is on the way to the buy city)
+ *    Supplies 12.0 / 21.3 days                (0231: what her hold carries beside her cargo, against the longest leg)
+ *  (the owner, 2026-10-19: "make it in simple words"; 2026-11-15: "just tell me what i have, and what is required")
  *
  *  No voyage: the board served no `stops` (or, as 0188 serves a buy row it cannot reach, `stops: []` with no
  *  miles). Otherwise the voyage exists and it is the supplies that fall short. */
@@ -188,23 +216,19 @@ export function reachWords(row: BoardPassage & { miles: number | null }, board: 
       // what to do. The callers close the sentence, so the last stop is left off here.
       const wall = seaWallOf(sea.refusal)
       if (wall) return seaWallWords(getLocale(), wall).replace(/[.]$/, '')
-      const f = sea.refusal.figures
-      const held = f.title != null && f.wave != null ? t('desk.seaHeld', { title: f.title, wave: f.wave }) : ''
-      return seaAsksWords(sea) + held
+      return seaAsksWords(sea)
     }
     // 0231: her navigation would reach it, her stores would not: the server's E_ENDURANCE figures, in plain words
     const shut = row.shut?.figures
     if (row.shut?.code === 'E_ENDURANCE' && shut) {
-      const carry = formatVoyageDays(shut.carry_days)
-      const need = formatVoyageDays(shut.need_days)
+      const pair = daysPair(shut.carry_days, shut.need_days)
       // 0238 (owner, Port Royal): the crossing is on the way to the city it is bought at — name that city
       // 0345 (owner row 221): lit, the stores have their own space, so it is the stores that are short, not the hold
-      if (shut.buy_at)
-        return t(shut.stores_space ? 'desk.storesShortBuy' : 'desk.holdTooFullBuy', { city: shut.buy_at_name ?? shut.buy_at, carry, need })
-      return t(shut.stores_space ? 'desk.storesShort' : 'desk.holdTooFull', { carry, need })
+      const words = t(shut.stores_space ? 'desk.storesShort' : 'desk.holdTooFull', { pair })
+      return shut.buy_at ? t('desk.viaCity', { words, city: shut.buy_at_name ?? shut.buy_at }) : words
     }
     const own =
-      t('desk.tooFar') +
+      t('desk.far') +
       (board.reachNm !== null ? t('desk.navigatorOnly', { leg: legWords(board.reachNm, board.speedKn) }) : '')
     const n = row.needs
     if (n && n.navigation !== null) return t('desk.captainCould', { own, n: n.navigation })
@@ -212,10 +236,9 @@ export function reachWords(row: BoardPassage & { miles: number | null }, board: 
     return own
   }
   if (row.longest_leg && row.longest_leg.days > 0) {
-    const leg = t('desk.longest', { days: formatVoyageDays(row.longest_leg.days) })
     return board.supplyDays !== null
-      ? t('desk.suppliesOnly', { leg, days: formatVoyageDays(board.supplyDays) })
-      : t('desk.longerThan', { leg })
+      ? t('desk.storesShort', { pair: daysPair(board.supplyDays, row.longest_leg.days) })
+      : t('desk.longerThan', { leg: formatVoyageDays(row.longest_leg.days) })
   }
   return t('desk.orSupplies')
 }

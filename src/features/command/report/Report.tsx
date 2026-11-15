@@ -3,7 +3,8 @@ import { DetailPage, Figure, Note, Row, ScrollPane, Segmented, SignedBars, Skele
 import { useServedRead } from '../../../live/useServedRead'
 import { formatDucatsDelta, formatRealDay } from '../../../lib/format'
 import { worldReport, type Report as ReportView, type ReportLine, type ReportPlace, type ReportSection } from '../../../lib/rpc'
-import { t as tNow, useT, type TKey } from '../../../lib/i18n'
+import { t as tNow, useLocale, useT, type TKey } from '../../../lib/i18n'
+import { moneyKindWord } from '../../../live/moneyWords'
 import type { DeskLayout } from '../DeskFrame'
 import { HistoryChart } from '../../../live/HistoryChart'
 import { companyLines } from '../../../live/historyLines'
@@ -43,33 +44,13 @@ const SECTION_KEYS: Record<ReportSection['id'], TKey> = {
   other: 'desk.secOther',
 }
 
-const KIND_KEYS: Record<string, TKey> = {
-  SELL: 'desk.kindSell',
-  PREMIUM: 'desk.kindBonus',
-  BUY: 'desk.kindBuy',
-  TAX: 'desk.kindTax',
-  PORT_FEE: 'desk.kindPortFee',
-  WAGES: 'desk.kindWages',
-  HIRE: 'desk.kindHire',
-  PROVISION: 'desk.kindProvision',
-  REPAIR: 'desk.kindRepair',
-  INSURANCE: 'desk.kindInsurance',
-  INSURANCE_PAID: 'desk.kindInsurancePaid',
-  SHARE: 'desk.kindShare',
-  DIVIDEND: 'desk.kindDividend',
-  DONATION: 'desk.kindDonation',
-  FINE: 'desk.kindFine',
-  BUILD: 'desk.kindBuild',
-  TUITION: 'desk.kindTuition',
-  TOW: 'desk.kindTow',
-}
-
 const hint = () => tNow('desk.reportHint')
 
 const tone = (n: number): 'success' | 'danger' | 'muted' => (n > 0 ? 'success' : n < 0 ? 'danger' : 'muted')
 
 export function Report({ layout }: { layout: DeskLayout }) {
   const t = useT()
+  const locale = useLocale()
   const [span, setSpan] = useState<Span>('week')
   const [open, setOpen] = useState<Open>(null)
   const read = useServedRead<ReportView>(`report:${span}`, () => worldReport(span))
@@ -96,11 +77,8 @@ export function Report({ layout }: { layout: DeskLayout }) {
   const nothing = r.sections.every((s) => s.lines.length === 0) && r.places.length === 0
   // the bars are the days that are over; today stands in the total (reportBars: owner, 2026-11-07, no right edge that goes down)
   const bars = reportBars(r.days)
-  // a known kind is the dictionary's word; an unlisted one keeps the server's own-name fallback.
-  const lineWord = (l: ReportLine) => {
-    const key = KIND_KEYS[l.kind]
-    return key ? t(key) : l.word
-  }
+  // a known kind is the one money word list's (live/moneyWords.ts); an unlisted one keeps the server's own word.
+  const lineWord = (l: ReportLine) => moneyKindWord(locale, l.kind, l.word)
   const lines = (list: ReportLine[]) =>
     list.length === 0 ? (
       <Note tone="neutral">{t('desk.reportNothing')}</Note>

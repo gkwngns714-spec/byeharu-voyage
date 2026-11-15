@@ -43,9 +43,9 @@ function Ladder({ kind, label, ladder, on }: { kind: 'FLEET' | 'SHIP'; label: st
               <Button variant="secondary" busy={busy} onClick={buy} data-testid="fleet-room-buy">
                 {t('fleets.roomBuy')}
               </Button>
-            ) : (
-              <span>{t(s.open ? 'fleets.roomOpen' : 'fleets.roomLocked')}</span>
-            )}
+            ) : s.open ? (
+              <span className="text-success">{t('fleets.roomOpen')}</span>
+            ) : null /* 2026-11-15 owner: shorter words. A locked rung is the faint row; "Locked" ten times over said nothing new. */}
           </li>
         ))}
       </ul>

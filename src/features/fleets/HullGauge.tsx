@@ -10,7 +10,7 @@ export function HullGauge({ fraction, label }: { /** 0 to 1. */ fraction: number
   const t = useT()
   return (
     <span className="flex min-w-32 flex-1 items-center gap-3">
-      <span className="shrink-0">{t('fleets.hull')}</span>
+      <span className="shrink-0">{t('fleets.hullSum')}</span>
       <Bar
         pct={fraction * 100}
         tone={fraction < 0.4 ? 'danger' : fraction < 0.75 ? 'warning' : 'neutral'}

@@ -64,7 +64,7 @@ function Repair({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
       <Row
         label={t('inn.damage')}
         value={
-          <Figure value={formatPct(1 - worst, 0)} unit={t('inn.damaged')} tone={worst < 0.5 ? 'danger' : 'ink'} size="figure" />
+          <Figure value={formatPct(1 - worst, 0)} tone={worst < 0.5 ? 'danger' : 'ink'} size="figure" />
         }
         chevron
         onClick={() => setOpen(true)}

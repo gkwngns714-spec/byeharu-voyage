@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Bar, Icon, Note, Tile, Tray, type TrayDetent } from '../../../components/ui'
-import { formatInt, formatRelative } from '../../../lib/format'
-import { translateMaybe, useLocale, useT } from '../../../lib/i18n'
-import type { LevelSkill, LevelSkillsCard } from '../../../lib/rpc'
-import { useShellState } from '../../../app/shellState'
-import { activityLine, everyLevelLine, levelFill, levelGives, levelMark, levelName, perksNow } from '../../../live/levelWords'
+import { Bar, Icon, Note, Tile, Tray, type TrayDetent } from '../components/ui'
+import { formatInt, formatRelative } from '../lib/format'
+import { translateMaybe, useLocale, useT } from '../lib/i18n'
+import type { LevelSkill, LevelSkillsCard } from '../lib/rpc'
+import { useShellState } from '../app/shellState'
+import { activityLine, everyLevelLine, levelFill, levelGives, levelMark, levelName, perksNow } from './levelWords'
 
 // THE LEVELS, AS TILES (0411, docs/LEVELS.md; the owner, 2026-11-14: "like rs3, i want diverse skills related to this game" and
 // "with exp table, exp info, with benefits when leveling up, what activity needs done etc.").
@@ -152,9 +152,7 @@ export function LevelDetail({ card, skill, titled = true }: { card: LevelSkillsC
           {t('command.lvCombatDark')}
         </Note>
       )}
-      {skill.kept === 'record' ? (
-        <span className="mt-1 block text-t-caption text-ink-faint">{t('command.lvFromRecord')}</span>
-      ) : (
+      {skill.kept === 'record' ? null : (
         <>
           <span className="mt-1 block text-t-caption text-ink-muted" data-testid="level-detail-today">
             {t('command.lvTodayCap', { a: formatInt(skill.today ?? 0), b: formatInt(skill.cap ?? 0) })}
@@ -251,13 +249,12 @@ export function LevelDetail({ card, skill, titled = true }: { card: LevelSkillsC
                   )}
                 </td>
                 <td className="break-words py-1 pl-3">
-                  {gives.length === 0
-                    ? '—'
-                    : gives.map((g) => (
-                        <span key={g} className="block">
-                          {g}
-                        </span>
-                      ))}
+                  {/* a level that gives nothing (level 1) leaves the cell empty: a bare dash is a placeholder (consistency.spec) */}
+                  {gives.map((g) => (
+                    <span key={g} className="block">
+                      {g}
+                    </span>
+                  ))}
                 </td>
               </tr>
             )

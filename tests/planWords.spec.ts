@@ -18,31 +18,31 @@ const noLeg = { stops: null, miles: null }
 
 test('a city no leg reaches names the Navigation that would, in days at sea', () => {
   const words = reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 } }, board)
-  expect(words).toBe('too far in one go: longest leg 14.2 days. Navigation 3 would reach it')
+  expect(words).toBe('Too far · leg max 14.2 days · needs Navigation 3')
 })
 
 test('a city no Navigation reaches says so, with the farthest any plots', () => {
   const words = reachWords({ ...noLeg, needs: { navigation: null, reach_nm: 4000 } }, board)
   expect(words).toBe(
-    'too far in one go: longest leg 14.2 days. No captain can plan it, and no port to stop at',
+    'Too far · leg max 14.2 days · no captain or stop',
   )
 })
 
 test('a reachable city the supplies do not carry names its longest leg against them', () => {
   const words = reachWords({ stops: ['CEU'], miles: 3100, longest_leg: { miles: 2500, days: 20.8 } }, board)
-  expect(words).toBe('longest leg 20.8 days, can carry 36.0 days')
+  expect(words).toBe('Supplies 36.0 / 20.8 days')
 })
 
 test('0231: the board carry_days (her hold beside her cargo) is what the words read, not her casks now', () => {
   const carry = reachBoard({ fleet: { speed_kn: 5 } as never, reach: { navigation: 2, reach_nm: 1700 }, supplies: { days: 2, margin: 1.15, carry_days: 4.3 } })
   const words = reachWords({ stops: ['CEU'], miles: 3100, longest_leg: { miles: 2500, days: 20.8 } }, carry)
-  expect(words).toBe('longest leg 20.8 days, can carry 4.3 days')
+  expect(words).toBe('Supplies 4.3 / 20.8 days')
 })
 
 test('0231: a city the stores cannot reach says so with the server figures, not "too far"', () => {
   const shut = { code: 'E_ENDURANCE', sentence: '…', figures: { nm: 1614, leg_days: 6.8, need_days: 7.8, carry_days: 4.3, cap_nm: 884 } }
   const words = reachWords({ ...noLeg, needs: null, shut }, board)
-  expect(words).toBe('Hold too full: 4.3 days of supplies, crossing needs 7.8 days')
+  expect(words).toBe('Supplies 4.3 / 7.8 days · cargo full')
   expect(words).not.toMatch(/\bnm\b|\bher\b|\bpassage\b|\bstores\b/)
 })
 
@@ -53,7 +53,7 @@ test('0238: a row shut on the way to the buy city names that city (owner, Port R
     figures: { nm: 1614, leg_days: 6.8, need_days: 7.8, carry_days: 4.3, cap_nm: 884, buy_at: 'GUA', buy_at_name: 'Guangzhou' },
   }
   const words = reachWords({ ...noLeg, needs: null, shut }, board)
-  expect(words).toBe('Hold too full: bought at Guangzhou, the trip has a crossing that needs 7.8 days of supplies; you can carry 4.3 days')
+  expect(words).toBe('Supplies 4.3 / 7.8 days · cargo full · via Guangzhou')
   expect(words).not.toMatch(/\bnm\b|\bher\b|\bpassage\b|\bstores\b/)
 })
 
@@ -93,34 +93,37 @@ test('lit, a city the sea closes says what the sea asks, not "too far"', () => {
   const words = reachWords({ ...noLeg, needs: null, sea: closed }, lit)
   // the one wording of a closed sea (components/ui/seaWallWords.ts). These figures are a world's before 0396: it does
   // not say which ask is short, so both are printed beside both of hers and no advice is given
-  expect(words).toBe('Macaronesia and the Canary Current is closed to this fleet. It asks title 2 and wave resistance 10. You have title 1 and wave resistance 12')
+  // 2026-11-15 owner: shorter words (have / need)
+  expect(words).toBe('Macaronesia and the Canary Current closed \u00b7 Title\u00a01\u00a0/\u00a02 \u00b7 Waves\u00a012\u00a0/\u00a010')
   expect(words).not.toContain('too far')
 })
 
 test('lit, the server says which ask is short (0396): the wall names that one and what to do', () => {
   const short = { ...closed, refusal: { ...closed.refusal, figures: { ...closed.refusal.figures, short_title: true, short_wave: false } } }
   expect(reachWords({ ...noLeg, needs: null, sea: short }, lit)).toBe(
-    'Macaronesia and the Canary Current is closed to this fleet. It asks title 2. Yours is 1. Raise Trading and Exploration to level 2',
+    'Macaronesia and the Canary Current closed \u00b7 Title\u00a01\u00a0/\u00a02 \u00b7 Trading & Exploration\u00a02',
   )
   const hull = { ...closed, refusal: { ...closed.refusal, figures: { ...closed.refusal.figures, needs_wave: 30, short_title: false, short_wave: true } } }
   expect(reachWords({ ...noLeg, needs: null, sea: hull }, lit)).toBe(
-    'Macaronesia and the Canary Current is closed to this fleet. It asks wave resistance 30. This fleet has 12. Sail a sturdier ship, or fit anchors and planking',
+    'Macaronesia and the Canary Current closed \u00b7 Waves\u00a012\u00a0/\u00a030 \u00b7 fit planking',
   )
 })
 
 test('dark, the sea is a reading: the reason stays the reach', () => {
   expect(board.seaBite).toBe(false)
-  expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 }, sea: closed }, board)).toMatch(/^too far in one go/)
+  expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 }, sea: closed }, board)).toMatch(/^Too far/)
 })
 
 test('lit, a city closed by the reach and open by the sea is still too far', () => {
   const open = { ...closed, refusal: null }
-  expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 }, sea: open }, lit)).toMatch(/^too far in one go/)
+  expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 }, sea: open }, lit)).toMatch(/^Too far/)
 })
 
+// 2026-11-15 owner: shorter words — what you have / what is asked (Waves 12 / 30), not a sentence
 test('what the seas on the way ask, with no refusal, is the route\'s most', () => {
   expect(seaAsksWords({ ...closed, needs_title: 4, needs_wave: 30, refusal: null })).toBe(
-    'Route: title 4, waves 30',
+    'Waves 30 · Title 4',
   )
+  expect(seaAsksWords({ ...closed, needs_title: 4, needs_wave: 30, refusal: null }, { title: 1, wave: 12 })).toBe('Waves 12 / 30 · Title 1 / 4')
   expect(seaAsksWords(closed)).not.toMatch(/\bnm\b|\bher\b|\bpassage\b|\bstores\b/)
 })

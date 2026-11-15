@@ -2,10 +2,10 @@ import { Figure, Hint, Note, Row } from '../../../components/ui'
 import { fleetCrew } from '../../../domain/fleet'
 import { useSeaConditions } from '../../../live/useSeaConditions'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import { formatInt } from '../../../lib/format'
+import { formatInt, formatOfTotal } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, FleetView, GoodBoard } from '../../../lib/rpc'
 import { properName, useT } from '../../../lib/i18n'
-import { reachBoard, reachWords, seaAsksWords } from './planLines'
+import { reachBoard, reachWords, seaPairs } from './planLines'
 
 // THE PLAN'S VOYAGE — the owner, 2026-10-20 (docs/OWNER_REQUESTS.md row 183):
 //
@@ -69,18 +69,20 @@ export function PlanVoyage({
 
   return (
     <div className="mt-4" data-testid="plan-voyage">
-      <span className="mt-4 block text-t-caption text-ink-faint">{t('desk.crewNow')}</span>
-      <Row label={t('desk.crewNow')} value={<Figure value={t('desk.crewOf', { n: formatInt(crew.aboard), max: formatInt(crew.max) })} />} />
+      {/* CREW AS HAVE / NEED (2026-11-15 owner: shorter words): aboard against the ships' minimum, short in the warning tone */}
       <Row
-        label={t('desk.crewMin')}
-        value={<Figure value={formatInt(crew.required)} tone={crew.short > 0 ? 'warning' : 'ink'} />}
+        label={t('desk.crewNow')}
+        value={<Figure value={formatOfTotal(crew.aboard, crew.required)} tone={crew.short > 0 ? 'warning' : 'ink'} />}
         hairline={false}
         data-testid="plan-crew-min"
       />
-      <Hint>{crew.short > 0 ? t('desk.crewShort', { n: crew.short }) : t('desk.crewOk')}</Hint>
+      {crew.short > 0 && <Hint>{t('desk.crewShort', { n: formatInt(crew.short) })}</Hint>}
 
       <section className="mt-4" data-testid="plan-restrictions">
-        <span className="block text-t-caption text-ink-faint">{t('desk.restrictions')}</span>
+        <span className="block text-t-caption text-ink-faint">
+          {t('desk.restrictions')}{' '}
+          <span data-testid="plan-sea-state">{s ? (s.bite ? t('desk.seaLit') : t('desk.seaDark')) : sea.loading ? '' : t('desk.seaUnread')}</span>
+        </span>
         <Row
           label={t('desk.yourTitle')}
           value={
@@ -96,16 +98,19 @@ export function PlanVoyage({
           hairline={false}
           data-testid="plan-wave"
         />
-        <Hint data-testid="plan-sea-state">
-          {s ? (s.bite ? t('desk.seaLit') : t('desk.seaDark')) : sea.loading ? '' : t('desk.seaUnread')}
-        </Hint>
         {reachRows.map((r) => {
-          // 0218: the seas on the way, per city — unless lit and closing it: then the reach note below says so
+          // 0218: the seas on the way, per city, as HAVE / NEED — unless lit and closing it: then the reach note below says so
           if (!r.sea || (seaBite && r.sea.refusal && r.sailable === false)) return null
-          const verdict = r.sea.refusal ? (seaBite ? null : t('desk.seaNotYet')) : t('desk.seaEnough')
+          const pairs = seaPairs(r.sea, { title: s?.title?.level ?? null, wave })
           return (
             <Hint key={`sea:${r.port}`} data-testid="plan-sea-ask">
-              {`${name(r.port)} — ${seaAsksWords(r.sea)}${verdict ? `: ${verdict}` : ''}.`}
+              {name(r.port)}
+              {pairs.map((p) => (
+                <span key={p.ask} className={p.short ? 'text-danger' : undefined} data-short={p.short || undefined}>
+                  {` · ${p.text}`}
+                </span>
+              ))}
+              {r.sea.refusal ? (seaBite ? '' : ` · ${t('desk.seaNotYet')}`) : ' ✓'}
             </Hint>
           )
         })}
@@ -113,9 +118,10 @@ export function PlanVoyage({
           reachRows.map((r) =>
             r.sailable === false ? (
               <Note key={r.port} tone="danger" className="mt-2" data-testid="plan-unreachable">
-                {`${name(r.port)} — ${reachWords(r, reachBoard(board))}.`}
+                {`${name(r.port)} — ${reachWords(r, reachBoard(board))}`}
               </Note>
-            ) : (
+            ) : r.sea ? null : (
+              // a city whose sea row stands above is already named there: one line a city
               <Hint key={r.port} data-testid="plan-reach">
                 {t('desk.reachOk', { port: name(r.port) })}
               </Hint>

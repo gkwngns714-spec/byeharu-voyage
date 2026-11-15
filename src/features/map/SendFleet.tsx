@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Button, Hint, Row, SheetSection, Tray, TrayTitle, seaName, seaWallTag, type TrayDetent } from '../../components/ui'
+import { Button, Hint, Row, SheetSection, Tray, TrayTitle, seaName, type TrayDetent } from '../../components/ui'
 import type { SeaWall } from '../../lib/rpc'
 import { PortFlag } from '../../live/PortFlag'
 import { CHART_CHROME, GoToLink } from '../../chart'
@@ -10,6 +10,7 @@ import { SendArmadaRow } from './SendArmadaRow'
 import { useArmadas } from '../../live/armadas'
 import { canGo, type SailDest } from './sendRules'
 import { useSendFleet } from './useSendFleet'
+import { seaShortLine } from './seaLines'
 import { useLocale, useT } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -138,7 +139,7 @@ export function SendFleet({
             sea ? (
               <span data-testid="map-place-sea" data-closed={sea.wall ? 'yes' : 'no'}>
                 {line} · {seaName(locale, { zoneName: sea.name })}
-                {sea.wall && <span className="text-warning"> · {seaWallTag(locale, sea.wall)}</span>}
+                {sea.wall && <span className="text-warning"> · {seaShortLine(locale, sea.wall)}</span>}
               </span>
             ) : (
               line

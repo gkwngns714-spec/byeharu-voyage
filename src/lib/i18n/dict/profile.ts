@@ -6,7 +6,7 @@ export const profileDict = defineDict({
   en: {
     since: 'since {date}',
     noCompany: 'No company yet.',
-    localOnly: 'Not signed in: clearing browser data ends this game.',
+    localOnly: 'Not signed in · clearing browser data ends this game',
     signOut: 'Sign out',
     signedIn: 'Signed in',
     signingOut: 'Signing out…',
@@ -20,8 +20,8 @@ export const profileDict = defineDict({
   },
   ko: {
     since: '{date} 설립',
-    noCompany: '아직 회사가 없습니다.',
-    localOnly: '로그인 안 됨: 브라우저 데이터를 지우면 게임이 끝남.',
+    noCompany: '아직 회사 없음.',
+    localOnly: '로그인 안 됨 · 브라우저 데이터를 지우면 게임 끝',
     signOut: '로그아웃',
     signedIn: '로그인됨',
     signingOut: '로그아웃 중…',

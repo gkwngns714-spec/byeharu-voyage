@@ -128,7 +128,14 @@ export function TownHallInfluence({
           data-testid="townhall-your-tax"
         />
       )}
-      {you && (
+      {/* COMPACT (the City hall's fold): the fold row and Status already print your points, so only today's giving stands here
+          (2026-11-15 owner: shorter words, no repeats). */}
+      {you && compact && influence.open && (
+        <div className="py-2 text-t-caption tabular-nums text-ink-muted" data-testid="townhall-given-today">
+          {t('books.givenToday', { given: formatDucats(you.given_today), cap: formatDucats(you.cap) })}
+        </div>
+      )}
+      {you && !compact && (
         <Row
           label={t('books.yourInfluence')}
           value={<Figure value={formatInt(you.points)} />}

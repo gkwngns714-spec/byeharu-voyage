@@ -279,12 +279,15 @@ test('an own fleet wins a tie with a merchant; a merchant wins over open water',
 // (4.4° off — a named mark within half a touch beats a dot) and then lost to a merchant 0.74° off,
 // because the hull was compared with Veracruz's 4.4° and not with Acapulco's 0°. The tap opened
 // her. It must open the city — the one the name rule names — and a tap on HER still opens her.
-test('a tap on Acapulco at the globe opens the city, not a merchant passing beside it', () => {
+// Moved deliberately 2026-11-15 (#696, the owner: the details stay as long as possible): the middling tier 3 is full
+// at every span, so Acapulco wears its name at the globe and is no longer the dot this law needs. The same geometry on
+// a tier-2 dot: Accra, Elmina's name 1.25° off (the name rule's pick), a merchant 0.74° south of the dot.
+test('a tap on a dot at the globe (Accra) opens the city, not a merchant passing beside it', () => {
   const world: ViewBox = { x: -180, y: -90, width: 360, height: 180 }
   const upp = world.width / 390
-  const acapulco = portAt('ACA')
-  const offshore: [number, number] = [acapulco.lat - 0.74, acapulco.lon]
-  const traffic = mapTrafficOf([sailingRow('m-aca', [[16.625, -99.875], [10, -100]], offshore)])
+  const accra = portAt('ACC')
+  const offshore: [number, number] = [accra.lat - 0.74, accra.lon]
+  const traffic = mapTrafficOf([sailingRow('m-acc', [[5.375, -0.125], [0, -0.2]], offshore)])
   const ports = mapPortsOf(REAL_PORTS)
   const model = buildChartModel([], ports, [], null, traffic)
   const minTier = minTierForSpan(world.width)
@@ -292,11 +295,11 @@ test('a tap on Acapulco at the globe opens the city, not a merchant passing besi
   const dots = dotPorts(ports, model.portRoles, world, minTier)
   const reach = GLYPH.hitRadius * upp
   const dotReach = GLYPH.dotHitRadius * upp
-  // The geometry the bug needs, so this test cannot pass by the world moving under it: Acapulco is
+  // The geometry the bug needs, so this test cannot pass by the world moving under it: Accra is
   // a dot, a named harbour is within half a touch (the name rule picks it), and the merchant is
   // nearer to the thumb than that named harbour.
-  expect(dots.map((p) => p.code)).toContain('ACA')
-  const at = project(acapulco)
+  expect(dots.map((p) => p.code)).toContain('ACC')
+  const at = project(accra)
   const nameRulePick = named
     .map((n) => ({ code: n.code, d: Math.hypot(project(n).x - at.x, project(n).y - at.y) }))
     .sort((a, b) => a.d - b.d)[0]
@@ -307,7 +310,7 @@ test('a tap on Acapulco at the globe opens the city, not a merchant passing besi
   // ON the hull: she is nearer than any harbour, so she still answers.
   expect(hitTest(model, named, project({ lat: offshore[0], lon: offshore[1] }), reach, dots, dotReach)).toEqual({
     kind: 'merchant',
-    id: 'm-aca',
+    id: 'm-acc',
   })
 })
 
