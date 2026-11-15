@@ -24,7 +24,7 @@ import { useMerchantCard } from '../../live/useMerchantCard'
 import { useMerchantsHere } from '../../live/useMerchantsHere'
 import { useFights } from '../../live/useFights'
 import { FightSheet } from '../../live/FightSheet'
-import { BattleScreen } from '../battle/BattleScreen'
+import { BattleScreen } from '../../live/battle/BattleScreen'
 import { JoinBar } from '../battle/JoinBar'
 import { fleetsInFight, type JoinFleet } from '../battle/joinOffers'
 // WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
