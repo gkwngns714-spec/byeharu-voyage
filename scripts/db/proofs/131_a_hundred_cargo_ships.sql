@@ -7,7 +7,7 @@
 --   economy is closed and the purses lit, as on prod. EVERY MARKER FAILS ON THE RULES BEFORE 0430: the number was a curve of cash from 20 to 50
 --   for the ten crowns and none for the pirates (~360 ships), and an emptied ship sailed the rest of her circuit.
 --
--- @pass C100_SHARE    the shares sum to cargo_fleet_total (100) exactly; every great power with a harbour, the pirates too, keeps at least 1; the rest goes by harbours (the largest remainder, checked by hand); 40 sums to 40; under the count of powers each keeps 1
+-- @pass C100_SHARE    the shares sum to cargo_fleet_total (100) exactly; every great power with a harbour, the pirates too, keeps at least 1; the rest goes by harbours (the largest remainder, checked by hand); 40 sums to 40; under the count of powers each keeps 1; the pirates keep at least cargo_pirate_min (5): raised to 12 they hold 12 and the others share 88 by the same rule (checked by hand), the sum still 100
 -- @pass C100_SETTLE   the settle writes each share exactly (no dead band) once an hour; a harbour that changes flag moves the two shares and the sum stays; a power with no harbour loses its row and convoy_ships_of answers 0
 -- @pass C100_KNOBS    convoy_ships_min, max, span and band are gone and no body names them; convoy_retire_per_run is 10
 -- @pass C100_RETIRE   a share cut from 14 to 2: one run lays up the 10 highest idle ords at home, the next the last 2; a ship at sea is left; no gold moves
@@ -133,8 +133,27 @@ $b$
     raise exception 'PROOF 131 FAIL: under the count of powers each does not keep 1';
   end if;
   update public.world_config set value = to_jsonb(100) where key = 'cargo_fleet_total';
+  -- the pirates' minimum: 7 by harbours here, so 5 does not bind; at 12 it does
+  if public.wc_int('cargo_pirate_min') <> 5 then
+    raise exception 'PROOF 131 FAIL: cargo_pirate_min is not 5';
+  end if;
+  update public.world_config set value = to_jsonb(12) where key = 'cargo_pirate_min';
   perform pg_temp.settle();
-  raise notice 'PASS: C100_SHARE — %; by hand the same; 40 shares to 40; 5 gives each power 1', v_mine;
+  with s as (select g.nation_id, n.code, pg_temp.harbours(g.nation_id)::numeric as h from public.great_powers g join public.nations n on n.id = g.nation_id where not g.pirate),
+       q as (select s.*, 1 + (88 - (select count(*) from s where h > 0)) * s.h / (select sum(h) from s) as quota from s where s.h > 0),
+       r as (select q.*, floor(q.quota)::int as base, row_number() over (order by q.quota - floor(q.quota) desc, q.h desc, q.code) as rk from q)
+  select jsonb_object_agg(r.code, r.base + case when r.rk <= 88 - (select sum(base) from r) then 1 else 0 end) || jsonb_build_object('PIR', 12) into v_hand from r;
+  if (select jsonb_object_agg(n.code, s.ships) from public.cargo_fleet_sizes s join public.nations n on n.id = s.nation_id) <> v_hand
+     or (select sum(s.ships) from public.cargo_fleet_sizes s) <> 100 then
+    raise exception 'PROOF 131 FAIL: the pirates'' minimum of 12: % by hand, % written', v_hand,
+      (select jsonb_object_agg(n.code, s.ships) from public.cargo_fleet_sizes s join public.nations n on n.id = s.nation_id);
+  end if;
+  update public.world_config set value = to_jsonb(5) where key = 'cargo_pirate_min';
+  perform pg_temp.settle();
+  if public.convoy_ships_of(v_pir) <> (v_mine ->> 'PIR')::int then
+    raise exception 'PROOF 131 FAIL: at 5 the minimum bound a share of %', (v_mine ->> 'PIR');
+  end if;
+  raise notice 'PASS: C100_SHARE — %; by hand the same; 40 shares to 40; 5 gives each power 1; the pirates at a minimum of 12: %', v_mine, v_hand;
 
   -- ── THE SETTLE ──
   update public.cargo_fleet_sizes s set ships = 33 where s.nation_id = v_nat;

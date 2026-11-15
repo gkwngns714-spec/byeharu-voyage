@@ -11,24 +11,37 @@
 --   text 0430 was cut from: the md5 of the local chain at 0426, none of 0427-0429 touches them); knobs convoy_ships_min/max/span/band present,
 --   convoy_retire_per_run 3, no cargo_fleet_total.
 -- WHAT IT ANSWERS (by country; the share is 0430's own rule computed here: 1 each to a great power with a harbour, the rest of 100 by harbours,
---   largest remainder):
+--   largest remainder; the pirates at least 5, cargo_pirate_min):
 --   harbours, share, number (today's cargo_fleet_sizes), built, laid_up, in_service, at_sea, at_sea_funds, at_sea_empty, roaming (sailing,
 --   nothing aboard, not bound home), idle_home (docked at home, empty, no lap), retire_now (in service, ord over the share, idle at home: laid up
 --   by the job at convoy_retire_per_run a minute), retire_later (in service, ord over the share, at sea / away / with funds: laid up when home and
 --   empty), never_loaded (of retire_now + retire_later, no book row ever: a hull that never carried a ducat).
 begin transaction read only;
-with pw as (
-  select g.nation_id, n.code, g.pirate,
-         (select count(*) from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR' where a.nation_id = g.nation_id)::numeric as h
-    from public.great_powers g join public.nations n on n.id = g.nation_id
-), t as (
-  select 100::numeric as total, count(*)::numeric as k, sum(pw.h) as hs from pw where pw.h > 0
+with s as (
+  select x.* from (
+    select g.nation_id, n.code, g.pirate,
+           (select count(*) from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR' where a.nation_id = g.nation_id)::numeric as h
+      from public.great_powers g join public.nations n on n.id = g.nation_id) x
+   where x.h > 0
+), k as (
+  select 100::numeric as total, count(*)::numeric as n, least(5, 100 - count(*) + 1)::integer as pm from s
+), q1 as (
+  select s.*, 1 + (k.total - k.n) * s.h / sum(s.h) over () as quota from s cross join k
+), r1 as (
+  select q1.*, floor(q1.quota)::integer as base, row_number() over (order by q1.quota - floor(q1.quota) desc, q1.h desc, q1.code) as rk from q1
+), b as (
+  select exists (select 1 from r1 cross join k
+                  where r1.pirate and r1.base + case when r1.rk <= k.total - (select sum(x.base) from r1 x) then 1 else 0 end < k.pm) as bind
+), pool as (
+  select s.*, k.total - case when b.bind then k.pm else 0 end as total from s cross join k cross join b where not (b.bind and s.pirate)
 ), q as (
-  select pw.*, 1 + (t.total - t.k) * pw.h / t.hs as quota from pw cross join t where pw.h > 0
+  select pool.*, 1 + (pool.total - count(*) over ()) * pool.h / sum(pool.h) over () as quota from pool
 ), r as (
-  select q.*, floor(q.quota)::int as base, row_number() over (order by q.quota - floor(q.quota) desc, q.h desc, q.code) as rk from q
+  select q.*, floor(q.quota)::integer as base, row_number() over (order by q.quota - floor(q.quota) desc, q.h desc, q.code) as rk from q
 ), share as (
-  select r.nation_id, r.code, r.pirate, r.h, r.base + case when r.rk <= (select t.total from t) - (select sum(r2.base) from r r2) then 1 else 0 end as share from r
+  select r.nation_id, r.code, r.pirate, r.h, r.base + case when r.rk <= r.total - (select sum(r2.base) from r r2) then 1 else 0 end as share from r
+  union all
+  select s.nation_id, s.code, s.pirate, s.h, k.pm from s cross join k cross join b where b.bind and s.pirate
 ), c as (
   select x.nation_id, x.ord, x.laid_up_at, x.out_load, x.circuit_id, x.home_port_id, f.status, f.port_id,
          (select a.aboard from public.cargo_ship_aboard(x.fleet_id) a) as aboard,
@@ -64,10 +77,10 @@ select jsonb_build_object(
   'head', (select max(version) from supabase_migrations.schema_migrations),
   'applied', exists (select 1 from public.world_config w where w.key = 'cargo_fleet_total'),
   'bodies_pre', (select b.md5s = '{"convoy_ships_of(uuid)":"e6eba78de3925f29f5669822f4ecdccd","convoy_ships_wanted()":"85747943fdd0d007f924b29402e76340","convoy_fleet_settle(timestamp with time zone)":"940db3908b224f84a910389348c71734","cargo_ship_step(uuid,timestamp with time zone)":"2c15de138c5362f466928ef6edb9ff53"}'::jsonb from body b),
-  'bodies_post', (select b.md5s = '{"convoy_ships_of(uuid)":"60d6ea0fe52e1c172bb065dfccaf1c18","convoy_ships_wanted()":"e1c9dd483b9655791c0253196de92f5a","convoy_fleet_settle(timestamp with time zone)":"47f9759fa20a9e696afa79af3afe67aa","cargo_ship_step(uuid,timestamp with time zone)":"60e7fd174260dcd1bbbf55768df743af"}'::jsonb from body b),
+  'bodies_post', (select b.md5s = '{"convoy_ships_of(uuid)":"60d6ea0fe52e1c172bb065dfccaf1c18","convoy_ships_wanted()":"42040be2789151263f62f9f83edeec40","convoy_fleet_settle(timestamp with time zone)":"47f9759fa20a9e696afa79af3afe67aa","cargo_ship_step(uuid,timestamp with time zone)":"60e7fd174260dcd1bbbf55768df743af"}'::jsonb from body b),
   'bodies', (select b.md5s from body b),
   'knobs', (select jsonb_object_agg(w.key, w.value) from public.world_config w
-             where w.key in ('cargo_fleet_total', 'convoy_ships_min', 'convoy_ships_max', 'convoy_ships_span', 'convoy_ships_band', 'convoy_retire_per_run',
+             where w.key in ('cargo_fleet_total', 'cargo_pirate_min', 'convoy_ships_min', 'convoy_ships_max', 'convoy_ships_span', 'convoy_ships_band', 'convoy_retire_per_run',
                              'convoy_commission_per_run', 'convoy_size_read_minutes', 'convoys_enabled', 'convoy_rich_enabled', 'convoy_load_max', 'convoy_loads_per_run')),
   'countries', (select jsonb_agg(to_jsonb(per) - 'nation_id' order by per.share desc, per.code) from per),
   'world', (select jsonb_build_object('ships', count(*), 'laid_up', count(*) filter (where cs.laid_up_at is not null),

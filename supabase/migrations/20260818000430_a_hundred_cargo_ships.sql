@@ -31,13 +31,14 @@
 --   S4. AN EMPTY SHIP SAILS HOME (public.cargo_ship_step, 2 hunks): away from home on a lap, once nothing is left aboard after the city's
 --       delivery, she sails ONE leg straight home (public.cargo_circuit_plan, the course every rebase leg takes), and at home the lap closes
 --       as before (HOME: what is left returned, mended, the lap cleared). With funds still aboard she sails on to the next city, as before.
---   KNOBS: + cargo_fleet_total 100. RETIRED (no body reads them after this file; the self-assert scans the catalog): convoy_ships_min,
+--   KNOBS: + cargo_fleet_total 100; + cargo_pirate_min 5 (decided by default, the owner's "like 5" gold ships: the pirates keep at least 5; when
+--       their share by harbours is less, they hold 5 and the other powers share the other 95 by the same rule; 4 -> 5 on prod's flags). RETIRED (no body reads them after this file; the self-assert scans the catalog): convoy_ships_min,
 --       convoy_ships_max, convoy_ships_span, convoy_ships_band. convoy_retire_per_run 3 -> 10 (an owner's own value is left and named).
 --
 -- THE PIRATES: their share is public.convoy_ships_of(<the Brethren>), written now. The crown cargo job still makes no ship for them (0338:
 --   no circuit, no commission), so until the pirates' own cargo ships exist (0429, five gold ships from Port Royal) the world sails
 --   cargo_fleet_total less the pirates' share. HOOK for 0429 or its follow-up: the pirates' gold ships count INSIDE their share, so the number of
---   them reads public.convoy_ships_of(<pirates>) and not a flat 5 (their share: 7 on the local world, 4 on prod's flags of 2026-11-15, one under five).
+--   them reads public.convoy_ships_of(<pirates>) and not a flat 5 (their share: 7 on the local world; on prod's flags of 2026-11-15 4 by harbours, so cargo_pirate_min holds it at 5).
 --
 -- NOT DONE: no ship is deleted. A cargo ship's house and fleet are named by append-only rows (public.convoy_cargo, public.events), so 0326's law
 --   stands: a ship is laid up, never deleted. The database does not shrink by rows; it stops growing (no ship is ever made again until a share
@@ -91,7 +92,7 @@ begin
      or not exists (select 1 from public.world_config where key = 'convoy_ships_band') then
     raise exception '0430 refuses: the fleet numbers (0326), the circuit planner, the news or 0326''s knobs are not all in this world';
   end if;
-  if exists (select 1 from public.world_config where key = 'cargo_fleet_total') then
+  if exists (select 1 from public.world_config where key in ('cargo_fleet_total', 'cargo_pirate_min')) then
     raise exception '0430 refuses: it has been applied once';
   end if;
   select g.nation_id into v_pir from public.great_powers g where g.pirate;
@@ -110,6 +111,9 @@ begin
   insert into public.world_config (key, value, description) values
     ('cargo_fleet_total', to_jsonb(100),
      '0430: the cargo ships of the whole world (owner 2026-11-15: "reduce the cargo ship number to 100"), shared by public.convoy_ships_wanted: every great power with a harbour, the pirates too, keeps 1, the rest by its harbours, whole ships by the largest remainder.');
+  insert into public.world_config (key, value, description) values
+    ('cargo_pirate_min', to_jsonb(5),
+     '0430: the fewest cargo ships the pirates keep inside cargo_fleet_total (their gold ships from Port Royal, 0429: "like 5"). Their share by harbours when it is more; else this, and the other powers share the rest.');
   update public.world_config set value = to_jsonb(10),
          description = description || ' 0430: 3 -> 10 (the ~270 surplus ships of the cut to 100 lay up in about half an hour as they come home empty).'
    where key = 'convoy_retire_per_run' and value = to_jsonb(3);
@@ -140,22 +144,36 @@ $h$,
 $h$  -- 0430: THE SHARE (owner 2026-11-15: "each countries including pirates should have cargo ships that are proportional to their size"; "reduce the cargo ship number to 100").
   -- Size: the harbours under a flag (the harbours public.realm_purse sums). Every great power with a harbour, the pirates too, keeps 1; the rest of cargo_fleet_total is shared by harbours,
   -- whole ships by the largest remainder (ties: more harbours, then the code), so the shares sum to the total exactly. No harbour: no row, no share. cash: the purse, for the record.
+  -- The pirates keep at least cargo_pirate_min (their gold ships, 0429): when their share falls under it they hold the minimum and the others share what is left by the same rule.
   -- Read by public.convoy_fleet_settle alone.
   with s as (
-    select g.nation_id, n.code,
-           (select count(*) from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR' where a.nation_id = g.nation_id)::numeric as harbours
-      from public.great_powers g join public.nations n on n.id = g.nation_id
-  ), t as (
-    select greatest(public.wc_int('cargo_fleet_total'), count(*))::numeric as total, count(*)::numeric as k, sum(s.harbours) as hs from s where s.harbours > 0
+    select x.* from (
+      select g.nation_id, n.code, g.pirate,
+             (select count(*) from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR' where a.nation_id = g.nation_id)::numeric as harbours
+        from public.great_powers g join public.nations n on n.id = g.nation_id) x
+     where x.harbours > 0
+  ), k as (
+    select greatest(public.wc_int('cargo_fleet_total'), count(*))::numeric as total, count(*)::numeric as n,
+           least(public.wc_int('cargo_pirate_min'), greatest(public.wc_int('cargo_fleet_total'), count(*)) - count(*) + 1)::integer as pm from s
+  ), q1 as (
+    select s.*, 1 + (k.total - k.n) * s.harbours / sum(s.harbours) over () as quota from s cross join k
+  ), r1 as (
+    select q1.*, floor(q1.quota)::integer as base, row_number() over (order by q1.quota - floor(q1.quota) desc, q1.harbours desc, q1.code) as rk from q1
+  ), b as (
+    select exists (select 1 from r1 cross join k
+                    where r1.pirate and r1.base + case when r1.rk <= k.total - (select sum(x.base) from r1 x) then 1 else 0 end < k.pm) as bind
+  ), pool as (
+    select s.*, k.total - case when b.bind then k.pm else 0 end as total from s cross join k cross join b where not (b.bind and s.pirate)
   ), q as (
-    select s.nation_id, s.code, s.harbours, 1 + (t.total - t.k) * s.harbours / t.hs as quota from s cross join t where s.harbours > 0
+    select pool.*, 1 + (pool.total - count(*) over ()) * pool.harbours / sum(pool.harbours) over () as quota from pool
   ), r as (
-    select q.*, floor(q.quota)::integer as base,
-           row_number() over (order by q.quota - floor(q.quota) desc, q.harbours desc, q.code) as rk from q
+    select q.*, floor(q.quota)::integer as base, row_number() over (order by q.quota - floor(q.quota) desc, q.harbours desc, q.code) as rk from q
   )
   select r.nation_id, public.realm_purse(r.nation_id) as cash,
-         r.base + case when r.rk <= (select t.total from t) - (select sum(r2.base) from r r2) then 1 else 0 end as ships
+         r.base + case when r.rk <= r.total - (select sum(r2.base) from r r2) then 1 else 0 end as ships
     from r
+  union all
+  select s.nation_id, public.realm_purse(s.nation_id), k.pm from s cross join k cross join b where b.bind and s.pirate
 $h$),
   -- S2. no row: no ship
   ('public.convoy_ships_of(uuid)', 1,
@@ -281,8 +299,9 @@ $h$);
                  where exists (select 1 from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR' where a.nation_id = g.nation_id)
                    and public.convoy_ships_of(g.nation_id) < 1)
      or (v_pir is not null and exists (select 1 from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR' where a.nation_id = v_pir)
-         and not exists (select 1 from public.cargo_fleet_sizes s where s.nation_id = v_pir)) then
-    raise exception '0430 self-assert FAIL: the shares do not sum to the total, or a harboured power (the pirates?) has none: %',
+         and coalesce((select s.ships from public.cargo_fleet_sizes s where s.nation_id = v_pir), 0)
+             < least(public.wc_int('cargo_pirate_min'), public.wc_int('cargo_fleet_total') - (select count(*) from public.cargo_fleet_sizes) + 1)) then
+    raise exception '0430 self-assert FAIL: the shares do not sum to the total, or a harboured power has none, or the pirates are under cargo_pirate_min: %',
       (select jsonb_object_agg(n.code, s.ships) from public.cargo_fleet_sizes s join public.nations n on n.id = s.nation_id);
   end if;
 

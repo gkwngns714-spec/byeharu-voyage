@@ -2,7 +2,7 @@
 -- and deploy it as any migration (owner only). Tested on the local chain: after it the four re-cut bodies are 0426's to the byte.
 -- Gives back public.convoy_ships_wanted (the curve, no pirates), public.convoy_ships_of (min for no row), public.convoy_fleet_settle (the dead band)
 -- and public.cargo_ship_step (an emptied ship sails the rest of her circuit): each of 0430's hunks reversed, checked once. Restores 0326's four
--- knobs at 0326's values, convoy_retire_per_run 3, drops cargo_fleet_total and the pirates' fleet number. Ships laid up by 0430 are woken by the
+-- knobs at 0326's values, convoy_retire_per_run 3, drops cargo_fleet_total, cargo_pirate_min and the pirates' fleet number. Ships laid up by 0430 are woken by the
 -- job (public.cargo_ships_commission, convoy_commission_per_run a run) as the curve's numbers come back at the next hourly read.
 -- The quick way back with no file: cargo_fleet_total 1000 (nothing more lays up; the job makes ships up to each country's share of it).
 do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
@@ -36,22 +36,36 @@ $h$,
 $h$  -- 0430: THE SHARE (owner 2026-11-15: "each countries including pirates should have cargo ships that are proportional to their size"; "reduce the cargo ship number to 100").
   -- Size: the harbours under a flag (the harbours public.realm_purse sums). Every great power with a harbour, the pirates too, keeps 1; the rest of cargo_fleet_total is shared by harbours,
   -- whole ships by the largest remainder (ties: more harbours, then the code), so the shares sum to the total exactly. No harbour: no row, no share. cash: the purse, for the record.
+  -- The pirates keep at least cargo_pirate_min (their gold ships, 0429): when their share falls under it they hold the minimum and the others share what is left by the same rule.
   -- Read by public.convoy_fleet_settle alone.
   with s as (
-    select g.nation_id, n.code,
-           (select count(*) from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR' where a.nation_id = g.nation_id)::numeric as harbours
-      from public.great_powers g join public.nations n on n.id = g.nation_id
-  ), t as (
-    select greatest(public.wc_int('cargo_fleet_total'), count(*))::numeric as total, count(*)::numeric as k, sum(s.harbours) as hs from s where s.harbours > 0
+    select x.* from (
+      select g.nation_id, n.code, g.pirate,
+             (select count(*) from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR' where a.nation_id = g.nation_id)::numeric as harbours
+        from public.great_powers g join public.nations n on n.id = g.nation_id) x
+     where x.harbours > 0
+  ), k as (
+    select greatest(public.wc_int('cargo_fleet_total'), count(*))::numeric as total, count(*)::numeric as n,
+           least(public.wc_int('cargo_pirate_min'), greatest(public.wc_int('cargo_fleet_total'), count(*)) - count(*) + 1)::integer as pm from s
+  ), q1 as (
+    select s.*, 1 + (k.total - k.n) * s.harbours / sum(s.harbours) over () as quota from s cross join k
+  ), r1 as (
+    select q1.*, floor(q1.quota)::integer as base, row_number() over (order by q1.quota - floor(q1.quota) desc, q1.harbours desc, q1.code) as rk from q1
+  ), b as (
+    select exists (select 1 from r1 cross join k
+                    where r1.pirate and r1.base + case when r1.rk <= k.total - (select sum(x.base) from r1 x) then 1 else 0 end < k.pm) as bind
+  ), pool as (
+    select s.*, k.total - case when b.bind then k.pm else 0 end as total from s cross join k cross join b where not (b.bind and s.pirate)
   ), q as (
-    select s.nation_id, s.code, s.harbours, 1 + (t.total - t.k) * s.harbours / t.hs as quota from s cross join t where s.harbours > 0
+    select pool.*, 1 + (pool.total - count(*) over ()) * pool.harbours / sum(pool.harbours) over () as quota from pool
   ), r as (
-    select q.*, floor(q.quota)::integer as base,
-           row_number() over (order by q.quota - floor(q.quota) desc, q.harbours desc, q.code) as rk from q
+    select q.*, floor(q.quota)::integer as base, row_number() over (order by q.quota - floor(q.quota) desc, q.harbours desc, q.code) as rk from q
   )
   select r.nation_id, public.realm_purse(r.nation_id) as cash,
-         r.base + case when r.rk <= (select t.total from t) - (select sum(r2.base) from r r2) then 1 else 0 end as ships
+         r.base + case when r.rk <= r.total - (select sum(r2.base) from r r2) then 1 else 0 end as ships
     from r
+  union all
+  select s.nation_id, public.realm_purse(s.nation_id), k.pm from s cross join k cross join b where b.bind and s.pirate
 $h$),
   -- S2. no row: no ship
   ('public.convoy_ships_of(uuid)', 1,
@@ -125,7 +139,7 @@ $h$    if c.circuit_id is null then
 $h$);
 
   for v_h in select h.fn from hunks_r430 h group by h.fn order by h.fn loop
-    v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'', '');
+    v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'\r', '');
     for x in select * from hunks_r430 h where h.fn = v_h.fn order by h.ord desc loop
       v_n := (length(v_def) - length(replace(v_def, x.new, ''))) / length(x.new);
       if v_n <> 1 then
@@ -142,7 +156,7 @@ $h$);
     ('convoy_ships_band', to_jsonb(3), '0326: a country''s number moves only when the curve is more than this many ships away. Measured on prod: docs/dev-log/2026-11-06-cargo-ships-follow-wealth.md.')
   on conflict (key) do nothing;
   update public.world_config set value = to_jsonb(3) where key = 'convoy_retire_per_run';
-  delete from public.world_config where key = 'cargo_fleet_total';
+  delete from public.world_config where key in ('cargo_fleet_total', 'cargo_pirate_min');
   delete from public.cargo_fleet_sizes s where s.nation_id in (select g.nation_id from public.great_powers g where g.pirate);
   update public.cargo_fleet_sizes set read_at = '-infinity';
   perform public.convoy_fleet_settle(now());
