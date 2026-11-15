@@ -6,7 +6,7 @@
 --   (destroyed, ran away etc.) running away is an option (attempting to run away), but it will need skills for higher probability. after it ran,
 --   the attacked ship will have 5 mins of peace time - no pirates or other npcs will be able to attack them." (row 349; docs/dev-log/2026-11-15-pirate-flee.md)
 --
--- WHAT WAS ALREADY TRUE (read on the head world; proof 131 holds it):
+-- WHAT WAS ALREADY TRUE (read on the head world; proof 133 holds it):
 --   HELD: public.battle_open stops EVERY side (public.battle_stop): a fleet under sail is held where she is (voyage.hold: her point stands still and
 --     fleets.busy_until is the battle's clock), one in port or at anchor is IN_BATTLE. cmd.divert refuses a held fleet (E_FLEET_BUSY, 0323); an
 --     IN_BATTLE fleet runs no order and takes no step (cmd.advance, public.pirate_ship_step, the merchants' and cargo ships' steps read DOCKED) until
@@ -60,7 +60,7 @@ declare
   v_f0        jsonb;
   v_f1        jsonb;
   v_f2        jsonb;
-  v_note      text := 'no hunting pirate with a ship in reach in this world: proof 131 strikes one';
+  v_note      text := 'no hunting pirate with a ship in reach in this world: proof 133 strikes one';
   v_p         uuid;
   v_t         uuid;
 begin

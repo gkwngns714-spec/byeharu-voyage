@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 131 - A RAIDED SHIP MAY RUN  (migration 0432; docs/dev-log/2026-11-15-pirate-flee.md; the owner, 2026-11-15: "pirates' main goal is to
+-- PROOF 133 - A RAIDED SHIP MAY RUN  (migration 0432; docs/dev-log/2026-11-15-pirate-flee.md; the owner, 2026-11-15: "pirates' main goal is to
 --   attack other npcs, loot them. while attacking each ships cannot move until the battle is over ... running away is an option ... it will need
 --   skills for higher probability. after it ran, the attacked ship will have 5 mins of peace time")
 --
@@ -15,7 +15,7 @@
 -- @pass FL_STATS   the Stats count's window counts the raids that ended with the ship gone (raids_fled), and world.stats_fleets serves fled_day
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
-create function pg_temp.lie_131(p_fleet uuid, p_lat numeric, p_lon numeric) returns void language sql as $f$
+create function pg_temp.lie_133(p_fleet uuid, p_lat numeric, p_lon numeric) returns void language sql as $f$
   update public.voyages v set status = 'ABORTED' where v.fleet_id = p_fleet and v.status = 'SAILING';
   update public.fleets f set status = 'ANCHORED', port_id = null, lat = p_lat, lon = p_lon, busy_until = null, ready_at = null, version = f.version + 1 where f.id = p_fleet;
 $f$;
@@ -66,37 +66,37 @@ begin
     from public.npc_fleets nf join public.fleets f on f.id = nf.fleet_id join public.players pl on pl.id = f.player_id
    where pl.nation_id is distinct from public.pirate_nation() and exists (select 1 from public.ships s where s.fleet_id = nf.fleet_id and s.durability > 0)
    order by nf.fleet_id limit 1;
-  perform pg_temp.lie_131(v_m, v_lat + 1, v_lon);   -- sixty miles north
-  v_hp := public.new_house(v_uid, 'Casa Huida 131', 'PRT', 'LIS', 'Huida 131', 'galion', 'Huida 131', null, false);
+  perform pg_temp.lie_133(v_m, v_lat + 1, v_lon);   -- sixty miles north
+  v_hp := public.new_house(v_uid, 'Casa Huida 133', 'PRT', 'LIS', 'Huida 133', 'galion', 'Huida 133', null, false);
   select f.id into v_h from public.fleets f where f.player_id = v_hp;
   update public.ships s set crew = (select b.crew_max from public.ship_base(s.id) b), cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb where s.fleet_id = v_h;
-  perform pg_temp.lie_131(v_h, v_lat, v_lon);   -- beside her
+  perform pg_temp.lie_133(v_h, v_lat, v_lon);   -- beside her
 
   -- ── FL_FIRST ──
   if public.raid_target(v_pf, t0) is distinct from v_m then
-    raise exception 'PROOF 131 FAIL: the pirate chose % before the world''s merchant %', public.raid_target(v_pf, t0), v_m;
+    raise exception 'PROOF 133 FAIL: the pirate chose % before the world''s merchant %', public.raid_target(v_pf, t0), v_m;
   end if;
   v_r := public.tick_pirates(t0);
   select b.* into v_b1 from public.battles b join public.battle_sides s on s.battle_id = b.id and s.fleet_id = v_m and s.side = 'DEFENDER';
   if v_b1.id is null or v_b1.kind <> 'RAID' then
-    raise exception 'PROOF 131 FAIL: the job did not raid the world''s merchant: %', v_r;
+    raise exception 'PROOF 133 FAIL: the job did not raid the world''s merchant: %', v_r;
   end if;
   raise notice 'PASS: FL_FIRST — the merchant 60 miles off before the player''s ship beside her';
 
   -- ── FL_RUN (at the open) ──
   if public.battle_stance_at(v_b1.id, v_m, 'infinity') <> 'FLEE' or not (v_b1.sheet ? 'a_flee')
      or (v_b1.sheet ->> 'a_flee')::numeric <> public.flee_bonus(v_m, v_pf) then
-    raise exception 'PROOF 131 FAIL: the outgunned merchant opened with %, sheet a_flee %', public.battle_stance_at(v_b1.id, v_m, 'infinity'), v_b1.sheet -> 'a_flee';
+    raise exception 'PROOF 133 FAIL: the outgunned merchant opened with %, sheet a_flee %', public.battle_stance_at(v_b1.id, v_m, 'infinity'), v_b1.sheet -> 'a_flee';
   end if;
 
   -- ── FL_HELD ──
   if (select f.status from public.fleets f where f.id = v_pf) <> 'IN_BATTLE' or (select f.status from public.fleets f where f.id = v_m) <> 'IN_BATTLE'
      or (select f.busy_until from public.fleets f where f.id = v_pf) <> v_b1.resolves_at or (select f.busy_until from public.fleets f where f.id = v_m) <> v_b1.resolves_at then
-    raise exception 'PROOF 131 FAIL: a side is not held to the battle''s clock';
+    raise exception 'PROOF 133 FAIL: a side is not held to the battle''s clock';
   end if;
   v_r := public.tick_pirates(t0 + interval '6 minutes');   -- the pirate rests no more, but she is in a battle: she strikes nobody
   if (select count(*) from public.battles) <> 1 then
-    raise exception 'PROOF 131 FAIL: a pirate in a battle struck again: %', v_r;
+    raise exception 'PROOF 133 FAIL: a pirate in a battle struck again: %', v_r;
   end if;
 
   -- the merchant's battle to its end; each round she ran on the raid's rule
@@ -104,7 +104,7 @@ begin
   select * into v_b1 from public.battles b where b.id = v_b1.id;
   v_f := v_b1.result;
   if v_b1.status = 'FIGHTING' then
-    raise exception 'PROOF 131 FAIL: the raid did not close at its clock';
+    raise exception 'PROOF 133 FAIL: the raid did not close at its clock';
   end if;
   for g in 1 .. coalesce((v_f ->> 'rounds_fought')::int, 0) loop
     v_x := v_f -> 'rounds' -> (g - 1);
@@ -112,35 +112,35 @@ begin
        or (v_x ->> 'flee')::numeric <> round(least(v_hi, greatest(v_lo, public.wc_num('fight_flee_base')
               + ((select max((e ->> 'sighting')::numeric) from jsonb_array_elements(v_b1.sheet -> 'a') e) - (select max((e ->> 'sighting')::numeric) from jsonb_array_elements(v_b1.sheet -> 'b') e))
                 * public.wc_num('fight_evade_per_sighting') + (v_b1.sheet ->> 'a_flee')::numeric)), 4) then
-      raise exception 'PROOF 131 FAIL: round % ran on %, not the raid''s rule (floor %, cap %, bonus %)', g, v_x -> 'flee', v_lo, v_hi, v_b1.sheet -> 'a_flee';
+      raise exception 'PROOF 133 FAIL: round % ran on %, not the raid''s rule (floor %, cap %, bonus %)', g, v_x -> 'flee', v_lo, v_hi, v_b1.sheet -> 'a_flee';
     end if;
   end loop;
   if coalesce((v_f ->> 'fled')::boolean, false) and coalesce((v_f #>> '{raid,taken}')::bigint, 0) <> 0 then
-    raise exception 'PROOF 131 FAIL: she ran away and something was taken: %', v_f -> 'raid';
+    raise exception 'PROOF 133 FAIL: she ran away and something was taken: %', v_f -> 'raid';
   end if;
   raise notice 'PASS: FL_RUN — opened FLEE, bonus %, % round(s) each run on % .. %; % (%)', v_b1.sheet -> 'a_flee', v_f ->> 'rounds_fought', v_lo, v_hi,
     v_f ->> 'outcome', case when coalesce((v_f ->> 'fled')::boolean, false) then 'she got away, nothing taken' else 'she did not get away' end;
 
   -- ── FL_PEACE (the merchant) and FL_PLAYER ──
   if public.fleet_peace_until(v_m) <> v_b1.resolves_at + interval '5 minutes' then
-    raise exception 'PROOF 131 FAIL: her peace runs to %, not five minutes after the battle''s end %', public.fleet_peace_until(v_m), v_b1.resolves_at;
+    raise exception 'PROOF 133 FAIL: her peace runs to %, not five minutes after the battle''s end %', public.fleet_peace_until(v_m), v_b1.resolves_at;
   end if;
   update public.ships s set durability = (select b.durability from public.ship_base(s.id) b), crew = (select b.crew_max from public.ship_base(s.id) b) where s.fleet_id = v_pf;
   update public.fleets f set status = 'DOCKED', busy_until = null where f.id = v_pf;
   v_t := greatest(v_b1.resolves_at, v_b1.started_at + interval '5 minutes') + interval '1 minute';
   if public.raid_target(v_pf, v_t) is distinct from v_h then
-    raise exception 'PROOF 131 FAIL: inside the merchant''s peace the pirate chose %', public.raid_target(v_pf, v_t);
+    raise exception 'PROOF 133 FAIL: inside the merchant''s peace the pirate chose %', public.raid_target(v_pf, v_t);
   end if;
   v_r := public.tick_pirates(v_t);
   select b.* into v_b2 from public.battles b join public.battle_sides s on s.battle_id = b.id and s.fleet_id = v_h and s.side = 'DEFENDER';
   if v_b2.id is null then
-    raise exception 'PROOF 131 FAIL: the player''s ship was not raided: %', v_r;
+    raise exception 'PROOF 133 FAIL: the player''s ship was not raided: %', v_r;
   end if;
   perform cmd.assume_identity(v_uid);
   -- at anchor in a battle she is IN_BATTLE, not under way: the helm refuses her (E_NOT_SAILING; under sail it is E_FLEET_BUSY, 0323)
   if coalesce(cmd.divert(v_h, (select id from public.ports where code = 'LIS'), null, null) ->> 'error_code', '') not in ('E_FLEET_BUSY', 'E_NOT_SAILING')
      or (select f.status from public.fleets f where f.id = v_h) <> 'IN_BATTLE' then
-    raise exception 'PROOF 131 FAIL: a held ship could turn: %', cmd.divert(v_h, (select id from public.ports where code = 'LIS'), null, null);
+    raise exception 'PROOF 133 FAIL: a held ship could turn: %', cmd.divert(v_h, (select id from public.ports where code = 'LIS'), null, null);
   end if;
   raise notice 'PASS: FL_HELD — pirate and merchant IN_BATTLE to the clock, the pirate struck nobody else, the held player''s ship cannot turn';
   -- she presses Flee before the first round (the door advances the battle at the wall clock: the press is written at the battle's open instant)
@@ -150,35 +150,35 @@ begin
   update public.fleets f set busy_until = (select b.resolves_at from public.battles b where b.id = v_b2.id) where f.id in (v_pf, v_h);
   v_x := cmd.battle_stance(v_b2.id, 'FLEE');
   if not coalesce((v_x ->> 'ok')::boolean, false) or public.battle_stance_at(v_b2.id, v_h, 'infinity') <> 'FLEE' then
-    raise exception 'PROOF 131 FAIL: the player could not press Flee: %', v_x;
+    raise exception 'PROOF 133 FAIL: the player could not press Flee: %', v_x;
   end if;
   select * into v_b2 from public.battles b where b.id = v_b2.id;
   perform public.tick_battles(v_b2.resolves_at);
   select * into v_b2 from public.battles b where b.id = v_b2.id;
   v_f := v_b2.result;
   if v_b2.status = 'FIGHTING' or not ((v_f -> 'rounds' -> (coalesce((v_f ->> 'rounds_fought')::int, 1) - 1)) ? 'flee') then
-    raise exception 'PROOF 131 FAIL: after her press the rounds did not run: % %', v_b2.status, v_f -> 'rounds';
+    raise exception 'PROOF 133 FAIL: after her press the rounds did not run: % %', v_b2.status, v_f -> 'rounds';
   end if;
   if not exists (select 1 from jsonb_array_elements(world.fleets()) e where e ->> 'id' = v_h::text and e ? 'peace_until') then
-    raise exception 'PROOF 131 FAIL: her fleet read says no peace';
+    raise exception 'PROOF 133 FAIL: her fleet read says no peace';
   end if;
   raise notice 'PASS: FL_PLAYER — Flee pressed on the card; her last round ran on %; %', v_f -> 'rounds' -> (coalesce((v_f ->> 'rounds_fought')::int, 1) - 1) -> 'flee', v_f ->> 'outcome';
   -- (a merchant the raid left at anchor with a hull; one it sank is at her home, and no pirate finds her there)
   if (select f.status from public.fleets f where f.id = v_m) = 'ANCHORED' and exists (select 1 from public.ships s where s.fleet_id = v_m and s.durability > 0)
      and public.raid_target(v_pf, v_b1.resolves_at + interval '5 minutes 1 second') is distinct from v_m then
-    raise exception 'PROOF 131 FAIL: past her peace the merchant was not chosen again: %', public.raid_target(v_pf, v_b1.resolves_at + interval '5 minutes 1 second');
+    raise exception 'PROOF 133 FAIL: past her peace the merchant was not chosen again: %', public.raid_target(v_pf, v_b1.resolves_at + interval '5 minutes 1 second');
   end if;
   raise notice 'PASS: FL_PEACE — the merchant at peace to % (the player''s ship chosen instead), her fleet read serves peace_until, after it the merchant again', public.fleet_peace_until(v_m);
 
   -- ── FL_STATS ──
   v_x := public.stats_fleets_count(now() - interval '1 hour', t0 + interval '2 hours') -> 'win';
   if (v_x ->> 'raids_fled')::int is distinct from (select count(*) from public.battles b where b.kind = 'RAID' and coalesce((b.result ->> 'fled')::boolean, false)) then
-    raise exception 'PROOF 131 FAIL: the window counts % fled: %', v_x ->> 'raids_fled', v_x;
+    raise exception 'PROOF 133 FAIL: the window counts % fled: %', v_x ->> 'raids_fled', v_x;
   end if;
   delete from public.stats_fleets;
   insert into public.stats_fleets (slot, at, figures) values (public.drift_slot_of(now()), now(), public.stats_fleets_count(now() - interval '1 hour', t0 + interval '2 hours'));
   if not (world.stats_fleets() -> 'battles' ? 'fled_day') then
-    raise exception 'PROOF 131 FAIL: world.stats_fleets serves no fled_day';
+    raise exception 'PROOF 133 FAIL: world.stats_fleets serves no fled_day';
   end if;
   raise notice 'PASS: FL_STATS — raids_fled %, served fled_day %', v_x ->> 'raids_fled', world.stats_fleets() #> '{battles,fled_day}';
 end

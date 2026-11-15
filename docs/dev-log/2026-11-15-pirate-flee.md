@@ -4,7 +4,7 @@ The owner, 2026-11-15: *"pirates' main goal is to attack other npcs, loot them. 
 (destroyed, ran away etc.) running away is an option (attempting to run away), but it will need skills for higher probability. after it ran, the
 attacked ship will have 5 mins of peace time - no pirates or other npcs will be able to attack them."*
 
-## What was already true (read on the head world, held by proof 131)
+## What was already true (read on the head world, held by proof 133)
 
 - **Held to the end.** `public.battle_open` stops every side with `public.battle_stop`: under sail she is held where she is (`voyage.hold`: her
   point stands still, `fleets.busy_until` is the battle's clock); in port or at anchor she is IN_BATTLE. `cmd.divert` refuses a held fleet
@@ -48,7 +48,7 @@ Raid frequency: a merchant may be raided again 5 minutes after her battle ends i
 
 ## Proofs
 
-- `scripts/db/proofs/131_a_raided_ship_may_run.sql`: FL_FIRST, FL_HELD, FL_RUN, FL_PLAYER, FL_PEACE, FL_STATS (dice-agnostic: it checks the
+- `scripts/db/proofs/133_a_raided_ship_may_run.sql`: FL_FIRST, FL_HELD, FL_RUN, FL_PLAYER, FL_PEACE, FL_STATS (dice-agnostic: it checks the
   chance every round rolled on, and that a ship that got away lost nothing more).
 - Proof 128 (0427) still holds under the peace rule (its second strike falls inside the first merchant's peace).
 - 0432's self-assert: ten hunks once and reversing; a fight with no `a_flee` is byte-identical; `a_flee` +5 / -5 clamp to 0.80 / 0.10.
