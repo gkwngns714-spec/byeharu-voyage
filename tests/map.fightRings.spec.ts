@@ -1,9 +1,13 @@
 import { test, expect } from '@playwright/test'
 import { FIGHT_RING, fightAt, fightCountRadiusPx, fightRing, fightRimWins, fightRings, fightTapWins, type MapFight } from '../src/chart/fightRings'
+import { fightPinsOf, pinFleets, pinTraffic } from '../src/chart/fightPins'
+import { driftedPoint } from '../src/chart/drift'
 import { mapFightsOf } from '../src/chart/liveWorld'
-import { keepPlaces, NO_FIGHTS, sameOrNext } from '../src/live/useFights'
-import { project } from '../src/lib/geo'
-import type { FightCard } from '../src/lib/rpc'
+import type { MapTraffic, MapVoyage } from '../src/chart/mapTypes'
+import { withHoldCut } from '../src/live/fightCuts'
+import { endsOf, keepPlaces, NO_FIGHTS, sameOrNext } from '../src/live/useFights'
+import { haversineNm, project } from '../src/lib/geo'
+import type { FightCard, RosterFleet, RosterVoyage } from '../src/lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A BATTLE'S RED RING, THE GEOMETRY (0364, owner row 321: "in red circle surrounding all fleets. if more fleets
@@ -134,54 +138,149 @@ const card = (over: Partial<FightCard> = {}): FightCard => ({
   ...over,
 })
 
-test('the served card is the input of the ring field for field, and a battle that is over keeps the places it had', () => {
+test('the served card is the input of the ring field for field; a battle that is over has no ring', () => {
   const [f] = mapFightsOf([card()])
   expect(f).toEqual({ id: 'b1', at: { lat: 38.5, lon: -9.6 }, fleets: 2, places: [{ lat: 38.8, lon: -9.6 }, { lat: 38.5, lon: -9.6 }], fleetIds: ['a', 'd', 'n'], over: false, mine: null, kind: 'BATTLE' })
-  // over: the server serves no place (the fleets sail on); the last places seen are kept, so the ring stays where it was
+  // over (owner 2026-11-15: the circle goes when the fight ends): the card is still served a minute with the result, and draws no ring
   const over = card({ status: 'RESOLVED', next_at: null, end: 'A_TOOK', sides: card().sides.map((s) => ({ ...s, at: undefined })) })
-  const kept = keepPlaces([over], [card()])
-  expect(kept[0].sides.map((s) => s.at)).toEqual([[38.8, -9.6], [38.5, -9.6], undefined])
-  const before = fightRing(mapFightsOf([card()])[0], 0.002)
-  const after = fightRing(mapFightsOf(kept)[0], 0.002)
-  expect(after.centre).toEqual(before.centre)
-  expect(after.rPx).toBe(before.rPx)
-  expect(after.over).toBe(true)
-  // a battle first seen when it is already over stands on its own place
-  expect(mapFightsOf(keepPlaces([over], []))[0].places).toEqual([])
-  expect(fightRing(mapFightsOf(keepPlaces([over], []))[0], 0.002).centre).toEqual(project({ lat: 38.5, lon: -9.6 }))
+  expect(mapFightsOf([over])).toEqual([])
+  expect(mapFightsOf([card({ status: 'BROKEN_OFF' })])).toEqual([])
+  // the places it had are still kept on the card (the open card's own facts)
+  expect(keepPlaces([over], [card()])[0].sides.map((s) => s.at)).toEqual([[38.8, -9.6], [38.5, -9.6], undefined])
 })
 
-test('a raid and a navy fight are the same ring, on their own place, sized by the ships: five xebecs draw bigger than one', () => {
-  const raid = (ships: number): FightCard =>
-    card({
-      id: `raid:v:${ships}`, kind: 'RAID', size: 1 + ships, status: 'RESOLVED', next_at: null, fleets: 2, ships: 1 + ships, mine: 'a', end: 'TAKEN', lat: 36, lon: -12,
-      sides: [
-        { fleet: 'raiders', name: 'Xebec', side: 'ATTACKER', how: 'OPENED', kind: 'PIRATE', company: null, nation: null, ships, here: true },
-        { fleet: 'a', name: 'Gaivota', side: 'DEFENDER', how: 'OPENED', kind: 'COMPANY', company: 'Casa de Aveiro', nation: 'PRT', ships: 1, here: true },
-      ],
-    })
-  const [one, five] = mapFightsOf([raid(1), raid(5)])
-  expect(one).toEqual({ id: 'raid:v:1', at: { lat: 36, lon: -12 }, fleets: 2, places: [], fleetIds: ['raiders', 'a'], over: false, mine: 'a', kind: 'RAID' })
-  expect(five.fleets).toBe(6)
-  for (const upp of [0.002, 0.05, 1]) {
-    const small = fightRing(one, upp)
-    const big = fightRing(five, upp)
-    expect(small.rPx).toBe(22)
-    expect(big.rPx).toBe(46)
-    expect(small.centre).toEqual(project({ lat: 36, lon: -12 }))
-    // settled in an instant: never drawn as over, the ring is at full strength for the minutes it is served
-    expect(small.over).toBe(false)
-    expect(small.mine).toBe(true)
-    expect(small.kind).toBe('RAID')
-  }
-  // a press on her own hull inside her raid's ring opens the raid
-  expect(fightTapWins(fightRing(five, 0.01), { kind: 'fleet', id: 'a' })).toBe(true)
-  const navy = mapFightsOf([card({ id: 'navy:n:1', kind: 'NAVY', size: 4, status: 'RESOLVED', next_at: null, fleets: 2, ships: 4, mine: null, end: 'A_TOOK', sides: [] })])[0]
-  expect(navy.kind).toBe('NAVY')
-  expect(navy.over).toBe(false)
-  expect(fightRing(navy, 0.01).rPx).toBe(34)
+test('a raid and a navy fight, settled in an instant, draw no ring: they are over before one could show', () => {
+  const raid = card({
+    id: 'raid:v:1', kind: 'RAID', size: 2, status: 'RESOLVED', next_at: null, fleets: 2, ships: 2, mine: 'a', end: 'TAKEN', lat: 36, lon: -12,
+    sides: [
+      { fleet: 'raiders', name: 'Xebec', side: 'ATTACKER', how: 'OPENED', kind: 'PIRATE', company: null, nation: null, ships: 1, here: true },
+      { fleet: 'a', name: 'Gaivota', side: 'DEFENDER', how: 'OPENED', kind: 'COMPANY', company: 'Casa de Aveiro', nation: 'PRT', ships: 1, here: true },
+    ],
+  })
+  const navy = card({ id: 'navy:n:1', kind: 'NAVY', size: 4, status: 'RESOLVED', next_at: null, fleets: 2, ships: 4, mine: null, end: 'A_TOOK', sides: [] })
+  expect(mapFightsOf([raid, navy])).toEqual([])
+  expect(fightPinsOf([raid, navy]).size).toBe(0)
   // a card with no kind (a server before raids were served) is a battle
-  expect(mapFightsOf([card()])[0].kind).toBe('BATTLE')
+  expect(mapFightsOf([raid, card(), navy]).map((x) => x.kind)).toEqual(['BATTLE'])
+})
+
+// ── EVERY FLEET OF A FIGHT STANDS AT THE FIGHT (src/chart/fightPins.ts), as prod's raids are served: the raider in her port ──
+const raidCard = (over: Partial<FightCard> = {}): FightCard =>
+  card({
+    id: 'r1', lat: 33.0621, lon: -19.3342, reach_nm: 30, ticks: true, started_at: '2026-11-15T14:52:00Z', resolves_at: '2026-11-15T14:52:40Z',
+    sides: [
+      // the raider lies in her harbour, 150 nm off: the server serves her roadstead
+      { fleet: 'p', name: 'Golden Heron', side: 'ATTACKER', how: 'OPENED', kind: 'PIRATE', company: null, nation: 'PIR', ships: 1, here: true, at: [35.5, -19.3342] },
+      { fleet: 'm', name: 'Voyage Ouidah', side: 'DEFENDER', how: 'OPENED', kind: 'MERCHANT', company: 'Casa de Ouidah', nation: 'PRT', ships: 2, here: true, at: [33.0621, -19.3342] },
+      { fleet: 'n', name: 'Navy ship 2', side: 'DEFENDER', how: 'CALLED', kind: 'NAVY', company: null, nation: 'PRT', ships: 1, here: false },
+    ],
+    ...over,
+  })
+
+test('while a battle is fought every fleet that is there is pinned inside its circle: her own place when it is inside, else beside the site', () => {
+  const pins = fightPinsOf([raidCard()])
+  expect([...pins.keys()].sort()).toEqual(['m', 'p'])
+  const site = { lat: 33.0621, lon: -19.3342 }
+  expect(pins.get('m')!.at).toEqual(site)
+  const p = pins.get('p')!.at
+  expect(haversineNm(p, site)).toBeGreaterThan(5)
+  expect(haversineNm(p, site)).toBeLessThan(30)
+  expect(p.lon).toBeGreaterThan(site.lon)
+  // two raiders out of the circle stand apart from each other, both inside it; a defender laid out stands on the other side
+  const two = fightPinsOf([
+    raidCard({
+      sides: [
+        ...raidCard().sides,
+        { fleet: 'p2', name: 'Black Squall', side: 'ATTACKER', how: 'ARMADA', kind: 'PIRATE', company: null, nation: 'PIR', ships: 1, here: true },
+        { fleet: 'x', name: 'Far', side: 'DEFENDER', how: 'ESCORT', kind: 'COMPANY', company: 'Casa', nation: 'PRT', ships: 1, here: true, at: [40, -19] },
+      ],
+    }),
+  ])
+  expect(haversineNm(two.get('p')!.at, two.get('p2')!.at)).toBeGreaterThan(5)
+  for (const id of ['p', 'p2', 'x']) expect(haversineNm(two.get(id)!.at, site)).toBeLessThan(30)
+  expect(two.get('x')!.at.lon).toBeLessThan(site.lon)
+  // over: nobody is pinned
+  expect(fightPinsOf([raidCard({ status: 'RESOLVED' })]).size).toBe(0)
+})
+
+test('a pinned ship stands still at her pin: one under sail stops, one in port leaves her berth, one the map has no mark for is given one', () => {
+  const pins = fightPinsOf([raidCard()])
+  const voyage: MapVoyage = {
+    course: [{ lat: 33, lon: -20 }, { lat: 34, lon: -18 }], segIndex: 0, legFrac: 0.3, segNm: 120, at: { lat: 33.3, lon: -19.4 }, sailedNm: 36, totalNm: 120,
+    etaMs: 2e12, heldUntilMs: null, departedMs: 1e12, destinationCode: 'LIS', destPoint: null, waters: [],
+  }
+  const base = { company: 'Casa', ink: 'prt' as const, loop: null, tracked: false, docked: false, berthCode: null, berthIndex: 0, nextLapAtMs: null, lane: null, enduranceDays: Number.NaN }
+  const sailing: MapTraffic = { ...base, kind: 'sailing', id: 'm', name: 'Voyage Ouidah', voyage }
+  const other: MapTraffic = { ...base, kind: 'sailing', id: 'o', name: 'Passing', voyage }
+  const docked: MapTraffic = { ...base, kind: 'anchored', id: 'p', name: 'Golden Heron', at: { lat: 35.5, lon: -19.3 }, ink: 'pir', docked: true, berthCode: 'POR', pirate: true }
+  // unpinned, the ship under sail drifts on between reads: that is what the pin stops
+  expect(driftedPoint(voyage, { nowMs: 1.5e12, readAtMs: 1.4e12 })).not.toEqual(voyage.at)
+  const out = pinTraffic([sailing, other, docked], pins, new Set())
+  const m = out.find((t) => t.id === 'm')!
+  expect(m.kind === 'sailing' && m.voyage.at).toEqual(pins.get('m')!.at)
+  expect(m.kind === 'sailing' && driftedPoint(m.voyage, { nowMs: 1.5e12, readAtMs: 1.4e12 })).toEqual(pins.get('m')!.at)
+  expect(out.find((t) => t.id === 'o'), 'a ship that is not in the fight is as she was').toBe(other)
+  const p = out.find((t) => t.id === 'p')!
+  expect(p.kind === 'anchored' && p.at).toEqual(pins.get('p')!.at)
+  expect(p.docked).toBe(false)
+  expect(p.pirate).toBe(true)
+  // the map has no mark for the raider (the roster has not served her yet): the card gives her one, a pirate hull, at her pin
+  const made = pinTraffic([sailing], pins, new Set())
+  expect(made.map((t) => t.id)).toEqual(['m', 'p'])
+  expect(made[1]).toMatchObject({ kind: 'anchored', name: 'Golden Heron', pirate: true, at: pins.get('p')!.at })
+  // her own fleet is on the other list: no second mark is made for it
+  expect(pinTraffic([sailing], pins, new Set(['p'])).map((t) => t.id)).toEqual(['m'])
+  // no fight: the very list
+  const same = [sailing, other]
+  expect(pinTraffic(same, new Map(), new Set())).toBe(same)
+  // her own fleet under sail stops too; one in port stands at the fight
+  const mine = pinFleets(
+    [
+      { kind: 'sailing', id: 'm', name: 'Mine', enduranceDays: 9, voyage },
+      { kind: 'docked', id: 'p', name: 'Mine 2', enduranceDays: 9, portCode: 'LIS' },
+    ],
+    pins,
+  )
+  expect(mine[0].kind === 'sailing' && mine[0].voyage.segNm).toBeNull()
+  expect(mine[1]).toMatchObject({ kind: 'anchored', at: pins.get('p')!.at })
+})
+
+test('a tick battle is asked about at its last tick, and closed then if the server has not: once it is past its end it is due', () => {
+  const end = Date.parse('2026-11-15T14:52:40Z')
+  expect(endsOf([raidCard()], end - 10_000)).toEqual({ due: [], nextInMs: 10_400 })
+  expect(endsOf([raidCard()], end + 1_000)).toEqual({ due: ['r1'], nextInMs: null })
+  // an old round battle, and one that is over, are the minute job's
+  expect(endsOf([raidCard({ ticks: false }), raidCard({ status: 'RESOLVED' })], end + 1_000)).toEqual({ due: [], nextInMs: null })
+})
+
+test('when her fight ends the kept roster row has the hold the server leaves: cut to the fight, the eta back by the difference', () => {
+  const cut = { fromMs: Date.parse('2026-11-15T14:52:00.094Z'), untilMs: Date.parse('2026-11-15T14:52:40.094Z') }
+  const row = (voyage: Partial<RosterVoyage> | null): RosterFleet =>
+    ({
+      id: 'm',
+      name: 'Voyage Ouidah',
+      voyage:
+        voyage === null
+          ? null
+          : { to: 'LIS', dest_point: null, course: [[33, -20], [34, -18]], legs_nm: [120], total_nm: 120, departed_at: '2026-11-15T14:41:56.00304+00:00', eta: '2026-11-15T15:45:23.649119+00:00', ...voyage },
+    }) as unknown as RosterFleet
+  // the row as prod served it while she was held: a ten-minute hold from the open (microseconds on the wire)
+  const held = row({ holds: [{ from: '2026-11-15T14:52:00.094052+00:00', until: '2026-11-15T15:02:00.094052+00:00' }] })
+  const done = withHoldCut(held, cut)
+  expect(Date.parse(done.voyage!.holds![0].until)).toBe(cut.untilMs)
+  expect(Date.parse(held.voyage!.eta) - Date.parse(done.voyage!.eta)).toBe(560_000)
+  // the row the server already cut is left as served; so is the cut applied twice
+  expect(withHoldCut(done, cut)).toBe(done)
+  // a row from before the fight (no hold): the hold is added and the eta moves by the fight's 40 s
+  const early = row({ eta: '2026-11-15T15:35:23.649119+00:00' })
+  const added = withHoldCut(early, cut)
+  expect(added.voyage!.holds).toHaveLength(1)
+  expect(Date.parse(added.voyage!.eta) - Date.parse(early.voyage!.eta)).toBe(40_000)
+  expect(Date.parse(added.voyage!.eta)).toBe(Date.parse(done.voyage!.eta))
+  // a voyage that began after the fight, and a ship with none, are not hers to cut
+  const later = row({ departed_at: '2026-11-15T14:55:00+00:00' })
+  expect(withHoldCut(later, cut)).toBe(later)
+  expect(withHoldCut(row(null), cut).voyage).toBeNull()
 })
 
 test('the poll hands the map a new list only when the answer changed: the same answer is the same object, so nothing re-renders', () => {
