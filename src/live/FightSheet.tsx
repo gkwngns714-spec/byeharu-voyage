@@ -76,7 +76,7 @@ function Side({ title, sides, hullPct, testId }: { title: string; sides: readonl
 }
 
 /** `actions` (tick combat, docs/design/tick-combat.md 11): what the map puts on the circle's tray above the sides: the
- *  battle screen's Watch and her Join bar (src/features/battle/JoinBar.tsx). */
+ *  battle screen's Watch and her Join bar (src/live/battle/JoinBar.tsx). */
 export function FightSheet({ card, onClose, mode, actions }: { card: FightCard; onClose: () => void; mode?: 'docked' | 'side'; actions?: ReactNode }) {
   const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('peek')

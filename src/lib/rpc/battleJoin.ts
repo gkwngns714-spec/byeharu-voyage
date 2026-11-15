@@ -5,7 +5,7 @@ import type { RpcResult } from './result'
 // JOINING A BATTLE (0436; docs/design/tick-combat.md section 8 and the contract, 9.2).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // Joining is a CHOICE: a ship inside the red circle is never pulled in. Her player presses Join on the map's Join bar
-// (src/features/battle/JoinBar.tsx) and picks a side. The server is the judge: a fleet that is not hers, out of reach,
+// (src/live/battle/JoinBar.tsx) and picks a side. The server is the judge: a fleet that is not hers, out of reach,
 // busy, at peace, a side against a player (no PvP) or the wrong side of a raid is refused with its code.
 // Kept in its own file so the battle screen's wrappers (world.battle_ticks, cmd.battle_end) never share a hunk with it.
 

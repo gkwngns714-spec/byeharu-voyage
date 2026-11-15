@@ -25,8 +25,8 @@ import { useMerchantsHere } from '../../live/useMerchantsHere'
 import { useFights } from '../../live/useFights'
 import { FightSheet } from '../../live/FightSheet'
 import { BattleScreen } from '../../live/battle/BattleScreen'
-import { JoinBar } from '../battle/JoinBar'
-import { fleetsInFight, type JoinFleet } from '../battle/joinOffers'
+import { JoinBar } from '../../live/battle/JoinBar'
+import { fleetsInFight, type JoinFleet } from '../../live/battle/joinOffers'
 // WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
 import { useCommandDraft } from '../../domain/order'
 // THE CHART IS A SECTION OF ITS OWN (src/chart) and this screen composes it; nothing here draws.

@@ -14,6 +14,8 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- ── LIT_BY_THE_FILE: before this proof touches anything ──
+update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
+
 do $$
 declare
   v_en text := (select n.detail #>> '{words,title,en}' from public.world_news n where n.key = 'update:0375');

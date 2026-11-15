@@ -9,7 +9,7 @@ import { project } from '../src/lib/geo'
 import { translate } from '../src/lib/i18n'
 import type { FightCard, FightSide } from '../src/lib/rpc'
 import { BATTLE_JOIN_REFUSALS } from '../src/lib/rpc/battleJoin'
-import { fleetsInFight, joinOffers, joinRefusalKey, joinSides, type JoinFleet } from '../src/features/battle/joinOffers'
+import { fleetsInFight, joinOffers, joinRefusalKey, joinSides, type JoinFleet } from '../src/live/battle/joinOffers'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TICK COMBAT ON THE MAP (docs/design/tick-combat.md 8, 9.4; the owner: "every ship currently in a fight is drawn red";

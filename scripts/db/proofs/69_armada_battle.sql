@@ -26,6 +26,8 @@
 -- @pass AB_AT_SEA           an armada sailing on one order attacks: both fleets are held at sea for the same span, the hold is cut with the battle for both, and they still arrive at one instant; at the knob's own reach a sister at the same point is there, and at no reach she is not
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
+
 create temp table hunks_69 (fn text, n int, old text, new text) on commit drop;
 insert into hunks_69 (fn, n, old, new) values
 -- hunks:begin

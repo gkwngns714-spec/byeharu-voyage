@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { setLocale } from '../src/lib/i18n'
 import { FleetsLayer } from '../src/chart/FleetsLayer'
 import { FightRingsLayer } from '../src/chart/FightRingsLayer'
-import { JoinBar } from '../src/features/battle/JoinBar'
+import { JoinBar } from '../src/live/battle/JoinBar'
 
 export { setLocale }
 export function renderFleets(props: Record<string, unknown>): string {

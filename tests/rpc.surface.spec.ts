@@ -1605,7 +1605,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // signed-in player) and the close at its end (a nudge any reader may send; battle_resolve under the battle's lock decides). No player id.
       'worldBattleTicks', 'cmdBattleEnd',
       // Pin moved deliberately 2026-11-15 with migration 0436 (docs/design/tick-combat.md 8): JOINING A BATTLE is a choice, cmd.battle_join(battle, fleet, side).
-      // No player id; a fleet not yours is E_NOT_YOUR_FLEET, a side against a player E_HUMAN_TARGET. Landed WITH the face that presses it (src/features/battle/JoinBar.tsx).
+      // No player id; a fleet not yours is E_NOT_YOUR_FLEET, a side against a player E_HUMAN_TARGET. Landed WITH the face that presses it (src/live/battle/JoinBar.tsx).
       'cmdBattleJoin',
       // Pin moved deliberately 2026-10-11 with migration 0104 (owner row 121, docs/NPC_FLEET_SCALE.md
       // §1 slice E): ONE HARBOUR'S MERCHANTS — which merchant companies this quay concerns and what

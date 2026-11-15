@@ -1,6 +1,6 @@
 import { defineDict } from '../define'
 
-// JOINING A BATTLE (docs/design/tick-combat.md section 8, slice 0436): the map's Join bar (src/features/battle/JoinBar.tsx).
+// JOINING A BATTLE (docs/design/tick-combat.md section 8, slice 0436): the map's Join bar (src/live/battle/JoinBar.tsx).
 // Joining is a CHOICE: a ship in the red circle is never pulled in. These are the bar's own words and one short word for
 // every refusal `cmd.battle_join` can answer (contract 9.2). Each is one or two words.
 export const joinDict = defineDict({
