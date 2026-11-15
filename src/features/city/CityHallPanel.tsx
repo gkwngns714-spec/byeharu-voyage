@@ -121,8 +121,8 @@ export function CityHallPanel({
         data-testid="city-hall-influence"
         className="flex min-h-12 w-full shrink-0 items-center gap-2 border-b border-edge text-left text-ink-muted transition hover:text-ink"
       >
+        {/* the word alone: your points are Status, below (2026-11-15 owner: no repeated figures) */}
         <span className="text-t-label">{t('town.influence')}</span>
-        <span className="shrink-0 text-t-label tabular-nums">{you ? formatInt(you.points) : null}</span>
         {/* 2026-11-15: open points DOWN (the fold), not back left (it read as a "back" arrow) */}
         <Icon name="chevron" size={16} className={`ml-auto text-ink-faint transition ${influenceOpen ? 'rotate-90' : ''}`} />
       </button>

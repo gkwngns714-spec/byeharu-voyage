@@ -260,7 +260,7 @@ test.describe('a battle fought to the boarding, 390×844, English', () => {
     await expect(report).toBeVisible({ timeout: 30_000 })
     await expect(report).toContainText('Gaivota')
     await expect(report).toContainText(loot.toLocaleString('en-US'))
-    await expect(list.getByTestId('ledger-row').filter({ hasText: 'thinks worse of you' }).first()).toBeVisible()
+    await expect(list.getByTestId('ledger-row').filter({ hasText: 'likes you less' }) /* 2026-11-15 owner: shorter words */.first()).toBeVisible()
     await expect(list.getByTestId('ledger-row').filter({ hasText: 'wants you' }).first()).toBeVisible()
     // a country is said by its name, never by its code
     await expect(list.getByTestId('ledger-row').filter({ hasText: 'wants you' }).first()).toContainText('Castile-Spain')
