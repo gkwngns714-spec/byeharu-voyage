@@ -5,6 +5,9 @@ export const mapDict = defineDict({
   en: {
     // 0310 (owner, 2026-11-05): the ship, the gold and her load, docs/CITY_CONVOYS.md.
     cargoShip: 'Cargo ship',
+    // 0437 (owner, 2026-11-15: "instead of 0 gold, say it is returning"): a cargo ship with nothing on board says what she is doing.
+    cargoReturning: 'Returning',
+    cargoAtHome: 'At home',
     // 0331 (docs/WORLD_POWERS.md Part 6): her card.
     navyShip: 'Navy ship',
     // 0341 (docs/WORLD_POWERS.md 7.4): a merchant of the Brethren, on her card.
@@ -150,6 +153,8 @@ export const mapDict = defineDict({
   },
   ko: {
     cargoShip: '화물선',
+    cargoReturning: '귀환 중',
+    cargoAtHome: '모항 정박',
     navyShip: '군함',
     pirateMerchant: '해적 상인',
     station: '기지',
