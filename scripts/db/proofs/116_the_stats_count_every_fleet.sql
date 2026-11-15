@@ -99,7 +99,8 @@ begin
      or (v_f -> 'navy' ->> 'ships')::int < 2 or v_f -> 'navy' -> 'nations' -> 0 ->> 0 <> v_code or (v_f -> 'navy' -> 'nations' -> 0 ->> 1)::int <> 2
      or (v_f -> 'pirates' ->> 'fleets')::int <> 3 or (v_f -> 'pirates' ->> 'wrecked')::int <> 2 or (v_f -> 'pirates' ->> 'port')::int <> 1 or (v_f -> 'pirates' ->> 'wrecked_rows')::int <> 2
      or (select coalesce(sum((h ->> 2)::int), 0) from jsonb_array_elements(v_f -> 'pirates' -> 'homes') h) <> 3
-     or (v_f -> 'cargo' ->> 'fleets')::int <> v_made or (v_f -> 'cargo' ->> 'sea')::int <> 1 or (v_f -> 'cargo' ->> 'laid_up')::int <> 1
+     -- 0437: a laid-up (retired) cargo ship is out of the fleet's count: v_made - 1 counted, none laid up
+     or (v_f -> 'cargo' ->> 'fleets')::int <> v_made - 1 or (v_f -> 'cargo' ->> 'sea')::int <> 1 or (v_f -> 'cargo' ->> 'laid_up')::int <> 0
      or (v_f -> 'cargo' ->> 'port')::int <> v_made - 2 or (v_f -> 'cargo' ->> 'tuns')::numeric <> round(10 * v_bulk) or (v_f -> 'cargo' ->> 'tuns_at_sea')::numeric <> round(10 * v_bulk)
      or (v_f -> 'merchants' ->> 'ships')::int <> (select count(*) from public.npc_fleets nf join public.ships s on s.fleet_id = nf.fleet_id) then
     raise exception 'PROOF 116 FAIL: the count''s state is not the world''s: %', v_f - 'win';
@@ -108,8 +109,8 @@ begin
      or (v_f -> 'win' ->> 'pirate_reborn')::int <> 0 or (v_f -> 'win' ->> 'plunder')::bigint <> 1234 or (v_f -> 'win' ->> 'raids_paid')::int <> 1 then
     raise exception 'PROOF 116 FAIL: the count''s window is not what happened in it: %', v_f -> 'win';
   end if;
-  raise notice 'PASS: SF_COUNT — navy 2 (1 at sea, %), pirates 3 (2 wrecked), cargo % (1 at sea with % t, 1 laid up), merchants'' ships %; window: 1 fight, 1 sunk, 1 wreck, 1,234 d. plunder; the phase took % ms',
-    v_code, v_made, round(10 * v_bulk), v_f -> 'merchants' ->> 'ships', v_rcpt -> 'phases' ->> 'fleets';
+  raise notice 'PASS: SF_COUNT — navy 2 (1 at sea, %), pirates 3 (2 wrecked), cargo % (1 at sea with % t, 1 laid up and not counted, 0437), merchants'' ships %; window: 1 fight, 1 sunk, 1 wreck, 1,234 d. plunder; the phase took % ms',
+    v_code, v_made - 1, round(10 * v_bulk), v_f -> 'merchants' ->> 'ships', v_rcpt -> 'phases' ->> 'fleets';
 
   -- ── SF_KEEP ──
   update public.pirate_ships set wrecked_at = null where fleet_id = v_p[2];
@@ -130,7 +131,7 @@ begin
   if (v_rd ->> 'counted_at')::timestamptz <> v_t2 or (v_rd ->> 'day_from')::timestamptz >= v_t
      or (v_rd -> 'navy' ->> 'fights_day')::int <> 1 or (v_rd -> 'navy' ->> 'sunk_day')::int <> 1 or (v_rd -> 'navy' ->> 'fleets')::int <> 2
      or (v_rd -> 'pirates' ->> 'wrecks_day')::int <> 1 or (v_rd -> 'pirates' ->> 'reborn_day')::int <> 1 or (v_rd -> 'pirates' ->> 'plunder_day')::bigint <> 1234
-     or (v_rd -> 'pirates' ->> 'raids_paid_day')::int <> 1 or (v_rd -> 'pirates') ? 'wrecked_rows' or (v_rd -> 'cargo' ->> 'fleets')::int <> v_made
+     or (v_rd -> 'pirates' ->> 'raids_paid_day')::int <> 1 or (v_rd -> 'pirates') ? 'wrecked_rows' or (v_rd -> 'cargo' ->> 'fleets')::int <> v_made - 1   -- 0437: the laid-up one is out
      or v_rd -> 'merchants' is null
      or (v_rd -> 'merchants' ->> 'fleets')::int <> (select count(*) from public.npc_fleets)
      or (v_rd -> 'merchants' ->> 'fleets')::int <> (v_rd -> 'merchants' ->> 'sea')::int + (v_rd -> 'merchants' ->> 'port')::int + (v_rd -> 'merchants' ->> 'laid_up')::int + (v_rd -> 'merchants' ->> 'wrecked')::int

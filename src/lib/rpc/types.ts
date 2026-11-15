@@ -2755,6 +2755,10 @@ export interface MerchantCard {
   skills: MerchantSkill[]
 }
 
+/** 0437: public.cargo_ship_state's word. LOADED: gold on board. RETURNING: nothing on board, away from home (her next leg is home).
+ *  HOME: docked at her home, nothing on board. LAID_UP: retired. */
+export type CargoShipState = 'LOADED' | 'RETURNING' | 'HOME' | 'LAID_UP'
+
 /** 0310: `world.cargo_ship_card(fleet)`, one crown's cargo ship. `to` and `eta` while she sails. `funds` is what she
  *  carries now; `next` the stops after this one, five at most; `stops_left` how many there are. */
 export interface CargoShipCard {
@@ -2762,6 +2766,8 @@ export interface CargoShipCard {
   nation_code: string | null
   home: string
   funds: number
+  /** 0437: what she is doing with her gold, one word (public.cargo_ship_state). With nothing on board the card prints the word, not 0 gold. */
+  state?: CargoShipState
   to: string | null
   eta: string | null
   next: string[]
@@ -4228,7 +4234,7 @@ export interface StatsFleetPage {
   since?: string | null
   book_from?: string | null
   lines: StatsFleetLine[]
-  cargo?: { aboard: number; load: { port: string; ducats: number; at: string } | null; rows: StatsCargoRow[] }
+  cargo?: { aboard: number; state?: CargoShipState; load: { port: string; ducats: number; at: string } | null; rows: StatsCargoRow[] }
 }
 
 /** One money move in `world.money_feed` (0235): one purse's gain or loss. Both ends of a sale are two moves. */
