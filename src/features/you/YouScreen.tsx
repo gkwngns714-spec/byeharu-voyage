@@ -174,17 +174,22 @@ function Levels({ player }: { player: PlayerHouse }) {
  *  read the Levels page asks (`world.levels()`, the same kept answer) and the same tiles, without the line under each. A pressed tile
  *  opens that level in a tray over the page: her experience, what raises it, what its levels give and the experience table. Nothing
  *  is drawn until the read lands, and then nothing above it moves: it stands last in the card. */
+/** The level codes the Levels card draws as bars (`player.levels`), so the tiles under them skip them. */
+const BAR_TRACKS: ReadonlySet<string> = new Set(['trading', 'exploration', 'combat'])
+
 function AllLevels() {
   const t = useT()
   const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
   const [picked, setPicked] = useState<string | null>(null)
   const v = read.view
   if (!v || !v.company) return null
+  // THE THREE TRACKS STAND AS BARS JUST ABOVE (2026-11-15, owner: no repeated words on one screen): the tiles are the other levels.
+  const card = { ...v.level_skills, skills: v.level_skills.skills.filter((s) => !BAR_TRACKS.has(s.code)) }
   return (
     <div className="mt-4 border-t border-edge pt-3" data-testid="you-all-levels">
       <h3 className="mb-2 text-t-caption font-semibold text-ink-faint">{t('command.lvAll')}</h3>
-      <LevelTiles card={v.level_skills} selected={picked} onSelect={setPicked} compact />
-      <LevelTray card={v.level_skills} code={picked} onClose={() => setPicked(null)} />
+      <LevelTiles card={card} selected={picked} onSelect={setPicked} compact />
+      <LevelTray card={card} code={picked} onClose={() => setPicked(null)} />
     </div>
   )
 }
