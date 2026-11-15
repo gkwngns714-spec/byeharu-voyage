@@ -34,6 +34,18 @@ export interface Crossing {
   runs: number
   landNm: number
   worst: { seg: number; nm: number; at: [number, number] }
+  /** 0441: where the server's own law (voyage.path_refusal) refuses the course, or null. */
+  refused: [number, number] | null
+}
+
+/** 0441: the straight line between every two roadsteads, by the approach rule before and after. */
+export interface AllowanceAudit {
+  pairs: number
+  accepted: number
+  byAllowance: number
+  canals: { key: string; a: string; b: string; nm: number; landNm: number }[]
+  still: string[]
+  unseen: number
 }
 
 export interface AuditResult {
@@ -52,6 +64,8 @@ export declare const APPROACH_MAX_NM: number
 export declare function readWorldCourses(db: AuditDb): Promise<WorldCourses>
 export declare function truthLand(nav: unknown, land?: unknown): PointLand
 export declare function crossingsOf(truth: PointLand, course: Course, toleranceNm?: number): { seg: number; nm: number; at: [number, number] }[]
+export declare function auditAllowance(world: WorldCourses): AllowanceAudit
+export declare function flatAllowanceIsWater(nav: unknown, course: Course, headNm?: number, tailNm?: number): boolean
 export declare function auditWorld(
   world: WorldCourses,
   options?: {

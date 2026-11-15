@@ -315,7 +315,9 @@ begin
     v_prev := v_now;
     v_grid := v_grid + interval '7 seconds';
   end loop;
-  if voyage.progress_nm(va, v_eta1) <> (select v.total_nm from public.voyages v where v.id = va) or voyage.progress_nm(va, v_eta1 - interval '2 seconds') >= voyage.progress_nm(va, v_eta1) then
+  -- 0441: within 0.05 nm, not equal. voyages.total_nm is the sum of the segments rounded to 0.1 (0047 holds it to 0.05), and
+  -- progress is the sum itself: the two were equal only while this course happened to sum to one decimal (now 508.35).
+  if abs(voyage.progress_nm(va, v_eta1) - (select v.total_nm from public.voyages v where v.id = va)) > 0.05 or voyage.progress_nm(va, v_eta1 - interval '2 seconds') >= voyage.progress_nm(va, v_eta1) then
     raise exception 'PROOF 31 FAIL: she does not make her whole passage at her new arrival: % of %', voyage.progress_nm(va, v_eta1), (select v.total_nm from public.voyages v where v.id = va);
   end if;
   raise notice 'PASS: BATTLE_SAILS_ON — six points match an unheld ship, and she never went back from departure to arrival';

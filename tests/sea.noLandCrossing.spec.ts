@@ -29,8 +29,16 @@
 //      Wielingen, opened by 0440; and eight straits carved before, from Kerch to Malacca) are open water,
 //      and the cells 0440 opened keep their drawn land in the mask; Corfu to Ancona sails the channel
 //      over no land.
-// After 0440 the known list is EMPTY: every lane, route leg and coast course is off the drawn land and
-// no roadstead lies on it. Keep it so: a new crossing is fixed, never listed.
+//   7. (0441) AN APPROACH IS NOT A CANAL. The server skipped every sample within 25 nm of each end of a
+//      course unread, so the straight line from Panama City's roads to Portobelo's (46 nm, across the
+//      isthmus) was water, and the search offered it. Now an end has an approach only when it stands
+//      on land, and a roadstead never does: no straight line between two roadsteads is accepted with
+//      raster land under it, the Panama line is refused (and the old rule still shows the fault), the
+//      course author goes by sea, and no stored course is one the server's own law refuses (the
+//      audit lists such a course beside the crossings).
+// After 0440 the known list is EMPTY, and after 0441 the sample's count is 0: every lane, route leg and
+// coast course is off the drawn land, no roadstead lies on it, and no proposed course crosses.
+// Keep it so: a new crossing is fixed, never listed.
 //
 // WHEN IT RUNS (scripts/ci/select-specs.mjs): a PR that changes a file this spec imports (the
 // pathfinder, the refiner, the mask, the audit, the sea grid), names here ('ports.json',
@@ -45,10 +53,18 @@ import path from 'node:path'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
-import { auditWorld, crossingsOf, readWorldCourses, truthLand, type WorldCourses } from '../scripts/db/audit-land-crossings.mjs'
+import {
+  auditAllowance,
+  auditWorld,
+  crossingsOf,
+  flatAllowanceIsWater,
+  readWorldCourses,
+  truthLand,
+  type WorldCourses,
+} from '../scripts/db/audit-land-crossings.mjs'
 import { buildCoastMask } from '../scripts/build-coast-mask.mjs'
 import { CHANNELS, carveInventory } from '../scripts/sea-grid.mjs'
-import { coastLand, coastMaskFrom, findPath, navFromServed, refineCourse, type CoastMaskPayload } from '../src/lib/sea'
+import { coastLand, coastMaskFrom, courseRefusedAt, findPath, navFromServed, refineCourse, segmentIsWater, type CoastMaskPayload } from '../src/lib/sea'
 
 const KNOWN = path.resolve('scripts', 'db', 'land-crossings.known.json')
 const MASK = path.resolve('public', 'coast', 'mask.json')
@@ -117,7 +133,10 @@ test('no lane and no route leg crosses the drawn land, but the known list, which
   const added = found.filter((k) => !known.crossings.includes(k))
   const gone = known.crossings.filter((k) => !found.includes(k))
   const worst = (k: string) => out.crossings.find((c) => c.key === k)
-  expect(added.map((k) => `${k}: ${worst(k)?.worst.nm} nm of land at ${worst(k)?.worst.at.join(',')}`), 'NEW courses over the drawn land: re-sail them (scripts/build-land-channels.mjs)').toEqual([])
+  expect(
+    added.map((k) => `${k}: ${worst(k)?.worst.nm} nm of land at ${worst(k)?.worst.at.join(',')}${worst(k)?.refused ? `; refused by the server's law at ${worst(k)?.refused?.join(',')}` : ''}`),
+    'NEW courses over the drawn land, or refused by voyage.path_refusal: re-sail them (scripts/build-land-channels.mjs, scripts/build-isthmus.mjs)',
+  ).toEqual([])
   expect(gone, 'these no longer cross: take them off scripts/db/land-crossings.known.json').toEqual([])
 })
 
@@ -172,6 +191,41 @@ test('the charted channels are open water, and the land the chart draws in them 
   expect(raw, 'the search finds a course').not.toBeNull()
   const course = refineCourse(nav, coastLand(mask, nav), raw!.path).path
   expect(crossingsOf(truthLand(nav), course)).toEqual([])
+})
+
+test('an approach is not a canal: Panama City to Portobelo goes by sea, and no allowance hides land (0441)', () => {
+  test.setTimeout(120_000)
+  const nav = navFromServed(world.raster)
+  const mask = coastMaskFrom(JSON.parse(readFileSync(MASK, 'utf8')) as CoastMaskPayload)
+  const pan = world.ports.find((p) => p.code === 'PAN')
+  const prt = world.ports.find((p) => p.code === 'PRT')
+  expect(pan?.rlat != null && prt?.rlat != null).toBe(true)
+  const a: [number, number] = [pan!.rlat!, pan!.rlon!]
+  const b: [number, number] = [prt!.rlat!, prt!.rlon!]
+  // The ruler sees the fault: by the rule as it stood (25 nm unread at each end) the straight line is water,
+  // and it runs over the isthmus the chart draws.
+  expect(flatAllowanceIsWater(nav, [a, b]), 'the old rule let the line through').toBe(true)
+  expect(crossingsOf(truthLand(nav), [a, b]).length).toBeGreaterThan(0)
+  // The rule as it stands refuses it, whole-course and as the straightener reads one segment.
+  expect(courseRefusedAt(nav, [a, b])).not.toBeNull()
+  expect(segmentIsWater(nav, a, b, 25, 25)).toBe(false)
+  // The course author goes by sea: round the Horn, over no land, and the server's law accepts it.
+  const raw = findPath(nav, { lat: a[0], lon: a[1] }, { lat: b[0], lon: b[1] })
+  expect(raw, 'the search finds a course by sea').not.toBeNull()
+  const course = refineCourse(nav, coastLand(mask, nav), raw!.path).path
+  expect(raw!.nm).toBeGreaterThan(5000)
+  expect(crossingsOf(truthLand(nav), course)).toEqual([])
+  expect(courseRefusedAt(nav, course)).toBeNull()
+  // An end that stands on land still has its approach, and only that: from a land cell straight to the
+  // next water is passed inside the allowance, and refused when a second run of land follows the water.
+  const lis = world.ports.find((p) => p.code === 'LIS')!
+  expect(courseRefusedAt(nav, [[lis.lat, lis.lon], [lis.rlat!, lis.rlon!]], 60, 25), 'Lisbon quay to its roads, as an approach').toBeNull()
+  expect(courseRefusedAt(nav, [[lis.lat, lis.lon], [lis.rlat!, lis.rlon!]], 0, 0), 'the same line with no approach').not.toBeNull()
+  // Every pair of harbours: no straight line is accepted with raster land under it, whatever the allowance.
+  const al = auditAllowance(world)
+  expect(al.still, 'straight lines the rule accepts over raster land').toEqual([])
+  expect(al.byAllowance, 'the old rule let lines through by the allowance alone: the audit still measures it').toBeGreaterThan(0)
+  expect(al.canals.some((c) => c.key === 'PAN-PRT')).toBe(true)
 })
 
 test("a fixed sample of the course author's courses crosses no more often than the known count", () => {
