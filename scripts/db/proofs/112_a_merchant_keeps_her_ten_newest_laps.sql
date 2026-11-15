@@ -42,6 +42,8 @@ declare
   v_pn     timestamptz;
 begin
   -- ── THE SCENE ──
+  -- 0428 moved stats_city_good_keep_days 30 -> 90 (proof 129): this scene proves 0416's trim as written, so it pins 0416's value
+  update public.world_config set value = to_jsonb(30) where key = 'stats_city_good_keep_days';
   update public.world_config set value = 'true'::jsonb where key in ('npc_traders_enabled', 'standing_routes_enabled');
   if not public.npc_traders_on() then raise exception 'proof 112: the merchants cannot be lit in this world'; end if;
   if public.wc_int('npc_route_lap_keep') <> 10 or public.wc_int('npc_route_lap_keep_hours') <> 0 or public.wc_int('route_hour_keep_hours') <> 80

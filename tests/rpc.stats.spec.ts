@@ -330,7 +330,7 @@ test('the sums a chart draws stop at the last whole period, over every span of t
     const c = await worldStatsCity(port.id, span)
     expect(o.ok && c.ok, `the reads for ${span} failed`).toBe(true)
     if (!o.ok || !c.ok) return
-    const bucket = span === '1w' || span === '1m' ? 3_600_000 : span === '1y' || span === 'all' ? 86_400_000 : 0
+    const bucket = span === '1w' ? 3_600_000 : span === '1m' || span === '1y' || span === 'all' ? 86_400_000 : 0   // 0428: a month by day
     reads.push({ what: `world ${span}`, bucket, read: o.value, rows: o.value.series })
     reads.push({ what: `city ${span}`, bucket, read: c.value, rows: c.value.overview!.series })
   }
