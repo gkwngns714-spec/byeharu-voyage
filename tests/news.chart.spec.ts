@@ -46,7 +46,8 @@ async function happenedWorld(): Promise<Buffer> {
     )
     const r = row.rows[0]
     if (!r || r.n !== before.rows[0].n + 1) throw new Error(`the stance change did not write one RELATIONS row: ${JSON.stringify(r)}`)
-    headline = { en: `${r.a} and ${r.b}: now ${r.stance}`, move: `${r.was} → ${r.now}` }
+    // 0433 (the short server words): the RELATIONS template is `{a}–{b}: {stance}` in English too
+    headline = { en: `${r.a}–${r.b}: ${r.stance}`, move: `${r.was} → ${r.now}` }
     image = Buffer.from(await (await pg.dumpDataDir('gzip')).arrayBuffer())
   } finally {
     await pg.close()
@@ -130,7 +131,17 @@ for (const glass of [PHONE, WIDE]) {
     await expect(items.first()).toBeVisible({ timeout: 60_000 })
     await expect(items.first().getByTestId('news-headline')).toHaveText(headline!.en)
     await expect(items.first().getByTestId('news-move')).toHaveText(headline!.move)
-    await expect(face.getByTestId('news-headline').filter({ hasText: /^News$/ })).toHaveCount(1)
+    // 0347's own "News" update row is in the list too. The face shows 50 rows a page and the chain has posted more updates than that since
+    // 0347, so the row is reached as a player reaches it: by Older, until it is there (never more presses than the feed has pages).
+    const own = face.getByTestId('news-headline').filter({ hasText: /^News$/ })
+    for (let page = 0; page < 20 && (await own.count()) === 0; page++) {
+      const older = face.getByTestId('news-older')
+      await expect(older, 'the "News" row of 0347 is not listed, and there is no older page to ask for').toBeVisible({ timeout: 30_000 })
+      const had = await items.count()
+      await older.click()
+      await expect.poll(() => items.count(), { timeout: 30_000 }).toBeGreaterThan(had)
+    }
+    await expect(own).toHaveCount(1)
     // My cities: a fresh house lies at one city; this happening is the world's, so it is not hers
     await face.getByRole('tab', { name: 'My cities', exact: true }).click()
     await expect(face.getByTestId('news-headline').filter({ hasText: headline!.en })).toHaveCount(0, { timeout: 30_000 })

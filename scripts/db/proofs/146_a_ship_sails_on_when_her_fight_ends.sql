@@ -65,6 +65,8 @@ begin
     raise exception 'PROOF 146 FAIL: a ship nothing happened to is served by a delta from after her departure: the control proves nothing';
   end if;
 
+  raise notice 'PASS: RS_QUIET — under sail and untouched, she is in no delta of the roster asked from after her departure';
+
   -- ── RS_HELD: as public.battle_open holds her ──
   perform voyage.settle(v_f, t0);
   perform voyage.hold(v_f, t0 + make_interval(secs => v_secs::double precision), t0);
@@ -75,6 +77,8 @@ begin
      or abs(extract(epoch from v_eta - v_eta0) - v_secs) > 1 then
     raise exception 'PROOF 146 FAIL: a held ship is not served with her hold of % s and her eta later by as much: row %, eta % -> %', v_secs, v_row -> 'voyage' -> 'holds', v_eta0, v_eta;
   end if;
+
+  raise notice 'PASS: RS_HELD — held, the delta serves her with one hold of % s and her eta later by as much', v_secs;
 
   -- ── RS_CUT: as public.battle_resolve closes a fight of 40 s ──
   insert into public.battles (kind, site, started_at, resolves_at, status)
@@ -97,6 +101,9 @@ begin
     raise exception 'PROOF 146 FAIL: she is served more than once';
   end if;
 
+  raise notice 'PASS: RS_CUT — her battle closed and her hold cut to 40 s, the delta serves her once: hold % to %, eta % (before the fight %)',
+    v_row #>> '{voyage,holds,0,from}', v_row #>> '{voyage,holds,0,until}', v_row #>> '{voyage,eta}', v_eta0;
+
   -- ── RS_AGE ──
   update public.battles set started_at = v_since - interval '11 minutes', resolves_at = v_since - interval '10 minutes' where id = v_b;
   if exists (select 1 from jsonb_array_elements(world.sea_roster(v_since) -> 'fleets') e where (e ->> 'id')::uuid = v_f) then
@@ -106,5 +113,5 @@ begin
     raise exception 'PROOF 146 FAIL: a full read of the roster serves other fleets than before';
   end if;
 
-  raise notice 'PROOF 146 ok: RS_QUIET RS_HELD RS_CUT RS_AGE';
+  raise notice 'PASS: RS_AGE — a battle closed 10 minutes before the delta serves nobody, and a full read serves the same fleets as before';
 end $p$;

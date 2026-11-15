@@ -78,7 +78,7 @@ declare
                         || voyage.holds_served(v.id)   -- 0323: the frozen facts of a hold, so she is placed standing still$h$, ''),
     jsonb_build_array('world.sea_roster(timestamp with time zone)', $h$
       -- 0323: a hold moved her eta: she is served again while she is held, or the kept row would place her on the old one
-      or f.busy_until >= p_since;$h$, ';'));
+      or f.busy_until >= p_since$h$, ''));   -- 0444 wrote its own clause after this one (a fleet whose battle has just closed), so the term no longer ends the statement: 0323's line comes out and 0444's stays, in the old body and the new alike
   v_a     uuid := pg_temp.fleet_0323('00000000-0323-4000-8000-000000000a01', false, true);
   v_b     uuid := pg_temp.fleet_0323('00000000-0323-4000-8000-000000000a02', false, true);
   v_new   jsonb;

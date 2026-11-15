@@ -1394,7 +1394,8 @@ test(`PORT: the Inn's crew face is a figure, a stepper, a served daily cost and 
   await expect(send).toBeEnabled({ timeout: 20_000 })
   await send.click()
   await expect(page.locator('[data-testid="inn-crew"]')).toContainText(
-    new RegExp(`${Number(crewBefore[1]) + 1}\\s*/\\s*${crewBefore[2]}\\s*crew`),
+    // 2026-11-15 (the owner's shorter words): the row is the label "Crew" and the figure "9 / 20"; the unit no longer follows the figure
+    new RegExp(`Crew\\s*${Number(crewBefore[1]) + 1}\\s*/\\s*${crewBefore[2]}(?!\\d)`),
     { timeout: 30_000 },
   )
   await expect(send).toHaveText('No change')

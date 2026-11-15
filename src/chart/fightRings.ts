@@ -99,10 +99,12 @@ const UNITS_PER_NM = 1 / 60
 export function fightRing(fight: MapFight, unitsPerPx: number): FightRing {
   const origin = project(fight.at)
   // 0435 (docs/design/tick-combat.md 8, 9.4): A TICK BATTLE'S RING IS ITS JOIN CIRCLE: centre the battle's site, radius
-  // `reach_nm`, the same circle the Join bar measures by. Never under half a touch, so it can always be pressed.
+  // `reach_nm`, the same circle the Join bar measures by. Never under what the count of fleets gives (22 px for two, the touch
+  // floor; 6 px more a fleet: owner row 321, "if more fleets participate, bigger circle"), so zoomed out, where 30 nm is a few
+  // pixels, an armada's battle is still the bigger ring and any ring can be pressed.
   if (typeof fight.reachNm === 'number' && fight.reachNm > 0) {
     const upp = unitsPerPx > 0 ? unitsPerPx : 1
-    const rPx = Math.max(FIGHT_RING.basePx, (fight.reachNm * UNITS_PER_NM) / upp)
+    const rPx = Math.max(fightCountRadiusPx(fight.fleets), (fight.reachNm * UNITS_PER_NM) / upp)
     return { id: fight.id, centre: origin, r: rPx * upp, rPx, over: fight.over, mine: fight.mine !== null, fleetIds: fight.fleetIds, kind: fight.kind }
   }
   // every place measured from the battle's own place THE SHORT WAY ROUND, so a fight on the date line is one ring

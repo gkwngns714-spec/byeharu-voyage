@@ -49,7 +49,7 @@ const WORDS = {
     row: (rank: number, pct: number) => `항해사 · ${rank} / ${SKILL_CAPTAIN.max} · +${pct} %`,
     pilot: `도선사 · 0 / ${SKILL_CAPTAIN.max} · +0 %`,
     button: (cost: number) => `강화 · ${cost}`,
-    why: '평판 부족. (60 / 300 평판)',
+    why: '평판 60 / 300',
     history: `${SKILL_CAPTAIN.name}: 항해사 2 · 평판 150.`,
   },
 } as const

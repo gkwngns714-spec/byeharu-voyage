@@ -19,6 +19,7 @@ import {
   viewBoxOf,
   visiblePorts,
 } from '../src/chart'
+import type { ChartModel } from '../src/chart/chartModel'
 import { REAL_PORTS, dockedFleet } from './mapWorld.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -53,8 +54,8 @@ function frame() {
   })
   // what LabelsLayer hands the map's tap (src/chart/placedNames.ts `setPlacedNames`)
   const names = placed.filter((l) => l.id.startsWith('port:')).map((l) => ({ code: l.id.slice(5), box: l.box, pad: NAME_HIT_PAD_PX * upp }))
-  const tap = (at: Point) => {
-    const hit = hitTest(MODEL, named, at, GLYPH.hitRadius * upp, dots, GLYPH.dotHitRadius * upp, [], names)
+  const tap = (at: Point, traffic: ChartModel['traffic'] = []) => {
+    const hit = hitTest(MODEL, named, at, GLYPH.hitRadius * upp, dots, GLYPH.dotHitRadius * upp, traffic, names)
     return hit?.kind === 'port' ? hit.code : hit
   }
   return { upp, placed, named, tap }
@@ -84,4 +85,41 @@ test('at 1280×800 a tap on Gibraltar — its mark, its word, the word\'s lower 
   expect(tap(ceu), 'Ceuta\'s mark').toBe('CEU')
   const ceuWord = placed.find((l) => l.id === 'port:CEU')
   if (ceuWord) expect(tap({ x: ceuWord.box.x + ceuWord.box.width / 2, y: ceuWord.box.y + ceuWord.box.height / 2 }), 'Ceuta\'s word').toBe('CEU')
+})
+
+// THE MARGIN SETTLES A NAME AGAINST ANOTHER HARBOUR'S MARK, NOT AGAINST A HULL (2026-11-16). With the margin, a cargo ship lying
+// just past the end of a word could not be pressed at any zoom: tests/battle.live.spec.ts presses one a few miles out of Seville
+// and got Seville, from the day the margin came. On the letters the name still wins.
+test("a merchant under the thumb in a name's margin is the merchant; on the letters, and with no hull there, it is still the name", () => {
+  const { upp, placed, tap } = frame()
+  const box = placed.find((l) => l.id === 'port:GIB')!.box
+  const underWord: Point = { x: box.x + 10 * upp, y: box.y + box.height + 2 * upp }
+  const hullAt = (at: Point, id: string) =>
+    ({ fleet: { id }, at: { lat: -at.y, lon: at.x }, merchant: { docked: false, berthCode: null } }) as unknown as ChartModel['traffic'][number]
+  expect(project({ lat: -underWord.y, lon: underWord.x }), 'the probe hull stands where it is put').toEqual(underWord)
+  expect(tap(underWord), 'no hull: the margin is the name').toBe('GIB')
+  expect(tap(underWord, [hullAt(underWord, 'm1')]), 'a hull under the thumb, in the margin').toEqual({ kind: 'merchant', id: 'm1' })
+  // a hull that is near but not under the thumb (over half a touch off) leaves the margin to the name
+  const off: Point = { x: underWord.x, y: underWord.y + (GLYPH.dotHitRadius + 4) * upp }
+  expect(tap(underWord, [hullAt(off, 'm2')]), 'a hull over half a touch away').toBe('GIB')
+  // on the letters' own box the name wins, a hull under the thumb or not
+  const onWord: Point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  expect(tap(onWord, [hullAt(onWord, 'm3')]), 'on the letters').toBe('GIB')
+})
+
+// A WORD OVER A NEIGHBOUR'S MARK (2026-11-16). At 44 % on a phone "Santa Cruz de Tenerife" is set under Las Palmas's mark, and a press on
+// that mark opened Tenerife (tests/map.routebuilder.spec.ts). The mark dead under the thumb is its own harbour; the rest of the word is the name.
+test("a press on a harbour's own mark is that harbour even where another harbour's name runs across it", () => {
+  const { upp, named } = frame()
+  const ceu = project(PORTS.find((p) => p.code === 'CEU')!)
+  // a word of Gibraltar's laid right across Ceuta's mark
+  const across = [{ code: 'GIB', box: { x: ceu.x - 40 * upp, y: ceu.y - 8 * upp, width: 80 * upp, height: 16 * upp }, pad: NAME_HIT_PAD_PX * upp }]
+  const tap = (at: Point) => {
+    const hit = hitTest(MODEL, named, at, GLYPH.hitRadius * upp, [], GLYPH.dotHitRadius * upp, [], across)
+    return hit?.kind === 'port' ? hit.code : hit
+  }
+  expect(tap(ceu), 'on the mark').toBe('CEU')
+  expect(tap({ x: ceu.x + 3 * upp, y: ceu.y - 2 * upp }), 'within the mark').toBe('CEU')
+  expect(tap({ x: ceu.x + 20 * upp, y: ceu.y }), 'along the word, off the mark').toBe('GIB')
+  expect(tap({ x: ceu.x - 30 * upp, y: ceu.y + 4 * upp }), 'the word\'s other end').toBe('GIB')
 })

@@ -1,5 +1,7 @@
 -- 0437 ROLLBACK (forward, OWNER ONLY, a DRAFT: run as one new migration if 0437 must come out). Each hunk reversed (its new text back to its old),
 -- then public.cargo_ship_state dropped (after the two readers no longer name it). No data is touched: laid-up ships stay laid up (0326's law).
+-- A DRAFT that WRITES: it runs on a local PGlite world only while it carries the next line (the guard). To deploy it, strip that line. Owner only.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $r$
 declare
   x record;

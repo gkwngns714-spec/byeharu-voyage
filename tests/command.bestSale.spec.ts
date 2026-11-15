@@ -165,7 +165,7 @@ for (const size of SIZES) {
       await expect(lossPanel).toHaveAttribute('data-good', lossGood)
       const warn = lossPanel.getByTestId('trade-no-gain')
       await expect(warn).toBeVisible({ timeout: 60_000 })
-      await expect(warn).toContainText('No city you can sail to pays more than this costs.')
+      await expect(warn).toContainText('No better buyer in reach.')
       const qty = lossPanel.getByTestId('trade-tray-qty').or(lossPanel.getByTestId('trade-units-none'))
       await expect(qty.first()).toBeVisible()
       expect((await warn.boundingBox())!.y).toBeLessThan((await qty.first().boundingBox())!.y)

@@ -286,7 +286,7 @@ test.describe('a far city and a city past every chain (320 px, Korean)', () => {
     }
     expect(dead, `every one of ${NO_WAY.join(' ')} is reached — pick farther cities`).not.toBeNull()
     await expect(page.getByTestId('map-send-refusal').first()).toBeVisible()
-    await expect(page.getByTestId('map-send-no-way').first()).toHaveText('가는 길에 들를 항구 없음.')
+    await expect(page.getByTestId('map-send-no-way').first()).toHaveText('도중 항구 없음.')
     await expect(page.getByTestId('map-send-via')).toHaveCount(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     await page.screenshot({ path: 'test-results/auto-route-320-ko-no-way.png' })

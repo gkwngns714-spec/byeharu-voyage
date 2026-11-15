@@ -20,3 +20,6 @@
 --   battle_ticks.1  (world.battle_ticks(uuid))
 --   fight_card.1  (public.fight_card(uuid,uuid))
 --   fight_card.2  (public.fight_card(uuid,uuid))
+-- THIS FILE IS NOTES, every line a comment: nothing in it runs. It carries the harness guard (the next line) so the tree's reader knows it for a
+-- local draft and not a prod check, and so that a statement uncommented here later still refuses to run on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;

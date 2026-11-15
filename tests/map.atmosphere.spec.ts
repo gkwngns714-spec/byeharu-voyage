@@ -361,7 +361,12 @@ test.describe('the ship is one hull, and the course points where it goes', () =>
     // The property is unchanged and now also says there is ONE path authority: every surface gets
     // its hull out of glyphs.ts and no dot survives anywhere. tests/map.hulls.spec.ts holds the
     // rest of row 120.
-    expect(fleets).toContain('hullPath(m.cls, m.halfLength)')
+    // PIN MOVED 2026-11-16 with #748 (a ship looks like what she is): the hull strings are built ONCE a hull list by glyphs.ts
+    // `fleetMark` and kept; FleetsLayer builds no path of its own and asks for the kept mark (tests/map.hulls.spec.ts,
+    // tests/map.kinds.spec.ts hold the count). The property is the same one: every hull comes out of glyphs.ts.
+    expect(fleets).toContain('fleetMark(')
+    expect(fleets).not.toContain('hullPath(')
+    expect(read('src/chart/glyphs.ts')).toContain('hullPath(m.cls, m.halfLength)')
     expect(fleets).not.toContain('shipPath')
     expect(minimap).toContain('shipPath(GLYPH.shipHalfLength)')
     expect(fleets).not.toContain('fleetDotRadius')
