@@ -365,6 +365,7 @@ function HullGroup({
   children,
   sun,
   kind,
+  inFight = false,
 }: {
   fleet: FleetOnChart
   unitsPerPx: number
@@ -379,6 +380,8 @@ function HullGroup({
   sun: LatLon
   /** Her kind: the one row of `KIND_LOOK` that says how she looks (mark, size floor). */
   kind: ShipKind
+  /** 0435 (docs/design/tick-combat.md 9.4): she is in a battle being fought: drawn on a red ground. */
+  inFight?: boolean
 }) {
   const look = KIND_LOOK[kind]
   // HER SIZE ON THIS GLASS (./glyphs.ts `wideScale`): a ship of yours is always full size; everyone else's
@@ -400,9 +403,26 @@ function HullGroup({
       data-fleet-heading={fleet.heading ?? 0}
       data-hulls={marks.length}
       style={nightStyle(fleet.at, sun)}
+      data-in-fight={inFight ? 'true' : undefined}
       {...hooks}
     >
       {children}
+      {/* IN A FIGHT (owner, tick combat: "every ship currently in a fight is drawn with a red background"): a red disc
+          round her whole group, over her halo and under her hull, inside the battle's own red ring. */}
+      {inFight && marks.length > 0 && (() => {
+        const ground = hullGroupHalo(marks)
+        return (
+          <circle
+            cx={ground.cx}
+            cy={ground.cy}
+            r={ground.r * 1.15}
+            className="fill-danger/60 stroke-danger"
+            strokeWidth={GLYPH.glyphStroke}
+            vectorEffect="non-scaling-stroke"
+            data-fight-ground=""
+          />
+        )
+      })()}
       {/* HER RIDING LIGHT AT EVERY ZOOM (owner, 2026-10-13: *"i see no blue markers for ship"*),
           LIT BY THE SUN (2026-10-14): the same blue lamp and blink at every span, drawn UNDER the
           hull so the shape stays on top, sized to HER (the group's halo) so the glow reaches past
@@ -461,6 +481,7 @@ export function FleetsLayer({
   selectedMerchantId = null,
   unitsPerPx,
   sun,
+  inFight,
 }: {
   /** Your fleets at sea on this view (`shipMarks`). */
   fleets: readonly FleetOnChart[]
@@ -472,6 +493,8 @@ export function FleetsLayer({
   unitsPerPx: number
   /** Where the Sun is overhead (./sun.ts). */
   sun: LatLon
+  /** 0435: the ids of every fleet in a battle being fought (`fleetsInFight`): each is drawn on a red ground. */
+  inFight?: ReadonlySet<string>
 }) {
   // Regions on: each merchant in her nation's ink. Off: every merchant in the one dark blue.
   const regions = useRegionsFilter()
@@ -499,6 +522,7 @@ export function FleetsLayer({
             unitsPerPx={unitsPerPx}
             sun={sun}
             kind={kind}
+            inFight={inFight?.has(t.fleet.id) ?? false}
             className={`${look.fill.token ? 'bv-sun-kind-fill' : inked ? `bv-sun-merchant-nation ${nation.cls}` : 'bv-sun-merchant fill-merchant'} ${selected ? 'stroke-ink' : 'bv-sun-hull-keyline stroke-chart-sea'}`}
             style={look.fill.token ? ({ '--kind-fill': look.fill.token } as CSSProperties) : inked ? ({ '--nation-ink': nation.token } as CSSProperties) : undefined}
             strokeWidth={GLYPH.glyphStroke * (selected ? 1.2 : 0.6)}
@@ -527,6 +551,7 @@ export function FleetsLayer({
             unitsPerPx={unitsPerPx}
             sun={sun}
             kind="yours"
+            inFight={inFight?.has(f.fleet.id) ?? false}
             className="fill-accent bv-sun-hull-keyline stroke-chart-sea"
             strokeWidth={GLYPH.glyphStroke * 0.6}
             hooks={{ 'data-testid': 'map-ship' }}

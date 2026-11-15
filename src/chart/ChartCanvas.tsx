@@ -136,6 +136,7 @@ export function ChartCanvas({
   portFlags = null,
   islets = NO_ISLETS,
   fights = NO_FIGHTS,
+  inFight,
   selection,
   keepOut,
   plannedD = null,
@@ -172,6 +173,8 @@ export function ChartCanvas({
   islets?: readonly Point[]
   /** 0364 — the battles being fought: each is ringed (./fightRings.ts). Absent on a chart that shows none. */
   fights?: readonly MapFight[]
+  /** 0435 — every fleet in a battle being fought (`fleetsInFight`): drawn on a red ground (./FleetsLayer.tsx). */
+  inFight?: ReadonlySet<string>
   selection: MapSelection
   /**
    * OPAQUE CHROME THE SCREEN HAS PUT OVER THIS CHART, in CSS pixels from the chart's top-left
@@ -514,6 +517,7 @@ export function ChartCanvas({
                 selectedMerchantId={selectedMerchantId}
                 unitsPerPx={unitsPerPx}
                 sun={sun}
+                inFight={inFight}
               />
               {pathStops.length > 0 && <ShipPathLayer stops={pathStops} unitsPerPx={unitsPerPx} />}
             </g>
