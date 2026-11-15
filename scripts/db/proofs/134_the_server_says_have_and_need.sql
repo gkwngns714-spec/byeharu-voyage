@@ -65,7 +65,7 @@ begin
     raise exception 'PROOF 134 FAIL: a BUY she cannot pay for is not refused Money have / need: %', v_r;
   end if;
   if cmd.refusal('E_ENDURANCE', 'Gaivota carries 2.9 days of stores', cmd.figures(2.9, 33, 'days'))->>'sentence' <> 'Supplies 2.9 / 33 days'
-     or cmd.refusal('E_HOLD_FULL', 'more Pepper than the hold will take', cmd.figures(120, 150, 't'))->>'sentence' <> 'Hold 120 / 150 t'
+     or cmd.refusal('E_HOLD_FULL', 'more Pepper than the hold will take', cmd.figures(120, 150, 't'))->>'sentence' <> 'Hold 120 / 150 tons'
      or cmd.refusal('E_CREW_MAX', 'x', cmd.figures(8, 8, 'crew'))->>'sentence' <> 'Crew 8 / 8'
      or cmd.refusal('E_OUT_OF_REACH', 'x', cmd.figures(300, 450, 'miles'))->>'sentence' <> 'Range 300 / 450 miles'
      or cmd.refusal('E_NOT_ENOUGH_REPUTATION', 'Needs 300 Reputation: you have 60', cmd.figures(60, 300, 'reputation'))->>'sentence' <> 'Reputation 60 / 300'
