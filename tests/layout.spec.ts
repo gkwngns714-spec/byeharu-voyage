@@ -1167,7 +1167,7 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
     const text = (el: HTMLElement) => (el.innerText || '').replace(/\s+/g, ' ').trim()
     return {
       rows: rows.length,
-      rowsWithLot: rows.filter((r) => /Wanted [\d,]+ · Held [\d,]+/.test(text(r))).length,
+      rowsWithLot: rows.filter((r) => /On board [\d,]+ \/ [\d,]+/.test(text(r))).length, // 2026-11-15 owner: shorter words (HAVE / NEED)
       rowsWithPremium: rows.filter((r) => /Bonus [\d,.]+ 🪙 each · [\d,]+ 🪙 left/.test(text(r))).length,
       rowsWithShare: rows.filter((r) => /Time left (\d+:)?\d+:\d\d/.test(text(r))).length,
       cells: cells.length,

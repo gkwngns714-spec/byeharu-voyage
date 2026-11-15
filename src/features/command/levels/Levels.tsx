@@ -113,10 +113,7 @@ function Company({ v, picked, onPick }: { v: Ready; picked: string | null; onPic
   return (
     <>
       <LevelTiles card={v.level_skills} selected={picked} onSelect={onPick} />
-      <span className="mt-2 block text-t-caption text-ink-faint" data-testid="levels-vs-skills">
-        {t('command.lvVsSkills')}
-      </span>
-      <div className="min-w-0 py-2" data-testid="levels-seamanship">
+      <div className="mt-2 min-w-0 py-2" data-testid="levels-seamanship">
         <StatCell look="stacked" label={t('command.lvSeamanship')} value={sea.level} format={(n) => `${formatInt(n)} ${t('command.lvOf', { max: sea.max })}`} />
         <Bar value={sea.level} of={sea.max} label={t('you.levelOf', { name: t('command.lvSeamanship') })} tone="accent" className="mt-1" />
         <span className="mt-1 block text-t-caption text-ink-faint">{t('command.lvSkillNote')}</span>
@@ -124,7 +121,12 @@ function Company({ v, picked, onPick }: { v: Ready; picked: string | null; onPic
       <div className="min-w-0 border-t border-edge py-2" data-testid="levels-title">
         <Words label={t('command.lvTitle')} value={`${v.title.name ? properName('title', v.title.name, v.title.name) : ''} ${t('command.lvLevel', { n: v.title.level })}`.trim()} />
         <span className="mt-1 block text-t-caption text-ink-faint">
-          {v.title.next ? t('command.lvTitleNext', { name: properName('title', v.title.next.name, v.title.next.name), n: v.title.next.level }) : t('command.lvTitleTop')}
+          {v.title.next
+            ? t('command.lvTitleNext', {
+                name: properName('title', v.title.next.name, v.title.next.name),
+                tracks: t('command.goalTracks', { a: v.tracks.trading.level, b: v.tracks.exploration.level, n: v.title.next.level }),
+              })
+            : t('command.lvTitleTop')}
         </span>
         {v.title.next && v.title.next.opens.length > 0 && (
           <span className="mt-1 block text-t-caption text-ink-muted" data-testid="levels-opens">
