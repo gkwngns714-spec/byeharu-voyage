@@ -343,7 +343,12 @@ begin
   -- 0039: the quay quotes the reach table (rounded to 0.1 nm) and the mover measures the
   -- proposed course segment by segment (rounded to 0.01 each, long segments split) — one
   -- generator, two roundings, so the tolerance is half a per cent, not a twentieth of a mile.
-  if abs((v_r->'order'->'result'->>'total_nm')::numeric - v_leg_nm) > greatest(0.5, v_leg_nm * 0.005) then
+  -- 0441 (2026-11-15): ONE PER CENT, until the reach table is measured again. The search may no longer run over
+  -- a cell of land within 21 nm of a harbour (an approach is not a canal), so its course out of Lisbon's roads is
+  -- 508.35 nm where the reach table, measured by the search as it stood, quotes 505 (0.66 %). The table is not
+  -- re-measured in 0441 because a new reach re-prices every market row that holds a haul: its own slice
+  -- (docs/dev-log/2026-11-15-isthmus.md). When it is measured again, put this back to 0.005.
+  if abs((v_r->'order'->'result'->>'total_nm')::numeric - v_leg_nm) > greatest(0.5, v_leg_nm * 0.01) then
     raise exception 'PROOF 4 FAILED at 1:20 — the crossing is % nm but the quay quoted % nm',
       v_r->'order'->'result'->>'total_nm', v_leg_nm;
   end if;

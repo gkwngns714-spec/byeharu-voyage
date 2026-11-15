@@ -94,6 +94,8 @@ test('attacks dark: the map reads no fight; `on` says only whether any kind of f
 
 test('lit: a battle another company opened is on the watcher’s map, with its place, its fleets and where they lie', async () => {
   await light(['attack_enabled'], true)
+  // 0435: this test reads the round-by-round ring (60 s a round); a tick battle's ring is proof 136's
+  await db.callAs(`with u as (update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds' returning 1) select count(*)::int as result from u`)
   const empty = await worldFights()
   expect(empty.ok && empty.value.on).toBe(true)
   expect(empty.ok && empty.value.fights).toEqual([])

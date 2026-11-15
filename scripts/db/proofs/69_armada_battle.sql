@@ -26,6 +26,8 @@
 -- @pass AB_AT_SEA           an armada sailing on one order attacks: both fleets are held at sea for the same span, the hold is cut with the battle for both, and they still arrive at one instant; at the knob's own reach a sister at the same point is there, and at no reach she is not
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
+
 create temp table hunks_69 (fn text, n int, old text, new text) on commit drop;
 insert into hunks_69 (fn, n, old, new) values
 -- hunks:begin
@@ -72,10 +74,11 @@ $h$),
 $h$, $h$                                    'navy', b.result #> '{navy,line}') end
     || public.battle_armada_view(b.id, p_fleet);   -- 0395: her armada's name, her fleets, the side's stance and, closed, each fleet's share; no armada: {}
 $h$),
-  ('public.navy_close(uuid,timestamp with time zone)', 1, $h$  select count(*) filter (where bs.how <> 'OPENED' and bs.arrives_at <= b.resolves_at),
-$h$, $h$  select count(*) filter (where bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at),   -- 0395: her own armada is no navy
+  -- 0436 re-cut both navy_close hunks (a JOINED pirate is no navy): this proof's copies carry its clause on both sides
+  ('public.navy_close(uuid,timestamp with time zone)', 1, $h$  select count(*) filter (where bs.how <> 'OPENED' and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at),
+$h$, $h$  select count(*) filter (where bs.how not in ('OPENED', 'ARMADA') and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at),   -- 0395: her own armada is no navy; 0436: nor a pirate that joined
 $h$),
-  ('public.navy_close(uuid,timestamp with time zone)', 2, $h$         bool_or(bs.how <> 'OPENED' and bs.arrives_at <= b.resolves_at or ($h$, $h$         bool_or(bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at or ($h$),
+  ('public.navy_close(uuid,timestamp with time zone)', 2, $h$         bool_or(bs.how <> 'OPENED' and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at or ($h$, $h$         bool_or(bs.how not in ('OPENED', 'ARMADA') and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at or ($h$),
   ('public.battle_navy_served(uuid)', 1, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how <> 'OPENED' and o.arrives_at <= b.resolves_at
 $h$, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how not in ('OPENED', 'ARMADA') and o.arrives_at <= b.resolves_at   -- 0395: her own armada is no help coming to the other side
 $h$)

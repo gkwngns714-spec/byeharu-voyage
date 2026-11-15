@@ -38,6 +38,8 @@ test.beforeAll(async () => {
   await db.callAs(`select cmd.found_house('Armada Battle Spec', 'PRT') as result`)
   await db.callAs(`with t as (update public.port_treasury set ducats = 50000000, reserve = 0 returning 1) select count(*)::int as result from t`)
   await light(['city_treasury_enabled', 'convoys_enabled'], true)
+  // 0435: these tests drive the round-by-round battle; a tick battle is proof 136's
+  await db.callAs(`with u as (update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds' returning 1) select count(*)::int as result from u`)
   // the attack's reach is 0327's gate and not what is read here: her armada lies in her own port and the ship is at sea off another
   await db.callAs(`with k as (update public.world_config set value = '100000'::jsonb where key = 'attack_reach_nm' returning 1) select count(*)::int as result from k`)
   const realm = await db.callAs<string>(`select g.nation_id as result from public.great_powers g join public.nations n on n.id = g.nation_id where n.code <> 'PRT' order by n.code limit 1`)

@@ -27,6 +27,28 @@ export {
 } from './grid.ts'
 
 export {
+  refineCourse,
+  courseIsWater,
+  courseRefusedAt,
+  courseLandRuns,
+  segmentLandRuns,
+  LAND_TOLERANCE_NM,
+  type DrawnLand,
+  type LandRun,
+  type RefineResult,
+} from './refine.ts'
+
+export {
+  coastMaskFrom,
+  coastLand,
+  maskBlocked,
+  maskFits,
+  COAST_MASK_SUB,
+  type CoastMask,
+  type CoastMaskPayload,
+} from './coastMask.ts'
+
+export {
   snapToNav,
   findPath,
   floodFrom,

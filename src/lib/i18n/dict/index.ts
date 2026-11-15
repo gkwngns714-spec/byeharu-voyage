@@ -1,5 +1,6 @@
 // THE REGISTRY: every dictionary, under the section name its keys start with (`auth.title`).
 // One file per screen or domain, so two changes never fight over one file.
+import { battleDict } from './battle'
 import { booksDict } from './books'
 import { chartDict } from './chart'
 import { cityDict } from './city'
@@ -16,6 +17,7 @@ import { formatDict } from './format'
 import { foundDict } from './found'
 import { historyDict } from './history'
 import { innDict } from './inn'
+import { joinDict } from './join'
 import { mapDict } from './map'
 import { marketsDict } from './markets'
 import { newsDict } from './news'
@@ -35,6 +37,7 @@ import { yardDict } from './yard'
 import { youDict } from './you'
 
 export const DICT = {
+  battle: battleDict,
   books: booksDict,
   chart: chartDict,
   city: cityDict,
@@ -51,6 +54,7 @@ export const DICT = {
   found: foundDict,
   history: historyDict,
   inn: innDict,
+  join: joinDict,
   map: mapDict,
   markets: marketsDict,
   news: newsDict,

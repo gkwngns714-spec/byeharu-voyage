@@ -500,6 +500,23 @@ const TABLE = {
   // 0364 (owner row 321): every battle being fought, for the map's rings, and any battle's log for a watcher. Dark: {on: false}.
   worldFights: { schema: 'world', fn: 'fights', args: [] },
   worldFight: { schema: 'world', fn: 'fight', args: [{ name: 'p_battle', type: 'uuid' }] },
+  // 0435 (docs/design/tick-combat.md 9.2): a battle fought tick by tick: its timeline for the battle screen (any signed-in reader), and the close at its end.
+  worldBattleTicks: { schema: 'world', fn: 'battle_ticks', args: [{ name: 'p_battle', type: 'uuid' }] },
+  cmdBattleEnd: { schema: 'cmd', fn: 'battle_end', mutates: true, args: [{ name: 'p_battle', type: 'uuid' }] },
+  // 0436 (docs/design/tick-combat.md 8, 9.2): a fleet of hers JOINS a battle on a side she picks. Joining is a choice; the server refuses PvP (E_HUMAN_TARGET).
+  cmdBattleJoin: { schema: 'cmd', fn: 'battle_join', mutates: true, args: [{ name: 'p_battle', type: 'uuid' }, { name: 'p_fleet', type: 'uuid' }, { name: 'p_side', type: 'text' }] },
+  // 0439 (docs/design/tick-combat.md 9.2): her side's commander uses an ability at a tick; the answer carries the re-run timeline. No PvP: an act adds no side.
+  cmdBattleAct: {
+    schema: 'cmd',
+    fn: 'battle_act',
+    mutates: true,
+    args: [
+      { name: 'p_battle', type: 'uuid' },
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_code', type: 'text' },
+      { name: 'p_tick', type: 'int' },
+    ],
+  },
   cmdPreviewTow: { schema: 'cmd', fn: 'preview_tow', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdTow: {
     schema: 'cmd',

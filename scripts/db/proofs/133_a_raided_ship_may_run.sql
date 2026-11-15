@@ -15,6 +15,8 @@
 -- @pass FL_STATS   the Stats count's window counts the raids that ended with the ship gone (raids_fled), and world.stats_fleets serves fled_day
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
+
 create function pg_temp.lie_133(p_fleet uuid, p_lat numeric, p_lon numeric) returns void language sql as $f$
   update public.voyages v set status = 'ABORTED' where v.fleet_id = p_fleet and v.status = 'SAILING';
   update public.fleets f set status = 'ANCHORED', port_id = null, lat = p_lat, lon = p_lon, busy_until = null, ready_at = null, version = f.version + 1 where f.id = p_fleet;

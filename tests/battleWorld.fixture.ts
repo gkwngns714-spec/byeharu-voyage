@@ -41,6 +41,7 @@ export function battleWorld(kind: 'board' | 'flee'): Promise<Buffer> {
       update public.world_config set value = 'true'::jsonb
        where key in ('attack_enabled', 'convoys_enabled', 'convoy_armed_enabled', 'city_treasury_enabled', 'navy_enabled', 'regard_enabled', 'npc_ship_level_enabled');
       update public.world_config set value = '${BATTLE_ROUND_SECONDS}'::jsonb where key = 'battle_round_seconds';
+      update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: these specs drive the round-by-round battle
       update public.world_config set value = '0'::jsonb where key = 'npc_fleet_max';
       update public.world_config set value = 'true'::jsonb where key in ('npc_traders_enabled', 'standing_routes_enabled');
       ${kind === 'flee'
