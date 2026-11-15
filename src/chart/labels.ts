@@ -303,6 +303,12 @@ export const LABEL_PRIORITY = {
    * every place a player might tap. Placed last, it can only ever fill water no name has claimed.
    */
   sea: 5,
+  /**
+   * AN OCEAN'S NAME (2026-11-15, the owner: *"some names aren't showed"*): one above a sea's, so the widest waters are set
+   * before the narrow seas inside them claim their water (by id the Arabian Sea was placed before the Indian Ocean). Still
+   * below the quietest harbour.
+   */
+  ocean: 6,
 } as const
 
 /** JetBrains Mono's advance is 0.6 em; the extra 6% is headroom for a wider fallback face. */
@@ -555,7 +561,17 @@ export function planLabels(
     if (request.flagOnlyFallback && request.flag && (set({ ...request, text: '' }, false) || set({ ...request, text: '' }, true))) continue
     stranded.push(request)
   }
-  for (const request of stranded) set(request, true)
+  const flagless: LabelRequest[] = []
+  for (const request of stranded) if (!set(request, true) && request.flag && request.text) flagless.push(request)
+  // ── A NAME WITHOUT ITS FLAG, BEFORE NO NAME AT ALL (2026-11-15, the owner: *"some names aren't showed"*) ───────────────
+  // A flag is two em of box in front of the name; where the name with it fits nowhere, the name alone often does (measured
+  // on a phone off Iberia: Sanlucar de Barrameda, Malaga, Nantes, Santander, Bristol and Plymouth were all dropped for the
+  // width of their flags). A THIRD pass, after every flagged name has had all its rings, so it only fills water no name with
+  // its flag wanted: nothing placed before moves, and the flag is only ever given up by a name that would otherwise be gone.
+  for (const request of flagless) {
+    const bare: LabelRequest = { ...request, flag: undefined }
+    if (!set(bare, false)) set(bare, true)
+  }
 
   return placed
 
@@ -662,6 +678,18 @@ function centredNear(at: Point, width: number, height: number, slackLines: numbe
   for (let n = 1; n <= slackLines; n++) {
     out.push(centred({ x: at.x, y: at.y - n * height * 1.2 }, width, height))
     out.push(centred({ x: at.x, y: at.y + n * height * 1.2 }, width, height))
+  }
+  // AND A THIRD OF ITS WIDTH ASIDE (2026-11-15, the owner: *"some names aren't showed"*): a name with give that fits on none
+  // of its lines is tried a third of its own width to the left and to the right of each, so its anchor is still under its
+  // letters. Measured at the whole world: the North Atlantic was dropped for The Grand Banks' name on its line, and a sea
+  // whose anchor stood near the glass's edge for running off it by a few letters. Only after every centred line.
+  if (slackLines > 0) {
+    const lines = out.slice()
+    for (const line of lines) {
+      for (const dx of [-width / 3, width / 3]) {
+        out.push(centred({ x: line.x + dx, y: line.y }, width, height))
+      }
+    }
   }
   return out
 }
