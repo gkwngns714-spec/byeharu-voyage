@@ -7,6 +7,7 @@ import { yardHref } from '../../live/cityFaces'
 import { companyRoom, lockedSteps, roomStepWord, useBuyRoom, useHouseRoom, type CompanyRoom } from '../../live/houseRoom'
 import { useWorld } from '../../live/worldStore'
 import { useShipMoves } from './useShipMoves'
+import { formatDucats, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 
 // A NEW FLEET, FROM THE FLEETS PAGE ITSELF (F5, 2026-11-11; owner rows 180 and 316: "create multiple fleet... assign multiple ships"). Until now the only way to a second
@@ -59,13 +60,13 @@ function NewFleetPage({ room, onClose }: { room: CompanyRoom; onClose: () => voi
   const full = room.fleets.used >= room.fleets.have
   return (
     <DetailPage title={t('fleets.moveNew')} onClose={onClose} data-testid="fleet-new-page">
-      {hulls < 2 ? <NeedShip fleets={fleets} /> : full ? <NeedRoom room={room} /> : <PickLead fleets={fleets} onDone={onClose} />}
+      {hulls < 2 ? <NeedShip fleets={fleets} hulls={hulls} /> : full ? <NeedRoom room={room} /> : <PickLead fleets={fleets} onDone={onClose} />}
     </DetailPage>
   )
 }
 
 /** One ship in the company: the second comes from a build yard. The press goes to the HQ of the port a fleet of hers lies in, its Port place open. */
-function NeedShip({ fleets }: { fleets: readonly FleetView[] }) {
+function NeedShip({ fleets, hulls }: { fleets: readonly FleetView[]; hulls: number }) {
   const t = useT()
   const navigate = useNavigate()
   const port = fleets.find((f) => f.port !== null)?.port ?? null
@@ -79,7 +80,7 @@ function NeedShip({ fleets }: { fleets: readonly FleetView[] }) {
       }
       data-testid="fleet-new-need-ship"
     >
-      {t('fleets.newNeedShip')}
+      {t('fleets.newNeedShip', { have: formatInt(hulls) })}
     </Note>
   )
 }
@@ -100,21 +101,26 @@ function NeedRoom({ room }: { room: CompanyRoom }) {
   }
   return (
     <div data-testid="fleet-new-need-room">
-      <p className="text-t-body text-ink-muted">{t('fleets.newNeedRoom')}</p>
+      <p className="text-t-body text-danger tabular-nums">{t('fleets.newNeedRoom', { used: formatInt(room.fleets.used), have: formatInt(room.fleets.have) })}</p>
       {level && <Row label={roomStepWord(t, level)} hairline={price !== undefined} data-testid="fleet-new-level" />}
       {price && (
         <Row
-          label={<span className="tabular-nums">{roomStepWord(t, price)}</span>}
+          // 2026-11-15 owner: shorter words. Short of gold: HAVE / NEED in the danger tone, in place of the price (it is the NEED).
+          label={
+            price.can_pay ? (
+              <span className="tabular-nums">{roomStepWord(t, price)}</span>
+            ) : (
+              <span className="tabular-nums text-danger" data-testid="fleet-new-short">
+                {t('fleets.roomShort', { have: formatInt(room.purse), need: formatDucats(price.price) })}
+              </span>
+            )
+          }
           value={
             price.next && price.can_pay ? (
               <Button variant="primary" busy={busy} onClick={buy} data-testid="fleet-new-buy">
                 {t('fleets.roomBuy')}
               </Button>
-            ) : (
-              <span className="text-t-caption text-ink-faint" data-testid="fleet-new-short">
-                {t('fleets.roomShort')}
-              </span>
-            )
+            ) : undefined
           }
           hairline={false}
           data-testid="fleet-new-price"

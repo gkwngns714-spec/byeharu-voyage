@@ -224,7 +224,8 @@ test.describe('a battle fought to the boarding, 390×844, English', () => {
     expect(loot, 'gold is taken at the boarding').toBeGreaterThan(0)
     expect(loot, 'never more than loot_share of what was aboard').toBeLessThanOrEqual(BATTLE_ABOARD * 0.15)
     await expect(page.getByTestId('battle-loot-rule')).toBeVisible()
-    await expect(page.getByTestId('battle-navy')).toHaveText('The navy came in time.')
+    // 2026-11-15 owner: shorter words (fight.navyCame)
+    await expect(page.getByTestId('battle-navy')).toHaveText('Navy in time')
     // her ships by their whole names, each with her hull before and after
     await expect(page.getByTestId('fight-log-ship')).toHaveCount(2)
     await expect(page.getByTestId('fight-log-ship').nth(0)).toContainText('Gaivota')
