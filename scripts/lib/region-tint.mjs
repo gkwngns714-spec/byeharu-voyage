@@ -115,6 +115,12 @@ export function readSeaOrdinals(migrationsDir, seas) {
   return out
 }
 
+/** The regions made of islands the 110m world file draws no land for (tests/map.regions.spec.ts: the one region with
+ *  no drawn land). Their harbours decide a country's land only when it has no harbour anywhere else: they could only
+ *  repaint a mainland (0414's Flores made Portugal 4 Atlantic Isles to 3 Iberia, and mainland Portugal took the
+ *  islands' colour). */
+const ISLAND_REGIONS = new Set(['atlantic-isles'])
+
 /** The region most of `items` belong to; ties to the earliest region in `order`. */
 function majority(items, order) {
   const count = new Map()
@@ -183,7 +189,9 @@ export function buildRegionTint(root) {
   const countries = {}
   const splitCountries = []
   for (const [iso, list] of [...byCountry].sort((a, b) => a[0].localeCompare(b[0]))) {
-    const { region, counts } = majority(list, regionOrder)
+    const onLand = list.filter((r) => !ISLAND_REGIONS.has(r))
+    const { region } = majority(onLand.length > 0 ? onLand : list, regionOrder)
+    const { counts } = majority(list, regionOrder)
     countries[iso] = region
     if (counts.length > 1) splitCountries.push({ iso, region, counts })
   }

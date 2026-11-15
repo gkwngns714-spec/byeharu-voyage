@@ -48,6 +48,10 @@ const FACES = [
   { name: 'Markets', panel: 'stats-goods', row: 'stats-good', ids: ['stats-markets', 'stats-markets-day', 'stats-markets-window', 'stats-risers', 'stats-fallers', 'stats-most-traded', 'stats-markets-filters', 'stats-markets-sort'] },
   { name: 'Cities', panel: 'stats-cities', row: 'stats-city-open', ids: ['stats-cities', 'stats-cities-filters', 'stats-cities-sort'] },
   { name: 'Merchants', panel: 'stats-merchants-all', row: 'stats-merchant', ids: ['stats-merchants', 'stats-merchant-figures', 'stats-merchant-fold', 'stats-merchant-states', 'stats-merchants-filters', 'stats-merchants-sort'] },
+  // 0419 (owner row 339, "in stats, show like merchants navy, pirates, anad cargo"): the Ships face stands BEFORE Me in the strip
+  // (statsFaces.ts). The walk opens faces by place, so without this row it measured Ships under Me's name and called Me's figures
+  // gone. Ships is new, so U3 has nothing of an old face to keep there; its design laws are measured like every face's.
+  { name: 'Ships', panel: 'stats-ships-by-country', row: null, ids: [] },
   { name: 'Me', panel: 'stats-best-trades', row: null, ids: ['stats-me', 'stats-me-week', 'stats-me-bars'] },
 ] as const
 

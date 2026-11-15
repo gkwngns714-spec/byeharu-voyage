@@ -183,7 +183,6 @@ const WHO: readonly Who[] = [
 const GROUNDS = [
   { name: 'night sea', css: 'var(--color-chart-sea)', night: 1 },
   { name: 'day sea', css: 'var(--color-chart-day-sea)', night: 0 },
-  { name: 'day deep', css: 'var(--color-chart-day-deep)', night: 0 },
   { name: 'day shallow', css: 'var(--color-chart-day-shallow)', night: 0 },
 ] as const
 
@@ -577,7 +576,6 @@ test.describe('the pictures', () => {
     { name: 'night', ground: 'var(--color-chart-sea)', night: 1 },
     { name: 'twilight', ground: 'color-mix(in srgb, var(--color-chart-sea) 50%, var(--color-chart-day-sea))', night: 0.5 },
     { name: 'day sea', ground: 'var(--color-chart-day-sea)', night: 0 },
-    { name: 'day deep', ground: 'var(--color-chart-day-deep)', night: 0 },
     { name: 'day shallow', ground: 'var(--color-chart-day-shallow)', night: 0 },
   ]
 
