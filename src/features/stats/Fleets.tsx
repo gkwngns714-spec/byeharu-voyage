@@ -38,6 +38,7 @@ import {
 } from '../../lib/rpc'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
 import { useLiveRead } from '../../live/liveRead'
+import { cargoStateWordKey } from '../../live/cargoState'
 import { useShellState } from '../../app/shellState'
 import { portName } from './statsFaces'
 import { countriesOf } from './statsFilters'
@@ -280,6 +281,7 @@ function FleetPage({ id }: { id: string }) {
   const sinceMs = instantMs(p.book_from ?? null)
   const atMs = instantMs(p.at)
   const young = atMs !== null && sinceMs !== null && atMs - sinceMs < 6.9 * 86_400_000
+  const cargoWord = p.cargo ? cargoStateWordKey(p.cargo.state, p.cargo.aboard) : null
 
   return (
     <div className="flex flex-col gap-4" data-testid="stats-fleet-page">
@@ -306,7 +308,12 @@ function FleetPage({ id }: { id: string }) {
 
       {p.cargo && (
         <Card title={t('stats.goldTrips')} data-testid="stats-fleet-gold">
-          <StatCell look="stacked" label={t('stats.cargoAboard')} value={p.cargo.aboard} format={formatDucats} />
+          {/* 0437: with nothing on board her page says what she is doing (Returning, At home, Laid up), not 0 gold */}
+          {cargoWord ? (
+            <StatCell look="stacked" label={t('stats.cargoAboard')} text={t(cargoWord)} data-testid="stats-cargo-state" />
+          ) : (
+            <StatCell look="stacked" label={t('stats.cargoAboard')} value={p.cargo.aboard} format={formatDucats} />
+          )}
           {p.cargo.load && <Hint>{`${t('stats.stage_LOADED')} ${cityOf(p.cargo.load.port)} · ${formatDucats(p.cargo.load.ducats)}`}</Hint>}
           <div className="mt-3">
             {p.cargo.rows.length === 0 && <Empty className="my-1">{t('stats.nothingYet')}</Empty>}
