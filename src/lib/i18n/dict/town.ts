@@ -25,7 +25,7 @@ export const townDict = defineDict({
     monthTotal: '{amount} given',
     monthNobody: 'No investors yet',
     monthNobodyPast: 'No investors',
-    sold: '{sold} / {total} sold · {price} a share',
+    sold: '{sold} / {total} sold · {price} / share',
     youHold: 'Held {n}{owed}',
     owed: ' · {amount} owed',
     dockToInvest: 'Dock here to invest',
