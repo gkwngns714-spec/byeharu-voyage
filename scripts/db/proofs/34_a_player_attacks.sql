@@ -354,7 +354,7 @@ begin
   exception when others then
     v_msg := sqlerrm;
   end;
-  if v_msg !~ '[0-9]+ miles off, and you reach 240' then
+  if v_msg !~ '^E_OUT_OF_REACH: Range 240 / [0-9,.]+ miles$' then   -- 0433: have / need, `Range 240 / 3,092.1 miles`
     raise exception 'PROOF 34 FAIL: the reach refusal prints no distance: %', v_msg;
   end if;
 

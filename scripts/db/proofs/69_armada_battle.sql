@@ -792,7 +792,7 @@ begin
     v_m := public.tick_battles(v_t + interval '1 hour');
     begin perform public.attack_for(h1, f1[2], d, null, v_t + interval '10 minutes'); v_e1 := 'attacked'; exception when others then v_e1 := sqlerrm; end;
     begin perform public.attack_for(h1, f1[1], d, null, v_t + interval '10 minutes'); v_e2 := 'attacked'; exception when others then v_e2 := sqlerrm; end;
-    if (v_x ->> 'ok')::boolean is not true or v_m <> 1 or v_e1 not like 'E_ATTACK_COOLDOWN: Frota 1-1 fought 10 minutes ago%' or v_e2 not like 'E_ATTACK_COOLDOWN: Frota 1-2 fought %'
+    if (v_x ->> 'ok')::boolean is not true or v_m <> 1 or v_e1 not like 'E_ATTACK_COOLDOWN: Frota 1-1: Wait 10 / % min' or v_e2 not like 'E_ATTACK_COOLDOWN: Frota 1-2: Wait % min'
        or (select count(*) from public.battles) <> 1 then
       raise exception 'PROOF 69 FAIL: the cooldown did not hold for every fleet that fought: % / % (attack %, closed %)', v_e1, v_e2, v_x, v_m;
     end if;

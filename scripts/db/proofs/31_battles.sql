@@ -497,7 +497,7 @@ begin
   if v_step <> v_lazy then
     raise exception 'PROOF 31 FAIL: settled day by day and at the end differ: % against %', left(v_step::text, 900), left(v_lazy::text, 900);
   end if;
-  if not exists (select 1 from jsonb_array_elements_text(v_step -> 'report') l where l ~ '^Day [0-9]{1,3}\. We hove to and fought, and lost [0-9.]+ hours\.$')
+  if not exists (select 1 from jsonb_array_elements_text(v_step -> 'report') l where l ~ '^Day [0-9]{1,3}\. Fought: [0-9.]+ hours lost\.$')
      or exists (select 1 from jsonb_array_elements_text(v_step -> 'report') l where l ~ '^Day [0-9]{4,}') then
     raise exception 'PROOF 31 FAIL: her report does not name the true day: %', v_step -> 'report';
   end if;
@@ -528,8 +528,8 @@ begin
       raise exception 'PROOF 31 FAIL: % round(s) told for % fought', jsonb_array_length(v_r), v_n;
     end if;
     -- side b, the attacker, is `you`: her own hits are the first number of the line
-    v_me := format('you hit with %s of %s shot', (v_f -> 'rounds' -> 0 -> 'b' ->> 'hits'), (v_f -> 'rounds' -> 0 -> 'b' ->> 'fired'));
-    if position(v_me in v_r ->> 0) = 0 or position('The enemy are' in v_r ->> 0) = 0 then
+    v_me := format('we hit %s of %s', (v_f -> 'rounds' -> 0 -> 'b' ->> 'hits'), (v_f -> 'rounds' -> 0 -> 'b' ->> 'fired'));   -- 0433: short words
+    if position(v_me in v_r ->> 0) = 0 or position('Enemy −' in v_r ->> 0) = 0 then
       raise exception 'PROOF 31 FAIL: the round is not told from the attacker''s deck: % / %', v_r ->> 0, v_f -> 'rounds' -> 0;
     end if;
     v_ok := v_ok + 1;
