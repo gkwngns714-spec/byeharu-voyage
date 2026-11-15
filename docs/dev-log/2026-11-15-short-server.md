@@ -38,13 +38,19 @@ the same labels (`돈 5,000 / 9,000`, `보급 2.9 / 33일`).
 - The best sale: `short` keeps 0351's meaning (no sale is named). New `have` / `need` are served when the best full load is beyond her
   purse; the sale then named is the most units her purse (less her stores, unless owed) pays for, re-priced through world.quote and
   world.board_sell (at most three narrowing steps), the best of those within her purse.
+- A NAME before the line stays: CI (run 43685347948) showed an armada's refusal lost which fleet it was (proof 68: `Crew 0 / 8`, was `Almiranta 68: ...`;
+  proof 69: `Wait 10 / 30 min`, was `Frota 1-1 fought 10 minutes ago`). `cmd.refusal` keeps a sentence that already ENDS in its have / need
+  line (0367 puts the fleet's name before a caught refusal), and one hunk in `public.attack_armada_gates` refuses a cooldown as
+  `Frota 1-1: Wait 10 / 30 min`. Korean prints the code's words with the figures, as before 0433 (no name either way).
+- Proofs 4 and 34 pinned the old long words: 4 now asks a sentence after the day (`Day 1. Quiet day.`), not 25 letters; 34 asks
+  `Range 240 / <n> miles`. 69 asks `Frota 1-1: Wait 10 / ... min`. 68 is unchanged (it asks the name, which is back).
 - Not touched: `public.battle_resolve` (0427 and 0432 cut it), `public.battle_log` (numbers only), `public.reputation_arrival` and
   `public.reputation_lap` (they book keys and amounts, no words), `voyage.settle`'s own fallback words (raid_report always gives a sentence),
   `cmd.captain_skill_next` and `public.augment_fitting_for` (their own envelopes).
 
 ## Proof and checks (local PGlite world, restored from the cached prefix at 0426 + 0433)
 
-- 0433 self-assert ok: 43 hunks over 7 bodies, each once and reversing; no other function moved; 91 ms.
+- 0433 self-assert ok: 44 hunks over 8 bodies, each once and reversing; no other function moved; 91 ms.
 - Proof 134 (5/5): HN_REFUSAL (a real BUY refused `Money 1 / 3,821`), HN_REPORTS (120 raid days, every line short), HN_NEWS, HN_BEST_SALE
   (from SET at a purse of 2,000: 3 cards sized to her purse with have / need, 4 with a need), HN_ROOM_LEVEL.
 - Proofs that pinned the old words, amended and run green locally: 28 (compares figures, not words: the old body's words are 0320's),

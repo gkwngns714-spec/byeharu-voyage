@@ -15,6 +15,8 @@
 --      raises it, cmd.refusal_caught rebuilds it, voyage.sail_refusal, voyage.leg_refusal and public.sea_refusal return it): its sentence is
 --      cmd.refusal_line's when the figures say it, else the sentence it was given. Codes, figures and every other key are unmoved; a refusal with no
 --      figures keeps its sentence. Korean is the client's (src/components/ui/refusalWords.ts: the same label and figures).
+--      A sentence that already ends in its line keeps what is before it: an armada's fleet name (0367 puts it before a caught refusal) survives
+--      the rebuild, `Almiranta: Crew 0 / 8`; and public.attack_armada_gates (one hunk) refuses a fleet's cooldown as `Frota 1-1: Wait 10 / 30 min`.
 --   2. THE NEWS IN SHORT HEADLINES. public.news_kinds' eight templates (0347, 0362) re-worded, the same {words} in each: UPDATE `{title}` (was
 --      `Update: {title}`), NEW_HARBOUR `New port: {city}`, RELATIONS `{a}–{b}: {stance}`, BIG_SALE/BIG_BUY `{company} sold/bought {qty} {good}:
 --      {n} · {city}`, PRICE_SPIKE `{good} {p} · {city}`, PIRATES `{company} raided: {n}`, CAPITAL_GIFT `{capital} → {company}: {n}`. The six
@@ -91,8 +93,16 @@ begin
     jsonb_build_array('cmd.refusal(text,text,jsonb)',
 $h$           'code', p_code, 'sentence', btrim(p_sentence), 'figures', p_figures))
 $h$,
-$h$           'code', p_code, 'sentence', coalesce(cmd.refusal_line(p_code, p_figures), btrim(p_sentence)), 'figures', p_figures))
-  -- 0433: what she has and what is needed (cmd.refusal_line), when the figures say it; else the sentence given
+$h$           'code', p_code, 'sentence', case when right(btrim(p_sentence), length(cmd.refusal_line(p_code, p_figures))) = cmd.refusal_line(p_code, p_figures)
+                                            then btrim(p_sentence) else coalesce(cmd.refusal_line(p_code, p_figures), btrim(p_sentence)) end, 'figures', p_figures))
+  -- 0433: what she has and what is needed (cmd.refusal_line), when the figures say it; else the sentence given. A sentence that already ENDS in
+  -- that line is kept whole, so a name put before it ("Almiranta: Crew 0 / 8", an armada's fleet) survives a caught refusal being rebuilt
+$h$),
+    -- public.attack_armada_gates: an armada's fleet in her cooldown is refused under HER name (which fleet of the armada must wait)
+    jsonb_build_array('public.attack_armada_gates(uuid,uuid,timestamp with time zone)',
+$h$      perform cmd.refuse('E_ATTACK_COOLDOWN', format('%s fought %s minutes ago: one battle in %s', r.name, floor(extract(epoch from p_now - v_last) / 60), v_wait),
+$h$,
+$h$      perform cmd.refuse('E_ATTACK_COOLDOWN', format('%s: %s', r.name, cmd.refusal_line('E_ATTACK_COOLDOWN', cmd.figures(extract(epoch from p_now - v_last) / 60, v_wait, 'minutes'))),   -- 0433: `Frota 1-1: Wait 10 / 30 min`
 $h$),
     -- public.battle_words: the attacker's outcome line
     jsonb_build_array('public.battle_words(jsonb,jsonb)',
@@ -578,6 +588,8 @@ $f$;
      or cmd.refusal('E_HOLD_FULL', 'more Pepper than the hold will take', cmd.figures(120, 150, 't'))->>'sentence' <> 'Hold 120 / 150 t'
      or cmd.refusal('E_CREW_SHORT', 'a long sentence', cmd.figures(6, 8, 'crew'))->>'sentence' <> 'Crew 6 / 8'
      or cmd.refusal('E_OUT_OF_REACH', 'a long sentence', cmd.figures(300, 1450, 'miles'))->>'sentence' <> 'Range 300 / 1,450 miles'
+     or cmd.refusal('E_CREW_SHORT', 'Almiranta: Crew 6 / 8', cmd.figures(6, 8, 'crew'))->>'sentence' <> 'Almiranta: Crew 6 / 8'
+     or cmd.refusal_caught('E_CREW_SHORT: Almiranta: Crew 6 / 8', '{"have": 6, "need": 8, "unit": "crew"}')->>'sentence' <> 'Almiranta: Crew 6 / 8'
      or cmd.refusal('E_NOT_DOCKED', '  Gaivota is not in port ')->>'sentence' <> 'Gaivota is not in port'
      or cmd.refusal('E_NOT_DOCKED', 'Gaivota is not in port', cmd.figures(1, 2, 'ducats'))->>'code' <> 'E_NOT_DOCKED'
      or cmd.refusal('E_X', 'x', cmd.figures(1, 2, 'ducats'))->'figures' <> cmd.figures(1, 2, 'ducats') then
@@ -617,6 +629,6 @@ $f$;
   if clock_timestamp() - v_t0 > interval '20 seconds' then
     raise exception '0433 self-assert FAIL: the file took % (budget 20 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0433 self-assert ok: THE SERVER SAYS HAVE AND NEED. % hunks over % bodies (cmd.refusal, battle_words, fight_round_line, raid_report, report_line, best_sales, house_room), each once and reversing; grants and volatility unmoved; no other function moved; cmd.refusal_line + cmd.refusal_figure (server-only). Probe: Money 5,000 / 9,000; Supplies 2.9 / 33 days; Hold 1.5 / 20,000 t raised and caught; a sea closed with Title 1 / n; a round, a battle and a day told short. Rows: %. % ms.',
+  raise notice '0433 self-assert ok: THE SERVER SAYS HAVE AND NEED. % hunks over % bodies (cmd.refusal, attack_armada_gates, battle_words, fight_round_line, raid_report, report_line, best_sales, house_room), each once and reversing; grants and volatility unmoved; no other function moved; cmd.refusal_line + cmd.refusal_figure (server-only). Probe: Money 5,000 / 9,000; Supplies 2.9 / 33 days; Hold 1.5 / 20,000 t raised and caught; a sea closed with Title 1 / n; a round, a battle and a day told short. Rows: %. % ms.',
     v_cnt, array_length(v_fns, 1), v_kept, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;
