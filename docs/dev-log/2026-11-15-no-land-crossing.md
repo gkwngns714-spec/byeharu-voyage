@@ -19,7 +19,7 @@ It runs on a world image, so it costs prod nothing. The land is the chart's own 
 |---|---|---|
 | lanes (`npc_courses`: merchants, cargo, pirates, navy) | **774 of 1,141** | 52 |
 | route legs (`standing_route_stops`) | **2,422 of 3,350** | 145 (50 distinct) |
-| harbour-to-harbour courses the browser proposes | **62,024 of 71,556** | sample of 3,471: 44 |
+| harbour-to-harbour courses the browser proposes | **62,024 of 71,556** | 1,956 of 71,556 (the guard's sample of 3,471: 44) |
 | roadsteads on drawn land | 57 of 268 | 57 (not in this slice) |
 
 ## The fix
