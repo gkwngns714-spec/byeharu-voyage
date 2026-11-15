@@ -89,15 +89,46 @@ async function openWorldChart(page: Page) {
   }
 }
 
-/** Tap the harbour's mark, press Send fleet, and wait for the first row's verdict. */
-async function askCity(page: Page, code: string): Promise<boolean> {
-  const at = await page.evaluate((c) => {
-    const g = document.querySelector(`[data-port-code="${c}"]`)
-    if (!g) return null
-    const r = g.getBoundingClientRect()
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+/** Her mark's middle, on the glass; null while she is not drawn there (a harbour off the glass is not drawn: chartModel.ts portMarks). */
+function markOnGlass(page: Page, code: string): Promise<{ x: number; y: number; cx: number; cy: number } | null> {
+  return page.evaluate((c) => {
+    const glass = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
+    for (const g of document.querySelectorAll(`[data-port-code="${c}"]`)) {
+      const r = g.getBoundingClientRect()
+      const x = r.x + r.width / 2
+      const y = r.y + r.height / 2
+      if (r.width > 0 && x > glass.x && x < glass.right && y > glass.y && y < glass.bottom) return { x, y, cx: glass.x + glass.width / 2, cy: glass.y + glass.height / 2 }
+    }
+    return null
   }, code)
-  if (!at) return false
+}
+
+async function drag(page: Page, from: { x: number; y: number }, by: { x: number; y: number }) {
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  for (let i = 1; i <= 10; i++) await page.mouse.move(from.x + (by.x * i) / 10, from.y + (by.y * i) / 10)
+  await page.mouse.up()
+}
+
+/** Tap the harbour's mark, press Send fleet, and wait for the first row's verdict. A PORTRAIT GLASS does not hold the whole world
+ *  (chartView.ts maxSpanX, #664: its loosest view covers its height, the rest is a pan away), so a harbour not on the glass is
+ *  brought onto it first: the chart is dragged sideways (the sheet wraps, so twelve half-glass drags go round the world), then her
+ *  mark to the middle, clear of the zoom column. */
+async function askCity(page: Page, code: string): Promise<boolean> {
+  let at = await markOnGlass(page, code)
+  if (!at) {
+    const chart = (await page.getByTestId('map-chart').boundingBox())!
+    for (let i = 0; !at && i < 12; i++) {
+      await drag(page, { x: chart.x + chart.width * 0.2, y: chart.y + chart.height / 2 }, { x: chart.width * 0.5, y: 0 })
+      await page.waitForTimeout(400)
+      at = await markOnGlass(page, code)
+    }
+    if (!at) return false
+    await drag(page, { x: at.cx, y: at.cy }, { x: at.cx - at.x, y: at.cy - at.y })
+    await page.waitForTimeout(400)
+    at = await markOnGlass(page, code)
+    if (!at) return false
+  }
   await page.mouse.click(at.x, at.y)
   const tray = page.getByTestId('map-detail-tray')
   if (!(await tray.isVisible().catch(() => false))) return false
@@ -136,6 +167,7 @@ test.describe('a far city, driven on a phone (390 px, English)', () => {
   test.setTimeout(1_800_000)
 
   test('the row says the stops, the whole time and the price; one press sends her there, and she arrives when and for what it said',async ({ page, request, baseURL }) => {
+    const began = Date.now()
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run build && npm run preview\` and re-run`)
     await openWorldChart(page)
     const far = await findChain(page, FAR)
@@ -166,6 +198,9 @@ test.describe('a far city, driven on a phone (390 px, English)', () => {
     // THE TIME SHOWN, as the real wait the app prints beside the days (the calls on the way counted, 0360)
     const shownMs = Number(await row.getByTestId('map-send-passage').getAttribute('data-real-ms'))
     expect(shownMs).toBeGreaterThan(60_000)
+    // 0413 (a game day is one real hour): the shortest chained trip is ~35 real minutes, past the describe's 30. The test's clock is
+    // what it has run so far, the wait for her arrival below, and five minutes for the rest.
+    test.setTimeout(Math.max(test.info().timeout, Date.now() - began + shownMs * 1.15 + 120_000 + 300_000))
     const purse = async () => Number((await page.getByTestId('purse').innerText()).replace(/[^\d.-]/g, ''))
     const purseBefore = await purse()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'the tray scrolls sideways at 390').toBe(true)

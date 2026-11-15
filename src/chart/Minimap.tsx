@@ -1,5 +1,5 @@
 import { useMemo, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
-import { Icon } from '../components/ui/Icon'
+import { Icon } from '../components/ui'
 import {
   boundsOf,
   CHART_WIDTH,

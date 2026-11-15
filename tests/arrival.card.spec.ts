@@ -90,6 +90,7 @@ test.describe('the arrival card with a raid at 390×844', () => {
     await page.goto('fleets')
     await ready(page)
     await page.getByTestId('fleet-row').first().click()
+    await page.getByTestId('fleet-more').click() // 2026-11-14 (#679, owner: "when pressed a fleet, show only ships"): the picker is one row further
     await page.getByTestId('raid-order-FLEE').click()
     await expect(page.getByTestId('raid-order')).toHaveAttribute('data-order', 'FLEE')
     await page.keyboard.press('Escape')
