@@ -500,6 +500,9 @@ const TABLE = {
   // 0364 (owner row 321): every battle being fought, for the map's rings, and any battle's log for a watcher. Dark: {on: false}.
   worldFights: { schema: 'world', fn: 'fights', args: [] },
   worldFight: { schema: 'world', fn: 'fight', args: [{ name: 'p_battle', type: 'uuid' }] },
+  // 0435 (docs/design/tick-combat.md 9.2): a battle fought tick by tick: its timeline for the battle screen (any signed-in reader), and the close at its end.
+  worldBattleTicks: { schema: 'world', fn: 'battle_ticks', args: [{ name: 'p_battle', type: 'uuid' }] },
+  cmdBattleEnd: { schema: 'cmd', fn: 'battle_end', mutates: true, args: [{ name: 'p_battle', type: 'uuid' }] },
   cmdPreviewTow: { schema: 'cmd', fn: 'preview_tow', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdTow: {
     schema: 'cmd',

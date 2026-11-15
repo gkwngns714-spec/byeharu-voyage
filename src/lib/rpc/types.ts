@@ -4556,6 +4556,10 @@ export interface FightCard {
   sides: FightSide[]
   /** How it ended, from the deck of the side that attacked; absent while it is fought. */
   end?: string | null
+  /** 0435: the join circle's radius in nautical miles (centre: lat, lon). */
+  reach_nm?: number
+  /** 0435: a battle fought tick by tick (world.battle_ticks serves its timeline). */
+  ticks?: boolean
 }
 
 /** 0364 `world.fights()`: the read the map polls. `on` false: attacks are dark and nothing is served. */
@@ -4573,4 +4577,112 @@ export interface BattleStanceReceipt {
   stance: BattleStanceWord
   round_next: number
   next_at: string
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// 0435: A BATTLE FOUGHT TICK BY TICK (docs/design/tick-combat.md section 9: THE CONTRACT)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** An ability's code (tick_abilities). */
+export type TickAbilityCode = 'BS' | 'CH' | 'RK' | 'GR' | 'BR' | 'PT' | 'RN' | 'PY'
+
+/** One ability's figures as the server serves them (`ab`). Ticks are `ms` long. */
+export interface TickAbility {
+  kind: 'basic' | 'threshold' | 'ultimate' | 'defence' | 'flee' | 'pay'
+  cd?: number
+  gain?: number
+  cost?: number
+  mult?: number
+  acc?: number
+  slow?: number
+  crew?: number
+  for?: number
+  cut?: number
+  mend?: number
+}
+
+/** One ship of a side: name, fleet name, hull at the start, max hull, tier, reload ticks, the tick she comes up, has guns. */
+export interface TickShip {
+  n: string
+  fl: string | null
+  h: number
+  m: number
+  t: number
+  r: number
+  f: number
+  g: boolean
+}
+
+/** An event: `[t, side, kind, ...]` (side 0 = a = DEFENDER side, 1 = b = ATTACKER side, -1 = neither). See section 9.3:
+ *  shots `[t, s, 'A'|'BS'|'CH'|'RK'|'GR', i, j, dmg (0 = miss), crit 0|1, left]`; `[t, s, 'U', code, fury]`; `[t, s, 'P', i, amount, hull]`;
+ *  `[t, s, 'X', chance_pct, away 0|1]`; `[t, s, 'J', i]`; `[t, s, 'S', i]`; `[t, 1, 'K']`; `[0, 0, 'L']`; `[0, 1, 'O']`;
+ *  `[t, -1, 'B', ratio, surrender]`; `[t, -1, 'E', outcome]`. */
+export type TickEvent = [number, number, string, ...(string | number | boolean)[]]
+
+/** The timeline, version 1 (`battles.ticks`). */
+export interface TickTimeline {
+  v: 1
+  ms: number
+  w: number
+  n: number
+  first: 'A' | 'B' | 'BOTH'
+  gcd: number
+  k: number
+  ranges: [string, number][]
+  ab: Partial<Record<TickAbilityCode, TickAbility>>
+  a: TickShip[]
+  b: TickShip[]
+  ai: { a: 'FIGHT' | 'FLEE' | 'PAY'; b: 'FIGHT' | 'FLEE' }
+  e: TickEvent[]
+  out: 'EVADED' | 'DRIVEN_OFF' | 'RANSOM' | 'PLUNDERED'
+  /** The result in fight_sides' shape (rounds = the windows): read by parseFightLog through the server's log, never re-derived. */
+  r: unknown
+}
+
+export interface TickSide {
+  fleet: string
+  name: string
+  side: 'ATTACKER' | 'DEFENDER'
+  how: 'OPENED' | 'ESCORT' | 'CALLED' | 'ARMADA' | 'JOINED'
+  kind: string
+  nation: string | null
+  company: string | null
+  mine: boolean
+}
+
+/** `world.battle_ticks(p_battle)`: the battle screen's read. */
+export interface BattleTicksRead {
+  on: boolean
+  battle?: string
+  kind?: 'RAID' | 'ATTACK'
+  status?: 'FIGHTING' | 'RESOLVED' | 'BROKEN_OFF'
+  started_at?: string
+  resolves_at?: string
+  /** The server's clock: the tick now is floor((now - started_at) / ms). */
+  now?: string
+  /** Null: an old round-by-round battle; draw it with the round view. */
+  ticks?: TickTimeline | null
+  site?: { lat: number; lon: number }
+  reach_nm?: number
+  sides?: TickSide[]
+  mine?: string | null
+  /** Null while it is fought. taken / loot / crew_lost are served to her own battle, or to everyone when no player's fleet is in it. */
+  result?: {
+    outcome: string
+    fled: boolean
+    b_fled: boolean
+    paid: boolean
+    taken: number | null
+    loot: number | null
+    crew_lost: number | null
+    navy: string | null
+  } | null
+}
+
+/** `cmd.battle_end(p_battle)`: the battle closes if its end has come. */
+export interface BattleEndReceipt {
+  ok: true
+  status: 'FIGHTING' | 'RESOLVED' | 'BROKEN_OFF'
+  resolves_at: string
 }

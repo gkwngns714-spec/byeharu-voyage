@@ -75,7 +75,7 @@ A "full broadside" is the old game's per-round figure: `attack / shots x fight_d
 - **Boarding:** every hull of the side set upon at 0, or tick 120: 0320's arithmetic (crew x hand value x (1 + boarder share) + tier x 3, x the share
   of hull left; Grapeshot thins the crew) against `fight_board_bands`: DRIVEN_OFF, RANSOM, PLUNDERED (surrender under the last band).
 - **Held to the end:** every side stays stopped (0432's `battle_stop`) until `public.battle_resolve`. The battle's `resolves_at` is the timeline's
-  end, so the minute job closes it within a minute of the last tick, and any reader may close it AT the end through `cmd.battle_settle`
+  end, so the minute job closes it within a minute of the last tick, and any reader may close it AT the end through `cmd.battle_end`
   (section 9.2), which the battle screen calls when its playback ends: the result does not wait for the minute job.
 
 ## 7. The AI rotation (NPCs always; a player's side in slice 1 from her standing order; slice 2 lets a player act)
@@ -124,8 +124,8 @@ Knobs: `tick_ms` 600, `tick_window` 20, `tick_gcd` 3, `tick_reload_base` 4, `tic
 
 | RPC | args | returns | slice |
 |---|---|---|---|
-| `world.battle_ticks` (read, any signed-in player) | `p_battle uuid` | see below | 0435 |
-| `cmd.battle_settle` (any signed-in player) | `p_battle uuid` | `{ok: true, status}`: closes the battle if its end has come (else nothing); refusal envelope `E_NO_HOUSE`, `E_NO_BATTLE` | 0435 |
+| `world.battle_ticks` (read, any signed-in player; catalogue `worldBattleTicks`) | `p_battle uuid` | see below | 0435 |
+| `cmd.battle_end` (any signed-in player; catalogue `cmdBattleEnd`) | `p_battle uuid` | `{ok: true, status, resolves_at}`: closes the battle if its end has come (else nothing); refusal envelope `E_NO_HOUSE`, `E_NO_BATTLE` | 0435 |
 | `cmd.battle_join` | `p_battle uuid, p_fleet uuid, p_side text ('ATTACKER'\|'DEFENDER')` | `{ok: true, battle, side, from_tick}`; refusals `E_NO_BATTLE`, `E_BATTLE_OVER`, `E_NOT_YOUR_FLEET`, `E_NOT_IN_REACH`, `E_BAD_SIDE`, `E_HUMAN_TARGET` (no PvP), `E_FLEET_BUSY`, `E_AT_PEACE` | 0436 |
 | `cmd.battle_act` (abilities, incl. Run = flee and Pay) | `p_battle uuid, p_fleet uuid, p_code text, p_tick int` | `{ok: true, tick, k}`; refusals `E_NO_BATTLE`, `E_BATTLE_OVER`, `E_NOT_YOUR_BATTLE`, `E_COOLDOWN`, `E_NO_FURY`, `E_PAST_TICK` (`p_tick` < the server's tick now), `E_BAD_CODE` | slice 2 |
 
@@ -187,7 +187,7 @@ turn-away from a `U RN` to its `X`, sinking at `S`). Fury, cooldowns and the bra
 - Every draw is `voyage.rng_raw(battle id, 1, 'tick:<t>:<hull>:<what>:<shot>', secret)`: keyed by the tick, the hull and the purpose, never by a
   counter. A re-run with something new from tick T (a joiner, a player's act) is therefore the same fight before T, event for event.
 - **NPC battles need no client:** the whole fight is ONE call at the open (`public.tick_battle_run`), stored, and closed by the minute job (or
-  `cmd.battle_settle`). No per-tick server work, no new job, no new cron.
+  `cmd.battle_end`). No per-tick server work, no new job, no new cron.
 - **Budget:** a fight is ~5 ms of CPU in PGlite (wasm; native is faster), 100 fights measured in 523 ms. At the current ~100 battles an hour that is
   ~0.5 s of CPU an hour. ROWS: none new a battle (the timeline is a column of the battle row, ~2-5 KB as text, TOASTed and compressed); the old
   engine wrote 7 `battle_rounds` rows a battle and the tick battle writes 0, so it is ~-700 rows an hour at 100 battles. The row is deleted with
@@ -201,14 +201,14 @@ turn-away from a `U RN` to its `X`, sinking at `S`). Fury, cooldowns and the bra
   number rising (crit larger), an HP bar over each ship, a fleeing ship turning and pulling away (then gone, or turning back), a ship at 0 heeling
   over or striking her colours. The Fury bar for each side; the ACTION BAR (Broadside, Chain Shot, Rake, Grapeshot, Brace, Patch, Run, Pay) with
   cooldown sweeps that light as the AI uses them (slice 1: watch only; slice 2: pressable for her own side); the log, every event in words.
-  At the end it calls `cmd.battle_settle` and reads `world.battle_ticks` once more for the loot.
+  At the end it calls `cmd.battle_end` and reads `world.battle_ticks` once more for the loot.
 - **The map:** every ship in a fight drawn red; the Join button on the circle's tray when one of her fleets is free inside it (0436).
 
 ## 12. The slices
 
 1. **0435 (this branch): the engine and its wiring.** `public.tick_fight` (pure), `public.tick_row`, `public.tick_battle_run` (the one (re)run:
    sheet -> timeline -> battles.ticks, resolves_at), `public.battle_sheet_freeze` calls it for `tick_fight_kinds`, `public.battle_fight` /
-   `public.battle_advance` read the timeline instead of rounds, `world.battle_ticks`, `cmd.battle_settle`, `fight_card` serves `reach_nm` and `ticks`.
+   `public.battle_advance` read the timeline instead of rounds, `world.battle_ticks`, `cmd.battle_end`, `fight_card` serves `reach_nm` and `ticks`.
    Proof 136. Client: the battle screen and the map's red ships (parallel builders).
 2. **0436: joining.** `cmd.battle_join`, `battle_sides.how` JOINED, the NPC join rule in the navy's and pirates' steps; the Join button.
 3. **0437: the player acts.** `cmd.battle_act` (abilities, Run, Pay) into `sheet.acts`, the re-run, a player's side on HOLD (autos only) between acts.
