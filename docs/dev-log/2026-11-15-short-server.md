@@ -2,7 +2,7 @@
 
 The owner, 2026-11-15: *"too much word should be shorter. for example wave 24. just tell me what i have, and what is required."*
 The client was cut to have / need words by #708-#716. This slice cuts the server's own words. Branch `short-server`, migration
-`20260818000433_the_server_says_have_and_need.sql`, proof 133.
+`20260818000433_the_server_says_have_and_need.sql`, proof 134.
 
 ## What changes
 
@@ -45,7 +45,7 @@ the same labels (`돈 5,000 / 9,000`, `보급 2.9 / 33일`).
 ## Proof and checks (local PGlite world, restored from the cached prefix at 0426 + 0433)
 
 - 0433 self-assert ok: 43 hunks over 7 bodies, each once and reversing; no other function moved; 91 ms.
-- Proof 133 (5/5): HN_REFUSAL (a real BUY refused `Money 1 / 3,821`), HN_REPORTS (120 raid days, every line short), HN_NEWS, HN_BEST_SALE
+- Proof 134 (5/5): HN_REFUSAL (a real BUY refused `Money 1 / 3,821`), HN_REPORTS (120 raid days, every line short), HN_NEWS, HN_BEST_SALE
   (from SET at a purse of 2,000: 3 cards sized to her purse with have / need, 4 with a need), HN_ROOM_LEVEL.
 - Proofs that pinned the old words, amended and run green locally: 28 (compares figures, not words: the old body's words are 0320's),
   31 (the BATTLE day line), 56 (its copies of 0353's hunks carry the new words), 60 (the Flee round), 91 (the sea sentence).
