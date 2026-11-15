@@ -5,7 +5,8 @@
 // PURE UNIT SPEC (no `page`). src/lib/db/frozenAsserts.ts lets the PGlite appliers run 0019's probe
 // without a pirate roll and 0108's stopwatch at 1,200 ms instead of 400, 0315's probe sales with a
 // fresh daily allowance, 0226's planted pair one hour earlier in UTC hour 01, and 0367's two fleets
-// with equal speed rolls before one hull is worn, without editing any
+// with equal speed rolls before one hull is worn, and the 0266–0274 probe digests with their uuids blanked
+// before they sort, without editing any
 // of those files (an edited applied migration sends CI from zero). This proves, on the REAL files:
 //   1. every patch fits its file exactly once, inside the final `do $$` self-assert block;
 //   2. a file with no patch is applied byte for byte, and the chain's identity is the FILE's;
@@ -13,7 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { test, expect } from '@playwright/test'
-import { FROZEN_ASSERT_PATCHES, sqlToApply } from '../src/lib/db/frozenAsserts'
+import { FROZEN_ASSERT_PATCHES, digestRow, sqlToApply } from '../src/lib/db/frozenAsserts'
 import { fingerprintChain } from '../src/lib/db/chain'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 
@@ -80,6 +81,51 @@ test('the patched asserts can still fail', async () => {
   const now = out226.split('\n')
   expect(now.length).toBe(was.length)
   expect(was.filter((line, i) => line !== now[i])).toHaveLength(1)
+})
+
+// 0266 / 0269 / 0270 / 0272 / 0273 / 0274 (2026-11-15): the probe digest sorted a house's ledger rows and events
+// by text that still held the uuids the probe drew, so two rows of one kind and one amount swapped at random and
+// two identical runs digested differently (main run 43708858363: "0270 self-assert FAIL: the loop leaves different
+// rows"). The patch re-cuts the temp digest from its live text at the head of the self-assert. Held here: the two
+// row texts it replaces are in each file's digest exactly once (so the re-cut adds exactly what its own length
+// check expects), the signature it names is the file's, every judging comparison is still the file's own, and no
+// other migration carries the same sort unpatched.
+test('the six probe digests blank their uuids before they sort', async () => {
+  const files = await loadChain()
+  const six = FROZEN_ASSERT_PATCHES.filter((p) => p.replace.includes('pg_temp.digest_'))
+  expect(six.map((p) => p.file.slice(10, 14))).toEqual(['0266', '0269', '0270', '0272', '0273', '0274'])
+  const rows = [digestRow('l', 'ledger'), digestRow('e', 'events')]
+  for (const p of six) {
+    const n = p.file.slice(10, 14)
+    const f = files.find((x) => x.name === p.file)!
+    const at = f.sql.indexOf(`create function pg_temp.digest_${n}(`)
+    expect(at).toBeGreaterThan(0)
+    const body = f.sql.slice(at, f.sql.indexOf('\n$$;', at))
+    for (const row of rows) {
+      expect(body.split(row.was).length - 1, `${n}: ${row.was}`).toBe(1)
+      expect(f.sql.split(row.was).length - 1).toBe(1)
+      expect(p.replace).toContain(`$fz$${row.was}$fz$`)
+      expect(p.replace).toContain(`$fz$${row.now}$fz$`)
+      // the uuids are blanked INSIDE the row text that `order by x` sorts
+      expect(row.now).toMatch(/^regexp_replace\(\(to_jsonb\([le]\) - 'id'\)::text, '\[0-9a-f\]\{8\}-.*', 'U', 'g'\) as x from public\./)
+    }
+    const grows = rows.reduce((sum, row) => sum + row.now.length - row.was.length, 0)
+    expect(p.replace).toContain(`if length(v_fz) <> length(v_fz_was) + ${grows} then\n      raise exception '${n} frozen-assert patch FAIL`)
+    const named = new RegExp(`pg_temp\\.digest_${n}\\(([a-z,]+)\\)'::regprocedure`).exec(p.replace)![1].split(',')
+    const declared = new RegExp(`^create function pg_temp\\.digest_${n}\\(([^)]*)\\)`).exec(body)![1]
+    expect(named).toEqual(declared.split(',').map((a) => a.trim().split(' ')[1]))
+    // The self-assert's own judgement is untouched: the patch only adds lines, before its first statement.
+    const out = sqlToApply(f)
+    const head = `  select * into v_b from before_${n};\n`
+    expect(out.endsWith(f.sql.slice(f.sql.indexOf(head)))).toBe(true)
+    expect(out.slice(0, f.sql.indexOf(head))).toBe(f.sql.slice(0, f.sql.indexOf(head)))
+    expect(out).not.toContain('$$' + '$fz$')
+    expect(p.replace.split('$$').length).toBe(1) // nothing that could close the do $$ block early
+  }
+  // The same sort in a file with no patch would be the same flake: every carrier is one of the six.
+  for (const f of files) {
+    if (rows.some((row) => f.sql.includes(row.was))) expect(six.some((p) => p.file === f.name), f.name).toBe(true)
+  }
 })
 
 test('a file with no patch is applied as written, and the chain identity is the files', async () => {
