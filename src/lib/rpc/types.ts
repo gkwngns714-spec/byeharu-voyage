@@ -3084,6 +3084,8 @@ export interface RoomLadder {
   full: boolean
   price: number | null
   steps: RoomStep[]
+  /** 0433: her level on this ladder (Trading for fleets; the greater of Seamanship and Command for ships): a rung reads have / need. */
+  level?: number
 }
 
 /** 0354: `world.house_room`. `on` false: fleet room is not lit, nothing can be bought and the rungs do not count yet. */
@@ -3663,6 +3665,10 @@ export interface BestSale {
   seconds?: number | null
   /** 0351: sales are priced, and none is within her purse (`port` is null). */
   short?: boolean
+  /** 0433: her purse, and what the best full load needs (its buy and stores), when that load is beyond her purse: the sale
+   *  named (if any) is then sized to the most she can pay for. Null or absent otherwise. */
+  have?: number | null
+  need?: number | null
   /** 0351: the dearest sale within her purse, when it is another city; null when the answer is that sale. */
   far?: FarSale | null
 }

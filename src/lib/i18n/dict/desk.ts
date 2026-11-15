@@ -70,6 +70,8 @@ export const deskDict = defineDict({
     insure: 'Insure',
     route: 'Route',
     noMoney: 'No money',
+    // 0433: her purse against what the full load needs (world.best_sales have / need)
+    moneyHaveNeed: 'Money {have} / {need}',
     holdFull: 'Cargo full',
     shut: 'Shut',
     far: 'Too far',
@@ -221,6 +223,7 @@ export const deskDict = defineDict({
     insure: '보험',
     route: '항로',
     noMoney: '돈 부족',
+    moneyHaveNeed: '돈 {have} / {need}',
     holdFull: '화물 가득',
     shut: '닫힘',
     far: '너무 멂',

@@ -497,7 +497,7 @@ begin
   if v_step <> v_lazy then
     raise exception 'PROOF 31 FAIL: settled day by day and at the end differ: % against %', left(v_step::text, 900), left(v_lazy::text, 900);
   end if;
-  if not exists (select 1 from jsonb_array_elements_text(v_step -> 'report') l where l ~ '^Day [0-9]{1,3}\. We hove to and fought, and lost [0-9.]+ hours\.$')
+  if not exists (select 1 from jsonb_array_elements_text(v_step -> 'report') l where l ~ '^Day [0-9]{1,3}\. Fought: [0-9.]+ hours lost\.$')
      or exists (select 1 from jsonb_array_elements_text(v_step -> 'report') l where l ~ '^Day [0-9]{4,}') then
     raise exception 'PROOF 31 FAIL: her report does not name the true day: %', v_step -> 'report';
   end if;

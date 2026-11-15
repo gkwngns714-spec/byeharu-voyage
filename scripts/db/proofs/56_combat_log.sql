@@ -82,9 +82,9 @@ $h$, $h$    'hits', jsonb_build_object('a', v_tot_a, 'b', v_tot_b))
     || case when v_paid then '{"paid": true}'::jsonb else '{}'::jsonb end
     || case when v_open then '{"open": true}'::jsonb else '{}'::jsonb end;
 $h$),
-  ('voyage.fight_round_line(jsonb,integer,text,jsonb,numeric,text)', 1, $h$  v_you := case when p_g = 1 and p_first = 'THEY' then 'you are caught unready'
-$h$, $h$  v_you := case when p_round ? 'flee' then 'you run before them'   -- 0353: a side that runs (public.fight_sides writes `flee` on such a round only)
-                when p_g = 1 and p_first = 'THEY' then 'you are caught unready'
+  ('voyage.fight_round_line(jsonb,integer,text,jsonb,numeric,text)', 1, $h$  v_you := case when p_g = 1 and p_first = 'THEY' then 'caught unready'
+$h$, $h$  v_you := case when p_round ? 'flee' then 'we run'   -- 0353: a side that runs (public.fight_sides writes `flee` on such a round only)
+                when p_g = 1 and p_first = 'THEY' then 'caught unready'
 $h$),
   ('voyage.fight(uuid,integer,uuid,numeric)', 1, $h$  return voyage.fight_resolve(p_voyage, p_day, p_raider, voyage.escort_score(p_fleet), voyage.fleet_hulls(p_fleet));   -- 0323: the side, cut to its own leaf
 $h$, $h$  return voyage.raid_report(p_voyage, p_day, p_raider, voyage.escort_score(p_fleet), voyage.fleet_hulls(p_fleet),   -- 0323: the side, cut to its own leaf
@@ -145,11 +145,11 @@ $h$),
   for g in 1 .. (v_f->>'rounds_fought')::int loop
 $h$, $h$  -- 0353: her standing order, in words
   if p_opts->>'pay_refused' = 'EMPTY' then
-    v_lines := v_lines || 'You have nothing aboard to pay them with.'::text;
+    v_lines := v_lines || 'Nothing aboard to pay.'::text;
   elsif p_opts->>'pay_refused' = 'NO_PAYEE' then
-    v_lines := v_lines || 'They will take no ransom.'::text;
+    v_lines := v_lines || 'No ransom taken.'::text;
   elsif p_opts->>'order' = 'FLEE' then
-    v_lines := v_lines || 'You turn and run.'::text;
+    v_lines := v_lines || 'We run.'::text;
   end if;
 
   -- THE ROUNDS
@@ -159,11 +159,11 @@ $h$),
   if (v_f->>'broke_off')::boolean then
 $h$, $h$  -- HOW IT ENDED
   if coalesce((v_f->>'paid')::boolean, false) then   -- 0353: Pay, before a shot
-    v_lines := v_lines || 'You pay their price, and they let you pass.'::text;
-    v_sentence := 'We paid their price and they let us pass.';
+    v_lines := v_lines || 'Paid; let pass.'::text;
+    v_sentence := 'Paid; let pass.';
   elsif coalesce((v_f->>'fled')::boolean, false) then   -- 0353: Flee, and away
-    v_lines := v_lines || 'You get clear of them.'::text;
-    v_sentence := 'We ran, and got clear of them.';
+    v_lines := v_lines || 'Got clear.'::text;
+    v_sentence := 'Ran; got clear.';
   elsif (v_f->>'broke_off')::boolean then
 $h$),
   ('voyage.raid_report(uuid,integer,numeric,numeric,jsonb,jsonb)', 7, $h$    'hits', jsonb_build_object('yours', (v_f->'hits'->>'a')::int, 'theirs', (v_f->'hits'->>'b')::int));
@@ -724,7 +724,7 @@ begin
   v_r := pg_temp.raid_day(v_hfl, v_voy, 1);
   if v_r ->> 'outcome' is distinct from 'RANSOM' or (v_r ->> 'ransom_paid')::bigint is distinct from v_take or v_take is distinct from 1600 or (v_r -> 'fight' ->> 'paid')::boolean is not true
      or v_r -> 'fight' -> 'log' ->> 'end' is distinct from 'PAID' or v_r -> 'fight' -> 'log' ->> 'order' is distinct from 'PAY' or v_r -> 'fight' -> 'log' -> 'r' is distinct from '[]'::jsonb
-     or v_r ->> 'prose' is distinct from 'We paid their price and they let us pass.' or (v_r ->> 'crew_lost')::numeric is distinct from 0 or v_r ? 'cargo_lost' or (v_r -> 'fight' ->> 'hull_lost')::numeric is distinct from 0
+     or v_r ->> 'prose' is distinct from 'Paid; let pass.' or (v_r ->> 'crew_lost')::numeric is distinct from 0 or v_r ? 'cargo_lost' or (v_r -> 'fight' ->> 'hull_lost')::numeric is distinct from 0
      or (v_r -> 'fight' ->> 'rounds_fought')::int is distinct from 0 or v_r ? 'pirate' then
     raise exception 'PROOF 56 FAIL: a Pay day is not RANSOM before a shot with the price paid: %', v_r;
   end if;
@@ -762,7 +762,7 @@ begin
   v_purse := (select p.ducats from public.players p where p.id = v_hum);
   v_r := pg_temp.raid_day(v_hfl, v_voy, 1);
   if v_r ? 'ransom_paid' or v_r -> 'fight' ? 'paid' or v_r -> 'fight' -> 'log' ->> 'no_pay' is distinct from 'EMPTY' or v_r -> 'fight' -> 'log' ? 'order'
-     or not exists (select 1 from jsonb_array_elements_text(v_r -> 'rounds') t where t = 'You have nothing aboard to pay them with.')
+     or not exists (select 1 from jsonb_array_elements_text(v_r -> 'rounds') t where t = 'Nothing aboard to pay.')
      or (v_r -> 'fight' ->> 'rounds_fought')::int < 1 or (select p.ducats from public.players p where p.id = v_hum) is distinct from v_purse then
     raise exception 'PROOF 56 FAIL: Pay with an empty hold was not refused into a fight: %', v_r;
   end if;
@@ -770,7 +770,7 @@ begin
   update public.world_config set value = 'false'::jsonb where key = 'city_treasury_enabled';
   v_r := pg_temp.raid_day(v_hfl, v_voy, 2);
   if public.raid_payee(null) is not null or v_r ? 'ransom_paid' or v_r -> 'fight' ? 'paid' or v_r -> 'fight' -> 'log' ->> 'no_pay' is distinct from 'NO_PAYEE'
-     or not exists (select 1 from jsonb_array_elements_text(v_r -> 'rounds') t where t = 'They will take no ransom.')
+     or not exists (select 1 from jsonb_array_elements_text(v_r -> 'rounds') t where t = 'No ransom taken.')
      or (select p.ducats from public.players p where p.id = v_hum) is distinct from v_purse then
     raise exception 'PROOF 56 FAIL: Pay with no payee was not refused into a fight: %', v_r;
   end if;
@@ -789,12 +789,12 @@ begin
     v_hull := (select s.durability from public.ships s where s.id = v_ship);
     if v_log ->> 'order' is distinct from 'FLEE' or (v_log -> 'after' -> 0 ->> 1)::numeric is distinct from v_hull or v_r -> 'fight' -> 'hits' ->> 'yours' is distinct from '0'
        or exists (select 1 from jsonb_array_elements(v_log -> 'r') e where (e ->> 3)::int is distinct from 0 or (e ->> 13)::numeric is distinct from round(public.fight_flee_chance(10 - 11), 4))
-       or (jsonb_array_length(v_log -> 'r') > 0 and not exists (select 1 from jsonb_array_elements_text(v_r -> 'rounds') t where t like 'Round 1 %you run before them%')) then
+       or (jsonb_array_length(v_log -> 'r') > 0 and not exists (select 1 from jsonb_array_elements_text(v_r -> 'rounds') t where t like 'Round 1 %we run%')) then
       raise exception 'PROOF 56 FAIL: Flee day %: she fired, the chance is not the rule''s, or `after` is not her hull (%): %', v_i, v_hull, v_r;
     end if;
     if coalesce((v_r -> 'fight' ->> 'fled')::boolean, false) then
       v_fled := v_fled + 1;
-      if v_r ->> 'outcome' is distinct from 'EVADED' or v_log ->> 'end' is distinct from 'FLED' or v_r ->> 'prose' is distinct from 'We ran, and got clear of them.' or (v_r ->> 'crew_lost')::numeric is distinct from 0 or v_r ? 'cargo_lost'
+      if v_r ->> 'outcome' is distinct from 'EVADED' or v_log ->> 'end' is distinct from 'FLED' or v_r ->> 'prose' is distinct from 'Ran; got clear.' or (v_r ->> 'crew_lost')::numeric is distinct from 0 or v_r ? 'cargo_lost'
          or v_log ? 'board' or v_maxd - v_hull is distinct from (v_r -> 'fight' ->> 'hull_lost')::numeric then
         raise exception 'PROOF 56 FAIL: a flight that got away (day %) is not EVADED with her hull and hands as the fire left them: %', v_i, v_r;
       end if;
