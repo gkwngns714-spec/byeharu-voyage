@@ -241,8 +241,9 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
     nation: el.getAttribute('data-nation'),
   }))
   console.log(`relationship: ${JSON.stringify(relation)}`)
-  const STANCE_WORDS: Record<string, string> = { home: 'Home port', ally: 'Ally', peace: 'Peace', rival: 'Rival', war: 'War' }
-  const FALLBACK_WORDS = ['Home port', 'Different nation', 'Free port', 'No nation']
+  // 2026-11-15 owner: shorter words (Home port -> Home, Different nation -> Foreign)
+  const STANCE_WORDS: Record<string, string> = { home: 'Home', ally: 'Ally', peace: 'Peace', rival: 'Rival', war: 'War' }
+  const FALLBACK_WORDS = ['Home', 'Foreign', 'Free port', 'No nation']
   expect(relation.nation, 'Relationship does not carry the served holder nation').toMatch(/^[A-Z]{3}$|^none$/)
   if (relation.stance !== null && relation.stance !== 'none') {
     expect(STANCE_WORDS[relation.stance], `the served stance "${relation.stance}" is not one this spec knows`).toBeTruthy()
