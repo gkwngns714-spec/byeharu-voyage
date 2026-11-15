@@ -705,6 +705,9 @@ const TABLE = {
   worldStatsMe: { schema: 'world', fn: 'stats_me', args: [] },
   // 0419 (owner, 2026-11-15: "in stats, show like merchants navy, pirates, anad cargo"): the Stats face Ships, one read of the count's small row
   worldStatsFleets: { schema: 'world', fn: 'stats_fleets', args: [] },
+  // 0431 (owner, 2026-11-15: "a separate tab for navy, pirates, and cargoships like merchants"): the faces Navy, Pirates, Cargo: a kind's list, one fleet's page
+  worldStatsFleetList: { schema: 'world', fn: 'stats_fleet_list', args: [{ name: 'p_kind', type: 'text' }] },
+  worldStatsFleet: { schema: 'world', fn: 'stats_fleet', args: [{ name: 'p_fleet', type: 'uuid' }] },
   // 0316: GRAPHS BY DAY, WEEK AND MONTH (docs/dev-log/2026-11-05-history-graphs.md): the one read of the daily history tables
   worldHistory: { schema: 'world', fn: 'history', args: [{ name: 'p_what', type: 'text' }, { name: 'p_subject', type: 'text' }, { name: 'p_period', type: 'text' }] },
   // 0224 — THE FIGURES KEEP TO THE SECOND (owner row 200; docs/dev-log/2026-10-26-stats-live.md): the one LIVE read,

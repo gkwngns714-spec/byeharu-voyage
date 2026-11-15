@@ -74,6 +74,7 @@ export function FleetsByKindFace() {
                 <StatCell look="line" label={t('stats.raids')} value={battles.raids_day} format={formatInt} />
                 <StatCell look="line" label={t('stats.pirateWins')} value={battles.won_day} format={formatInt} />
                 <StatCell look="line" label={t('stats.merchantsHeld')} value={battles.held_day} format={formatInt} />
+                <StatCell look="line" label={t('stats.fled')} value={battles.fled_day ?? 0} format={formatInt} />
                 <StatCell look="line" label={t('stats.navyCame')} value={battles.navy_day} format={formatInt} />
                 <StatCell look="line" label={t('stats.navyFights')} value={battles.navy_fights_day} format={formatInt} />
                 <StatCell look="line" label={t('stats.playerAttacks')} value={battles.attacks_day} format={formatInt} />

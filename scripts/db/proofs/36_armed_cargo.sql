@@ -9,7 +9,7 @@
 -- @pass ARMED_LOADED     lit: a ship with funds aboard sails her lap in her old hull, crewless, with no upkeep, and takes the new hull only when the lap has closed
 -- @pass ARMED_HULL       lit: an idle ship at home is refitted free, once: same fleet, house, number and name, the armed class, no purse moved, no ledger, flow or event row
 -- @pass ARMED_LAID_UP    a laid-up ship is not refitted by the real job, in the run that refits the ship beside her; woken, she is
--- @pass ARMED_LAP        one real lap on the real sea: every stop in order, hands and stores at every departure, the funds delivered, the sum unmoved, no fold drift
+-- @pass ARMED_LAP        one real lap on the real sea: every stop in order until she is empty, then straight home (0430), hands and stores at every departure, the funds delivered, the sum unmoved, no fold drift
 -- @pass ARMED_NO_DEBT    the lap leaves no dock fee, no wage, no ledger row, no forced home, purse 0, hull whole at home
 -- @pass ARMED_UPKEEP     her origin paid the knob for each leg but the one she left it by, two rows each, to the harbour she left, netting 0
 -- @pass ARMED_WAGE       a cargo ship with hands owes no wage; a company with hands owes what it always did
@@ -368,7 +368,7 @@ $b$
     v_left := v_left || (select p.code from public.fleets f join public.ports p on p.id = f.port_id where f.id = v_fl[1]);
     v_step := public.cargo_ship_step(v_fl[1], v_now);
     exit when v_step = 'HOME';
-    if v_step = 'SAILED' then
+    if v_step in ('SAILED', 'HOMEWARD') then   -- 0430: emptied, she sails straight home
       v_dep := v_dep + 1;
       select o.id into v_voy from public.voyages o where o.fleet_id = v_fl[1] and o.status = 'SAILING';
       -- 0369: she leaves with convoy_store_days or what her supply room holds (pg_temp.store_days_of), and never with less than the leg she is leaving on asks
@@ -390,6 +390,11 @@ $b$
     end if;
   end loop;
   perform set_config('byeharu.proof_sea', '', true);
+  -- 0430: the circuit's stops in order until she was empty, then her home (the circuit's last stop) at once
+  if cardinality(v_seq) between 1 and cardinality(v_want) - 1 and v_seq[cardinality(v_seq)] = v_want[cardinality(v_want)]
+     and v_seq[1 : cardinality(v_seq) - 1] = v_want[1 : cardinality(v_seq) - 1] then
+    v_want := v_seq;
+  end if;
   if v_step <> 'HOME' or v_seq <> v_want then
     raise exception 'PROOF 36 FAIL: she did not sail the circuit: % % against %', v_step, v_seq, v_want;
   end if;

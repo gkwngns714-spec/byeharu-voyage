@@ -1,12 +1,12 @@
 // probe.mjs: the pirate strike ON THE CACHED HEAD WORLD (main's chain), in one rolled-back transaction. LOCAL ONLY; not in CI.
 //   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/pirate-war/probe.mjs [--pre=scene.sql] [--fix] [scene.sql ...]
-// --pre runs a scene BEFORE 0427 (e.g. scene-hunting.sql: a hunting pirate, so 0427's own probe takes its lit branch); --fix applies 0427
+// BV_NAME=20260818000429 picks the migration (default 0427). --pre runs a scene BEFORE 0427 (e.g. scene-hunting.sql: a hunting pirate, so 0427's own probe takes its lit branch); --fix applies 0427
 // (still inside the transaction); then each scene file runs and prints its notices and last rows.
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
-const NAME = '20260818000427'
+const NAME = process.env.BV_NAME ?? '20260818000427'
 const files = []
 let mine = null
 for (const name of await migrationFiles()) {

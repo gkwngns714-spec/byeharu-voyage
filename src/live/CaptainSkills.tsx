@@ -66,7 +66,7 @@ export function CaptainSkills({ code }: { code: string }) {
 function SkillRow({ skill, busy, locked, last, onPress }: { skill: CaptainSkill; busy: boolean; locked: boolean; last: boolean; onPress: () => void }) {
   const t = useT()
   const locale = useLocale()
-  const why = skill.can || skill.why === null ? null : ((skill.why_code && refusalWords(locale, skill.why_code, skill.figures)) || skill.why)
+  const why = skill.can || skill.why === null ? null : ((skill.why_code && refusalWords(locale, skill.why_code, skill.figures, skill.why)) || skill.why)
   return (
     <Row
       label={`${skillWord(skill.trait, skill.word)} · ${formatInt(skill.rank)} / ${formatInt(skill.max)} · +${formatInt(skill.pct_now)} %`}
