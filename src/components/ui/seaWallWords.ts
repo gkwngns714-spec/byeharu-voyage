@@ -3,8 +3,9 @@ import type { SeaWall } from '../../lib/rpc'
 
 // A CLOSED SEA IN PLAIN WORDS — THE ONE WORDING of the sea rule's refusal, in both languages.
 //
-//   The Western Ocean is closed to this fleet. It asks wave resistance 30. This fleet has 12.
-//   Sail a sturdier ship, or fit anchors and planking.
+//   The Western Ocean closed · Waves 12 / 30 · fit planking
+//
+// HAVE / NEED and the fix in a few words (owner, 2026-11-15: "just tell me what i have, and what is required").
 //
 // The figures are the server's (lib/rpc/seaWall.ts): which ask is short is its answer (0396), never worked out here.
 // On a world that does not say which is short yet, both asks are printed beside both of hers and no advice is given.
@@ -15,7 +16,7 @@ export function seaName(locale: Locale, wall: Pick<SeaWall, 'zoneName'>): string
   return properName('sea', wall.zoneName, wall.zoneName, locale)
 }
 
-/** What the sea asks that she does not hold, and nothing else: one or two short sentences. */
+/** What the sea asks that she does not hold, as HAVE / NEED: `Title 1 / 4 · Waves 12 / 30`. */
 export function seaWallAsks(locale: Locale, wall: SeaWall): string {
   const out: string[] = []
   if (wall.shortTitle === null || wall.shortWave === null) {
@@ -25,7 +26,7 @@ export function seaWallAsks(locale: Locale, wall: SeaWall): string {
   }
   if (wall.shortTitle) out.push(translate(locale, 'seas.wallTitle', { need: wall.needsTitle, have: wall.title ?? '—' }))
   if (wall.shortWave) out.push(translate(locale, 'seas.wallWaves', { need: wall.needsWave, have: wall.wave ?? '—' }))
-  return out.join(' ')
+  return out.join(' · ')
 }
 
 /** What to do about it; empty when the server did not say which ask is short. */
@@ -33,19 +34,25 @@ export function seaWallFix(locale: Locale, wall: SeaWall): string {
   const out: string[] = []
   if (wall.shortTitle) out.push(translate(locale, 'seas.fixTitle', { need: wall.needsTitle }))
   if (wall.shortWave) out.push(translate(locale, 'seas.fixWaves'))
-  return out.join(' ')
+  return out.join(' · ')
 }
 
 /** The whole wall: the sea, what it asks, what to do. */
 export function seaWallWords(locale: Locale, wall: SeaWall): string {
   return [translate(locale, 'seas.wallHead', { sea: seaName(locale, wall) }), seaWallAsks(locale, wall), seaWallFix(locale, wall)]
     .filter((s) => s !== '')
-    .join(' ')
+    .join(' · ')
 }
 
-/** The wall as one short tag for a tight row: `Needs title 4`, `Needs waves 30`, or `Closed`. */
+/** The wall as one short tag for a tight row: `Title 1 / 4`, `Waves 12 / 30` (`Needs title 4` when hers is not served), or `Closed`. */
 export function seaWallTag(locale: Locale, wall: SeaWall): string {
-  if (wall.shortTitle) return translate(locale, 'seas.closedTitle', { n: wall.needsTitle })
-  if (wall.shortWave) return translate(locale, 'seas.closedWaves', { n: wall.needsWave })
+  if (wall.shortTitle)
+    return wall.title === null
+      ? translate(locale, 'seas.closedTitle', { n: wall.needsTitle })
+      : translate(locale, 'seas.wallTitle', { have: wall.title, need: wall.needsTitle })
+  if (wall.shortWave)
+    return wall.wave === null
+      ? translate(locale, 'seas.closedWaves', { n: wall.needsWave })
+      : translate(locale, 'seas.wallWaves', { have: wall.wave, need: wall.needsWave })
   return translate(locale, 'seas.closedTag')
 }

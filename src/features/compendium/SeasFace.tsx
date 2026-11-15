@@ -121,9 +121,7 @@ export function SeasFace({ query, search }: { query: string; search: ReactNode }
       ) : (
         title && <Hint>{t('seas.noFleet')}</Hint>
       )}
-      <Hint>{t('seas.howTitle')}</Hint>
-      <Hint>{t('seas.howWaves')}</Hint>
-      {homeRank !== null && <Hint>{t('seas.howHome')}</Hint>}
+      <Hint>{t('seas.how')}</Hint>
     </div>
   )
 
