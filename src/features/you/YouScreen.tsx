@@ -174,17 +174,22 @@ function Levels({ player }: { player: PlayerHouse }) {
  *  read the Levels page asks (`world.levels()`, the same kept answer) and the same tiles, without the line under each. A pressed tile
  *  opens that level in a tray over the page: her experience, what raises it, what its levels give and the experience table. Nothing
  *  is drawn until the read lands, and then nothing above it moves: it stands last in the card. */
+/** The level codes the Levels card draws as bars (`player.levels`), so the tiles under them skip them. */
+const BAR_TRACKS: ReadonlySet<string> = new Set(['trading', 'exploration', 'combat'])
+
 function AllLevels() {
   const t = useT()
   const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
   const [picked, setPicked] = useState<string | null>(null)
   const v = read.view
   if (!v || !v.company) return null
+  // THE THREE TRACKS STAND AS BARS JUST ABOVE (2026-11-15, owner: no repeated words on one screen): the tiles are the other levels.
+  const card = { ...v.level_skills, skills: v.level_skills.skills.filter((s) => !BAR_TRACKS.has(s.code)) }
   return (
     <div className="mt-4 border-t border-edge pt-3" data-testid="you-all-levels">
       <h3 className="mb-2 text-t-caption font-semibold text-ink-faint">{t('command.lvAll')}</h3>
-      <LevelTiles card={v.level_skills} selected={picked} onSelect={setPicked} compact />
-      <LevelTray card={v.level_skills} code={picked} onClose={() => setPicked(null)} />
+      <LevelTiles card={card} selected={picked} onSelect={setPicked} compact />
+      <LevelTray card={card} code={picked} onClose={() => setPicked(null)} />
     </div>
   )
 }
@@ -219,13 +224,8 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
       title={t('you.ships')}
       count={
         ships.length === 0 ? undefined : (
-          <span data-testid="you-ships-count">
-            {t('you.shipsCount', {
-              ships: formatInt(ships.length),
-              fleets: formatInt(fleets.length),
-              count: fleets.length,
-            })}
-          </span>
+          // 2026-11-15 owner: shorter words — the count alone, like the captains'; the fleets stand in the room line above
+          <span data-testid="you-ships-count">{formatInt(ships.length)}</span>
         )
       }
       data-testid="you-ships"
@@ -240,12 +240,13 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
             // IN A NARROW ROW HER FLEET GOES UNDER HER NAME (owner, 2026-11-12): beside a 24-letter fleet name the ship's own name
             // stood on three lines ("Nossa / Senhora da / Estrela") in a 320-px card, and on two at 390. The row is its own query
             // container (ListPanel `columns="fit"`), so the row's width decides, never the window's.
-            value={<span className="text-t-caption text-ink-muted pair:hidden">{fleet.name}</span>}
+            // A fleet named after its ship (every founding fleet) is not said twice (2026-11-15).
+            value={fleet.name === ship.name ? undefined : <span className="text-t-caption text-ink-muted pair:hidden">{fleet.name}</span>}
             hairline={i < ships.length - 1}
             data-testid="you-ship"
           >
             <Facts className="block text-t-caption text-ink-faint pair:hidden" items={[ship.class, ship.is_flagship ? t('you.flagship') : null]} />
-            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name, ship.class, ship.is_flagship ? t('you.flagship') : null]} />
+            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name === ship.name ? null : fleet.name, ship.class, ship.is_flagship ? t('you.flagship') : null]} />
           </Row>
         ))
       )}

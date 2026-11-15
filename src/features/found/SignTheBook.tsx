@@ -5,6 +5,7 @@ import type { Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { NationPicker } from '../../live/NationPicker'
 import { useT } from '../../lib/i18n'
+import { COIN } from '../../lib/format'
 
 // SIGN THE BOOK — the first thing a captain on a real server ever sees, and until 2026-08-20 it
 // did not exist.
@@ -64,8 +65,7 @@ export function SignTheBook() {
         side={
           <>
             <Card title={t('found.moreTitle')} data-testid="found-begin">
-              <p className="text-t-body text-ink">{t('found.more', { capital: capital ?? t('found.yourCapital') })}</p>
-              <p className="mt-2 text-t-caption text-ink-faint">{t('found.hint')}</p>
+              <p className="text-t-body text-ink">{t('found.more', { coin: COIN, capital: capital ?? t('found.yourCapital') })}</p>
             </Card>
             <Card title={t('common.language')} data-testid="found-language">
               <LanguageSwitch className="w-fit" />

@@ -4,10 +4,10 @@ import { defineDict } from '../define'
 export const foundDict = defineDict({
   en: {
     title: 'Start',
-    more: 'One ship, Gaivota, and 40,000 ducats at {capital}.',
+    // 2026-11-15 owner: shorter words — what she gets, as figures; money is the coin, never "ducats" (docs/WORDS.md)
+    more: '1 ship · 40,000 {coin} · {capital}',
     yourCapital: 'your capital',
-    moreTitle: 'How you begin',
-    hint: 'Everyone begins the same way.',
+    moreTitle: 'You get',
     nameQ: 'Company name',
     nameRule: '3–24 letters, unique.',
     countryQ: 'Country',
@@ -16,14 +16,13 @@ export const foundDict = defineDict({
     starting: 'Starting…',
     start: 'Start',
     // 0380: what the skull costs, said before she picks (the country picker, at Start and in Profile)
-    skull: 'At war with every country: their ports tax you more and charge more to dock. Pirate ports are free. Their ports have no yard.',
+    skull: 'At war with all: higher tax and dock fees. Pirate ports: free, no yard.',
   },
   ko: {
     title: '시작',
-    more: '배 한 척 가이보타와 40,000두캇, {capital}에서.',
+    more: '배 1척 · 40,000 {coin} · {capital}',
     yourCapital: '자국 수도',
-    moreTitle: '시작',
-    hint: '모두 같게 시작.',
+    moreTitle: '시작 자산',
     nameQ: '회사 이름',
     nameRule: '3~24자, 중복 불가.',
     countryQ: '나라',
@@ -31,6 +30,6 @@ export const foundDict = defineDict({
     try: '해 볼 것',
     starting: '시작하는 중…',
     start: '시작',
-    skull: '모든 나라와 전쟁 중: 다른 나라 항구는 세금과 입항료가 더 비쌈. 해적 항구는 무료. 해적 항구에는 조선소 없음.',
+    skull: '모든 나라와 전쟁: 세금·입항료 더 비쌈. 해적 항구: 무료, 조선소 없음.',
   },
 })
