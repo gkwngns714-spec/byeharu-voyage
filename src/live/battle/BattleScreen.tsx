@@ -285,7 +285,7 @@ function TickBattle({
       <div className="flex min-h-0 flex-1 flex-col">
         <SideRow state={state} names={names} />
         <div className="relative min-h-[30vh] flex-1 lg:min-h-[14rem]">
-          <BattleStage tl={tl} events={events} state={state} tick={shown} clock={clock} reduced={reduced} endWords={endWords} />
+          <BattleStage tl={tl} events={events} state={state} tick={shown} clock={clock} reduced={reduced} endWords={endWords} sides={read.sides} />
         </div>
         <div className="flex min-h-14 flex-wrap items-center gap-2 px-4 py-2">
           <div className="min-w-0 flex-1 break-words text-t-title" role="status" data-testid="battle-status">

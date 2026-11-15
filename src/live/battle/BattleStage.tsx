@@ -1,8 +1,10 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import type { TickTimeline } from '../../lib/rpc'
+import type { TickSide, TickTimeline } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
 import { sceneSize, shipPose, type SceneSize } from './scene'
 import type { BattleEvent, BattleState } from './timeline'
+import { familyOfSide, shipTierOf } from '../../chart'
+import { ShipArt } from './ShipArt'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE STAGE (0435, docs/design/tick-combat.md 11): the ships ENLARGED, our own plain SVG hulls seen from above, circling.
@@ -15,8 +17,6 @@ import type { BattleEvent, BattleState } from './timeline'
 // `data-motion` rule in src/index.css), and a ship that is down is drawn down.
 
 const SIDE_TONE = ['var(--color-info)', 'var(--color-danger)'] as const
-const HULL_FILL = 'color-mix(in srgb, var(--color-accent) 30%, var(--color-bg))'
-const DECK_FILL = 'color-mix(in srgb, var(--color-accent) 48%, var(--color-bg))'
 
 /** How much bigger a heavier hull is drawn. */
 const tierScale = (t: number) => 1.02 + Math.min(5, Math.max(1, t || 1)) * 0.08
@@ -25,38 +25,7 @@ function hullTone(share: number) {
   return share > 0.5 ? 'var(--color-success)' : share > 0.25 ? 'var(--color-warning)' : 'var(--color-danger)'
 }
 
-/** Our own hull, seen from above, bow to the right: a long pointed hull, a deck, three masts with their sails. */
-function ShipShape({ side, struck }: { side: number; struck: boolean }) {
-  return (
-    <>
-      {/* the wake */}
-      <path d="M -56 -12 Q -96 -10 -138 -26 Q -104 0 -138 26 Q -96 10 -56 12 Z" fill="var(--color-ink)" fillOpacity={0.12} />
-      <path
-        d="M -60 -13 Q -40 -19 8 -19 Q 44 -17 64 0 Q 44 17 8 19 Q -40 19 -60 13 Z"
-        fill={HULL_FILL}
-        stroke={SIDE_TONE[side]}
-        strokeWidth={3}
-      />
-      <path d="M -52 -9 Q -36 -13 6 -13 Q 36 -12 50 0 Q 36 12 6 13 Q -36 13 -52 9 Z" fill={DECK_FILL} />
-      {/* bowsprit */}
-      <line x1={62} y1={0} x2={84} y2={0} stroke={HULL_FILL} strokeWidth={3} />
-      {/* the sails across the yards, bellied forward */}
-      {[-30, 0, 28].map((x, k) => (
-        <path
-          key={x}
-          d={`M ${x - 2} ${-(30 - k * 2)} Q ${x + 9} 0 ${x - 2} ${30 - k * 2} L ${x - 6} ${30 - k * 2} Q ${x + 3} 0 ${x - 6} ${-(30 - k * 2)} Z`}
-          fill="var(--color-ink)"
-          fillOpacity={struck ? 0.35 : 0.92}
-        />
-      ))}
-      {[-30, 0, 28].map((x) => (
-        <circle key={`m${x}`} cx={x - 4} cy={0} r={3} fill={HULL_FILL} />
-      ))}
-      {/* her colours at the stern: struck, they come down */}
-      {!struck && <path d="M -60 0 L -80 -6 L -76 0 L -80 6 Z" fill={SIDE_TONE[side]} />}
-    </>
-  )
-}
+// 2026-11-16: the hull drawn here is ./ShipArt.tsx's, the chart's own family (kind and tier), not one shape for every ship.
 
 export function BattleStage({
   tl,
@@ -66,6 +35,7 @@ export function BattleStage({
   clock,
   reduced,
   endWords,
+  sides,
 }: {
   tl: TickTimeline
   events: BattleEvent[]
@@ -76,6 +46,8 @@ export function BattleStage({
   reduced: boolean
   /** the end's words, drawn over the stage once it is over */
   endWords: ReactNode
+  /** the served sides (`world.battle_ticks().sides`): whose picture each ship wears (src/chart/shipShapes.ts `familyOfSide`) */
+  sides?: readonly TickSide[]
 }) {
   const t = useT()
   const box = useRef<HTMLDivElement>(null)
@@ -131,6 +103,12 @@ export function BattleStage({
   // a pose at a whole tick, for React's own draw and for the effects (held still under reduced motion)
   const poseAt = (s: number, i: number, tk: number) =>
     shipPose(s, i, state.ships[s].length, reduced ? 0 : (tk * ms) / 1000, tk, ms, state, size)
+
+  // whose picture a ship wears: her own fleet's served side (by its name), else her side's first
+  const familyOf = (s: number, fleet: string | null) => {
+    const mine = (sides ?? []).filter((x) => (x.side === 'ATTACKER') === (s === 1))
+    return familyOfSide(mine.find((x) => x.name === fleet) ?? mine[0], s === 1)
+  }
 
   const fx: ReactNode[] = []
   for (const ev of events) {
@@ -219,7 +197,7 @@ export function BattleStage({
                 <g data-rot="" transform={`rotate(${p.heading.toFixed(1)})`}>
                   <g transform={`scale(${tierScale(sh.ship.t).toFixed(2)})`}>
                     <g className={sh.struck ? 'bv-bt-sink' : undefined}>
-                      <ShipShape side={s} struck={sh.struck} />
+                      <ShipArt family={familyOf(s, sh.ship.fl)} tier={shipTierOf(sh.ship.t)} tone={SIDE_TONE[s]} struck={sh.struck} wake />
                     </g>
                   </g>
                 </g>
