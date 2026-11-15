@@ -82,7 +82,7 @@ export function Note({
     >
       <div className="min-w-0 flex-1">
         <p className="text-t-label" data-sea-wall={sea ? sea.zone : undefined}>
-          {sea ? seaWallWords(locale, sea) : (code && refusalWords(locale, code, figures)) || children}
+          {sea ? seaWallWords(locale, sea) : (code && refusalWords(locale, code, figures, typeof children === 'string' ? children : null)) || children}
         </p>
         {figure !== undefined && <div className="mt-1">{figure}</div>}
       </div>
