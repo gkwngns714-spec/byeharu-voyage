@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { refusalWords } from '../src/components/ui/refusalWords'
 import { roomStepWord } from '../src/live/houseRoom'
-import { tFor } from '../src/lib/i18n'
+import { tFor, translateMaybe } from '../src/lib/i18n'
 
 const MIG = readFileSync(path.resolve('supabase', 'migrations', '20260818000433_the_server_says_have_and_need.sql'), 'utf8').replaceAll('\r', '')
 
@@ -25,7 +25,7 @@ test('a Korean refusal with a have / need pair is the label and the pair; Englis
   // a skill's refusal names the skill: its sentence stands, the figures after it
   expect(refusalWords('ko', 'E_NEEDS_SKILL', { have: 2, need: 3, unit: 'level' })).toMatch(/\(2 \/ 3 /)
   // no figures, or a closed sea's: the code's sentence alone
-  expect(refusalWords('ko', 'E_HOLD_FULL', null)).toBe('화물칸 가득 참.')
+  expect(refusalWords('ko', 'E_HOLD_FULL', null)).toBe(translateMaybe('ko', 'codes', 'E_HOLD_FULL'))
 })
 
 test('the server labels and the client labels are the same codes and units', () => {
