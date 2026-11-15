@@ -426,7 +426,10 @@ test('one renderer draws every hull on this chart — the merchants and your own
   // ONE path call site and ONE arrangement, composed twice — once per list. A second `hullPath` or
   // a second set of offsets in this file would be the copy docs/NO_SPAGHETTI.md §1 forbids: two
   // authorities for what a fleet's mark is, agreeing today.
-  expect(src.match(/hullPath\(/g)).toHaveLength(1)
+  // 2026-11-16: the one path call site is now glyphs.ts `fleetMark` (each hull string built once and kept on her hull
+  // list); this file builds no path, and asks for the kept mark in two places: the hull group, and your halo.
+  expect(src.match(/hullPath\(/g)).toBeNull()
+  expect(src.match(/fleetMark\(/g)).toHaveLength(2)
   expect(src.match(/<HullGroup/g)).toHaveLength(2)
   // The merchants' hooks are on the GROUP, so there is exactly one `map-merchant` element per
   // merchant however many hulls she sails — which is what every spec that asks for her box needs.

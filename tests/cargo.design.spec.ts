@@ -124,9 +124,11 @@ test.describe('the hull', () => {
     expect(HULL_GROUP_MAX).toBe(3)
   })
 
-  test('the renderer is not forked: FleetsLayer has one hullPath and never names her hull', () => {
+  test('the renderer is not forked: FleetsLayer draws every hull from the one kept mark and never names her hull', () => {
     const src = readFileSync(path.join('src', 'chart', 'FleetsLayer.tsx'), 'utf8')
-    expect(src.match(/hullPath\(/g)).toHaveLength(1)
+    // 2026-11-16: the hull strings are built once, in glyphs.ts `fleetMark` (its one `hullPath`); the layer asks for the mark (a hull group, and your halo) and builds none
+    expect(src.match(/hullPath\(/g)).toBeNull()
+    expect(src.match(/fleetMark\(/g)).toHaveLength(2)
     expect(src).not.toContain('CARGO_HULL')
     expect(src.match(/function HullGroup/g)).toHaveLength(1)
     expect(src.match(/<HullGroup/g)).toHaveLength(2)

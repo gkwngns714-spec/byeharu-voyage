@@ -213,7 +213,7 @@ export function fleetCountMark(total: number, drawn: number, l: number, astern: 
   return cached(`count@${kind}@${n}@${l}@${astern}`, () => {
     const y = astern + Math.max(1.6, l * 0.42)
     if (kind === 'pips') {
-      const r = Math.max(1, l * 0.2)
+      const r = Math.max(1.3, l * 0.24)
       const dot = (x: number) => `M${r3(x - r)} ${r3(y)}a${r3(r)} ${r3(r)} 0 1 0 ${r3(2 * r)} 0a${r3(r)} ${r3(r)} 0 1 0 ${r3(-2 * r)} 0Z`
       return n === 1 ? dot(0) : dot(-r * 1.7) + dot(r * 1.7)
     }
