@@ -19,6 +19,7 @@
 //             courses whole; nothing re-plans them)
 //   route     public.standing_route_stops.course: every standing route's legs (the merchant
 //             companies' loops; a player's own routes in a live world)
+//   coast     public.npc_coast_courses: a harbour with no lane to its nearest harbours (0400; 0441)
 //   roadstead public.sea_reaches: the point each harbour is reached from (the first and last point
 //             of every course to it). One on drawn land draws the harbour's approach over land.
 //   pair      (--pairs) the course the browser's course author proposes between every two
@@ -48,7 +49,7 @@ import { fileURLToPath } from 'node:url'
 import { readFileSync } from 'node:fs'
 import { PGlite } from '@electric-sql/pglite'
 import { drawnLand, gcNm } from '../lib/drawn-land.mjs'
-import { preCarveGrid, rowOf as gridRow, colOf as gridCol, COLS as GRID_COLS } from '../sea-grid.mjs'
+import { riverCarvedCells, rowOf as gridRow, colOf as gridCol, COLS as GRID_COLS } from '../sea-grid.mjs'
 import { navFromServed, floodFrom, floodPathTo } from '../../src/lib/sea/index.ts'
 import { segmentLandRuns, refineCourse, LAND_TOLERANCE_NM } from '../../src/lib/sea/refine.ts'
 import { coastMaskFrom, coastLand } from '../../src/lib/sea/coastMask.ts'
@@ -109,17 +110,25 @@ export async function readWorldCourses(db) {
                       from public.standing_route_stops s join public.ports p on p.id = s.port_id
                      where s.course is not null order by s.route_id, s.ord`)
   ).rows
-  return { raster, ports, npc, routes }
+  // 0441: the coast courses (0400: a harbour with no lane, to its nearest harbours along the coast).
+  const coast = (
+    await db.query(`select a.code as a, b.code as b, c.course, c.course::text as text
+                      from public.npc_coast_courses c join public.ports a on a.id = c.from_port join public.ports b on b.id = c.to_port
+                     order by a.code, b.code`)
+  ).rows
+  return { raster, ports, npc, routes, coast }
 }
 
-/** THE LAND A COURSE IS HELD TO: drawn land, except a cell the game carved open on purpose. */
+/** THE LAND A COURSE IS HELD TO: drawn land, except a cell a RIVER carve opened on purpose (the
+ *  Thames, the Bosphorus: the chart draws land over water the game sails). A charted channel's cells
+ *  (0441: Corfu, the Wielingen) are held to their drawn land like any other water. */
 export function truthLand(nav, land = drawnLand('fine')) {
-  const pre = preCarveGrid()
+  const river = riverCarvedCells()
   return {
     blocked: (lat, lon) => {
       if (!land.isLand(lat, lon)) return false
       const k = gridRow(lat) * GRID_COLS + gridCol(lon)
-      return !(pre[k] === 0 && nav.cells[k] !== 0)
+      return !(river.has(k) && nav.cells[k] !== 0)
     },
   }
 }
@@ -173,7 +182,7 @@ export function auditWorld(world, { pairs = false, raw = false, pairFilter = nul
   const truth = truthLand(nav)
   const crossings = []
   const seen = new Map()
-  const counted = { npc: 0, route: 0, roadstead: 0, pair: 0 }
+  const counted = { npc: 0, route: 0, coast: 0, roadstead: 0, pair: 0 }
   const add = (kind, key, course) => {
     const c = crossingsOf(truth, course)
     if (!c.length) return
@@ -194,6 +203,10 @@ export function auditWorld(world, { pairs = false, raw = false, pairFilter = nul
   for (const r of world.routes) {
     counted.route++
     add('route', `${r.from_code ?? r.to_code}->${r.to_code}`, r.course)
+  }
+  for (const c of world.coast ?? []) {
+    counted.coast++
+    add('coast', `${c.a}->${c.b}`, c.course)
   }
   const harbours = world.ports.filter((p) => Number.isFinite(p.rlat))
   const roadsteads = []
@@ -248,7 +261,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const origins = new Set(codes.filter((_, i) => i % PAIR_SAMPLE_EVERY === 0))
     const sample = auditWorld(world, { pairs: true, pairFilter: (a) => origins.has(a.code) })
     const known = {
-      note: 'scripts/db/audit-land-crossings.mjs --write-known. Courses that still cross the drawn land: the water they need is land to the 0.25-degree raster (a strait or channel it closes), for the raster slice that opens it (owner row 352). This list may only shrink.',
+      note: 'scripts/db/audit-land-crossings.mjs --write-known. Courses and roadsteads still on the drawn land (owner row 352). EMPTY since 0441: a new crossing is fixed (scripts/build-clear-courses.mjs, scripts/build-land-channels.mjs), never listed. This list may only shrink.',
       toleranceNm: TOLERANCE_NM,
       crossings: [...new Set(out.crossings.filter((c) => c.kind !== 'pair').map((c) => c.key))].sort(),
       roadsteads: [...out.roadsteads].sort(),

@@ -17,7 +17,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import { drawnLand, PX_PER_DEG } from './lib/drawn-land.mjs'
-import { preCarveGrid } from './sea-grid.mjs'
+import { riverCarvedCells } from './sea-grid.mjs'
 import { navFromServed } from '../src/lib/sea/index.ts'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -41,13 +41,14 @@ function subCellHasLand(land, north, west, size) {
 /**
  * The mask for one served raster (`{ cols, rows, cell_deg, bits_per_cell, cells_base64 }`).
  * A raster WATER cell is listed when the chart draws land in any of its SUB x SUB sub-cells. A
- * carved cell (a declared channel: land in 1:110m, water on purpose) is never listed, and raster
+ * river-carved cell (a channel the chart does not draw: land in 1:110m, water on purpose) is never
+ * listed; a charted channel's cell is listed like any other (0441), and raster
  * LAND is the raster's own answer (the refiner treats it as land throughout).
  */
 export function buildCoastMask(raster, land = drawnLand('fine')) {
   const nav = navFromServed(raster)
   if (nav.cols !== 1440 || nav.rows !== 720) throw new Error('coast mask: the raster is not the 0.25-degree world grid')
-  const pre = preCarveGrid()
+  const river = riverCarvedCells()
   const bytesPerCell = Math.ceil((SUB * SUB) / 8)
   const idx = []
   const bits = []
@@ -55,7 +56,7 @@ export function buildCoastMask(raster, land = drawnLand('fine')) {
     for (let col = 0; col < nav.cols; col++) {
       const k = row * nav.cols + col
       const water = nav.cells[k] !== 0
-      if (!water || pre[k] === 0) continue // raster land is the raster's; a carved channel is water on purpose
+      if (!water || river.has(k)) continue // raster land is the raster's; a river carve is water on purpose (0441: a charted channel's drawn land is listed)
       const lat0 = 90 - row * nav.cellDeg
       const lon0 = -180 + col * nav.cellDeg
       const cell = new Uint8Array(bytesPerCell)
