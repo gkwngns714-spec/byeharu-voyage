@@ -29,6 +29,7 @@ export function CargoBar({
   total,
   free,
   after = null,
+  bare = false,
   className = '',
 }: {
   /** Tons on board today — cargo and supplies, the caller's fold (`fleetHoldUsed`). */
@@ -40,6 +41,8 @@ export function CargoBar({
   /** The SERVED free hold after a staged basket lands (`hold.free_after`), or null when nothing
    *  is staged. Drawn as a wash between now and then, and as the arrow in the figure. */
   after?: number | null
+  /** No leading "Cargo" word: for a card whose own title already says Cargo. */
+  bare?: boolean
   className?: string
 }) {
   const t = useT()
@@ -54,7 +57,7 @@ export function CargoBar({
       : t('ui.cargoOf', { of: formatOfTotal(used, total), word: tonsWord(total) })
   return (
     <span className={`flex items-center gap-3 text-t-caption text-ink-faint ${className}`} data-testid="cargo-bar">
-      <span className="shrink-0">{t('ui.cargo')}</span>
+      {!bare && <span className="shrink-0">{t('ui.cargo')}</span>}
       <Bar
         pct={pct}
         pending={pending}

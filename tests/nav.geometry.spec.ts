@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { PHONE, ready, reachable } from './appReady.fixture'
 import { GLASSES } from './trayLaw.fixture'
-import { NAV_CELLS } from '../src/app/navTabs'
+import { navCells } from '../src/app/navTabs'
+import { WIDE_QUERY } from '../src/components/ui/screenLayout'
 
 // NAV BAR GEOMETRY — the pin that stops the tab rail growing a second row again.
 //
@@ -317,14 +318,17 @@ test('nav: the Menu tray stands as tall as its rows — every member whole and r
   baseURL,
 }) => {
   await openApp(page, request, baseURL)
-  const members = NAV_CELLS.flatMap((c) => (c.kind === 'group' ? c.members : []))
-  expect(members.length, 'the table has no Menu members — nothing to hold whole').toBeGreaterThan(4)
+  // From `lg` (WIDE_QUERY) You and Stats stand on the rail as their own cells and leave the Menu (navTabs.navCells, owner 2026-11-14):
+  // the Menu each glass draws is the one navCells gives that glass.
+  const menuOf = (wide: boolean) => navCells(wide).flatMap((c) => (c.kind === 'group' ? c.members : []))
+  expect(menuOf(false).length, 'the table has no Menu members — nothing to hold whole').toBeGreaterThan(4)
   const group = page.locator('[data-testid="nav-bar"] > button').first()
   const panel = page.getByTestId('nav-group-panel')
 
   const broken: string[] = []
   for (const glass of [...GLASSES, SHORT_GLASS]) {
     await page.setViewportSize(glass)
+    const members = menuOf(await page.evaluate((q) => window.matchMedia(q).matches, WIDE_QUERY))
     await group.click()
     await expect(panel).toBeVisible()
     const read = await page.evaluate(READ_MENU)

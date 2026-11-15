@@ -51,7 +51,7 @@ export function FleetFold({ fleet, openShipId, onOpenShip }: { fleet: FleetView;
           <FleetShips fleet={fleet} openShipId={openShipId} onOpenShip={onOpenShip} />
           {/* THE ONE DOOR to everything that is the fleet's as a whole (FleetMore.tsx): a plain row under the ships, parted from them by a rule. */}
           <Row
-            label={t('fleets.more')}
+            label={t('fleets.wholeFleet')}
             value={inBattle(fleet) ? <span className="text-t-caption text-warning">{t('fight.battle')}</span> : undefined}
             chevron
             tone={more ? 'accent' : 'muted'}

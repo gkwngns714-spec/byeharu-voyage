@@ -26,7 +26,6 @@
 
 import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
-import { gameSunInstantMs } from '../src/lib/format'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { serveNpcOn } from './npcOn.fixture'
@@ -330,7 +329,21 @@ test('at the globe the ships are hulls, the day picture is on the sheet, and eve
 
   // THE SUN THE CHART USED IS THE ALMANAC'S, for the instant it says it read. Read off the chart,
   // never assumed from this process's clock (the two differ by the read's own latency).
-  const expected = subsolarPoint(gameSunInstantMs(wide.sunAt))
+  // Since 0413 (#687) the game's HOUR is the served clock's (`clock_anchor`, set in the page by `setServedClock`), and
+  // this process has no served clock, so it cannot recompute the hour. The DATE is still the real one (lib/format
+  // `gameSunInstantMs`): so the law is that some instant of the real date the chart read on puts the almanac's Sun
+  // where the chart drew it — the longitude finds the hour, and the latitude (the season) must then agree.
+  const DAY = 86_400_000
+  const midnight = wide.sunAt - (((wide.sunAt % DAY) + DAY) % DAY)
+  const lonOff = (ms: number) => Math.abs(((((subsolarPoint(ms).lon - wide.sunLon) % 360) + 540) % 360) - 180)
+  let coarse = midnight
+  for (let ms = midnight; ms < midnight + DAY; ms += 60_000) if (lonOff(ms) < lonOff(coarse)) coarse = ms
+  const fine = (from: number) => {
+    let best = Math.min(Math.max(from, midnight), midnight + DAY - 10)
+    for (let ms = Math.max(midnight, from - 60_000); ms < Math.min(midnight + DAY, from + 60_000); ms += 10) if (lonOff(ms) < lonOff(best)) best = ms
+    return best
+  }
+  const expected = subsolarPoint([fine(coarse), fine(coarse + DAY), fine(coarse - DAY)].sort((a, b) => lonOff(a) - lonOff(b))[0])
   expect(wide.sunLat).toBeCloseTo(expected.lat, 3)
   expect(wide.sunLon).toBeCloseTo(expected.lon, 3)
   expect(Math.abs(wide.sunAt - Date.now())).toBeLessThan(SUN_REFRESH_MS + 60_000)

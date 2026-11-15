@@ -40,6 +40,9 @@ import { useT } from '../../../lib/i18n'
 // the left pane, the building in the centre, and the act a building opens (a trade, the basket, a hire,
 // a job) in the right pane — the desk's slot; on a phone, one under the other (an act pressed there rises as the bottom tray, which moves nothing).
 
+/** A phone from 375 px up to `sm`: five columns, none narrower than its word (a literal class: Tailwind cannot see a built one). */
+const NINE_ON_TWO_LINES = 'max-sm:min-[375px]:grid-cols-[repeat(5,minmax(min-content,1fr))] max-sm:min-[375px]:*:px-1!'
+
 export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }) {
   const t = useT()
   const navigate = useNavigate()
@@ -119,7 +122,12 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
         onChange={openFace}
         // In the desk's narrow left pane (272 px at 1,280) every building stays in sight: the row is a wrapping line there, each cell as wide as
         // its word at least. It was four equal 53-px columns, and "Production" (67 px) stood against "Town" and "Craft" (2026-11-14).
-        className="mt-3 max-sm:w-full lg:flex lg:flex-wrap lg:*:min-w-11 lg:*:flex-auto lg:*:px-1!"
+        // NINE ON TWO LINES ON A PHONE (2026-11-15): 0424's Gear face, sold at every harbour, made a city of eight buildings nine
+        // faces, and four columns took a third 44-px line - the first good stood under the fold at 390 (tests/layout.spec.ts K.1,
+        // tests/desk.city.spec.ts). From 375 px a set of more than eight stands in five columns, each never narrower than its word
+        // ('Production' takes what it needs, the rest share what is left), so the strip is two lines again. Under 375 the four
+        // columns stand: a fifth of 320 px is under the 44-px floor.
+        className={`mt-3 max-sm:w-full lg:flex lg:flex-wrap lg:*:min-w-11 lg:*:flex-auto lg:*:px-1! ${offered.length > 8 ? NINE_ON_TWO_LINES : ''}`}
       />
       <QuayFair portId={port.id} />
       {/* 0255 (E6b, CLOSED_ECONOMY §4b): what this city wants now and pays a multiple for (absent while dark) */}

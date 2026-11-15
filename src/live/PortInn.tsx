@@ -140,7 +140,7 @@ export function PortInn({
         <>
           <Row
             label={t('inn.crewAvailable')}
-            value={<Figure value={formatInt(port.crew_pool)} unit={t('inn.people')} />}
+            value={<Figure value={formatInt(port.crew_pool)} />}
             tone="muted"
             data-testid="inn-pool"
           />
@@ -234,7 +234,7 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
     <div data-testid="inn-crew-face">
       <Row
         label={t('inn.crew')}
-        value={<Figure value={formatOfTotal(crew.aboard, crew.max)} unit={t('inn.crewUnit')} size="figure" />}
+        value={<Figure value={formatOfTotal(crew.aboard, crew.max)} size="figure" />}
         data-testid="inn-crew"
       >
         {/* THE BAR IS THE SHIP'S: what is aboard against the crew slots it has, and the change the
@@ -249,7 +249,7 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
       </Row>
       <Row
         label={t('inn.crewHere')}
-        value={<Figure value={formatInt(port.crew_pool)} unit={t('inn.people')} />}
+        value={<Figure value={formatInt(port.crew_pool)} />}
         data-testid="inn-pool"
       />
 

@@ -35,11 +35,12 @@ const SIZES = [
 
 const CODES = ['trading', 'exploration', 'combat', 'supplies', 'weather', 'shipbuilding', 'requests', 'craft', 'routes', 'investment'] as const
 
+// 2026-11-15 owner: shorter words (fed, cap, noCap re-pinned; the levels-vs-skills sentence cut)
 const WORDS = {
   en: {
     names: ['Trading', 'Exploration', 'Combat', 'Supplies', 'Weather', 'Shipbuilding', 'Requests', 'Craft', 'Routes', 'Investment'],
-    fed: /A day at sea with enough supplies: 2 exp a day \(a trip of 100 miles or more, into a port\)/,
-    cap: 'At most 300 exp a day.',
+    fed: /A day at sea with enough supplies: 2 exp a day \(100 miles\+ trip into port\)/,
+    cap: 'Max 300 exp a day',
     every: 'Reputation +10 × the level',
     gift: (n: number) => `Reputation +${n}`,
     today: (a: number) => `Today ${a} / 300`,
@@ -47,8 +48,7 @@ const WORDS = {
     fleet: '+1 fleet',
     promote: 'Captain promotion to B',
     trade: /Buy or sell goods: 1 exp per 500/,
-    noCap: 'No daily limit.',
-    vs: 'Levels rise by doing. Academy skills are studied. A level never changes what a skill gives.',
+    noCap: 'No daily limit',
     perkFrom: 'Supplies cost 1% less: from level 4',
     perk: (n: number) => `Supplies cost ${n}% less`,
     room: (n: number) => `Routes you may keep: +${n}`,
@@ -56,8 +56,8 @@ const WORDS = {
   },
   ko: {
     names: ['교역', '탐험', '전투', '보급', '악천후', '조선', '의뢰', '제작', '항로', '투자'],
-    fed: /보급이 충분한 항해 하루: 하루에 경험치 2 \(100.*이상 항해해 항구에 도착할 때\)/,
-    cap: '하루 최대 경험치 300.',
+    fed: /보급이 충분한 항해 하루: 하루에 경험치 2 \(100.*이상 항해 후 입항\)/,
+    cap: '하루 최대 경험치 300',
     every: '평판 +10 × 레벨',
     gift: (n: number) => `평판 +${n}`,
     today: (a: number) => `오늘 ${a} / 300`,
@@ -65,8 +65,7 @@ const WORDS = {
     fleet: '선단 +1',
     promote: '선장 B 승급',
     trade: /교역품 사고팔기: 500.*마다 경험치 1/,
-    noCap: '하루 제한 없음.',
-    vs: '레벨은 직접 해서 오릅니다. 아카데미 기술은 배워서 오릅니다. 레벨은 기술의 효과를 바꾸지 않습니다.',
+    noCap: '하루 제한 없음',
     perkFrom: '보급 비용 1% 감소: 레벨 4부터',
     perk: (n: number) => `보급 비용 ${n}% 감소`,
     room: (n: number) => `둘 수 있는 항로 +${n}`,
@@ -129,7 +128,8 @@ for (const size of SIZES) {
           expect(box.x + box.width, `${code}: the tile ends inside the glass`).toBeLessThanOrEqual(size.width + 0.5)
           expect(box.height, `${code}: a tile is a press target`).toBeGreaterThanOrEqual(44)
         }
-        await expect(page.getByTestId('levels-vs-skills')).toHaveText(words.vs)
+        // 2026-11-15 owner: shorter words — the levels-vs-skills sentence is cut (the Seamanship note says where a skill is studied)
+        await expect(page.getByTestId('levels-vs-skills')).toHaveCount(0)
         await nothingCut(page, page.getByTestId('level-tiles'), 'the tiles')
         await shot(page, `levels-tiles-${size.width}-${lang}`)
 
@@ -208,11 +208,12 @@ for (const size of SIZES) {
         await ready(page)
         const all = page.getByTestId('you-all-levels')
         await expect(all).toBeVisible({ timeout: 60_000 })
+        // 2026-11-15 owner: no repeated words — Trading, Exploration and Combat stand as bars above, so the tiles are the other seven
         const small = all.getByTestId('level-tiles').locator('button')
-        await expect(small).toHaveCount(CODES.length)
-        for (const [i, code] of CODES.entries()) {
+        await expect(small).toHaveCount(CODES.length - 3)
+        for (const [i, code] of CODES.slice(3).entries()) {
           await expect(small.nth(i)).toHaveAttribute('data-testid', `levels-${code}`)
-          await expect(small.nth(i)).toContainText(words.names[i])
+          await expect(small.nth(i)).toContainText(words.names[i + 3])
           expect((await small.nth(i).boundingBox())!.height, `${code}: a small tile is a press target`).toBeGreaterThanOrEqual(44)
         }
         await nothingCut(page, all, 'the You page tiles')

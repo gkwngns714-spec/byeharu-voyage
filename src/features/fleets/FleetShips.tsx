@@ -1,5 +1,5 @@
 import { Button, CargoBar, Clip, FactsLine, IconDisc, Note, Row, Tile, TileField } from '../../components/ui'
-import { formatInt } from '../../lib/format'
+import { formatDucats, formatInt } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
 import { hullFraction, shipHoldFree, shipHoldUsed } from '../../domain/fleet'
 import { companyRoom, lockedSteps, roomStepWord, useBuyRoom, useHouseRoom, type CompanyRoom } from '../../live/houseRoom'
@@ -92,15 +92,18 @@ function Places({ room, ships }: { room: CompanyRoom; ships: number }) {
             {room.on ? (
               <span className="flex flex-col items-start gap-1 text-t-caption" data-testid="fleet-place-how">
                 {level && <span>{roomStepWord(t, level)}</span>}
-                {price && <span className="tabular-nums">{roomStepWord(t, price)}</span>}
-                {price?.next &&
+                {/* 2026-11-15 owner: shorter words. Short of gold: HAVE / NEED in the danger tone, in place of the price. */}
+                {price &&
                   (price.can_pay ? (
-                    <Button variant="secondary" busy={busy} onClick={buy} data-testid="fleet-place-buy">
-                      {t('fleets.roomBuy')}
-                    </Button>
+                    <span className="tabular-nums">{roomStepWord(t, price)}</span>
                   ) : (
-                    <span data-testid="fleet-place-short">{t('fleets.roomShort')}</span>
+                    <span className="tabular-nums text-danger" data-testid="fleet-place-short">{t('fleets.roomShort', { have: formatInt(room.purse), need: formatDucats(price.price) })}</span>
                   ))}
+                {price?.next && price.can_pay && (
+                  <Button variant="secondary" busy={busy} onClick={buy} data-testid="fleet-place-buy">
+                    {t('fleets.roomBuy')}
+                  </Button>
+                )}
               </span>
             ) : (
               <span className="text-t-caption" data-testid="fleet-place-dark">
