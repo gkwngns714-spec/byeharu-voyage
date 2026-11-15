@@ -4,6 +4,8 @@ import type { CoastMaskPayload } from '../src/lib/sea/coastMask.ts'
 
 export declare const MASK_FILE: string
 export declare const SUB: number
+/** 0446: the sub-cells (I * 28800 + J, 1/80-degree rows from 90 N and columns from 180 W) a `fairway` channel's own line keeps as water. */
+export declare function fairwaySubCells(): Set<number>
 export declare function buildCoastMask(raster: {
   cols: number
   rows: number

@@ -383,3 +383,42 @@ Proofs 97 and 98 went red on main. 0442 is the repair. What this adds to the pro
   new figures do to prices through `world.haul_rows()`; read that before shipping) and pass `--reaches=<out.json>` to step 2.
 - The guards: the world guard (the table equals the file), proofs 97, 98 and 144, and `tests/sea.noLandCrossing.spec.ts` (the three
   laws, `scripts/sea-legs.sql.mjs` `LAWS_SQL`). The prod read is `scripts/ops/harness/seas-memo/before.sql`.
+
+### 0446: the real straits are open, and stay open (owner row 352)
+
+0440 and 0441 were right, and over-corrected in four places: each had been standing in for a real strait the raster closes. Messina
+to Zakynthos went from 291 nm to 630 (round Sicily), Jakarta to Surabaya from 374 to 524 (round Madura), Lubeck to Bergen from 519 to
+561 (by the Sound), Banten to Lingga from 371 to 397 (east of Bangka). Nothing held a strait OPEN: the land guard only fails when a
+course is on the land. 0446 charts the four (`messina`, `great-belt`, `bangka`, `surabaya` in `scripts/sea-grid.mjs`), puts Messina's
+roadstead in its strait, re-sails the stored courses the straits shorten, and re-ships the pair table and the quoted distances
+(`docs/dev-log/2026-11-16-straits.md`). What this adds to the procedure above:
+
+- **The list of real straits** is `scripts/straits.mjs` (`STRAIT_PASSES`): a harbour on each side, the box of water the course must
+  run through, and how far over the straight line it may be. `tests/sea.straits.spec.ts` holds the built world to it, and proof 148
+  holds what the database has (the cells, Messina's roadstead, the quotes). **A change that lengthens a course is audited like one
+  that puts it on the land**: after any harbour, raster, coast or pathfinder change, compare the quoted distances before and after
+  (`node scripts/ops/harness/seas-memo/measure-reaches.mjs <image> <out.json> [--apply <migration.sql>]` prints the pairs that move),
+  and look at every pair that grew by more than 15 % or 50 nm. A new strait a ship of the period could pass goes on the list.
+- **A fairway.** A charted channel the chart draws narrower than the course author's 1.5-nm grid can follow (two pixels of the land
+  bitmap, not lined up with the grid's cells: Messina off Capo Peloro, Surabaya's western fairway) is marked `fairway: true`. The fine
+  cells its own line runs through are water in the coast mask (`scripts/build-coast-mask.mjs` `fairwaySubCells`), so it is one cell
+  wide where the bitmap pinches it. The generator refuses a line that touches drawn land, so a course in a fairway is never more than
+  one sub-cell (0.75 nm) over the drawn coast, under the audit's 2 nm.
+- **A cell a channel opens takes a zone as well as a sea.** `public.sea_zone_cells` (0215) must answer for it, or a roadstead in it
+  has no sea of its own (`public.harbour_zone` null, and `public.sea_leg_asks_keep()` fails). 0446's step 1b does it for every carved
+  cell (0440's six had none); `scripts/straits.sql.mjs` carries the step.
+- **The generator** is `node scripts/build-straits.mjs <image of the chain before> --prod courses.json` (PART A: the cells, the
+  roadsteads, the courses; it also takes a stored course through a newly opened strait when the course author's own search is more
+  than 15 nm and 3 % shorter). Then the pair table and the quoted distances, on the world PART A leaves, in the SAME migration:
+  1. `node scripts/ops/harness/seas-memo/measure-reaches.mjs <image> <out.json> --apply <the migration>`;
+  2. `BYEHARU_PREFIX_CACHE=required node scripts/build-sea-legs.mjs --before=<next number> --courses=<file.json>`;
+  3. `BYEHARU_PREFIX_CACHE=required node scripts/build-sea-legs-migration.mjs --before=<next number> --name=<the migration> --append
+     --harness=straits --courses=<file.json> --reaches=<out.json> --proof98` writes PART B after the mark.
+  `node scripts/ops/harness/straits/prod-shaped.mjs <image> courses.json legs.json --rollback` applies the whole file to prod's own
+  lanes, stops and frozen legs in an image, audits the result and round-trips the two rollback files.
+- **Not opened, on purpose:** the Kanmon strait (closed in the raster before 0440 too; narrower than the chart's pixel, so it would be
+  a river carve: its own slice) and Moon Sound (shoal; the old Riga to Tallinn course ran across mainland Estonia through the
+  `baltic-gulfs` carve, which names two gulfs and still opens raster cells across Estonia: a hand-made course may use them).
+- **Known, not fixed: a long leg is measured as a great circle and drawn as a straight line.** When the re-sailing splits such a leg
+  at an islet, the same track measures up to 15 % longer (Banten to the Drake Passage 7,220 to 8,467 nm). 1,783 pairs' quotes grew by
+  more than 50 nm for this alone. The measure of a long leg is its own slice (it re-prices every long haul).

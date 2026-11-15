@@ -80,8 +80,11 @@ const landOpenedBy = (pre: Uint8Array, ch: Channel) =>
  *  each looked at on the raster before the number was written — the look is the guard.
  *  Moved deliberately 2026-11-15, 208 -> 214, with the charted channels (0440, owner row 352): `corfu` opens 3
  *  (both Corfu channels and the water south of the island), `tsugaru` 2 (the strait's northern half) and
- *  `western-scheldt` 1 (the Wielingen), each drawn by the chart and looked at on it before the number was written. */
-const LAND_TOTAL = 214
+ *  `western-scheldt` 1 (the Wielingen), each drawn by the chart and looked at on it before the number was written.
+ *  Moved deliberately 2026-11-16, 214 -> 220, with the straits 0440 and 0441 closed (0446, owner row 352): `messina` opens 2
+ *  (the strait, from the Tyrrhenian to the Ionian), `bangka` 2 (the strait's southern half), `great-belt` 1 (open water west
+ *  of Zealand) and `surabaya` 1 (the western fairway), each drawn water on the chart and looked at on it cell by cell. */
+const LAND_TOTAL = 220
 
 /** Cells CARVED in total — land and water together. A different fact, kept because it is the
  *  figure `docs/DEV_LOG.md` D39 and `docs/LAND_CARVE_RECON.md` quote, and because a carve that
@@ -89,7 +92,8 @@ const LAND_TOTAL = 214
  *  again, which is the whole history of this file. */
 // Moved deliberately 2026-09-14, 521 -> 529, with the same two channels (8 cells carved, 6 of them land).
 // Moved deliberately 2026-11-15, 529 -> 541, with the three charted channels (12 cells carved, 6 of them land; 0440).
-const CARVE_TOTAL = 541
+// Moved deliberately 2026-11-16, 541 -> 555, with the four straits of 0446 (14 cells carved, 6 of them land).
+const CARVE_TOTAL = 555
 
 test('every channel opens exactly the land it declares', () => {
   const pre = preCarveGrid()
@@ -106,7 +110,7 @@ test('every channel opens exactly the land it declares', () => {
   expect(actual).toEqual(declared)
   expect(Object.values(actual).reduce((a, b) => a + b, 0)).toBe(LAND_TOTAL)
 
-  // The carve's SIZE, the other fact. 541 cells opened, of which 214 are land.
+  // The carve's SIZE, the other fact. 555 cells opened, of which 220 are land.
   const carved = CHANNELS.reduce((n, ch) => n + cellsOpenedBy(ch).size, 0)
   expect(carved).toBe(CARVE_TOTAL)
   expect(LAND_TOTAL).toBeLessThan(CARVE_TOTAL) // a channel is mostly water it merely re-states

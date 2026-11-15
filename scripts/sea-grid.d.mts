@@ -19,6 +19,9 @@ export interface Channel {
    *  mask and in the audit (scripts/db/audit-land-crossings.mjs). A channel without it is a river
    *  carve, whose cells the chart draws as land and the game sails on purpose. */
   charted?: boolean
+  /** 0446: a charted channel the chart draws narrower than the course author's 1.5-nm grid can follow. The fine
+   *  cells its own line runs through are water in the coast mask (scripts/build-coast-mask.mjs fairwaySubCells). */
+  fairway?: boolean
 }
 
 export declare const CHANNELS: Channel[]

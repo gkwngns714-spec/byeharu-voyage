@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // measure-reaches.mjs: THE QUOTED DISTANCES, MEASURED AGAIN, AND WHAT THAT DOES TO PRICES (0442; owner row 352). LOCAL; reads a world image.
 //
-//   node scripts/ops/harness/seas-memo/measure-reaches.mjs <image.tar.gz> <out.json>
+//   node scripts/ops/harness/seas-memo/measure-reaches.mjs <image.tar.gz> <out.json> [--apply <migration.sql>]
 //
 // public.sea_reaches.reaches is the distance the quay quotes between two places. It was last measured at 0076/0091/0217/0338/0414 by the search as it
 // stood, between the roadsteads as they stood. 0440 moved 69 roadsteads and opened three straits, 0440's course author re-sails every course off the
@@ -10,12 +10,21 @@
 //   sailed   the course the browser's course author proposes (the search, then refineCourse off the coast mask): what a fleet really sails
 // and, for each, what world.haul_rows() would give every market row (public.port_goods.haul is a multiplier on the price), inside a transaction that
 // is rolled back. It writes the new figures to <out.json> ({ raw: {A: {B: nm}}, sailed: {...} }) for scripts/build-sea-legs-migration.mjs.
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { PART_B_MARK } from '../../../sea-legs.sql.mjs'
 import { openImage, readMask } from '../../../db/audit-land-crossings.mjs'
 import { navFromServed, floodFrom, floodPathTo, refineCourse, coastLand, gcNm } from '../../../../src/lib/sea/index.ts'
 
-const [image, outFile] = process.argv.slice(2)
+// --apply <migration.sql> (0446): the image is the chain BEFORE that file; its SQL is applied first (in memory only; a PART B after the mark is left out)
+const applyAt = process.argv.indexOf('--apply')
+const applyFile = applyAt > 0 ? process.argv[applyAt + 1] : null
+const [image, outFile] = process.argv.slice(2).filter((a, i, all) => a !== '--apply' && all[i - 1] !== '--apply')
 const db = await openImage(image)
+if (applyFile) {
+  const text = readFileSync(applyFile, 'utf8')
+  await db.exec(text.includes(PART_B_MARK) ? text.slice(0, text.indexOf(PART_B_MARK)) : text)
+  console.log(`applied ${applyFile} (in memory)`)
+}
 const raster = (await db.query(`select cols, rows, cell_deg::float8 as cell_deg, bits_per_cell, replace(encode(cells, 'base64'), e'\\n', '') as cells_base64 from public.sea_raster where id = 1`)).rows[0]
 const places = (await db.query(`select sr.code, sr.roadstead_lat::float8 as lat, sr.roadstead_lon::float8 as lon, sr.reaches from public.sea_reaches sr order by sr.code collate "C"`)).rows
 const nav = navFromServed(raster)

@@ -50,13 +50,16 @@ if (!isMainThread) {
 
 const { MIGRATIONS_DIR, PREFIX_CACHE_DIR, REPO_ROOT, migrationFiles, preambleVariant } = await import('./db/apply-chain.mjs')
 const { applyWithPrefixCache } = await import('./db/prefix-cache.mjs')
+const { PART_B_MARK } = await import('./sea-legs.sql.mjs')
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3)
 const before = arg('before')
 if (!before) throw new Error('usage: node scripts/build-sea-legs.mjs --before=<the migration number that will embed the file, e.g. 0403>')
 const files = []
 for (const name of await migrationFiles()) {
   if (name.slice(10, 14) >= before) continue
-  files.push({ name, sql: await readFile(path.join(MIGRATIONS_DIR, name), 'utf8') })
+  // a PART B appended to a migration (scripts/build-sea-legs-migration.mjs --append, 0446) is not part of the world its courses are plotted on
+  const text = await readFile(path.join(MIGRATIONS_DIR, name), 'utf8')
+  files.push({ name, sql: text.includes(PART_B_MARK) ? text.slice(0, text.indexOf(PART_B_MARK)) + PART_B_MARK + '\n' : text })
 }
 const out = await applyWithPrefixCache({ variant: await preambleVariant(), files, cacheDir: PREFIX_CACHE_DIR, log: () => {}, required: true, snapshots: false })
 const db = out.db

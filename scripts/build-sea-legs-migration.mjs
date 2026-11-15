@@ -13,23 +13,35 @@
 //   3. applies it to that world inside a transaction that is rolled back, so its self-assert runs and its header says what moved and how long it took;
 //   4. writes scripts/ops/harness/seas-memo/after.sql and rollback-<tag>.sql (the rows as they were);
 //   5. with --proof98 and --courses: rewrites the courses proof 98 holds (from Acapulco and from Sakai to every other harbour) from the same plot.
+//
+// --append (0446): the named migration already exists and holds a PART A that re-sails courses or moves roadsteads (scripts/build-straits.mjs). Then
+//   --before is the number AFTER it (the world this stands on is the chain with PART A applied), the file is cut at PART_B_MARK and this script's
+//   SQL is written after the mark as PART B, without redefining public.sea_leg_asks_keep(). --harness=<dir under scripts/ops/harness> names where
+//   the prod check and the rollback go (after-pairs.sql, rollback-pairs-<tag>.sql), so 0442's own files are left as they are.
+//     BYEHARU_PREFIX_CACHE=required node scripts/build-sea-legs-migration.mjs --before=0447 --name=20260818000446_<words>.sql --append --harness=straits ...
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
-import { migrationSql, LAWS_SQL } from './sea-legs.sql.mjs'
+import { migrationSql, LAWS_SQL, PART_B_MARK } from './sea-legs.sql.mjs'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, REPO_ROOT, migrationFiles, preambleVariant } from './db/apply-chain.mjs'
 import { applyWithPrefixCache } from './db/prefix-cache.mjs'
 
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3)
 const before = arg('before')
 const name = arg('name')
-if (!before || !name || name.slice(10, 14) !== before) throw new Error('usage: --before=0442 --name=20260818000442_<words>.sql [--courses=<file.json> --proof98]')
+const append = process.argv.includes('--append')
+const tag = name?.slice(10, 14)
+if (!before || !name || (append ? Number(tag) !== Number(before) - 1 : tag !== before)) throw new Error('usage: --before=0442 --name=20260818000442_<words>.sql [--courses=<file.json> --proof98] | --before=<next> --name=<existing file> --append')
 const md5 = (s) => createHash('md5').update(s).digest('hex')
 const files = []
 for (const f of await migrationFiles()) {
   if (f.slice(10, 14) >= before) continue
-  files.push({ name: f, sql: await readFile(path.join(MIGRATIONS_DIR, f), 'utf8') })
+  const text = await readFile(path.join(MIGRATIONS_DIR, f), 'utf8')
+  // an appended PART B is not part of the world it is written for
+  files.push({ name: f, sql: f === name && text.includes(PART_B_MARK) ? text.slice(0, text.indexOf(PART_B_MARK)) + PART_B_MARK + '\n' : text })
 }
+const partA = append ? files.at(-1).sql : ''
+if (append && (files.at(-1).name !== name || !partA.includes(PART_B_MARK))) throw new Error(`--append: ${name} is not the last migration before ${before}, or holds no PART B mark`)
 const { db } = await applyWithPrefixCache({ variant: await preambleVariant(), files, cacheDir: PREFIX_CACHE_DIR, log: () => {}, required: true, snapshots: false })
 const head = files.at(-1).name.slice(0, 14)
 const one = async (sql) => (await db.query(sql)).rows[0]
@@ -84,7 +96,7 @@ const haulPre = reachIn ? new Map((await db.query(haulSql)).rows.map((r) => [r.k
 const worst = (r) => `${r.worst.k} ${r.worst.was} -> ${r.worst.now}`
 const fill = (changed, ms) =>
   migrationSql({
-    tag: before, head, prodNote: arg('prod-note') ?? 'see the PR',
+    tag, head, append, next: before, prodNote: arg('prod-note') ?? 'see the PR',
     before: { lanes: laws.lanes ? laws.lanes.split(' ').length : 0, lanesList: laws.lanes ?? 'none' },
     harbours: seed.harbours.length, sets: seed.sets.length, harbourList: world.harbours, roadsMd5: world.roads, rasterMd5: world.raster, zonesMd5: world.zones,
     seed: seedText, seedMd5, changed, ms, reach: reachIn,
@@ -132,16 +144,18 @@ for (const r of post) {
   if (r.zones !== o.zones || r.wave_min !== o.wave_min || r.title_min !== o.title_min) moved.push(o)
 }
 sql = fill(changed, ms)
-await writeFile(path.join(MIGRATIONS_DIR, name), sql)
+await writeFile(path.join(MIGRATIONS_DIR, name), partA + sql)
 console.log(`wrote supabase/migrations/${name} (${Math.round(sql.length / 1024)} KB): ${JSON.stringify(changed)} of ${post.length} rows, ${ms} ms here; before: own ${laws.own}, lanes ${laws.lanes}`)
 
 // the prod check after, and the forward rollback
-const H = path.join(REPO_ROOT, 'scripts', 'ops', 'harness', 'seas-memo')
+const H = path.join(REPO_ROOT, 'scripts', 'ops', 'harness', arg('harness') ?? 'seas-memo')
+const afterName = append ? 'after-pairs.sql' : 'after.sql'
+const rollbackName = append ? `rollback-pairs-${tag}.sql` : `rollback-${tag}.sql`
 await mkdir(H, { recursive: true })
 await writeFile(
-  path.join(H, 'after.sql'),
-  `-- after.sql: READ ONLY on prod, one statement, AFTER ${before} (generated by scripts/build-sea-legs-migration.mjs: do not edit by hand).
--- Want head 20260818${before.padStart(6, '0')}, own null, lanes null, asks 0, fn 1, pairs ${post.length}${reachIn ? `, reaches_md5 ${reachesMd5}, haul_off 0 (world.haul_rows() is STABLE; about 4 s)` : ''}. STABLE functions only (public.npc_course_zones, public.harbour_zone).
+  path.join(H, afterName),
+  `-- ${afterName}: READ ONLY on prod, one statement, AFTER ${tag} (generated by scripts/build-sea-legs-migration.mjs: do not edit by hand).
+-- Want head 20260818${tag.padStart(6, '0')}, own null, lanes null, asks 0, fn 1, pairs ${post.length}${reachIn ? `, reaches_md5 ${reachesMd5}, haul_off 0 (world.haul_rows() is STABLE; about 4 s)` : ''}. STABLE functions only (public.npc_course_zones, public.harbour_zone).
 begin transaction read only;
 select jsonb_build_object(
   'head', (select max(version) from supabase_migrations.schema_migrations),
@@ -155,9 +169,9 @@ rollback;
 `,
 )
 await writeFile(
-  path.join(H, `rollback-${before}.sql`),
-  `-- rollback-${before}.sql: the FORWARD rollback of ${before} (generated by scripts/build-sea-legs-migration.mjs: do not edit by hand). Cut it as the next migration if
--- the owner wants it undone: the ${moved.length} rows the chain's world saw move go back to what they held, and the function goes. (Rows only production
+  path.join(H, rollbackName),
+  `-- ${rollbackName}: the FORWARD rollback of ${tag}${append ? "'s PART B, to follow rollback-" + tag + '.sql' : ''} (generated by scripts/build-sea-legs-migration.mjs: do not edit by hand). Cut it as the next migration if
+-- the owner wants it undone: the ${moved.length} rows the chain's world saw move go back to what they held${append ? '' : ', and the function goes'}. (Rows only production
 -- moved, for lanes the chain does not hold, keep the seas of their lanes: those were true.) data/sea-legs.json must go back with it.
 -- A DRAFT that WRITES: it runs on a local PGlite world only while it carries the next line (the guard). To deploy it, strip that line. Owner only.
 do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
@@ -166,14 +180,13 @@ update public.sea_leg_asks s set wave_min = v.w, title_min = v.t, zones = string
 ${moved.map((o) => `    ('${o.a}', '${o.b}', ${o.wave_min}, ${o.title_min}, '${o.zones}')`).join(',\n')}
   ) v(a, b, w, t, z), public.ports a, public.ports b
  where a.code = v.a and b.code = v.b and s.from_port = a.id and s.to_port = b.id;
-drop function public.sea_leg_asks_keep();
-${reachIn ? `-- the quoted distances as they were, and the prices derived from them
+${append ? '' : 'drop function public.sea_leg_asks_keep();\n'}${reachIn ? `-- the quoted distances as they were, and the prices derived from them
 update public.sea_reaches sr set reaches = v.value from jsonb_each($was$${`{${reachPre.map((r) => `"${r.code}":${JSON.stringify(r.reaches)}`).join(',\n')}}`}$was$::jsonb) v where v.key = sr.code;
 update public.port_goods pg set haul_nm = h.haul_nm, haul = h.haul
   from world.haul_rows() h where h.port_id = pg.port_id and h.good_id = pg.good_id and (pg.haul_nm, pg.haul) is distinct from (h.haul_nm, h.haul);
 ` : ''}`,
 )
-console.log(`wrote scripts/ops/harness/seas-memo/after.sql and rollback-${before}.sql (${moved.length} rows)`)
+console.log(`wrote ${path.relative(REPO_ROOT, H)}/${afterName} and ${rollbackName} (${moved.length} rows)`)
 
 // proof 98's courses: from Acapulco and from Sakai to every other harbour, as this build plotted them
 if (process.argv.includes('--proof98')) {

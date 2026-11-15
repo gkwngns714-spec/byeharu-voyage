@@ -137,6 +137,30 @@ export const CHANNELS = [
   // The Tsugaru strait: 1:110m draws Hokkaido's south coast across the strait's northern half, so the
   // raster left one row of cells over Shimokita's cape and every course through crossed Oma.
   { id: 'tsugaru', name: 'the Tsugaru strait', points: [[41.45, 140.6], [41.55, 140.85], [41.6, 141.0], [41.6, 141.2], [41.6, 141.35]], opensLand: 2, charted: true },
+  // ── THE STRAITS 0440 AND 0441 CLOSED (0446, owner row 352: "the fix over-corrected") ──────────────
+  // Until 0441 a course could run over raster land within 25 nm of a harbour, and until 0440 over any
+  // land the raster cannot see. Both were wrong, and both had been standing in for four real straits
+  // the raster closes: when they went, Messina to Zakynthos went from 291 nm to 630 (round Sicily),
+  // Jakarta to Surabaya from 374 to 524 (round Madura), Lubeck to Bergen from 519 to 561 (by the Sound)
+  // and Banten to Lingga from 371 to 397 (east of Bangka). Each is charted here, down its drawn water.
+  // `fairway: true` (scripts/build-coast-mask.mjs): the chart draws the water narrower than the course
+  // author's 1.5-nm grid can pass (two pixels of the land bitmap, not lined up with the grid's cells),
+  // so the fine cells the channel's own line runs through are water in the coast mask: the fairway is
+  // one cell wide where the bitmap pinches it. The line itself never touches drawn land (the generator
+  // refuses one that does).
+  // The Strait of Messina: 1:110m joins Sicily to Calabria. Two cells, from the Tyrrhenian to the Ionian.
+  // The chart draws it 2.6 nm wide off Capo Peloro, in steps the grid cannot follow: a fairway.
+  { id: 'messina', name: 'the Strait of Messina', points: [[38.4, 15.48], [38.32, 15.62], [38.29, 15.67], [38.272, 15.695], [38.257, 15.66], [38.245, 15.62], [38.23, 15.6], [38.2, 15.595], [38.175, 15.59], [38.15, 15.585], [38.1, 15.57], [38.05, 15.56], [38.01, 15.56], [37.97, 15.57]], opensLand: 2, charted: true, fairway: true },
+  // The Great Belt: the raster has no Funen, so the belt is its own water as far north as 55.5; there
+  // 1:110m draws Zealand out to 10.75 E across open water, and the way on to the Kattegat was a neck one
+  // mask cell wide beside Funen's Hindsholm that the course author's grid cannot pass.
+  { id: 'great-belt', name: 'the Great Belt', points: [[55.47, 10.88], [55.56, 10.85], [55.66, 10.83], [55.74, 10.82], [55.8, 10.8]], opensLand: 1, charted: true },
+  // The Bangka strait: the raster has no Bangka, and draws Sumatra east across the strait's southern
+  // half, so a course from the Sunda strait to Lingga or Malacca went east of the island (Gaspar).
+  { id: 'bangka', name: 'the Bangka strait', points: [[-2.4, 105.76], [-2.55, 105.76], [-2.7, 105.83], [-2.85, 105.86], [-2.92, 105.95], [-2.97, 106.1]], opensLand: 2, charted: true },
+  // The western fairway of Surabaya, between Java and Madura (the raster has no Madura and closes the
+  // fairway's cell). The chart draws it 1.5 nm wide at its narrowest: a fairway.
+  { id: 'surabaya', name: 'the western fairway of Surabaya', points: [[-6.95, 112.7], [-7.0, 112.7], [-7.03, 112.67], [-7.045, 112.68], [-7.056, 112.675], [-7.07, 112.66], [-7.11, 112.67], [-7.135, 112.68], [-7.155, 112.7], [-7.18, 112.715], [-7.195, 112.76], [-7.195, 112.8]], opensLand: 1, charted: true, fairway: true },
 ]
 
 /** THE CELLS A RIVER CARVE OPENED: cells of dry land in the land data that a channel the chart does
