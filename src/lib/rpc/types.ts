@@ -1416,6 +1416,8 @@ export interface FleetView {
   busy_until: string | null
   /** 0333: in a battle you started, when the first ship of the other side's country gets there. Absent when none will. */
   navy_at?: string
+  /** 0432: after a battle she was set upon in, no pirate raids her until this instant (peace_after_flee_minutes). Absent otherwise. */
+  peace_until?: string
   /** 0237 — her port time: she may not sail before this instant (a SAIL sent now waits in her queue). Served only
    *  while she is in it, and only while the economy is closed. */
   ready_at?: string
@@ -4103,7 +4105,7 @@ export interface StatsFleets {
   cargo?: StatsFleetKind & { tuns: number; tuns_at_sea: number; funds: number }
   /** 0427: the battles of the last 24 hours: raids pirates opened on merchants, won by the pirates, held by the merchants, the navy came to;
    *  players' attacks; and the navy's fights with pirate ships. Absent before 0427. */
-  battles?: { raids_day: number; won_day: number; held_day: number; navy_day: number; attacks_day: number; navy_fights_day: number }
+  battles?: { raids_day: number; won_day: number; held_day: number; navy_day: number; attacks_day: number; navy_fights_day: number; fled_day?: number }
 }
 
 /** 0431: the three kinds the faces Navy, Pirates and Cargo list (the server's words). */
