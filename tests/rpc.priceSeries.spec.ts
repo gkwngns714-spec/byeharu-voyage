@@ -119,7 +119,7 @@ test('every span answers from its tier, oldest first, in the shape the types cla
   await db.callAs(`update public.price_rollup set hour_done = (date_trunc('day', now() at time zone 'UTC') at time zone 'UTC') - interval '14 hours', day_done = (((date_trunc('day', now() at time zone 'UTC') at time zone 'UTC') - interval '14 hours') at time zone 'UTC')::date returning 1 as result`)
   await db.callAs(`select public.tick_price_snapshot(now() + make_interval(secs => 2 * public.wc_num('drift_slot_seconds')::double precision))::text as result`)
 
-  const tiers: Record<string, string> = { '1d': 'fine', '1w': 'hour', '1m': 'hour', '1y': 'day', all: 'day' }
+  const tiers: Record<string, string> = { '1d': 'fine', '1w': 'hour', '1m': 'day', '1y': 'day', all: 'day' }   // 0428: a month from the days
   for (const span of PRICE_SPANS) {
     const r = await worldPriceSeries(port, sold, span)
     expect(r.ok, span).toBe(true)

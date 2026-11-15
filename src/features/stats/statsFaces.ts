@@ -22,9 +22,9 @@ export function toSeries<T extends { at: string }>(rows: readonly T[], pick: (ro
   return out
 }
 
-/** WHAT A STATS READ'S POINTS SUM, by the span it answered: 1d the count's own rows (a quarter hour each), 1w and 1m hourly buckets, 1y and all daily ones
- *  (`public.stats_span_unit`, 0246, spoken once here). A read of no span is its own window of the count's rows. */
-const SPAN_PERIOD: Record<PriceSpan, SumPeriod> = { '1d': 'quarter', '1w': 'hour', '1m': 'hour', '1y': 'day', all: 'day' }
+/** WHAT A STATS READ'S POINTS SUM, by the span it answered: 1d the count's own rows (a quarter hour each), 1w hourly buckets, 1m, 1y and all daily ones
+ *  (`public.stats_span_unit`, 0246; 1m daily since 0428, spoken once here). A read of no span is its own window of the count's rows. */
+const SPAN_PERIOD: Record<PriceSpan, SumPeriod> = { '1d': 'quarter', '1w': 'hour', '1m': 'day', '1y': 'day', all: 'day' }
 
 /** What a stats read says about its series: the span it answered, and how far the counts reach (`counted_at`: its live point adds the minutes since). */
 export interface ReadStamp {

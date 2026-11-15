@@ -258,7 +258,7 @@ begin
     if v_step <> 'IN_PORT' then
       raise exception 'PROOF 19 FAIL: a wreck did not wait: %', v_step;
     end if;
-    if public.cargo_ship_step(v_fl2, v_end + make_interval(secs => public.wc_num('convoy_wreck_seconds') + 1)) <> 'SAILED' then
+    if public.cargo_ship_step(v_fl2, v_end + make_interval(secs => public.wc_num('convoy_wreck_seconds') + 1)) not in ('SAILED', 'HOMEWARD') then   -- 0430: empty, she sails straight home
       raise exception 'PROOF 19 FAIL: a wreck did not sail on after the wait';
     end if;
   end if;
