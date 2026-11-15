@@ -124,6 +124,9 @@ declare
   v_big  bigint;
   v_i    int;
 begin
+  -- 0426 moved a load to 100,000 and 30 a run (proof 127): this scene proves 0425's rule as written, so it pins 0425's values
+  update public.world_config set value = to_jsonb(250000) where key = 'convoy_load_max';
+  update public.world_config set value = to_jsonb(20) where key = 'convoy_loads_per_run';
   if public.wc_int('convoy_load_max') <> 250000 or public.wc_int('convoy_loads_per_run') < 4 then
     raise exception 'PROOF 126 FAIL: a load is % a ship and % ships a run, not 0425''s 250,000 and 20', public.wc_int('convoy_load_max'), public.wc_int('convoy_loads_per_run');
   end if;

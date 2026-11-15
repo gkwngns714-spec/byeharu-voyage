@@ -31,6 +31,8 @@ begin
   -- ── THE SCENE: the merchants lit, every one on her route where she lies; 45 of those in port at their first stop laid up by hand ──
   update public.world_config set value = 'true'::jsonb where key in ('npc_traders_enabled', 'standing_routes_enabled');
   if not public.npc_traders_on() then raise exception 'proof 100: the merchants cannot be lit in this world'; end if;
+  -- 0426: this proof is of 0405's ask as written (she waits or is resumed where she lies); a move of her home is proof 127's
+  update public.world_config set value = to_jsonb(0) where key = 'npc_rehome_per_run';
   update public.world_config set value = to_jsonb(greatest(public.wc_int('npc_fleet_max'), (select count(*)::int from public.npc_fleets))) where key = 'npc_fleet_max';
   update public.standing_routes sr set fleet_id = nf.fleet_id, lap_id = null, paused_reason = null, hold_until = null
     from public.npc_fleets nf where nf.route_id = sr.id;
