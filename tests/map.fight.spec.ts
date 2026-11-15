@@ -225,7 +225,8 @@ for (const size of [PHONE, WIDE]) {
           return n
         }, g)
       }
-      await expect.poll(inside, { timeout: 60_000, message: 'her hull stands inside the ring' }).toBe(1)
+      // and so does the ship she set upon: every fleet of a fight being fought is drawn in its ring (src/chart/fightPins.ts)
+      await expect.poll(inside, { timeout: 60_000, message: 'her hull and the ship she set upon stand inside the ring' }).toBe(2)
       await page.screenshot({ path: path.join(SHOTS, `ring-mine-${size.width}-en.png`) })
       const g = await ringOnGlass(page)
       // a press ON HER HULL inside the ring opens the fight (the ring is her battle's target, and she is in it)
