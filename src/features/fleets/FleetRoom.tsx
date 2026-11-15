@@ -38,7 +38,7 @@ function Ladder({ kind, label, ladder, on }: { kind: 'FLEET' | 'SHIP'; label: st
       <ul className="mt-1 flex flex-col gap-1 text-t-caption">
         {ladder.steps.map((s, i) => (
           <li key={i} className={`flex flex-wrap items-center justify-between gap-x-3 ${s.open ? 'text-ink' : 'text-ink-faint'}`} data-testid="fleet-room-step">
-            <span className="tabular-nums">{roomStepWord(t, s)}</span>
+            <span className="tabular-nums">{roomStepWord(t, s, ladder.level)}</span>
             {on && s.how === 'gold' && s.next && s.can_pay ? (
               <Button variant="secondary" busy={busy} onClick={buy} data-testid="fleet-room-buy">
                 {t('fleets.roomBuy')}

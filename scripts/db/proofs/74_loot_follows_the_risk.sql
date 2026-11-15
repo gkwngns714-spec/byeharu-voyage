@@ -18,6 +18,8 @@
 -- @pass ATTACK_READY         public.attack_ready, the one reading 0375's guard refuses by: in a world where cargo ships sail it is ready only with regard, the crown level (written), the armed cargo ship and the navy lit, the loot rule on, a sane clock and at most a tenth of the cargo ships at sea unarmed; each one off refuses and says why
 -- ═══════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
+
 do $$
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'convoys_enabled', 'combat_bite', 'attack_enabled', 'regard_enabled');

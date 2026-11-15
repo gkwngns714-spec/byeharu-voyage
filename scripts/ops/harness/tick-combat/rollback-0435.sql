@@ -1,0 +1,10 @@
+-- 0435 ROLLBACK DRAFT (forward, owner only; NOT a migration until the owner asks for one; then it takes prod head + 1).
+-- QUICK (no migration, the owner's knob): update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';
+--   Every NEW battle is fought round by round (0357) at once; a running tick battle closes on its own clock (battle_fight still reads its timeline).
+-- WHOLE: the hunks of 0435 reversed (each NEW text back to its OLD, once each, as 0435's self-assert proves they reverse), then:
+--   drop function cmd.battle_end(uuid); drop function world.battle_ticks(uuid);   -- after their registry rows are cut (client_rpc_entry_points hunk reversed)
+--   drop function public.tick_fight_open(uuid, timestamptz); drop function public.tick_battle_run(uuid);
+--   drop function public.tick_fight(uuid, jsonb, jsonb, jsonb); drop function public.tick_row(integer, text, integer[], numeric[], numeric[], integer[], integer[], integer[], integer[], numeric[], numeric[], numeric[], numeric[], boolean[]);
+--   The column battles.ticks and the knobs stay (harmless, read by nothing once the hunks are reversed); a battle still FIGHTING with a timeline must
+--   close first (wait one battle length, ~75 s, after the quick rollback) or battle_fight would re-run its sheet round by round.
+-- The hunks to reverse, in this order (OLD <- NEW), are the five `hunks_0435` rows of the migration file.

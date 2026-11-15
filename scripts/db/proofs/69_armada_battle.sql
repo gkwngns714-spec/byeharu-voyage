@@ -26,6 +26,8 @@
 -- @pass AB_AT_SEA           an armada sailing on one order attacks: both fleets are held at sea for the same span, the hold is cut with the battle for both, and they still arrive at one instant; at the knob's own reach a sister at the same point is there, and at no reach she is not
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
+
 create temp table hunks_69 (fn text, n int, old text, new text) on commit drop;
 insert into hunks_69 (fn, n, old, new) values
 -- hunks:begin
@@ -45,7 +47,10 @@ $h$, $h$  -- 0395 (docs/ARMADA.md section 7): the fleets of her armada that are 
 $h$),
   ('public.battle_sheet_freeze(uuid,timestamp with time zone)', 1, $h$  v_st := public.battle_opening_stance(v_def);
 $h$, $h$  perform public.battle_armada_sheet(p_battle);   -- 0395: an armada's sheet names her and her fleets, and its word reads all of them; any other sheet: nothing
-  v_st := public.battle_opening_stance(v_def);
+  -- 0432: a ship of the world set upon by a pirate runs when she is outgunned (her side's score under the raider's x raid_flee_ratio)
+  v_st := case when b.kind = 'RAID' and public.fleet_kind(v_def) in ('MERCHANT', 'CARGO_SHIP')
+                    and voyage.escort_score(v_def) < voyage.escort_score(v_att) * coalesce(public.wc_num('raid_flee_ratio'), 0) then 'FLEE'
+               else public.battle_opening_stance(v_def) end;
 $h$),
   ('public.battle_resolve(uuid,timestamp with time zone)', 1, $h$    if s.side = 'ATTACKER' and not s.is_npc then
 $h$, $h$    if s.side = 'ATTACKER' and not s.is_npc   -- 0395: one report a battle, under the fleet that attacked: a fleet that joined as her armada sends none
@@ -69,10 +74,11 @@ $h$),
 $h$, $h$                                    'navy', b.result #> '{navy,line}') end
     || public.battle_armada_view(b.id, p_fleet);   -- 0395: her armada's name, her fleets, the side's stance and, closed, each fleet's share; no armada: {}
 $h$),
-  ('public.navy_close(uuid,timestamp with time zone)', 1, $h$  select count(*) filter (where bs.how <> 'OPENED' and bs.arrives_at <= b.resolves_at),
-$h$, $h$  select count(*) filter (where bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at),   -- 0395: her own armada is no navy
+  -- 0436 re-cut both navy_close hunks (a JOINED pirate is no navy): this proof's copies carry its clause on both sides
+  ('public.navy_close(uuid,timestamp with time zone)', 1, $h$  select count(*) filter (where bs.how <> 'OPENED' and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at),
+$h$, $h$  select count(*) filter (where bs.how not in ('OPENED', 'ARMADA') and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at),   -- 0395: her own armada is no navy; 0436: nor a pirate that joined
 $h$),
-  ('public.navy_close(uuid,timestamp with time zone)', 2, $h$         bool_or(bs.how <> 'OPENED' and bs.arrives_at <= b.resolves_at or ($h$, $h$         bool_or(bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at or ($h$),
+  ('public.navy_close(uuid,timestamp with time zone)', 2, $h$         bool_or(bs.how <> 'OPENED' and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at or ($h$, $h$         bool_or(bs.how not in ('OPENED', 'ARMADA') and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at or ($h$),
   ('public.battle_navy_served(uuid)', 1, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how <> 'OPENED' and o.arrives_at <= b.resolves_at
 $h$, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how not in ('OPENED', 'ARMADA') and o.arrives_at <= b.resolves_at   -- 0395: her own armada is no help coming to the other side
 $h$)
@@ -789,7 +795,7 @@ begin
     v_m := public.tick_battles(v_t + interval '1 hour');
     begin perform public.attack_for(h1, f1[2], d, null, v_t + interval '10 minutes'); v_e1 := 'attacked'; exception when others then v_e1 := sqlerrm; end;
     begin perform public.attack_for(h1, f1[1], d, null, v_t + interval '10 minutes'); v_e2 := 'attacked'; exception when others then v_e2 := sqlerrm; end;
-    if (v_x ->> 'ok')::boolean is not true or v_m <> 1 or v_e1 not like 'E_ATTACK_COOLDOWN: Frota 1-1 fought 10 minutes ago%' or v_e2 not like 'E_ATTACK_COOLDOWN: Frota 1-2 fought %'
+    if (v_x ->> 'ok')::boolean is not true or v_m <> 1 or v_e1 not like 'E_ATTACK_COOLDOWN: Frota 1-1: Wait 10 / % min' or v_e2 not like 'E_ATTACK_COOLDOWN: Frota 1-2: Wait % min'
        or (select count(*) from public.battles) <> 1 then
       raise exception 'PROOF 69 FAIL: the cooldown did not hold for every fleet that fought: % / % (attack %, closed %)', v_e1, v_e2, v_x, v_m;
     end if;

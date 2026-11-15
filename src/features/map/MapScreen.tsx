@@ -24,6 +24,9 @@ import { useMerchantCard } from '../../live/useMerchantCard'
 import { useMerchantsHere } from '../../live/useMerchantsHere'
 import { useFights } from '../../live/useFights'
 import { FightSheet } from '../../live/FightSheet'
+import { BattleScreen } from '../../live/battle/BattleScreen'
+import { JoinBar } from '../../live/battle/JoinBar'
+import { fleetsInFight, type JoinFleet } from '../../live/battle/joinOffers'
 // WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
 import { useCommandDraft } from '../../domain/order'
 // THE CHART IS A SECTION OF ITS OWN (src/chart) and this screen composes it; nothing here draws.
@@ -79,7 +82,7 @@ import {
   type PathStop,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
-import { chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter, seaName } from '../../components/ui'
+import { Button, chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter, seaName } from '../../components/ui'
 import { worldLoadSteps } from '../../live/loadSteps'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
@@ -417,6 +420,15 @@ function Chart({
   // and a press on a ring opens the fight (src/live/FightSheet.tsx). Asked only while this screen is mounted.
   const fightCards = useFights()
   const fights = useMemo(() => mapFightsOf(fightCards), [fightCards])
+  // TICK COMBAT (docs/design/tick-combat.md 8, 9.4): every ship in a battle being fought is drawn on a red ground, and her
+  // fleets are weighed for the Join bar at the chart's own place for each. Joining is a choice: nothing here stops a ship.
+  const inFight = useMemo(() => fleetsInFight(fightCards), [fightCards])
+  const joinFleets = useMemo<JoinFleet[]>(() => {
+    const at = new Map(model.fleets.map((f) => [f.fleet.id, f.at]))
+    return fleetViews.map((f) => ({ id: f.id, name: f.name, at: at.get(f.id) ?? null, status: f.status, busyUntil: f.busy_until, peaceUntil: f.peace_until ?? null }))
+  }, [fleetViews, model.fleets])
+  // THE BATTLE SCREEN: a press on a tick battle's ring opens it (and its tray); Watch on the tray opens it again.
+  const [battleId, setBattleId] = useState<string | null>(null)
 
   // THE ONLY THING A TAP ON THE CHART DOES: a selection. Nearest glyph within reach wins (the
   // reach is src/chart/glyphs.ts's); the same thing again, or deep inland, clears it; open water
@@ -458,6 +470,7 @@ function Chart({
       const tapWins = ring !== null && fightTapWins(ring, hit === null ? null : hit.kind === 'port' ? { kind: 'port' } : hit.kind === 'fleet' || hit.kind === 'merchant' ? { kind: hit.kind, id: hit.id } : null)
       if (ring && (tapWins || fightRimWins(ring, at, under, unitsPerPx))) {
         setSelection((current) => toggleSelection(current, { kind: 'fight', id: ring.id }))
+        if (fightCards.find((c) => c.id === ring.id)?.ticks) setBattleId(ring.id)
         return
       }
       if (hit?.kind === 'fleet') selectFleet(hit.id)
@@ -483,7 +496,7 @@ function Chart({
       const sea = snapSeaPoint(seaNav, unproject(at))
       setSelection(sea ? { kind: 'sea', at: sea } : null)
     },
-    [model, ports, selectFleet, seaNav, fights],
+    [model, ports, selectFleet, seaNav, fights, fightCards],
   )
 
   useEffect(() => {
@@ -693,6 +706,7 @@ function Chart({
           portFlags={portFlags}
           islets={shore.islets}
           fights={fights}
+          inFight={inFight}
           selection={selection}
           plannedD={routeView ? routeD : pathD}
           pathStops={routeView ? routeStops : shipPath.stops}
@@ -845,7 +859,35 @@ function Chart({
           onClose={() => setSelection(null)}
         />
       )}
-      {openFight && !routeView && <FightSheet key={openFight.id} mode="side" card={openFight} onClose={() => setSelection(null)} />}
+      {openFight && !routeView && (
+        <FightSheet
+          key={openFight.id}
+          mode="side"
+          card={openFight}
+          onClose={() => setSelection(null)}
+          actions={
+            <>
+              {openFight.ticks && (
+                <Button size="sm" onClick={() => setBattleId(openFight.id)} data-testid="fight-sheet-watch">
+                  {t('join.watch')}
+                </Button>
+              )}
+              <JoinBar card={openFight} fleets={joinFleets} nowMs={nowMs} allCards={fightCards} />
+            </>
+          }
+        />
+      )}
+      {battleId !== null && (
+        <BattleScreen
+          key={battleId}
+          battleId={battleId}
+          onClose={() => setBattleId(null)}
+          actions={(() => {
+            const card = fightCards.find((c) => c.id === battleId) ?? (openFight?.id === battleId ? openFight : null)
+            return card ? <JoinBar card={card} fleets={joinFleets} nowMs={nowMs} allCards={fightCards} /> : null
+          })()}
+        />
+      )}
       {place && (
         <SendFleet
           key={place.dest.kind === 'port' ? place.dest.code : pointToken(place.dest.at)}
