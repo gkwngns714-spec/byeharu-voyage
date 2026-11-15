@@ -32,6 +32,10 @@ import { HullCountry } from './HullCountry'
 
 const POLL_MS = 5000
 
+/** How a battle ended for a reader who is neither side (`fight_card.end`, from the attacker's deck): the ends the dictionary words. */
+const WATCH_ENDS = ['A_NONE', 'A_LOST', 'FLED', 'A_BROKE', 'A_THROWN', 'A_TERMS', 'A_TOOK'] as const
+type WatchEnd = (typeof WATCH_ENDS)[number]
+
 /** What a crown's or the Brethren's ship is, with her flag; a company's or a merchant's fleet says its company on the
  *  line under its name instead (two long names side by side leave a phone no room for either). */
 function whose(side: FightSide, t: ReturnType<typeof useT>) {
@@ -75,10 +79,11 @@ function Side({ title, sides, hullPct, testId }: { title: string; sides: readonl
   )
 }
 
-/** `actions` (tick combat, docs/design/tick-combat.md 11): what the map puts on the circle's tray: the battle screen's
- *  Watch and her Join button (src/live/battle/JoinBar.tsx). A TICK battle's tray is ONLY that under "who vs who" (owner
- *  2026-11-15: "too much words. simplify all"); the fight itself is on the battle screen. An old round-by-round battle, a
- *  raid and a navy fight have no battle screen, so their tray keeps the sides and the log. */
+/** `actions` (tick combat, docs/design/tick-combat.md 11): what the map puts at the TOP of the card: Watch (the battle screen)
+ *  and her Join button (src/live/battle/JoinBar.tsx). A TICK battle's card is the card every fight has (owner 2026-11-15:
+ *  "when clicking the red circle, i want to see the info like before, but at top there will be watch"): what it is, how
+ *  many fleets and ships, and each side's fleets by name with what they are. The fight itself is on the battle screen,
+ *  behind Watch, so a tick battle's card asks for no log; once it is over the card says how it ended. */
 export function FightSheet({ card, onClose, mode, actions }: { card: FightCard; onClose: () => void; mode?: 'docked' | 'side'; actions?: ReactNode }) {
   const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('peek')
@@ -87,8 +92,11 @@ export function FightSheet({ card, onClose, mode, actions }: { card: FightCard; 
   const battle = card.id
   const kind = card.kind ?? 'BATTLE'
   const instant = kind !== 'BATTLE'
-  // A TICK BATTLE (0435) is watched on the battle screen: its card is only who against whom, Watch and Join
+  // A TICK BATTLE (0435) is watched on the battle screen (Watch): its card reads no log of its own
   const lean = card.ticks === true
+  // pirates set upon a ship: the card calls it what it is
+  const raid = kind === 'RAID' || (lean && card.sides.some((x) => x.side === 'ATTACKER' && x.kind === 'PIRATE'))
+  const ended = lean && card.status !== 'FIGHTING' && card.end && (WATCH_ENDS as readonly string[]).includes(card.end) ? (card.end as WatchEnd) : null
   const read = !instant && got?.value.battle === battle ? got.value : null
   const fighting = instant || lean ? false : read ? read.status === 'FIGHTING' : true
 
@@ -129,39 +137,6 @@ export function FightSheet({ card, onClose, mode, actions }: { card: FightCard; 
   const defenders = card.sides.filter((s) => s.side === 'DEFENDER')
   const mine = card.mine
 
-  if (lean) {
-    const names = (sides: readonly FightSide[], word: string) => (sides.length > 0 ? sides.map((s) => s.name).join(', ') : word)
-    return (
-      <Tray
-        mode={mode}
-        detent={detent}
-        onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
-        title={
-          <TrayTitle
-            name={
-              <span className="break-words">
-                <span className="text-danger">{names(attackers, t('fight.sideA'))}</span>
-                <span className="text-ink-muted"> {t('join.vs')} </span>
-                <span className="text-info">{names(defenders, t('fight.sideD'))}</span>
-              </span>
-            }
-            testId="fight-sheet-name"
-          />
-        }
-        data-testid="fight-sheet"
-        data-fight={battle}
-        data-kind={kind}
-        data-lean="true"
-        data-mine={mine ? 'true' : undefined}
-        {...CHART_CHROME}
-      >
-        <div data-testid="fight-sheet-body" data-status={card.status} className="flex flex-wrap items-center gap-2 py-2">
-          {actions}
-        </div>
-      </Tray>
-    )
-  }
-
   return (
     <Tray
       mode={mode}
@@ -169,7 +144,7 @@ export function FightSheet({ card, onClose, mode, actions }: { card: FightCard; 
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={
         <TrayTitle
-          name={t(kind === 'RAID' ? 'fight.raid' : kind === 'NAVY' ? 'fight.navyFight' : 'fight.battle')}
+          name={t(raid ? 'fight.raid' : kind === 'NAVY' ? 'fight.navyFight' : 'fight.battle')}
           line={
             <>
               {t('fight.fleetsShips', { f: formatInt(card.fleets), s: formatInt(card.ships) })}
@@ -182,13 +157,22 @@ export function FightSheet({ card, onClose, mode, actions }: { card: FightCard; 
       data-testid="fight-sheet"
       data-fight={battle}
       data-kind={kind}
+      data-ticks={lean ? 'true' : undefined}
       data-mine={mine ? 'true' : undefined}
       {...CHART_CHROME}
     >
       <div data-testid="fight-sheet-body" data-status={card.status}>
-        {actions}
+        {actions && (
+          <div data-testid="fight-sheet-actions" className="flex flex-wrap items-center gap-2 pb-2 pt-1 empty:hidden">
+            {actions}
+          </div>
+        )}
+        {ended && (
+          <Row hairline={false} label={t('fight.result')} value={<span data-testid="fight-sheet-end">{t(`fight.watch_${ended}`)}</span>} />
+        )}
         <Side title={t('fight.sideA')} sides={attackers} hullPct={attackerPct} testId="fight-side-attacker" />
         <Side title={t('fight.sideD')} sides={defenders} hullPct={defenderPct} testId="fight-side-defender" />
+        {!lean && (
         <SheetSection heading={t('fight.log')} data-testid="fight-sheet-fight">
           {instant ? (
             log ? (
@@ -202,6 +186,7 @@ export function FightSheet({ card, onClose, mode, actions }: { card: FightCard; 
             <Skeleton className="mt-2 h-28 w-full" />
           )}
         </SheetSection>
+        )}
       </div>
     </Tray>
   )

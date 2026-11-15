@@ -51,6 +51,7 @@ import {
   type GoToTarget,
   dotPorts,
   fightAt,
+  fightPinsOf,
   fightRings,
   fightRimWins,
   fightTapWins,
@@ -58,6 +59,8 @@ import {
   onPlacedName,
   placedNames,
   mapFightsOf,
+  pinFleets,
+  pinTraffic,
   mapFleetsOf,
   loopD,
   mapTrafficOf,
@@ -411,15 +414,21 @@ function Chart({
   const shore = useChartShore(backdrop, box ?? NO_VIEW, surface.unitsPerPx)
   const ports = shore.ports
   const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
-  const model = useMemo(
-    () => buildChartModel(fleets, ports, [], { nowMs, readAtMs: readAt }, traffic, trafficReadAt),
-    [fleets, ports, nowMs, readAt, traffic, trafficReadAt],
-  )
-
   // THE BATTLES BEING FOUGHT (0364, owner row 321): each is a red ring round its fleets (src/chart/fightRings.ts),
   // and a press on a ring opens the fight (src/live/FightSheet.tsx). Asked only while this screen is mounted.
   const fightCards = useFights()
   const fights = useMemo(() => mapFightsOf(fightCards), [fightCards])
+  // EVERY FLEET OF A FIGHT STANDS AT THE FIGHT while it is fought (src/chart/fightPins.ts): the raider that struck from her
+  // port, the ship the server holds, a ship the wide map would thin out. From the fight's own card; gone with the ring.
+  const pins = useMemo(() => fightPinsOf(fightCards), [fightCards])
+  const myFleetIds = useMemo(() => new Set(fleetViews.map((f) => f.id)), [fleetViews])
+  const fleetsDrawn = useMemo(() => pinFleets(fleets, pins), [fleets, pins])
+  const trafficDrawn = useMemo(() => pinTraffic(traffic, pins, myFleetIds), [traffic, pins, myFleetIds])
+  const model = useMemo(
+    () => buildChartModel(fleetsDrawn, ports, [], { nowMs, readAtMs: readAt }, trafficDrawn, trafficReadAt),
+    [fleetsDrawn, ports, nowMs, readAt, trafficDrawn, trafficReadAt],
+  )
+
   // TICK COMBAT (docs/design/tick-combat.md 8, 9.4): every ship in a battle being fought is drawn on a red ground, and her
   // fleets are weighed for the Join bar at the chart's own place for each. Joining is a choice: nothing here stops a ship.
   const inFight = useMemo(() => fleetsInFight(fightCards), [fightCards])
@@ -427,7 +436,7 @@ function Chart({
     const at = new Map(model.fleets.map((f) => [f.fleet.id, f.at]))
     return fleetViews.map((f) => ({ id: f.id, name: f.name, at: at.get(f.id) ?? null, status: f.status, busyUntil: f.busy_until, peaceUntil: f.peace_until ?? null }))
   }, [fleetViews, model.fleets])
-  // THE BATTLE SCREEN: a press on a tick battle's ring opens it (and its tray); Watch on the tray opens it again.
+  // THE BATTLE SCREEN opens from Watch on the fight's card, and from nothing else: a press on a ring opens the card.
   const [battleId, setBattleId] = useState<string | null>(null)
 
   // THE ONLY THING A TAP ON THE CHART DOES: a selection. Nearest glyph within reach wins (the
@@ -444,7 +453,7 @@ function Chart({
       const dots = dotPorts(ports, model.portRoles, view, minTier)
       // THE MERCHANTS THE SHEET DREW — the same thinning the picture applied (shipMarks), so a tap
       // can only land on a hull that is actually on the paper.
-      const drawn = shipMarks(model.fleets, model.traffic, view, unitsPerPx)
+      const drawn = shipMarks(model.fleets, model.traffic, view, unitsPerPx, inFight)
       const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx, drawn.traffic, placedNames())
       // ROUTE MODE: only a harbour answers (no hull, no merchant can steal the tap), and it is the next stop.
       if (routeTap.current) {
@@ -469,8 +478,8 @@ function Chart({
               : null
       const tapWins = ring !== null && fightTapWins(ring, hit === null ? null : hit.kind === 'port' ? { kind: 'port' } : hit.kind === 'fleet' || hit.kind === 'merchant' ? { kind: hit.kind, id: hit.id } : null)
       if (ring && (tapWins || fightRimWins(ring, at, under, unitsPerPx))) {
+        // the ring opens the fight's CARD; the battle screen opens only from Watch on it (owner 2026-11-15)
         setSelection((current) => toggleSelection(current, { kind: 'fight', id: ring.id }))
-        if (fightCards.find((c) => c.id === ring.id)?.ticks) setBattleId(ring.id)
         return
       }
       if (hit?.kind === 'fleet') selectFleet(hit.id)
@@ -496,7 +505,7 @@ function Chart({
       const sea = snapSeaPoint(seaNav, unproject(at))
       setSelection(sea ? { kind: 'sea', at: sea } : null)
     },
-    [model, ports, selectFleet, seaNav, fights, fightCards],
+    [model, ports, selectFleet, seaNav, fights, inFight],
   )
 
   useEffect(() => {

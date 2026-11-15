@@ -365,7 +365,10 @@ function mapFleetOf(f: ServedFleet): MapFleet | null {
  *  server's count of the fleets that are there, and where each of them lies now. Nothing is derived: the ring's
  *  size and centre are ./fightRings.ts's, from exactly these. */
 export function mapFightsOf(cards: readonly FightCard[]): MapFight[] {
-  return cards.map((c) => ({
+  // A RING IS A FIGHT BEING FOUGHT (owner 2026-11-15: "fight was made even though there was no pirate"): it goes the moment
+  // the fight ends. A battle that is over, and a raid or a navy fight (settled in an instant: over before any ring could
+  // show, their ships long gone from the place), draw no ring; the card of one that was open stays open with its result.
+  return cards.filter((c) => (c.kind ?? 'BATTLE') === 'BATTLE' && c.status === 'FIGHTING').map((c) => ({
     id: c.id,
     at: { lat: c.lat, lon: c.lon },
     fleets: c.size ?? c.fleets,
