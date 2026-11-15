@@ -65,10 +65,14 @@ A "full broadside" is the old game's per-round figure: `attack / shots x fight_d
 
 ## 6. Running, peace, the ends
 
-- **Run (RN):** 20 ticks of silent guns (she still takes fire), then a roll on her own keyed draw. The side set upon in a RAID rolls 0432's chance
-  `clamp(raid_flee_floor 10 %, fight_flee_base 15 % + (her sighting - theirs) x 3 % + a_flee (speed and handling, frozen at the open), raid_flee_max 80 %)`;
-  any other run 0357's `clamp(fight_flee_floor, base + lead x 3 %, fight_evade_max)`. Away: EVADED (`fled`), or for the side that closed `b_fled`
-  (BROKEN_OFF). The log shows each roll with its chance.
+- **Run (RN):** 20 ticks of silent guns (she still takes fire), then a roll on her own keyed draw. **Since 0450 (owner 2026-11-16: "escaping should
+  be hard", "levels"): ONE formula for every run, computed each tick as the fight stands:**
+  `clamp(floor, base + (her best sighting - theirs) x 3 % + a_flee + clamp(-flee_level_max 15 %, (her best hull level - theirs) x flee_per_level 3 %, +15 %)`
+  `- flee_hurt_max 20 % x max(0, 1 - min(hull left / her size, crew / the crew she needs) / flee_hurt_under 0.5) - failed attempts x flee_per_try 5 %, cap)`.
+  The side set upon in a RAID: base `raid_flee_base` 10 %, floor `raid_flee_floor` 3 %, cap `raid_flee_max` 45 % (0432 had 15 / 10 / 80), `a_flee` her speed
+  and handling frozen at the open. Any other run: 0357's `fight_flee_base` 15 %, `fight_flee_floor` 5 %, `fight_evade_max` 30 %, no `a_flee`, the same three
+  new terms. The old chance to the digit is the knobs (floor 0.10, cap 0.80, base 0.15, the three new terms 0). Away: EVADED (`fled`), or for the side
+  that closed `b_fled` (BROKEN_OFF). The log shows each roll with its chance; the timeline's `rc` serves the chance at every tick it changes (the Run button).
 - **Peace:** unchanged. A ship whose battle as the side set upon has ended has `peace_after_flee_minutes` (5) of peace (`public.fleet_peace_until`):
   no pirate raids her, and (slice 2) she may not join a battle.
 - **Break off:** the side that closes breaks off at `fight_raider_break` (15 %) of its hull lost: EVADED if the side set upon was never touched, else DRIVEN_OFF.
@@ -136,6 +140,10 @@ Knobs: `tick_ms` 600, `tick_window` 20, `tick_gcd` 3, `tick_reload_base` 4, `tic
   ticks: <timeline 9.3> | null,            -- null: an old battle; draw it with the round view
   site: {lat, lon}, reach_nm,              -- the circle
   sides: [{fleet, name, side: 'ATTACKER'|'DEFENDER', how, kind, nation, company, mine: bool}],
+  ships: {a: [<hull>], b: [<hull>]},       -- 0450: every hull of the sheet as frozen, in the timeline's order (a, b), less her id:
+                                           --   name, tier, hull, maxd, crew, attack, accuracy, reach, armour, sighting, gunner, boarder, from?,
+                                           --   and her card (public.battle_hull_card; absent on a battle opened before 0450): lv, cls, guns,
+                                           --   crew_need, crew_max, speed, handling, fit [{n, s, w?}], caps [{n, lv}]
   mine: <her own fleet id in it> | null,
   result: null while FIGHTING | {outcome, fled, b_fled, paid, taken, loot, crew_lost, navy} }
 { on: false } for no house, no battle, or a PROBE.
@@ -148,11 +156,12 @@ Side mapping: timeline side 0 (`a`) = the DEFENDER side (the side set upon, and 
 { v: 1, ms: 600, w: 20, n: <last tick>, first: 'A'|'B'|'BOTH', gcd: 3, k: <re-run count, 0 at the open>,
   ranges: [['LONG', 0.6], ...],            -- window i covers ticks [i*w, (i+1)*w)
   ab: { BS: {kind, cd, gain}, CH: {..., slow}, RK: {..., cost, acc}, GR: {..., cost, crew}, BR: {kind, cd, for, cut}, PT: {..., cost, mend}, RN: {kind, cd, for}, PY: {kind} },
-  a: [ {n: ship name, fl: fleet name, h: hull at the start, m: max hull, t: tier, r: reload ticks, f: from tick, g: has guns} ],   -- side 0
+  a: [ {n: ship name, fl: fleet name, h: hull at the start, m: max hull, t: tier, r: reload ticks, f: from tick, g: has guns, lv: her level (0450)} ],   -- side 0
   b: [ ... ],                                                                                                                         -- side 1
   ai: {a: 'FIGHT'|'FLEE'|'PAY', b: 'FIGHT'|'FLEE'},
   e: [ <event>, ... ],                     -- in tick order; within a tick: joins, abilities (a then b), shots, run rolls, ends
   out: 'EVADED'|'DRIVEN_OFF'|'RANSOM'|'PLUNDERED',
+  rc: { a: [[t, pct], ...], b: [...] },    -- 0450: the chance a run of that side would slip away, at each tick it changes (section 6)
   r: <result in fight_sides' shape: outcome, broke_off, slipped, first, rounds_fought, rounds[one per window], board, hull_lost, hull, hits, fled?, b_fled?, paid?, engine: 'tick', ticks> }
 ```
 Events are arrays `[t, side, kind, ...]` (side 0 = a, 1 = b, -1 = neither); ship indexes are positions in `a` / `b`:
@@ -181,6 +190,7 @@ turn-away from a `U RN` to its `X`, sinking at `S`). Fury, cooldowns and the bra
 - **In battle:** `world.fights()` cards (`fight_card`) already list every fleet in each battle (`sides[].fleet`, `here`, and `at` while FIGHTING).
   A ship mark whose fleet id is on a FIGHTING card with `here` is in a fight: draw her red. A player's own fleets also carry `busy_until` in `world.fleets`.
 - **The circle:** `lat`, `lon` of the card (= `battles.site`); 0435 adds `reach_nm` (= `battle_join_nm`) and `ticks` (boolean: a tick battle) to each card.
+- **A side's level:** 0450 adds `lv` (her fleet's best hull level, `public.ship_level`) to each side of a card, beside `ships`.
 
 ## 10. Determinism, and why it fits the database
 

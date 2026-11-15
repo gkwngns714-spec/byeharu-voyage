@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
-import { OLD_FIGHT, OLD_READ, READ, READ_MINE, RESULT } from './battleTicks.fixture'
+import { OLD_FIGHT, OLD_READ, READ, READ_BEFORE_0450, READ_MINE, RESULT } from './battleTicks.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE BATTLE SCREEN, PLAYED FROM A FIXTURE (0435, docs/design/tick-combat.md 9 and 11; src/live/battle/).
@@ -20,6 +20,13 @@ import { OLD_FIGHT, OLD_READ, READ, READ_MINE, RESULT } from './battleTicks.fixt
 //   HER OWN SHIP (0439) the bar presses for her fleet: what her Fury cannot pay for is grey with its cost unlit, a cooling
 //                ability sweeps, a refusal says its word, a taken act swaps the re-run timeline in at the same tick (no
 //                jump; the log keeps its past), the keys 1-8 press on a desk; on a phone the bar fits.
+//   THE SHIPS    (0450; owner 2026-11-16: "in fight, i want to see levels, their stats, their crew state, equipments ...
+//                fighting graphics (ships), make it smaller, and fight scene more wider") under each side's name "Lv 5 ·
+//                Ships 2" opens that side's ships: each her name whole, Lv, class, hull now / size, crew (red and "Short"
+//                under what her class needs), the stats as icons with figures, what is fitted, her captains. Open on a
+//                desk, shut on a phone until pressed. The stage has the sheet's whole width at 1280, 1920 and 390, and a
+//                hull is drawn small. Her Run button says its chance (the server's `rc`). A battle from before 0450 (no
+//                `ships`) draws names and hulls and no chance.
 // Screenshots: test-results/battle-screen (or BATTLE_SCREEN_SHOTS).
 
 const SHOTS = process.env.BATTLE_SCREEN_SHOTS ? path.resolve(process.env.BATTLE_SCREEN_SHOTS) : path.resolve('test-results', 'battle-screen')
@@ -69,6 +76,48 @@ test('a late opener jumps to the tick now, the fight plays tick by tick to its e
   // the joiner is on the stage: four ships, two a side
   await expect(page.getByTestId('battle-ship')).toHaveCount(4)
   await page.screenshot({ path: path.join(SHOTS, 'wide-playing.png') })
+
+  // THE SHIPS (0450): open on a desk, the side set upon on the left; every figure is the sheet's, the hull is the fight's now
+  const toggles = page.getByTestId('battle-ships-toggle')
+  await expect(toggles.nth(0)).toHaveText(/^Lv 5 · Ships 2/)
+  await expect(toggles.nth(1)).toHaveText(/^Lv 5 · Ships 2/)
+  const mine = page.getByTestId('battle-ships-0').getByTestId('battle-ship-card')
+  const theirs = page.getByTestId('battle-ships-1').getByTestId('battle-ship-card')
+  await expect(mine).toHaveCount(2)
+  await expect(theirs).toHaveCount(2)
+  const rosa = mine.nth(0)
+  await expect(rosa.getByTestId('battle-ship-name')).toHaveText('Santa Rosa')
+  await expect(rosa.getByTestId('battle-ship-level')).toHaveText('Lv 2')
+  await expect(rosa).toContainText('Caravela latina')
+  await expect(rosa.getByTestId('battle-ship-hull')).toHaveText(/^3\d\d\/400$/)
+  await expect(rosa.getByTestId('battle-ship-crew')).toHaveAttribute('data-short', '1')
+  await expect(rosa.getByTestId('battle-ship-crew')).toHaveText(/10\/30\s*Short/)
+  await expect(theirs.nth(0).getByTestId('battle-ship-crew')).toHaveAttribute('data-short', '0')
+  for (const label of ['Guns 2', 'Attack 55', 'Accuracy 42', 'Reach 25', 'Armour 12', 'Sighting 10', 'Speed 19.8', 'Handling 71', 'Tier 2'])
+    await expect(rosa.getByTestId('battle-ship-stats').getByLabel(label, { exact: true })).toBeVisible()
+  await expect(rosa.getByTestId('battle-ship-fit')).toHaveText(/Starter Guns ×2 · Boarding Gear/)
+  await expect(rosa.getByTestId('battle-ship-caps')).toHaveText(/Inês de Castro Lv 3/)
+  await expect(theirs.nth(0).getByTestId('battle-ship-level')).toHaveText('Lv 5')
+  // scannable: no card holds a sentence (a line is a name, a class, figures or a short list)
+  for (const line of (await rosa.innerText()).split('\n').filter((l) => l.trim() !== '')) expect(line.trim().split(/\s+/).length, line).toBeLessThanOrEqual(7)
+  // THE STAGE IS WIDE AND THE SHIPS SMALL: the stage has the sheet's whole width, the sheet nearly the window's; a hull (her wake with her) is under a sixth of it (it was a quarter)
+  const sheet = (await page.getByTestId('battle-screen').boundingBox())!
+  const stage = (await page.getByTestId('battle-stage').boundingBox())!
+  expect(sheet.width).toBeGreaterThanOrEqual(1280 * 0.96)
+  // (the log is open here and has its column on a desk: the stage's whole width is measured with it shut, in the three glasses below)
+  expect(stage.width).toBeGreaterThanOrEqual(sheet.width - 330)
+  const hullBox = (await page.locator('[data-testid="battle-ship"] g[data-rot]').first().boundingBox())!
+  expect(Math.max(hullBox.width, hullBox.height)).toBeLessThan(stage.width / 6)
+  expect(Math.max(hullBox.width, hullBox.height)).toBeGreaterThan(50)
+  // a side's line shuts its ships, and the stage takes the room
+  await toggles.nth(0).click()
+  await expect(page.getByTestId('battle-ships-0')).toHaveCount(0)
+  await toggles.nth(1).click()
+  await expect(page.getByTestId('battle-ships')).toHaveCount(0)
+  expect((await page.getByTestId('battle-stage').boundingBox())!.height).toBeGreaterThan(stage.height + 100)
+  await toggles.nth(0).click()
+  await toggles.nth(1).click()
+  await expect(mine).toHaveCount(2)
 
   // THE HIT NUMBERS rise as the shots land (16..26), a crit marked
   await expect(page.locator('[data-testid="battle-hit"][data-crit="1"]').first()).toBeAttached({ timeout: 15_000 })
@@ -157,8 +206,12 @@ test('her own ship: the action bar presses, greys what it cannot pay for, says a
   await page.getByTestId('battle-log-toggle').click()
   await expect.poll(async () => Number(await body.getAttribute('data-tick'))).toBeGreaterThanOrEqual(25)
   // an icon and ONE word each
-  for (const b of await bar.getByRole('button').all()) expect(((await b.innerText()).trim().split(/\s+/).length)).toBeLessThanOrEqual(2)
+  // (0450: Run also says its chance, the server's figure: 35 % at the open, 30 once she was caught at 23)
+  for (const b of await bar.getByRole('button').all()) expect(((await b.innerText()).trim().split(/\s+/).length)).toBeLessThanOrEqual((await b.getAttribute('data-code')) === 'RN' ? 3 : 2)
   await expect(btn('CH')).toContainText('Chain')
+  await expect(btn('RN').getByTestId('battle-run-chance')).toHaveAttribute('data-chance', '30')
+  await expect(btn('RN')).toContainText('Run 30%')
+  await expect(bar.getByTestId('battle-run-chance')).toHaveCount(1)
   // her bar is empty: Rake, Grapeshot and Patch are grey; Brace is cooling (used at 7); the rest are ready
   for (const code of ['RK', 'GR', 'PT']) {
     await expect(btn(code)).toBeDisabled()
@@ -209,10 +262,69 @@ test('her own ship on a phone: the bar fits, ✕ is a touch target at the top ri
   await expect(page.getByTestId('battle-actions').locator('button[data-code="BS"]')).toBeEnabled()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.screenshot({ path: path.join(SHOTS, 'phone-act-bar.png') })
+  // THE SHIPS ON A PHONE (0450): shut until a side's line is pressed; open, a card is as wide as the sheet and nothing scrolls sideways
+  await expect(page.getByTestId('battle-ships')).toHaveCount(0)
+  const line = page.getByTestId('battle-ships-toggle').first()
+  await expect(line).toHaveText(/^Lv 5 · Ships 2/)
+  await expect(line).toHaveAttribute('aria-expanded', 'false')
+  await line.click()
+  await expect(line).toHaveAttribute('aria-expanded', 'true')
+  const card = page.getByTestId('battle-ships-0').getByTestId('battle-ship-card').first()
+  await expect(card.getByTestId('battle-ship-name')).toHaveText('Santa Rosa')
+  await expect(card.getByTestId('battle-ship-level')).toHaveText('Lv 2')
+  expect((await card.boundingBox())!.width).toBeGreaterThan(300)
+  await expect(page.getByTestId('battle-ships-1')).toHaveCount(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await expect(page.getByTestId('battle-stage')).toBeVisible()
+  await expect(page.getByTestId('battle-actions').locator('button[data-code="RN"]')).toBeVisible()
+  await page.screenshot({ path: path.join(SHOTS, 'phone-ships-open.png') })
+  await line.click()
+  await expect(page.getByTestId('battle-ships')).toHaveCount(0)
   const box = (await page.getByTestId('battle-close').boundingBox())!
   expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(44)
   expect(box.x + box.width).toBeLessThanOrEqual(390)
   expect(box.x).toBeGreaterThan(195)
   await page.getByTestId('battle-close').click()
   await expect(page.getByTestId('battle-screen')).toHaveCount(0)
+})
+
+for (const [w, h] of [
+  [1280, 800],
+  [1920, 1080],
+  [390, 844],
+] as const) {
+  test(`the stage has the sheet's whole width and small ships at ${w}x${h}`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: h })
+    await openFixture(page, { read: READ, agoMs: 9_300, result: RESULT })
+    const body = page.getByTestId('battle-body')
+    await expect.poll(async () => Number(await body.getAttribute('data-tick'))).toBeGreaterThanOrEqual(16)
+    const sheet = (await page.getByTestId('battle-screen').boundingBox())!
+    const stage = (await page.getByTestId('battle-stage').boundingBox())!
+    expect(sheet.width).toBeGreaterThanOrEqual(w * 0.96)
+    expect(stage.width).toBeGreaterThanOrEqual(sheet.width - 2)
+    expect(stage.height).toBeGreaterThanOrEqual(180)
+    // every ship that has come up is on the stage, and no hull (her wake with her) is longer than two sevenths of it (a phone; it was over four tenths) or a sixth (a desk; it was a quarter)
+    for (const ship of await page.locator('[data-testid="battle-ship"]:not([opacity="0.00"]) g[data-rot]').all()) {
+      const b = (await ship.boundingBox())!
+      expect(Math.max(b.width, b.height)).toBeLessThan(stage.width / (w < 600 ? 3.5 : 6))
+      expect(b.x + b.width / 2).toBeGreaterThan(stage.x)
+      expect(b.x + b.width / 2).toBeLessThan(stage.x + stage.width)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.screenshot({ path: path.join(SHOTS, `stage-${w}x${h}.png`) })
+  })
+}
+
+test('a battle opened before 0450 (no ships served): names and hulls, no level, no chance on Run', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  const before = { ...READ_BEFORE_0450, mine: 'f-rosa', sides: READ_MINE.sides, ticks: { ...READ_BEFORE_0450.ticks!, n: 100, e: READ_MINE.ticks!.e } }
+  await openFixture(page, { read: before, agoMs: 6_000, result: RESULT })
+  await expect(page.getByTestId('battle-ships-toggle').first()).toHaveText(/^Ships 2/)
+  const card = page.getByTestId('battle-ships-0').getByTestId('battle-ship-card').first()
+  await expect(card.getByTestId('battle-ship-name')).toHaveText('Santa Rosa')
+  await expect(card.getByTestId('battle-ship-hull')).toHaveText(/^\d+\/400$/)
+  await expect(card.getByTestId('battle-ship-level')).toHaveCount(0)
+  await expect(card.getByTestId('battle-ship-crew')).toHaveCount(0)
+  await expect(page.getByTestId('battle-actions').locator('button[data-code="RN"]')).toHaveText(/Run$/)
+  await expect(page.getByTestId('battle-run-chance')).toHaveCount(0)
 })
