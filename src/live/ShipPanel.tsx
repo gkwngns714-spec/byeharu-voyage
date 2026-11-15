@@ -312,8 +312,9 @@ function WornLine({ racks }: { racks: readonly ShipRack[] }) {
   return (
     <p data-testid="ship-worn" className="pt-3 text-t-caption text-ink-faint">
       <span className="text-warning">{`${t('ship.wornFittings')}: ${t('ship.wornCount', { n: formatInt(units) })}`}</span>
-      {worstWorks !== null ? `, ${t('ship.wornWeakest', { m: formatInt(worstWorks) })}` : ''}
-      {`. ${t('ship.wornHelp')}`}
+      {/* 2026-11-15 owner: shorter words. One line of figures, joined by the middle dot like every facts line. */}
+      {worstWorks !== null ? ` · ${t('ship.wornWeakest', { m: formatInt(worstWorks) })}` : ''}
+      {` · ${t('ship.wornHelp')}`}
     </p>
   )
 }
