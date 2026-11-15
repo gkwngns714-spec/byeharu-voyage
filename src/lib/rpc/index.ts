@@ -105,6 +105,9 @@ import type {
   StatsCityPeople,
   StatsMerchants,
   StatsFleets,
+  StatsFleetList,
+  StatsFleetKindId,
+  StatsFleetPage,
   StatsMe,
   StatsNow,
   NewsFeed,
@@ -895,6 +898,14 @@ export function worldStatsMerchants(span: PriceSpan | null = null): Promise<RpcR
 /** 0419: the merchants, the navy, the pirates and the cargo ships, from the newest Stats count and its last 24 hours. */
 export function worldStatsFleets(): Promise<RpcResult<StatsFleets>> {
   return call<StatsFleets>('worldStatsFleets')
+}
+/** 0431: every navy, pirate or cargo ship of one kind, from the newest Stats count: her state and her 7 days, and the kind's 24 h and 7 d. */
+export function worldStatsFleetList(kind: StatsFleetKindId): Promise<RpcResult<StatsFleetList>> {
+  return call<StatsFleetList>('worldStatsFleetList', [kind])
+}
+/** 0431: one navy, pirate or cargo ship's Stats page: where she is, her ships, her 24 h and 7 d, her last lines (a cargo ship's gold rows). */
+export function worldStatsFleet(fleetId: string): Promise<RpcResult<StatsFleetPage>> {
+  return call<StatsFleetPage>('worldStatsFleet', [fleetId])
 }
 /** Your week — best sales, how much traded — and the leaderboard by rank and name. */
 export function worldStatsMe(): Promise<RpcResult<StatsMe>> {
