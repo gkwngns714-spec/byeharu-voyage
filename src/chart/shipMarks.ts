@@ -50,6 +50,8 @@ export function shipMarks(
   view: ViewBox,
   /** Chart degrees a CSS pixel on this glass; absent (a spec, a caller with no glass) thins by the span alone. */
   unitsPerPx?: number,
+  /** 0435: the fleets of a battle being fought. Never thinned: a circle on the map always has its ships in it. */
+  always?: ReadonlySet<string>,
 ): ShipMarks {
   const padX = view.width * MARGIN
   const padY = view.height * MARGIN
@@ -68,7 +70,7 @@ export function shipMarks(
   const keep = Math.min(keptOf(view.width), keptAtDensity(unitsPerPx))
   const out: TrafficOnChart[] = []
   for (const t of traffic) {
-    if (onSheet(t.at.lat, t.at.lon) && (!KIND_LOOK[shipKindOf(t.merchant)].thin || stableSlot(t.fleet.id) < keep)) out.push(t)
+    if (onSheet(t.at.lat, t.at.lon) && (!KIND_LOOK[shipKindOf(t.merchant)].thin || stableSlot(t.fleet.id) < keep || always?.has(t.fleet.id) === true)) out.push(t)
   }
   return { fleets: mine, traffic: out }
 }
