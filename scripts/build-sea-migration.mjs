@@ -212,7 +212,7 @@ const ports = (
                     from public.ports order by code`)
 ).rows
 console.log(`  ${ports.length} places (${ports.filter((p) => p.kind === 'HARBOUR').length} harbours)`)
-// 0441: THE ROADS ON THE WATER. A harbour whose raster roadstead lies on the chart's drawn land is reached
+// 0440: THE ROADS ON THE WATER. A harbour whose raster roadstead lies on the chart's drawn land is reached
 // from the point voyage.drawn_roadsteads holds (scripts/build-land-channels.mjs measured it on the chart's
 // own tiles; voyage.water_roadstead answers it for that quay). Read from the applied chain, never re-derived.
 const drawnRoads = new Map(
@@ -1409,7 +1409,7 @@ w(`  v_clat numeric; v_clon numeric;`)
 w(`  v_nm numeric;`)
 w(`  v_channel text;`)
 w(`begin`)
-w(`  -- 0441: THE ROADS ON THE WATER. A quay whose raster roadstead lies on the land the chart draws is`)
+w(`  -- 0440: THE ROADS ON THE WATER. A quay whose raster roadstead lies on the land the chart draws is`)
 w(`  -- reached from its drawn roadstead (voyage.drawn_roadsteads), measured on the chart's own tiles.`)
 w(`  select d.lat, d.lon into lat, lon from voyage.drawn_roadsteads d where d.quay_lat = p_lat and d.quay_lon = p_lon;`)
 w(`  if found then`)

@@ -42,7 +42,7 @@ function subCellHasLand(land, north, west, size) {
  * The mask for one served raster (`{ cols, rows, cell_deg, bits_per_cell, cells_base64 }`).
  * A raster WATER cell is listed when the chart draws land in any of its SUB x SUB sub-cells. A
  * river-carved cell (a channel the chart does not draw: land in 1:110m, water on purpose) is never
- * listed; a charted channel's cell is listed like any other (0441), and raster
+ * listed; a charted channel's cell is listed like any other (0440), and raster
  * LAND is the raster's own answer (the refiner treats it as land throughout).
  */
 export function buildCoastMask(raster, land = drawnLand('fine')) {
@@ -56,7 +56,7 @@ export function buildCoastMask(raster, land = drawnLand('fine')) {
     for (let col = 0; col < nav.cols; col++) {
       const k = row * nav.cols + col
       const water = nav.cells[k] !== 0
-      if (!water || river.has(k)) continue // raster land is the raster's; a river carve is water on purpose (0441: a charted channel's drawn land is listed)
+      if (!water || river.has(k)) continue // raster land is the raster's; a river carve is water on purpose (0440: a charted channel's drawn land is listed)
       const lat0 = 90 - row * nav.cellDeg
       const lon0 = -180 + col * nav.cellDeg
       const cell = new Uint8Array(bytesPerCell)

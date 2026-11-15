@@ -78,7 +78,7 @@ const landOpenedBy = (pre: Uint8Array, ch: Channel) =>
  *  `golden-gate` opens 3 cells of land (the Gate and the central Bay, which Natural Earth 1:110m
  *  does not draw at all) and `guayas` opens 3 (the river and the Puná channel up to the quay),
  *  each looked at on the raster before the number was written — the look is the guard.
- *  Moved deliberately 2026-11-15, 208 -> 214, with the charted channels (0441, owner row 352): `corfu` opens 3
+ *  Moved deliberately 2026-11-15, 208 -> 214, with the charted channels (0440, owner row 352): `corfu` opens 3
  *  (both Corfu channels and the water south of the island), `tsugaru` 2 (the strait's northern half) and
  *  `western-scheldt` 1 (the Wielingen), each drawn by the chart and looked at on it before the number was written. */
 const LAND_TOTAL = 214
@@ -88,7 +88,7 @@ const LAND_TOTAL = 214
  *  grew only over existing water still changed. Named separately so the two can never be confused
  *  again, which is the whole history of this file. */
 // Moved deliberately 2026-09-14, 521 -> 529, with the same two channels (8 cells carved, 6 of them land).
-// Moved deliberately 2026-11-15, 529 -> 541, with the three charted channels (12 cells carved, 6 of them land; 0441).
+// Moved deliberately 2026-11-15, 529 -> 541, with the three charted channels (12 cells carved, 6 of them land; 0440).
 const CARVE_TOTAL = 541
 
 test('every channel opens exactly the land it declares', () => {

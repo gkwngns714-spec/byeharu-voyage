@@ -22,7 +22,7 @@
 //   * the two ends are kept exactly (a course is joined to its roadsteads).
 // A course that crosses no land comes back unchanged, vertex for vertex.
 //
-// PURE: no I/O, no DOM. The generator (scripts/build-clear-courses.mjs) runs it over every stored
+// PURE: no I/O, no DOM. The generator (scripts/build-land-channels.mjs) runs it over every stored
 // course; the browser can run the same function once it holds the tiles along a course.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -339,7 +339,7 @@ export function fineSearch(
   })
 }
 
-/** The longest stretch of course one search window may cover (0441): clusters of land closer than
+/** The longest stretch of course one search window may cover (0440): clusters of land closer than
  *  60 nm are searched as one, up to this length, so a long coast is still searched in boxes the
  *  fine search can afford. */
 const MAX_WINDOW_NM = 300
@@ -367,7 +367,7 @@ function pull(nav: SeaNav, land: DrawnLand, pts: SeaPath, tolNm: number, head: b
 const round = (p: readonly [number, number]): [number, number] => [Math.round(p[0] * 10000) / 10000, Math.round(p[1] * 10000) / 10000]
 
 /** Every segment voyage.path_refusal would refuse, searched again under both rules; null when one
- *  has no way (0441). */
+ *  has no way (0440). */
 function mend(nav: SeaNav, land: DrawnLand, path: SeaPath, los: number): SeaPath | null {
   const out: SeaPath = [path[0]]
   const n = path.length - 1
@@ -401,7 +401,7 @@ function mend(nav: SeaNav, land: DrawnLand, path: SeaPath, los: number): SeaPath
   return out
 }
 
-/** THE PIXEL EDGE (0441): a course that runs exactly along an edge of the land bitmap's pixels is
+/** THE PIXEL EDGE (0440): a course that runs exactly along an edge of the land bitmap's pixels is
  *  read on one side of it by one rounding and on the other by another (Chios: a meridian on the
  *  west coast, 3 nm of land to the audit and none to the mask). The refiner asks both sides. */
 function edgeSafe(land: DrawnLand): DrawnLand {
@@ -427,7 +427,7 @@ export function refineCourse(
   const cum: number[] = [0]
   for (let i = 1; i <= last; i++) cum.push(cum[i - 1] + gcNm(course[i - 1][0], course[i - 1][1], course[i][0], course[i][1]))
   const total = cum[last]
-  // THE RUNS, along the whole course (0441): a run that ends on a vertex and goes on past it is ONE
+  // THE RUNS, along the whole course (0440): a run that ends on a vertex and goes on past it is ONE
   // run. A course's turning point is a raster cell centre, and the raster cannot see an island, so a
   // turn may lie on drawn land (Strangford, Oland): searched segment by segment, each half began or
   // ended in a pocket of the coast that the fine grid cannot leave, and the course was kept as it was.
@@ -503,7 +503,7 @@ export function refineCourse(
   pulled[pulled.length - 1] = course[course.length - 1]
   // A stretch kept from the old course and cut at a window's edge is sampled at other points than
   // the whole segment was, so it may touch a raster land cell the whole segment's samples missed
-  // (0441, measured: Riga to Copenhagen by Gotland's south cape). Such a segment is searched again.
+  // (0440, measured: Riga to Copenhagen by Gotland's south cape). Such a segment is searched again.
   if (!courseIsWater(nav, pulled)) pulled = mend(nav, land, pulled, los)
   // THE SERVER'S RULE IS NEVER BROKEN: a re-sailed course that voyage.path_refusal would refuse is
   // not offered. The course comes back as it came, and its land stays listed in `residual`.

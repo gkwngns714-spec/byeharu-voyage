@@ -15,7 +15,7 @@ export interface Channel {
    *  Authored, never inferred: `assertCarveDeclared` refuses to build the raster when the world
    *  disagrees, so the number can only change when a person changes it. */
   opensLand: number
-  /** 0441: water the CHART draws (1:10m) that 1:110m closes. Its drawn land stays land: in the coast
+  /** 0440: water the CHART draws (1:10m) that 1:110m closes. Its drawn land stays land: in the coast
    *  mask and in the audit (scripts/db/audit-land-crossings.mjs). A channel without it is a river
    *  carve, whose cells the chart draws as land and the game sails on purpose. */
   charted?: boolean

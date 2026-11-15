@@ -21,7 +21,7 @@ export interface WorldCourses {
   ports: { code: string; name: string; kind: string; lat: number; lon: number; rlat: number | null; rlon: number | null }[]
   npc: { a: string; b: string; course: Course; text: string }[]
   routes: { route: string; ord: number; to_code: string; from_code: string | null; course: Course; text: string }[]
-  /** 0441: public.npc_coast_courses. */
+  /** 0440: public.npc_coast_courses. */
   coast?: { a: string; b: string; course: Course; text: string }[]
 }
 

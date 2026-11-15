@@ -267,7 +267,7 @@ water by BOTH the raster and the coast mask (`public/coast/mask.json`, `src/lib/
 the chart's 1:10m land inside every raster water cell, at 0.75 nm). The result is still raster
 water by `voyage.path_refusal`'s own rule, or the search's course is kept. One function, used by
 the browser's course author (`src/domain/passage` `proposeCourse`) and by the generator of the
-stored lanes (`scripts/build-clear-courses.mjs`). The server's law is unchanged: the raster.
+stored lanes (`scripts/build-land-channels.mjs`). The server's law is unchanged: the raster.
 
 **The guard.** `tests/sea.noLandCrossing.spec.ts` runs on every PR that touches the pathfinder,
 the coast, the sea grid, the ports, or a migration that writes `npc_courses`,
@@ -280,16 +280,24 @@ crosses (the list only shrinks), on a stale mask, and on the owner's own example
 
 1. Make the change, then `npm run build` (it writes the world image the tools read; no prod load).
 2. If the raster or the coast tiles changed: `node scripts/build-coast-mask.mjs`.
-3. If lanes or routes were seeded or the raster changed: `node scripts/build-clear-courses.mjs`
-   writes the re-sailing migration (rename it to prod head + 1).
+3. If lanes or routes were seeded, a channel was charted, a harbour was added, or the raster changed:
+   export prod's courses (read only: `scripts/ops/harness/no-land/prod-courses.sql`, gate green first),
+   then `node scripts/build-land-channels.mjs <image of the chain before your migration> --prod courses.json`
+   writes the re-sailing migration (set MIGRATION_NAME to prod head + 1). It re-sails prod's own rows too:
+   prod holds courses no image has.
 4. `node scripts/db/audit-land-crossings.mjs [image] [--apply <your migration>]` lists every
    crossing with its lane, its ports and where the land is. Zero new ones, or fix them.
    `--pairs` adds every harbour-to-harbour course the browser would propose (about 30 minutes).
 5. Only when a crossing is FIXED: `--write-known` rewrites the known list (it may only shrink).
+6. Every day (the lead), and after any deploy that writes courses: export prod's courses and legs
+   (`prod-courses.sql`, `prod-legs.sql`, read only) and run the audit with `--prod courses.json --legs legs.json`
+   on an image of prod's chain. It fails on anything not on `scripts/db/land-crossings.prod-known.json` (empty).
 
-### 0441: the straits opened, the roads put on the water (owner row 352, 2026-11-15)
+### 0440, second half: the straits opened, the roads put on the water, production re-sailed (owner row 352)
 
-0440 left 52 lanes and 50 route legs over land, and 57 roadsteads on it. Three causes, three fixes:
+The first draft left 52 lanes and 50 route legs over land, and 57 roadsteads on it, and it was cut from the
+world image alone: production held 937 crossing lanes, 682 route-stop courses and 732 frozen legs of its own
+(`docs/dev-log/2026-11-15-land-channels.md`). One migration, 0440, now takes all of it. Three causes, three fixes:
 
 - **A turn on an island.** A course's turning points are raster cell centres, and the raster cannot see
   an island, so a turn could sit on drawn land (Strangford Lough, Oland, Saaremaa). The refiner searched

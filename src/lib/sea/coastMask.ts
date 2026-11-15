@@ -9,14 +9,14 @@
 // chart draws land there. A water cell that is not listed holds no drawn land. A cell a RIVER carve
 // opened on purpose (land in 1:110m, water in the raster, the Thames or the Bosphorus: the chart
 // draws land over it) is never listed, so a river the game sails is never "land" here. A CHARTED
-// channel's cell (0441: Corfu, Tsugaru, the Wielingen: water the chart itself draws) is listed like
+// channel's cell (0440: Corfu, Tsugaru, the Wielingen: water the chart itself draws) is listed like
 // any other, so a course is steered down the strait and never across the island beside it.
 //
 // WHO MAKES IT: scripts/build-coast-mask.mjs, from the chart's own tiles (public/coast/fine) and
 // the raster the chain serves. It is written to public/coast/mask.json and stamped with the
 // raster it was cut for; tests/sea.noLandCrossing.spec.ts fails when the two drift apart.
 // WHO READS IT: the course author (src/domain/passage proposeCourse, through ./refine.ts) in the
-// browser, and the generator that re-sails every stored lane (scripts/build-clear-courses.mjs).
+// browser, and the generator that re-sails every stored lane (scripts/build-land-channels.mjs).
 // One mask, so a player's course and a merchant's lane are held off the same land.
 //
 // A PICTURE'S ANSWER, NOT THE LAW. The server's law is still the raster (voyage.path_refusal);

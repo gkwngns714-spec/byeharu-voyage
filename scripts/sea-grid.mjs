@@ -116,9 +116,9 @@ export const CHANNELS = [
   // river and the Puná channel scan-fill as land, so the quay snapped 29.75 nm to the gulf. The
   // yard that built the Armada del Mar del Sur floated its galleons down this water.
   { id: 'guayas', name: 'the Guayas river and the Puná channel', points: [[-2.7, -80.2], [-2.5, -80.0], [-2.3, -79.9], [-2.19, -79.89]], opensLand: 3 },
-  // ── CHARTED CHANNELS (0441, owner row 352: "no ship crossing land") ─────────────────────────────
+  // ── CHARTED CHANNELS (0440, owner row 352: "no ship crossing land") ─────────────────────────────
   // `charted: true` — water the chart DRAWS (Natural Earth 1:10m, public/coast) that 1:110m closes.
-  // Eight straits above carry it too since 0441 (kerch, bab-el-mandeb, hormuz, malacca, sunda, seto,
+  // Eight straits above carry it too since 0440 (kerch, bab-el-mandeb, hormuz, malacca, sunda, seto,
   // white-sea, baltic-gulfs): their raster is unchanged, but a course through them is held to the
   // land the chart draws there. NOT charted, measured 2026-11-15: the Danish straits and the Gulf of
   // Suez (their drawn water is not continuous on the course author's 1.5-nm grid inside a one-cell

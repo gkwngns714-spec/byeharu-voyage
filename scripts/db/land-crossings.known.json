@@ -1,5 +1,5 @@
 {
- "note": "scripts/db/audit-land-crossings.mjs --write-known. Courses and roadsteads still on the drawn land (owner row 352). EMPTY since 0441: a new crossing is fixed (scripts/build-clear-courses.mjs, scripts/build-land-channels.mjs), never listed. This list may only shrink.",
+ "note": "scripts/db/audit-land-crossings.mjs --write-known. Courses and roadsteads still on the drawn land (owner row 352). EMPTY since 0440: a new crossing is fixed (scripts/build-land-channels.mjs), never listed. This list may only shrink.",
  "toleranceNm": 2,
  "crossings": [],
  "roadsteads": [],

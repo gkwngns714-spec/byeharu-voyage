@@ -1,10 +1,10 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
--- PROOF 142 - THE STRAITS ARE OPEN AND THE ROADS ARE WATER  (migration 0441; docs/dev-log/2026-11-15-land-channels.md; the owner,
+-- PROOF 142 - THE STRAITS ARE OPEN AND THE ROADS ARE WATER  (migration 0440; docs/dev-log/2026-11-15-land-channels.md; the owner,
 --   2026-11-15: "some ships go pass through land - such as hadibu ... fix this properly"; no ship crosses land)
 --
 --   On the world itself, read only. The chart's 1:10m land is not in the database: the full audit of every course and roadstead against
 --   it is tests/sea.noLandCrossing.spec.ts and scripts/db/audit-land-crossings.mjs. What the database holds is held here. FAILS BEFORE
---   0441: the Corfu channel was raster land, Hadibu was reached from its quay on Socotra's shore, and no table of drawn roadsteads existed.
+--   0440: the Corfu channel was raster land, Hadibu was reached from its quay on Socotra's shore, and no table of drawn roadsteads existed.
 --
 -- @pass LC_CHANNELS  the charted channels (Corfu, Tsugaru, the Wielingen) are in voyage.channels and every cell they opened is raster water; a course from Corfu's roads up the North Corfu channel is water with every sample checked (no approach slack)
 -- @pass LC_ROADS     every harbour in voyage.drawn_roadsteads is reached from that point: voyage.water_roadstead answers it for the quay, public.sea_reaches holds it, its cell is raster water, and snap_nm is the quay's distance to it; Hadibu's is off the quay

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// build-land-channels.mjs — THE STRAITS OPENED AND THE ROADS PUT ON THE WATER (owner row 352, 0441)
+// build-land-channels.mjs — THE STRAITS OPENED AND THE ROADS PUT ON THE WATER (owner row 352, 0440)
 //
 //   node scripts/build-land-channels.mjs [world-image.tar.gz]
 //
@@ -26,8 +26,8 @@
 //      course cannot be mended, the course author's own search is run from scratch (findPath, then
 //      refine), exactly as the browser proposes a course. Matched by md5(course::text), as 0440.
 //
-// Writes supabase/migrations/20260818000441_*.sql, public/coast/mask.json, and the prod checks and
-// forward rollback under scripts/ops/harness/land-channels/. Reads a world image (no prod load).
+// Writes supabase/migrations/20260818000440_*.sql, public/coast/mask.json, and the prod checks and
+// forward rollback under scripts/ops/harness/no-land/. Reads a world image (no prod load).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -41,12 +41,12 @@ import { drawnLand, gcNm } from './lib/drawn-land.mjs'
 import { navFromServed, findPath, segmentIsWater } from '../src/lib/sea/index.ts'
 import { refineCourse, courseIsWater, FINE_PER_DEG } from '../src/lib/sea/refine.ts'
 import { coastMaskFrom, coastLand } from '../src/lib/sea/coastMask.ts'
-import { migrationSql, unhunkSql } from './land-channels.sql.mjs'
+import { migrationSql, unhunkSql, SOCOTRA } from './land-channels.sql.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-export const MIGRATION_NAME = '20260818000441_the_straits_are_open_and_the_roads_are_water.sql'
+export const MIGRATION_NAME = '20260818000440_no_course_crosses_the_drawn_land.sql'
 const MIGRATION = path.join(ROOT, 'supabase', 'migrations', MIGRATION_NAME)
-const HARNESS = path.join(ROOT, 'scripts', 'ops', 'harness', 'land-channels')
+const HARNESS = path.join(ROOT, 'scripts', 'ops', 'harness', 'no-land')
 const md5 = (s) => createHash('md5').update(s).digest('hex')
 const jsonbText = (course) => `[${course.map(([a, b]) => `[${a}, ${b}]`).join(', ')}]`
 const r3 = (x) => Math.round(x * 1000) / 1000
@@ -58,8 +58,15 @@ const MAX_MOVE_NM = 12
 /** The box searched round a roadstead for the open sea, in degrees of latitude either side. */
 const BOX_DEG = 0.6
 
-const file = process.argv[2] ?? (await newestImage())
-console.log(`land channels: world image ${path.basename(file)}`)
+// node scripts/build-land-channels.mjs [image] [--prod courses.json] — the image is the chain BEFORE this
+// migration; --prod adds every course production holds (scripts/ops/harness/no-land/prod-courses.sql, read
+// only), so the migration re-sails prod's own rows, which no image has (0203 copied prod's merchant loops
+// into the lanes when it was applied; players' routes live only there).
+const argv = process.argv.slice(2)
+const flagValue = (f) => (argv.indexOf(f) >= 0 ? argv[argv.indexOf(f) + 1] : null)
+const prodFile = flagValue('--prod')
+const file = argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--prod') ?? (await newestImage())
+console.log(`land channels: world image ${path.basename(file)}${prodFile ? `, and prod's courses from ${path.basename(prodFile)}` : ''}`)
 const db = await openImage(file)
 const world = await readWorldCourses(db)
 const joinNm = Number((await db.query(`select public.wc_num('course_join_nm')::float8 as v`)).rows[0].v)
@@ -337,6 +344,20 @@ const texts = new Map()
 for (const c of world.npc) texts.set(c.text, c.course)
 for (const r of world.routes) texts.set(r.text, r.course)
 for (const c of world.coast) texts.set(c.text, c.course)
+let prod = null
+if (prodFile) {
+  prod = Object.values(JSON.parse(readFileSync(prodFile, 'utf8')).rows[0])[0]
+  // prod must stand where the image stands: the same raster and the same roadsteads, or its courses mean other things
+  if (prod.raster_md5 !== md5(world.raster.cells_base64.replace(/s+/g, ''))) throw new Error('prod serves another raster than the image')
+  for (const [code, lat, lon] of prod.roads) {
+    const p = portRows.find((x) => x.code === code)
+    if (!p || p.rlat !== Number(lat) || p.rlon !== Number(lon)) throw new Error(`prod's roadstead of ${code} is not the image's`)
+  }
+  for (const [, , text] of [...prod.npc, ...prod.coast]) texts.set(text, JSON.parse(text))
+  for (const [, , text] of prod.stops) texts.set(text, JSON.parse(text))
+}
+/** Postgres's text of a course read backwards, from its own text (each point's numbers kept as written). */
+const reversedText = (text) => `[${(text.match(/[[^[]]+]/g) ?? []).reverse().join(', ')}]`
 const len = (c) => c.reduce((s, p, i) => (i ? s + gcNm(c[i - 1][0], c[i - 1][1], p[0], p[1]) : s), 0)
 const landNm = (c) => crossingsOf(truth, c).reduce((s, x) => s + x.nm, 0)
 const fixes = []
@@ -346,12 +367,29 @@ let fresh = 0
 let addNm = 0
 let baseNm = 0
 const still = []
+// ONE GEOMETRY, ONE NEW COURSE. Prod holds the same course under more than one text (51.45 and 51.4500,
+// a lane and its return written apart), and a frozen leg's pieces cannot tell them apart: every text of
+// one line of points takes the same new course, and its reverse takes that course backwards.
+const geomKey = (c) => c.map((p) => `${Number(p[0])},${Number(p[1])}`).join(';')
+const sailed = new Map() // geometry -> the course it now sails
 for (const [text, course] of texts) {
+  const gk = geomKey(course)
+  const rk = geomKey([...course].reverse())
+  const again = sailed.get(gk) ?? (sailed.has(rk) ? [...sailed.get(rk)].reverse() : null)
+  if (again) {
+    if (crossingsOf(truth, course).length) before++
+    const newText = jsonbText(again)
+    if (newText !== text) fixes.push({ old: md5(text), course: newText, oldText: text })
+    continue
+  }
   const a = pointMap.get(key(course[0][0], course[0][1]))
   const b = pointMap.get(key(course[course.length - 1][0], course[course.length - 1][1]))
   const crossed = crossingsOf(truth, course).length > 0
   if (crossed) before++
-  if (!a && !b && !crossed) continue
+  if (!a && !b && !crossed) {
+    sailed.set(gk, course)
+    continue
+  }
   const start = a ? [a.lat, a.lon] : course[0]
   const end = b ? [b.lat, b.lon] : course[course.length - 1]
   const ended = [start, ...course.slice(1, -1), end]
@@ -368,7 +406,8 @@ for (const [text, course] of texts) {
   }
   const ok = tries.filter((t) => courseIsWater(nav, t))
   if (!ok.length) {
-    still.push({ text, why: 'refused' })
+    still.push({ text, why: "refused" })
+    sailed.set(gk, course)
     after++
     continue
   }
@@ -379,17 +418,40 @@ for (const [text, course] of texts) {
     after++
     still.push({ text, why: `${landNm(pick).toFixed(1)} nm`, at: crossingsOf(truth, pick)[0]?.at })
   }
+  sailed.set(gk, pick)
   const newText = jsonbText(pick)
   if (newText === text) continue
   addNm += len(pick) - len(course)
   baseNm += len(course)
   fixes.push({ old: md5(text), course: newText, oldText: text })
 }
+// EVERY REPLACED COURSE BACKWARDS TOO. The world copies its courses at run time (a merchant rehomed sails a
+// lane backwards, public.npc_rehome; a loop takes the legs it knows, public.npc_feasible_legs), so a row
+// written after the export holds a stored course or the same course read backwards. Both are replaced.
+const have = new Set(fixes.map((f) => f.old))
+for (const f of [...fixes]) {
+  const back = reversedText(f.oldText)
+  if (back === f.oldText || texts.has(back) || have.has(md5(back))) continue
+  const course = JSON.parse(f.course).reverse()
+  fixes.push({ old: md5(back), course: jsonbText(course), oldText: back, backwards: true })
+  have.add(md5(back))
+}
 fixes.sort((x, y) => (x.old < y.old ? -1 : 1))
 const fixed = new Set(fixes.map((f) => f.old))
 const lanes = world.npc.filter((c) => fixed.has(md5(c.text))).length
 const stops = world.routes.filter((r) => fixed.has(md5(r.text))).length
 const coast = world.coast.filter((c) => fixed.has(md5(c.text))).length
+const prodCounts = prod
+  ? {
+      lanes: prod.npc.filter(([, , t]) => fixed.has(md5(t))).length,
+      npc: prod.npc.length,
+      stops: prod.stops.filter(([, , t]) => fixed.has(md5(t))).reduce((s, [, n]) => s + n, 0),
+      routes: prod.stops.reduce((s, [, n]) => s + n, 0),
+      coast: prod.coast.filter(([, , t]) => fixed.has(md5(t))).length,
+      at: prod.at,
+    }
+  : null
+if (prodCounts) console.log(`  prod (${prod.at}): lanes ${prodCounts.lanes}/${prodCounts.npc}, route stops ${prodCounts.stops}/${prodCounts.routes}, coast ${prodCounts.coast}/${prod.coast.length}`)
 const longer = ((addNm / Math.max(baseNm, 1)) * 100).toFixed(2)
 console.log(
   `  courses: ${texts.size} distinct; ${before} crossed drawn land; ${fixes.length} re-sailed (${fresh} from a fresh search); ${after} still cross; ` +
@@ -405,11 +467,43 @@ const corfuControl = [[corfu.lat, corfu.lon], [39.7, 19.96], [39.74, 19.975], [3
 const strict = (n, c) => c.every((p, i) => i === 0 || segmentIsWater(n, c[i - 1], p, 0, 0))
 if (!strict(nav, corfuControl)) throw new Error('the Corfu control is not water on the new raster')
 if (strict(oldNav, corfuControl)) throw new Error('the Corfu control was already water on the old raster: it proves nothing')
+// THE OWNER'S EXAMPLE: of the replaced courses, the one that ran furthest through solid Socotra (the
+// Hadibu to Kilwa lane); its new course must not touch the box.
+const inSocotra = (course) => {
+  let n = 0
+  for (let i = 0; i + 1 < course.length; i++) {
+    const [a, b] = [course[i], course[i + 1]]
+    const steps = Math.max(1, Math.ceil(gcNm(a[0], a[1], b[0], b[1])))
+    for (let k = 0; k <= steps; k++) {
+      const la = a[0] + ((b[0] - a[0]) * k) / steps
+      const lo = a[1] + ((b[1] - a[1]) * k) / steps
+      if (la >= SOCOTRA.south && la <= SOCOTRA.north && lo >= SOCOTRA.west && lo <= SOCOTRA.east) n++
+    }
+  }
+  return n
+}
+for (let la = SOCOTRA.south; la <= SOCOTRA.north + 1e-9; la += 0.005) {
+  for (let lo = SOCOTRA.west; lo <= SOCOTRA.east + 1e-9; lo += 0.005) {
+    if (!fineLand.isLand(la, lo)) throw new Error(`the Socotra control box is not all drawn land at ${la},${lo}`)
+  }
+}
+let socotraControl = null
+for (const f of fixes) {
+  if (f.backwards) continue
+  const was = inSocotra(JSON.parse(f.oldText))
+  if (was && !inSocotra(JSON.parse(f.course)) && (!socotraControl || was > socotraControl.was)) socotraControl = { old: f.old, oldText: f.oldText, was }
+}
+if (!socotraControl) throw new Error("no replaced course crossed Socotra: the owner's own example has no control")
 const had = moves.find((m) => m.code === 'HAD')
 if (!had) throw new Error("Hadibu's roadstead did not move: the owner's own harbour has no control")
 
 const sql = migrationSql({
   name: MIGRATION_NAME,
+  forward: fixes.filter((f) => !f.backwards).length,
+  prodAt: prod?.at ?? null,
+  prodCounts,
+  socotra: SOCOTRA,
+  socotraControl,
   opened: opened.map((k) => ({ k, row: (k / COLS) | 0, col: k % COLS, lat: cellLat((k / COLS) | 0), lon: cellLon(k % COLS), ch: chartedCells.get(k) })),
   bits,
   seaPatch,
@@ -443,8 +537,9 @@ const newMd5s = fixes.map((f) => `('${md5(f.course)}')`).join(', ')
 const codes = changedRoads.map((p) => `'${p.code}'`).join(', ')
 writeFileSync(
   path.join(HARNESS, 'before.sql'),
-  `-- before.sql: READ ONLY on prod, one statement, BEFORE 0441 is pushed (generated by scripts/build-land-channels.mjs: do not edit by hand).
--- Want head 20260818000440, lanes_replaced ${lanes} as in the image, roads_as_image ${changedRoads.length}, cells_closed ${opened.length}.
+  `-- before.sql: READ ONLY on prod, one statement, BEFORE 0440 is pushed (generated by scripts/build-land-channels.mjs: do not edit by hand).
+-- Want head 20260818000439, roads_as_image ${changedRoads.length}, cells_closed ${opened.length}, channels 29.${prodCounts ? `
+-- At the export (${prodCounts.at}): lanes_total ${prodCounts.npc}, lanes_replaced ${prodCounts.lanes}, stops_replaced ${prodCounts.stops} (rows written since may add a few).` : ''}
 begin transaction read only;
 with f(m) as (values ${oldMd5s})
 select jsonb_build_object(
@@ -462,7 +557,7 @@ rollback;
 )
 writeFileSync(
   path.join(HARNESS, 'after.sql'),
-  `-- after.sql: READ ONLY on prod, one statement, AFTER 0441 (generated by scripts/build-land-channels.mjs: do not edit by hand).
+  `-- after.sql: READ ONLY on prod, one statement, AFTER 0440 (generated by scripts/build-land-channels.mjs: do not edit by hand).
 -- Want lanes_old 0, stops_old 0, lanes_new ${lanes}, roads_new ${changedRoads.length}, cells_open ${opened.length}, drawn_roadsteads ${moves.length}.
 begin transaction read only;
 with o(m) as (values ${oldMd5s}), n(m) as (values ${newMd5s})
@@ -480,32 +575,32 @@ rollback;
 )
 const backCourse = fixes.map((f) => `    ('${md5(f.course)}', '${f.oldText}')`).join(',\n')
 writeFileSync(
-  path.join(HARNESS, 'rollback-0441.sql'),
-  `-- rollback-0441.sql: the FORWARD rollback of 0441 (generated by scripts/build-land-channels.mjs: do not edit by hand). Cut it as the next
+  path.join(HARNESS, 'rollback-0440.sql'),
+  `-- rollback-0440.sql: the FORWARD rollback of 0440 (generated by scripts/build-land-channels.mjs: do not edit by hand). Cut it as the next
 -- migration if the owner wants it undone: the courses and the roadsteads go back, the charted cells close, the drawn roadsteads go and
--- voyage.water_roadstead loses its 0441 lines. (Cargo legs keep their pieces: a circuit is rebuilt by public.cargo_circuit_build when its ships are home.)
-create function pg_temp.back_0441() returns table (new_md5 text, course jsonb) language sql immutable as $b$
+-- voyage.water_roadstead loses its 0440 lines. (Cargo legs keep their pieces: a circuit is rebuilt by public.cargo_circuit_build when its ships are home.)
+create function pg_temp.back_0440() returns table (new_md5 text, course jsonb) language sql immutable as $b$
   select v.m, v.c::jsonb from (values
 ${backCourse}
   ) as v(m, c)
 $b$;
 update public.npc_courses c set course = b.course,
        nm = (select sum((x ->> 'nm')::numeric) from jsonb_array_elements(voyage.segments_from_course(b.course)) x)
-  from pg_temp.back_0441() b where md5(c.course::text) = b.new_md5;
+  from pg_temp.back_0440() b where md5(c.course::text) = b.new_md5;
 update public.standing_route_stops s set course = b.course,
        course_nm = (select sum((x ->> 'nm')::numeric) from jsonb_array_elements(voyage.segments_from_course(b.course)) x)
-  from pg_temp.back_0441() b where md5(s.course::text) = b.new_md5;
+  from pg_temp.back_0440() b where md5(s.course::text) = b.new_md5;
 update public.sea_reaches sr set roadstead_lat = v.lat, roadstead_lon = v.lon, snap_nm = v.nm
   from public.ports p, (values
 ${changedRoads.map((p) => `    ('${p.code}', ${p.rlat}::numeric, ${p.rlon}::numeric, ${p.snap_t}::numeric)`).join(',\n')}
   ) v(code, lat, lon, nm) where p.id = sr.port_id and p.code = v.code;
 update public.npc_coast_courses c set course = b.course,
        nm = (select sum((x ->> 'nm')::numeric) from jsonb_array_elements(voyage.segments_from_course(b.course)) x)
-  from pg_temp.back_0441() b where md5(c.course::text) = b.new_md5;
+  from pg_temp.back_0440() b where md5(c.course::text) = b.new_md5;
 update public.sea_raster set cells = ${opened.reduce((acc, k) => `set_bit(${acc}, ${k * bits}, 0)`, 'cells')} where id = 1;
 ${seaPatch.map((s) => `update public.sea_cells set seas = set_byte(seas, ${s.col}, ${s.was}) where row_idx = ${s.row};`).join('\n')}
 delete from voyage.channels where id in (${channelRows.map((c) => `'${c.id}'`).join(', ')});
 ${unhunkSql()}drop table voyage.drawn_roadsteads;
 `,
 )
-console.log(`wrote ${path.relative(ROOT, HARNESS)}/before.sql, after.sql, rollback-0441.sql`)
+console.log(`wrote ${path.relative(ROOT, HARNESS)}/before.sql, after.sql, rollback-0440.sql`)

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// NO COURSE CROSSES THE DRAWN LAND — the guard (owner row 352, migrations 0440 and 0441)
+// NO COURSE CROSSES THE DRAWN LAND — the guard (owner row 352, migration 0440)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The owner, 2026-11-15: *"some ships go pass through land - such as hadibu. i found one by myself,
@@ -25,11 +25,11 @@
 //      course author's course does not, and the search alone still would (the ruler sees the fault);
 //   5. a fixed sample of the course author's courses (every harbour to an origin in every 22nd)
 //      crosses no more often than the known count;
-//   6. (0441) the charted channels (scripts/sea-grid.mjs, `charted: true`: Corfu, Tsugaru and the
-//      Wielingen, opened by 0441; and eight straits carved before, from Kerch to Malacca) are open water,
-//      and the cells 0441 opened keep their drawn land in the mask; Corfu to Ancona sails the channel
+//   6. (0440) the charted channels (scripts/sea-grid.mjs, `charted: true`: Corfu, Tsugaru and the
+//      Wielingen, opened by 0440; and eight straits carved before, from Kerch to Malacca) are open water,
+//      and the cells 0440 opened keep their drawn land in the mask; Corfu to Ancona sails the channel
 //      over no land.
-// After 0441 the known list is EMPTY: every lane, route leg and coast course is off the drawn land and
+// After 0440 the known list is EMPTY: every lane, route leg and coast course is off the drawn land and
 // no roadstead lies on it. Keep it so: a new crossing is fixed, never listed.
 //
 // WHEN IT RUNS (scripts/ci/select-specs.mjs): a PR that changes a file this spec imports (the
@@ -117,7 +117,7 @@ test('no lane and no route leg crosses the drawn land, but the known list, which
   const added = found.filter((k) => !known.crossings.includes(k))
   const gone = known.crossings.filter((k) => !found.includes(k))
   const worst = (k: string) => out.crossings.find((c) => c.key === k)
-  expect(added.map((k) => `${k}: ${worst(k)?.worst.nm} nm of land at ${worst(k)?.worst.at.join(',')}`), 'NEW courses over the drawn land: re-sail them (scripts/build-clear-courses.mjs)').toEqual([])
+  expect(added.map((k) => `${k}: ${worst(k)?.worst.nm} nm of land at ${worst(k)?.worst.at.join(',')}`), 'NEW courses over the drawn land: re-sail them (scripts/build-land-channels.mjs)').toEqual([])
   expect(gone, 'these no longer cross: take them off scripts/db/land-crossings.known.json').toEqual([])
 })
 
@@ -146,7 +146,7 @@ test("the owner's example: Hadibu to Kilwa no longer sails across Socotra", () =
   if (lane) expect(inSocotra(lane.course)).toBe(0)
 })
 
-test('the charted channels are open water, and the land the chart draws in them stays land (0441)', () => {
+test('the charted channels are open water, and the land the chart draws in them stays land (0440)', () => {
   // Corfu's two channels, the Tsugaru strait and the Wielingen: water the chart draws and 1:110m closed.
   // The raster opens their cells; the coast mask still lists the drawn land inside each, so a course is
   // steered down the strait, never across the island beside it.
@@ -154,14 +154,14 @@ test('the charted channels are open water, and the land the chart draws in them 
   const mask = coastMaskFrom(JSON.parse(readFileSync(MASK, 'utf8')) as CoastMaskPayload)
   const { carved } = carveInventory()
   const charted = CHANNELS.filter((c) => c.charted)
-  // Three opened by 0441, and eight straits carved long before and held to their drawn land since.
+  // Three opened by 0440, and eight straits carved long before and held to their drawn land since.
   expect(charted.map((c) => c.id).sort()).toEqual(
     ['bab-el-mandeb', 'baltic-gulfs', 'corfu', 'hormuz', 'kerch', 'malacca', 'seto', 'sunda', 'tsugaru', 'western-scheldt', 'white-sea'],
   )
   for (const ch of charted) {
     for (const k of carved.get(ch.id) ?? []) expect(nav.cells[k], `${ch.id} cell ${k} is water`).not.toBe(0)
   }
-  // Every cell 0441 opened holds drawn land (an island, a cape, the far shore), and the mask keeps it.
+  // Every cell 0440 opened holds drawn land (an island, a cape, the far shore), and the mask keeps it.
   for (const id of ['corfu', 'tsugaru', 'western-scheldt']) {
     for (const k of carved.get(id) ?? []) expect(mask.at.has(k), `${id} cell ${k} keeps its drawn land in the mask`).toBe(true)
   }
