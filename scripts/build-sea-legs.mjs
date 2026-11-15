@@ -8,10 +8,17 @@
 //
 // What it does, with no second author of anything:
 //   1. restores the cached world at the head before the named migration (never from zero; the cache is only read);
-//   2. plots the course of every ordered pair of harbours, roadstead to roadstead, with THE pathfinder the browser runs (src/lib/sea findPath, the
-//      call of src/domain/passage proposeCourse) over the raster that world serves (public.sea_raster);
+//   2. plots the course of every ordered pair of harbours, roadstead to roadstead, as THE course author of the browser plots it (src/domain/passage
+//      proposeCourse: src/lib/sea findPath over the raster that world serves, then, since 0440, refineCourse off the coast mask public/coast/mask.json).
+//      That is the course the browser sends the sail door, so it is the course the pair row must name the seas of;
 //   3. asks that world's own public.course_zones (the door's sampler) for the seas of each course;
-//   4. writes data/sea-legs.json: the harbours in code order, the distinct sets of seas, and for each harbour one index per harbour.
+//   3b. (0442) adds, to a pair's seas, the seas of the course that world REMEMBERS on the pair (public.npc_courses): a row never asks less than a course
+//      the world holds (0403's rule, proof 98 ROW_HOLDS_COURSE). A lane is a re-sailed older course, not always the course plotted today;
+//   4. writes data/sea-legs.json: the harbours in code order, the distinct sets of seas, and for each harbour one index per harbour;
+// Then scripts/build-sea-legs-migration.mjs writes the migration that ships the file (0442 was the first written so), and proof 98's courses.
+// RE-RUN IT AFTER ANY MIGRATION THAT RE-SAILS STORED COURSES OR MOVES A ROADSTEAD (scripts/build-land-channels.mjs, scripts/build-isthmus.mjs): 0440 moved
+// 69 roadsteads and re-sailed the lanes and left this table as it was; 18 lanes then crossed a sea their row did not hold, and Galle's own row named a
+// sea its roadstead had left (0442 is the repair). tests/sea.noLandCrossing.spec.ts and proof 98 hold the table to the courses.
 // The migration embeds that file; scripts/db/world-guard.mjs holds public.sea_leg_asks equal to it. RE-RUN THIS whenever a sea box, the sea raster, a
 // roadstead or the harbour list changes (public.sea_leg_asks_derive, the straight line, is no longer the table's author).
 //
@@ -21,17 +28,20 @@ import path from 'node:path'
 import os from 'node:os'
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads'
 import { fileURLToPath } from 'node:url'
-import { navFromServed, findPath } from '../src/lib/sea/index.ts'
+import { readFileSync } from 'node:fs'
+import { navFromServed, findPath, refineCourse, coastMaskFrom, coastLand } from '../src/lib/sea/index.ts'
 
 if (!isMainThread) {
   const { raster, hs, from, to } = workerData
   const nav = navFromServed(raster)
+  // the coast mask the browser's course author steers by (src/domain/passage proposeCourse, since 0440)
+  const land = coastLand(coastMaskFrom(JSON.parse(readFileSync(workerData.mask, 'utf8'))), nav)
   for (let i = from; i < to; i++) {
     const row = []
     for (let j = 0; j < hs.length; j++) {
       if (i === j) { row.push(null); continue }
       const r = findPath(nav, { lat: hs[i].lat, lon: hs[i].lon }, { lat: hs[j].lat, lon: hs[j].lon })
-      row.push(r ? r.path : null)
+      row.push(r ? refineCourse(nav, land, r.path).path : null)
     }
     parentPort.postMessage({ i, row })
   }
@@ -66,7 +76,7 @@ let t0 = Date.now()
 await Promise.all(Array.from({ length: threads }, (_, w) => new Promise((resolve, reject) => {
   const from = Math.floor((n * w) / threads)
   const to = Math.floor((n * (w + 1)) / threads)
-  const wk = new Worker(fileURLToPath(import.meta.url), { workerData: { raster, hs, from, to } })
+  const wk = new Worker(fileURLToPath(import.meta.url), { workerData: { raster, hs, from, to, mask: path.join(REPO_ROOT, 'public', 'coast', 'mask.json') } })
   wk.on('message', (m) => { courses[m.i] = m.row })
   wk.on('error', reject)
   wk.on('exit', (c) => (c === 0 ? resolve() : reject(new Error(`worker ${w} exit ${c}`))))
@@ -83,6 +93,11 @@ const idxOf = (zones) => {
   if (!setIdx.has(k)) { setIdx.set(k, sets.length); sets.push(k) }
   return setIdx.get(k)
 }
+// 3b. the courses that world remembers, by pair
+const remembered = new Map()
+for (const r of (await db.query(`select a.code as a, b.code as b, public.course_zones(n.course) as zones
+                                   from public.npc_courses n join public.ports a on a.id = n.from_port join public.ports b on b.id = n.to_port`)).rows) remembered.set(`${r.a} ${r.b}`, r.zones)
+let rememberedAdds = 0
 const legs = []
 let unplotted = 0
 for (let i = 0; i < n; i++) {
@@ -94,12 +109,16 @@ for (let i = 0; i < n; i++) {
   row[i] = idxOf([hs[i].zone])
   for (const r of rows) {
     if (!r.zones.length) throw new Error(`${hs[i].code} to ${hs[r.j].code}: the course crosses no sea`)
-    row[r.j] = idxOf(r.zones)
+    const lane = remembered.get(`${hs[i].code} ${hs[r.j].code}`)
+    if (lane && lane.some((z) => !r.zones.includes(z))) {
+      rememberedAdds++
+      row[r.j] = idxOf([...new Set([...r.zones, ...lane])].sort())
+    } else row[r.j] = idxOf(r.zones)
   }
   unplotted += row.filter((x) => x < 0).length
   legs.push(row)
 }
-console.log(`seas of every course in ${Date.now() - t0} ms: ${sets.length} distinct sets, ${unplotted} pairs with no water course`)
+console.log(`seas of every course in ${Date.now() - t0} ms: ${sets.length} distinct sets, ${unplotted} pairs with no water course; ${rememberedAdds} of ${remembered.size} remembered courses add a sea to their pair`)
 
 const body = `{\n"note": "Generated by scripts/build-sea-legs.mjs; never hand-edited. legs[i][j] is the index in sets of the seas the plotted course from harbours[i] to harbours[j] crosses (i = j: the harbour's own sea; -1: no water course).",\n`
   + `"harbours": ${JSON.stringify(hs.map((h) => h.code))},\n"sets": ${JSON.stringify(sets)},\n"legs": [\n${legs.map((r) => JSON.stringify(r)).join(',\n')}\n]\n}\n`

@@ -361,3 +361,25 @@ What this adds to the procedure above:
   to prod's own lanes, stops and frozen legs in an image and audits the result.
 - Still open: the server holds no coast mask (a hand-made straight course over an island the raster cannot
   see is accepted: 593 harbour pairs), and `course_join_nm` lets a course begin 15 nm from where she lies.
+
+### 0442: the pair table keeps step with the courses (owner row 352)
+
+`public.sea_leg_asks` names the seas between every two harbours (what title and wave a leg asks). Trade's board and the server's
+pathfinder read it. Its author is a build (`scripts/build-sea-legs.mjs`, `data/sea-legs.json`, 0403): the seas of the course the
+browser plots, and of any course the world remembers on the pair. 0440 moved 69 roadsteads and re-sailed the lanes and did not
+re-run it: 18 lanes (24 on prod) crossed a sea their row did not hold, and Galle's own row named the sea its roadstead had left.
+Proofs 97 and 98 went red on main. 0442 is the repair. What this adds to the procedure above:
+
+- A migration that re-sails a stored course or moves a roadstead calls `public.sea_leg_asks_keep()` (the templates of
+  `build-land-channels.mjs` and `build-isthmus.mjs` now do): own rows name their roadstead's sea, a row holds every sea of its
+  remembered course, and wave and title are the most those seas ask. It adds seas and never removes one.
+- Then re-run the build, in this order (about 40 minutes; local only):
+  1. `BYEHARU_PREFIX_CACHE=required node scripts/build-sea-legs.mjs --before=<next> --courses=<file.json>` writes `data/sea-legs.json`.
+     It plots as the browser's course author does (the search, then the re-sailing off the coast mask) and adds the chain's lanes' seas.
+  2. `BYEHARU_PREFIX_CACHE=required node scripts/build-sea-legs-migration.mjs --before=<next> --name=<file> --courses=<file.json> --proof98`
+     writes the migration, the prod check, the forward rollback, and proof 98's courses.
+- The quoted distances (`public.sea_reaches.reaches`) are the length of the course a fleet really sails. When roadsteads or the course
+  author change, measure them again with `node scripts/ops/harness/seas-memo/measure-reaches.mjs <image> <out.json>` (it prints what the
+  new figures do to prices through `world.haul_rows()`; read that before shipping) and pass `--reaches=<out.json>` to step 2.
+- The guards: the world guard (the table equals the file), proofs 97, 98 and 144, and `tests/sea.noLandCrossing.spec.ts` (the three
+  laws, `scripts/sea-legs.sql.mjs` `LAWS_SQL`). The prod read is `scripts/ops/harness/seas-memo/before.sql`.

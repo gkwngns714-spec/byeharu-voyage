@@ -335,6 +335,14 @@ begin
   on conflict (course_md5) do nothing;
   get diagnostics v_memo = row_count;
 
+  -- 0442 THE PAIR TABLE KEEPS STEP: a re-sailed lane may cross a sea its pair's row (public.sea_leg_asks) does not hold, and a moved roadstead may
+  -- lie in another sea than its own row names. 0440 left both behind. The world's own step mends them (to_regprocedure: this template also
+  -- wrote 0440 and 0441, before the function was). AFTER GENERATING: re-run scripts/build-sea-legs.mjs and scripts/build-sea-legs-migration.mjs,
+  -- because the world guard holds the table equal to data/sea-legs.json and this step may have added a sea.
+  if to_regprocedure('public.sea_leg_asks_keep()') is not null then
+    perform public.sea_leg_asks_keep();
+  end if;
+
   return jsonb_build_object('lanes', v_lanes, 'stops', v_stops, 'coast', v_coast, 'cargo_legs', v_legs, 'patrol_legs', v_patrol, 'memo', v_memo);
 end
 $c$;

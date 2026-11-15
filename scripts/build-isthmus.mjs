@@ -25,6 +25,10 @@
 // shape) and audits what it leaves.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+// THE PAIR TABLE (0442): a migration this writes calls public.sea_leg_asks_keep() after it re-sails (the template's step), so no lane is left
+// crossing a sea its pair's row does not hold and no moved roadstead is left in a sea its own row does not name. Then RE-RUN
+// scripts/build-sea-legs.mjs and scripts/build-sea-legs-migration.mjs: the world guard holds public.sea_leg_asks equal to data/sea-legs.json.
+
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'

@@ -36,6 +36,10 @@
 //      raster land under it, the Panama line is refused (and the old rule still shows the fault), the
 //      course author goes by sea, and no stored course is one the server's own law refuses (the
 //      audit lists such a course beside the crossings).
+//   8. (0442) THE PAIR TABLE KEEPS STEP. public.sea_leg_asks names the seas between two harbours from plotted courses; 0440 moved
+//      roadsteads and re-sailed the lanes and left it behind (18 lanes crossed a sea their row did not hold; Galle's own row named
+//      the sea its roadstead had left). A migration that re-sails a course or moves a roadstead calls public.sea_leg_asks_keep() and
+//      re-runs scripts/build-sea-legs.mjs; here the three laws are read on the built world (scripts/sea-legs.sql.mjs LAWS_SQL).
 // After 0440 the known list is EMPTY, and after 0441 the sample's count is 0: every lane, route leg and
 // coast course is off the drawn land, no roadstead lies on it, and no proposed course crosses.
 // Keep it so: a new crossing is fixed, never listed.
@@ -64,6 +68,7 @@ import {
 } from '../scripts/db/audit-land-crossings.mjs'
 import { buildCoastMask } from '../scripts/build-coast-mask.mjs'
 import { CHANNELS, carveInventory } from '../scripts/sea-grid.mjs'
+import { LAWS_SQL } from '../scripts/sea-legs.sql.mjs'
 import { coastLand, coastMaskFrom, courseRefusedAt, findPath, navFromServed, refineCourse, segmentIsWater, type CoastMaskPayload } from '../src/lib/sea'
 
 const KNOWN = path.resolve('scripts', 'db', 'land-crossings.known.json')
@@ -226,6 +231,14 @@ test('an approach is not a canal: Panama City to Portobelo goes by sea, and no a
   expect(al.still, 'straight lines the rule accepts over raster land').toEqual([])
   expect(al.byAllowance, 'the old rule let lines through by the allowance alone: the audit still measures it').toBeGreaterThan(0)
   expect(al.canals.some((c) => c.key === 'PAN-PRT')).toBe(true)
+})
+
+test('the pair table keeps step with the roadsteads and the remembered courses (0442)', async () => {
+  // A re-sailed lane or a moved roadstead must not leave public.sea_leg_asks behind: Trade and the server's pathfinder read it.
+  const law = (await db.pg.query(LAWS_SQL)).rows[0] as { own: string | null; lanes: string | null; asks: number }
+  expect(law.own, 'harbours whose own row is not the sea their roadstead lies in: call public.sea_leg_asks_keep() in the migration that moved it').toBeNull()
+  expect(law.lanes, 'remembered courses that cross a sea their pair row does not hold: call public.sea_leg_asks_keep() in the migration that re-sailed them, and re-run scripts/build-sea-legs.mjs').toBeNull()
+  expect(law.asks, 'rows that ask other than the most their seas ask').toBe(0)
 })
 
 test("a fixed sample of the course author's courses crosses no more often than the known count", () => {
