@@ -20,6 +20,8 @@
 -- @pass NH_REGARD    a company that beats a pirate ship earns regard_pirate with every great power but the pirates, once; beaten by her, nothing; sinking her costs nothing with the pirates; a cargo ship beaten earns none of it
 -- ═══════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
+
 do $$
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'convoys_enabled', 'combat_bite');

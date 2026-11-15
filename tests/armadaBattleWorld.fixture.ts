@@ -28,6 +28,7 @@ export function armadaBattleWorld(): Promise<Buffer> {
     await pg.exec(`
       update public.world_config set value = 'true'::jsonb where key in ('attack_enabled', 'convoys_enabled', 'city_treasury_enabled');
       update public.world_config set value = '${ARMADA_ROUND_SECONDS}'::jsonb where key = 'battle_round_seconds';
+      update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: these specs drive the round-by-round battle
       update public.world_config set value = '7'::jsonb where key = 'fleet_max';
       insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
       update public.port_treasury set ducats = 50000000, reserve = 0;

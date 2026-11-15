@@ -46,10 +46,13 @@ export function useBuyRoom(kind: 'FLEET' | 'SHIP'): { busy: boolean; refusal: Re
 }
 
 /** How one step opens, in the player's words: a price, or "Trading 3", or "Seamanship or Command 2". */
-export function roomStepWord(t: T, s: RoomStep): string {
+/** A step in words. `have` (0433: the ladder's served level): a rung still shut reads her level against it, `Trading 2 / 3`. */
+export function roomStepWord(t: T, s: RoomStep, have?: number): string {
   if (s.how === 'gold') return formatDucats(s.price)
   const names = s.tracks.map((k) => t(`fleets.track_${k}` as TKey))
-  return t('fleets.roomLevel', { track: names.length === 2 ? t('fleets.roomEither', { a: names[0], b: names[1] }) : names.join(', '), level: s.level })
+  const track = names.length === 2 ? t('fleets.roomEither', { a: names[0], b: names[1] }) : names.join(', ')
+  if (have != null && !s.open) return t('fleets.roomLevelHave', { track, have, need: s.level })
+  return t('fleets.roomLevel', { track, level: s.level })
 }
 
 type LevelStep = Extract<RoomStep, { how: 'level' }>

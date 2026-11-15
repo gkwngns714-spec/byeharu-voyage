@@ -34,12 +34,14 @@ const SECRET_SQL = process.env.SPEC_WORLD_SECRET
   ? `update public.world_config set value = to_jsonb('${process.env.SPEC_WORLD_SECRET.replace(/[^A-Za-z0-9_-]/g, '')}'::text) where key = 'world_secret';`
   : ''
 
-export function fightWorld(mine: boolean): Promise<Buffer> {
-  return patchedWorldImage(mine ? 'fight-world-mine' : 'fight-world-watch', async (pg) => {
+/** `ticks` true (tests/map.battleClose.spec.ts): the battle is left a TICK battle (0435), so its ring opens the battle screen. */
+export function fightWorld(mine: boolean, ticks = false): Promise<Buffer> {
+  return patchedWorldImage(`${mine ? 'fight-world-mine' : 'fight-world-watch'}${ticks ? '-ticks' : ''}`, async (pg) => {
     await pg.exec(`
       ${SECRET_SQL}
       update public.world_config set value = 'true'::jsonb where key in ('attack_enabled', 'convoys_enabled', 'city_treasury_enabled');
       update public.world_config set value = '${FIGHT_ROUND_SECONDS}'::jsonb where key = 'battle_round_seconds';
+      ${ticks ? '' : `update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: these specs drive the round-by-round battle`}
       insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
       update public.port_treasury set ducats = 50000000, reserve = 0;
       select public.tick_cargo_ships(now(), n.id) from public.nations n where n.code = 'ESP';
@@ -95,8 +97,8 @@ export function fightWorld(mine: boolean): Promise<Buffer> {
 }
 
 /** Serve the one-battle world to `page` in place of the shipped image. */
-export async function serveFightWorld(page: Page, mine = false): Promise<void> {
-  await serveWorldImage(page, await fightWorld(mine))
+export async function serveFightWorld(page: Page, mine = false, ticks = false): Promise<void> {
+  await serveWorldImage(page, await fightWorld(mine, ticks))
 }
 
 // ── THE FIGHTS THAT ARE SETTLED IN AN INSTANT: HER OWN RAID, AND A NAVY SHIP AGAINST A PIRATE SHIP ──

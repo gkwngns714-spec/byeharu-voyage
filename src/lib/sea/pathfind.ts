@@ -301,8 +301,20 @@ export function findPath(
 }
 
 /**
- * Every sample along this segment is sailable water. The ENDS are exempt only by the head/tail
- * allowance actually measured (a harbour approach), never by a fixed figure.
+ * Every sample along this segment is sailable water, but for an end's own APPROACH.
+ *
+ * AN APPROACH IS THE LAND AN END STANDS IN, AND NOTHING ELSE (0441, the owner: "no ship crosses
+ * land, ever"). Until 0441 every sample within the head/tail allowance of an end was skipped
+ * unread, whatever it was. Two roadsteads 46 nm apart across the isthmus of Panama, 25 nm of
+ * allowance each: the straight line between them had no sample left to read, and it was a canal.
+ * A single allowance did the same to any spit of land within 25 nm of a harbour. Now a land sample
+ * is passed only when
+ *   - the end itself stands in a land cell (a fleet lying on a clipped corner of the coast; never
+ *     a roadstead, which is water), and
+ *   - the sample is in the unbroken run of land that begins at that end, inside its allowance.
+ * Once she has reached water, any land is refused, wherever it is. And a line that never reaches
+ * water at all (both ends on land, the two approaches chained) is refused. This is
+ * `voyage.path_refusal`'s own rule, sample for sample.
  *
  * THE SEA IS ROUND (0088). A segment whose two ends straddle the antimeridian — 179.875° to
  * −179.875° — is 0.25° of water, not 359.75° of world, and it is sampled the SHORT way round
@@ -321,21 +333,36 @@ export function segmentIsWater(
 ): boolean {
   const nm = gcNm(lat1, lon1, lat2, lon2)
   const steps = Math.max(2, Math.ceil(nm / (nav.cellDeg * NM_PER_DEG * 0.5)))
+  // An end has an approach only when it stands on land (0441).
+  let headOpen = headNm > 0 && !nav.cells[rowOf(nav, lat1) * nav.cols + colOf(nav, lon1)]
+  const tailOpen = tailNm > 0 && !nav.cells[rowOf(nav, lat2) * nav.cols + colOf(nav, lon2)]
+  let tailRun = false
   for (let s = 1; s < steps; s++) {
     const f = s / steps
-    if (f * nm < headNm || (1 - f) * nm < tailNm) continue
     const lat = lat1 + (lat2 - lat1) * f
     const lon = lonLerp(lon1, lon2, f)
-    if (!nav.cells[rowOf(nav, lat) * nav.cols + colOf(nav, lon)]) return false
+    if (nav.cells[rowOf(nav, lat) * nav.cols + colOf(nav, lon)]) {
+      // Water: she has put to sea. Land behind her that was taken for the far end's approach was not one.
+      if (tailRun) return false
+      headOpen = false
+      continue
+    }
+    if (headOpen && f * nm < headNm) continue
+    if (tailOpen && (1 - f) * nm < tailNm) {
+      tailRun = true
+      continue
+    }
+    return false
   }
-  return true
+  // Both ends on land and no water between: two approaches chained are a crossing, not an approach.
+  return !(headOpen && tailOpen)
 }
 
 /** One cell diagonal in nm — the sampling slack past a measured snap. THE APPROACH RULE, shared
- *  with the server: an end of a path may run over the coast for its MEASURED snap distance plus
- *  one cell diagonal, never for a fixed guess. The server's `voyage.path_refusal` allows the
- *  same snap (from `sea_reaches.snap_nm`) plus a slightly LARGER slack (25 nm), so a course this
- *  straightener passes can never be refused for its own approach. */
+ *  with the server: an end of a path that stands on LAND may run over that land for its measured
+ *  snap distance plus one cell diagonal (the server allows the snap plus 25 nm, slightly more, so
+ *  a course this straightener passes is never refused for its own approach). An end on water, as
+ *  every roadstead is, has no approach at all (0441, {@link segmentIsWater}). */
 const cellDiagNm = (nav: SeaNav): number => nav.cellDeg * NM_PER_DEG * Math.SQRT2
 
 function straighten(nav: SeaNav, points: SeaPath, headNm: number, tailNm: number): SeaPath {

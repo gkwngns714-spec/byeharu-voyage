@@ -9,7 +9,7 @@
 // starts before it). Then, at 390 and at 1,280, at DPR 2:
 //   1. Stats → Overview: the world's money chart carries a dot on its time axis; pressing it opens the card (a Tray, out of the flow:
 //      the chart's card does not move by a pixel and nothing scrolls sideways), and the card says what happened, and what moved.
-//   2. Stats → News: the face lists the happening, newest first, beside 0347's own "Update: News" row; nothing scrolls sideways.
+//   2. Stats → News: the face lists the happening, newest first, beside 0347's own "News" update row (0433: the headline is the title alone); nothing scrolls sideways.
 // It names NewsDots.tsx, NewsCard.tsx, useChartNews.tsx, News.tsx, Overview.tsx, SeriesChart.tsx and StatsScreen.tsx so CI's rule N selects it.
 
 import { test, expect, type Page } from '@playwright/test'
@@ -130,7 +130,7 @@ for (const glass of [PHONE, WIDE]) {
     await expect(items.first()).toBeVisible({ timeout: 60_000 })
     await expect(items.first().getByTestId('news-headline')).toHaveText(headline!.en)
     await expect(items.first().getByTestId('news-move')).toHaveText(headline!.move)
-    await expect(face.getByTestId('news-headline').filter({ hasText: 'Update: News' })).toHaveCount(1)
+    await expect(face.getByTestId('news-headline').filter({ hasText: /^News$/ })).toHaveCount(1)
     // My cities: a fresh house lies at one city; this happening is the world's, so it is not hers
     await face.getByRole('tab', { name: 'My cities', exact: true }).click()
     await expect(face.getByTestId('news-headline').filter({ hasText: headline!.en })).toHaveCount(0, { timeout: 30_000 })

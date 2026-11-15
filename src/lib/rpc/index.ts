@@ -122,6 +122,8 @@ import type {
   RaidOrderWord,
   RaidRead,
   BattleRead,
+  BattleTicksRead,
+  BattleEndReceipt,
   BattleStanceReceipt,
   BattleStanceWord,
   FightsRead,
@@ -1038,6 +1040,16 @@ export function worldFights(): Promise<RpcResult<FightsRead>> {
 /** Any battle's log, for a watcher (0364): `world.battle`'s shape with `watch` true. */
 export function worldFight(battleId: string): Promise<RpcResult<BattleRead>> {
   return call<BattleRead>('worldFight', [battleId])
+}
+
+/** A battle fought tick by tick (0435): its timeline, for the battle screen. Any signed-in reader. */
+export function worldBattleTicks(battleId: string): Promise<RpcResult<BattleTicksRead>> {
+  return call<BattleTicksRead>('worldBattleTicks', [battleId])
+}
+
+/** The battle closes now if its timeline's end has come (0435); the screen calls it when its playback ends. */
+export function cmdBattleEnd(battleId: string): Promise<RpcResult<BattleEndReceipt>> {
+  return call<BattleEndReceipt>('cmdBattleEnd', [battleId])
 }
 
 /** Your fleet attacks a cargo ship (0327). A battle opens; its end comes as a report. */
