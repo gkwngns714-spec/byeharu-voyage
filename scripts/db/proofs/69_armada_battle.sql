@@ -74,10 +74,11 @@ $h$),
 $h$, $h$                                    'navy', b.result #> '{navy,line}') end
     || public.battle_armada_view(b.id, p_fleet);   -- 0395: her armada's name, her fleets, the side's stance and, closed, each fleet's share; no armada: {}
 $h$),
-  ('public.navy_close(uuid,timestamp with time zone)', 1, $h$  select count(*) filter (where bs.how <> 'OPENED' and bs.arrives_at <= b.resolves_at),
-$h$, $h$  select count(*) filter (where bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at),   -- 0395: her own armada is no navy
+  -- 0436 re-cut both navy_close hunks (a JOINED pirate is no navy): this proof's copies carry its clause on both sides
+  ('public.navy_close(uuid,timestamp with time zone)', 1, $h$  select count(*) filter (where bs.how <> 'OPENED' and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at),
+$h$, $h$  select count(*) filter (where bs.how not in ('OPENED', 'ARMADA') and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at),   -- 0395: her own armada is no navy; 0436: nor a pirate that joined
 $h$),
-  ('public.navy_close(uuid,timestamp with time zone)', 2, $h$         bool_or(bs.how <> 'OPENED' and bs.arrives_at <= b.resolves_at or ($h$, $h$         bool_or(bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at or ($h$),
+  ('public.navy_close(uuid,timestamp with time zone)', 2, $h$         bool_or(bs.how <> 'OPENED' and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at or ($h$, $h$         bool_or(bs.how not in ('OPENED', 'ARMADA') and (bs.how <> 'JOINED' or n.fleet_id is not null) and bs.arrives_at <= b.resolves_at or ($h$),
   ('public.battle_navy_served(uuid)', 1, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how <> 'OPENED' and o.arrives_at <= b.resolves_at
 $h$, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how not in ('OPENED', 'ARMADA') and o.arrives_at <= b.resolves_at   -- 0395: her own armada is no help coming to the other side
 $h$)
