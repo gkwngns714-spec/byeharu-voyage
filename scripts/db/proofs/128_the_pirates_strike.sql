@@ -16,6 +16,8 @@
 -- @pass PS_KEEP     a closed RAID older than raid_keep_hours is deleted with its sides and rounds by the job; a player's ATTACK battle is never deleted
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = case key when 'pirate_strike_from_port' then 'true'::jsonb else to_jsonb(720) end where key in ('pirate_strike_from_port', 'pirate_port_minutes');   -- 0445: this proof's pirate lies at her haunt and raids from it (0427's world, by 0445's two way-back knobs); the cruise and the raid under sail are proof 147's
+
 update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
 
 create function pg_temp.w_128() returns numeric language sql as $f$
