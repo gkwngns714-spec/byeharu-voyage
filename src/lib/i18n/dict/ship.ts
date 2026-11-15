@@ -67,6 +67,14 @@ export const shipDict = defineDict({
     towing: 'Towing…',
     towFee: 'Tow · {fee}',
     tow: 'Tow',
+    // 2026-11-16 (owner: "the one with stronger ships, multiple fleets should have different graphics"): the Codex key to the ship pictures.
+    keyTitle: 'Map ships',
+    tier_sloop: 'Sloop',
+    tier_brig: 'Brig',
+    tier_frigate: 'Frigate',
+    fam_yours: 'Yours',
+    fam_merchant: 'Merchant',
+    fleetSize: 'Fleet size',
   },
   ko: {
     s_rig: '돛',
@@ -131,5 +139,12 @@ export const shipDict = defineDict({
     towing: '예인하는 중…',
     towFee: '예인 · {fee}',
     tow: '예인',
+    keyTitle: '지도의 배',
+    tier_sloop: '슬루프',
+    tier_brig: '브리그',
+    tier_frigate: '프리깃',
+    fam_yours: '내 배',
+    fam_merchant: '상선',
+    fleetSize: '함대 규모',
   },
 })

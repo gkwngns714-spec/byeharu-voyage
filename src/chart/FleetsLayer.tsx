@@ -3,10 +3,8 @@ import { project, type LatLon, type Point } from '../lib/geo'
 import type { ChartModel, FleetOnChart, TrafficOnChart } from './chartModel'
 import {
   arrowPath,
+  fleetMark,
   GLYPH,
-  hullGroup,
-  hullGroupHalo,
-  hullPath,
   KIND_LOOK,
   kindMarkPath,
   shipKindOf,
@@ -387,7 +385,9 @@ function HullGroup({
   // HER SIZE ON THIS GLASS (./glyphs.ts `wideScale`): a ship of yours is always full size; everyone else's
   // shrinks as a narrow glass takes in more world, so the sea is ships and not a pile of hulls.
   const frame = unitsPerPx * (kind === 'yours' ? 1 : wideScale(unitsPerPx))
-  const marks = hullGroup(fleet.fleet.hulls ?? [], unitsPerPx).map((m) => ({ ...m, halfLength: Math.max(m.halfLength, look.minHalfLength) }))
+  // HER MARK IS KEPT ON HER HULL LIST (./glyphs.ts `fleetMark`): a zoom step re-renders every fleet and builds none of this again.
+  // HOW MANY SHE IS (2026-11-16): the ships her mark does not draw are said astern of it, in her flagship's own path (`paths`).
+  const { marks, halo: lit, paths, count, ships } = fleetMark(fleet.fleet.hulls, unitsPerPx, look.minHalfLength)
   // SHE GLIDES BETWEEN MODELS (./underway.ts): the same transform, written on a frame instead of on
   // a render, at ./drift.ts's point for that instant. Her `--night` is NOT rewritten with it — the
   // Sun moves a quarter of a degree a minute, and the group's night value is the model's.
@@ -402,6 +402,8 @@ function HullGroup({
       transform={hullFrame(fleet.at, fleet.heading, frame)}
       data-fleet-heading={fleet.heading ?? 0}
       data-hulls={marks.length}
+      data-fleet-ships={ships}
+      data-count-mark={count ?? undefined}
       style={nightStyle(fleet.at, sun)}
       data-in-fight={inFight ? 'true' : undefined}
       {...hooks}
@@ -409,43 +411,35 @@ function HullGroup({
       {children}
       {/* IN A FIGHT (owner, tick combat: "every ship currently in a fight is drawn with a red background"): a red disc
           round her whole group, over her halo and under her hull, inside the battle's own red ring. */}
-      {inFight && marks.length > 0 && (() => {
-        const ground = hullGroupHalo(marks)
-        return (
-          <circle
-            cx={ground.cx}
-            cy={ground.cy}
-            r={ground.r * 1.15}
-            className="fill-danger/60 stroke-danger"
-            strokeWidth={GLYPH.glyphStroke}
-            vectorEffect="non-scaling-stroke"
-            data-fight-ground=""
-          />
-        )
-      })()}
+      {inFight && (
+        <circle
+          cx={lit.cx}
+          cy={lit.cy}
+          r={lit.r * 1.15}
+          className="fill-danger/60 stroke-danger"
+          strokeWidth={GLYPH.glyphStroke}
+          vectorEffect="non-scaling-stroke"
+          data-fight-ground=""
+        />
+      )}
       {/* HER RIDING LIGHT AT EVERY ZOOM (owner, 2026-10-13: *"i see no blue markers for ship"*),
           LIT BY THE SUN (2026-10-14): the same blue lamp and blink at every span, drawn UNDER the
           hull so the shape stays on top, sized to HER (the group's halo) so the glow reaches past
           the hull and reads as a light round her rather than a dot hidden beneath her — and out by
           day, through the group's `--night`. */}
-      {marks.length > 0 && (() => {
-        const lit = hullGroupHalo(marks)
-        // TWO GROUPS, because two things set opacity: the Sun (`.bv-sun-light`, the group's
-        // `--night`) on the outer, the blink's keyframes on the inner. One group with both would let
-        // the animation overwrite the Sun's value every frame, and a lamp would burn at noon.
-        return (
-          <g className="bv-sun-light" pointerEvents="none" data-ship-light="">
-            <g className="bv-ship-blink" style={{ animationDelay: `${blinkPhase(fleet.fleet.id)}ms` }}>
-              <circle cx={lit.cx} cy={lit.cy} r={lit.r * GLYPH.shipLightBloomScale} className="fill-ship-light/20" />
-              <circle cx={lit.cx} cy={lit.cy} r={lit.r * GLYPH.shipLightGlowScale} className="fill-ship-light/45" />
-            </g>
-          </g>
-        )
-      })()}
+      {/* TWO GROUPS, because two things set opacity: the Sun (`.bv-sun-light`, the group's
+          `--night`) on the outer, the blink's keyframes on the inner. One group with both would let
+          the animation overwrite the Sun's value every frame, and a lamp would burn at noon. */}
+      <g className="bv-sun-light" pointerEvents="none" data-ship-light="">
+        <g className="bv-ship-blink" style={{ animationDelay: `${blinkPhase(fleet.fleet.id)}ms` }}>
+          <circle cx={lit.cx} cy={lit.cy} r={lit.r * GLYPH.shipLightBloomScale} className="fill-ship-light/20" />
+          <circle cx={lit.cx} cy={lit.cy} r={lit.r * GLYPH.shipLightGlowScale} className="fill-ship-light/45" />
+        </g>
+      </g>
       {marks.map((m, i) => (
         <Fragment key={i}>
           <path
-            d={hullPath(m.cls, m.halfLength)}
+            d={paths[i]}
             transform={`translate(${m.dx} ${m.dy})`}
             className={className}
             style={style}
@@ -543,7 +537,7 @@ export function FleetsLayer({
         // ONE HALO FOR THE WHOLE GROUP, sized to the hulls actually drawn and inside the group's own
         // frame — so it follows the formation astern as she turns. For a single hull it is the
         // circle that was here before row 120, to the pixel (./glyphs.ts `hullGroupHalo`).
-        const halo = hullGroupHalo(hullGroup(f.fleet.hulls ?? [], unitsPerPx))
+        const halo = fleetMark(f.fleet.hulls, unitsPerPx, KIND_LOOK.yours.minHalfLength).halo
         return (
           <HullGroup
             key={f.fleet.id}

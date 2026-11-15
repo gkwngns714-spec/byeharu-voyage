@@ -4070,12 +4070,15 @@ export interface StatsMerchants {
   age_seconds: number | null
   slot_seconds: number
   houses?: number
+  /** 0448: where the fleets are is the COUNT's tally (public.fleet_tally's merchants), the same figures as the Ships face's card. */
   fleets?: number
-  sailing?: number
-  docked?: number
-  repairing?: number
-  unable?: number
+  ships?: number
+  sea?: number
+  port?: number
+  battle?: number
   laid_up?: number
+  wrecked?: number
+  ships_by?: Record<StatsFleetState, number>
   purse?: number
   profit_day?: number
   laps_day?: number
@@ -4088,15 +4091,22 @@ export interface StatsMerchants {
   series: { at: string; n?: number; profit_day: number; purse: number; sailing: number; laid_up: number; losing_pct: number }[]
 }
 
-/** 0419: one kind of ship as the Stats count saw it. Every fleet is in ONE state (sea + port + laid_up + wrecked = fleets). */
-export interface StatsFleetKind {
+/** 0448: THE ONE COUNT of a kind of ship (public.fleet_tally), as the Stats count stored it. Every counted fleet is in ONE of the five states:
+ *  fleets = sea + port + battle + laid_up + wrecked, always, and ships = the sum of `ships_by`. The five count FLEETS. No face adds them up. */
+export interface StatsFleetTally {
   fleets: number
   ships: number
   sea: number
   port: number
+  battle: number
   laid_up: number
   wrecked: number
+  /** the SHIPS in each state */
+  ships_by: Record<StatsFleetState, number>
 }
+
+/** 0419: one kind of ship on the Ships face: its tally. */
+export type StatsFleetKind = StatsFleetTally
 
 /** 0419: world.stats_fleets — the merchants, the navy, the pirates and the cargo ships, from the newest Stats count (twice an hour), with the
  *  last 24 hours of its windows summed from `day_from`. Before the first count only `at` and `counted_at` (null). */
@@ -4128,8 +4138,9 @@ export type StatsFleetKindId = 'NAVY' | 'PIRATE' | 'CARGO'
  *  held, loaded, delivered, returned, looted and their `_n` counts. A key that never happened is absent (read it as 0). */
 export type StatsFleetFigs = Partial<Record<string, number>>
 
-/** 0431: one state of a fleet, by 0419's rule (laid up, else wrecked, else at sea, else in port). */
-export type StatsFleetState = 'sea' | 'port' | 'laid_up' | 'wrecked'
+/** 0448: the one state of a fleet, by the server's one rule (public.fleet_state_of): laid up, else wrecked, else in a battle, else at sea, else
+ *  in port. */
+export type StatsFleetState = 'sea' | 'port' | 'battle' | 'laid_up' | 'wrecked'
 
 /** 0431: one fleet in a kind's list, as the newest Stats count saw her, with her 7 days. */
 export interface StatsFleetListRow {
@@ -4148,16 +4159,10 @@ export interface StatsFleetListRow {
 
 /** 0431: world.stats_fleet_list — the face of one kind from the newest Stats count (four an hour). Before the first count only `at`, `kind` and
  *  `counted_at` (null). `since` is the book's first hour inside the 7 days (the book starts with 0431). */
-export interface StatsFleetList {
+export interface StatsFleetList extends Partial<StatsFleetTally> {
   at: string
   kind: StatsFleetKindId
   counted_at: string | null
-  fleets?: number
-  ships?: number
-  sea?: number
-  port?: number
-  laid_up?: number
-  wrecked?: number
   day?: StatsFleetFigs
   week?: StatsFleetFigs
   since?: string | null
@@ -4646,6 +4651,8 @@ export interface FightSide {
   company: string | null
   nation: string | null
   ships: number
+  /** 0450: her fleet's best hull level (public.ship_level). Absent from a server before 0450. */
+  lv?: number
   here: boolean
   at?: [number, number]
 }
@@ -4735,6 +4742,42 @@ export interface TickShip {
   r: number
   f: number
   g: boolean
+  /** 0450: her level (public.ship_level, frozen at the open). Absent before 0450. */
+  lv?: number
+}
+
+/** 0450: one hull of the battle sheet as it was frozen (`world.battle_ticks().ships.a|b[i]`, the timeline's order): what
+ *  the fight fights with (voyage.fleet_hulls) and her card (public.battle_hull_card). A battle opened before 0450 has no
+ *  card: every field of it is optional, and the screen draws what there is. */
+export interface BattleShipCard {
+  name: string
+  tier?: number
+  /** her hull at the open, and her size */
+  hull?: number
+  maxd?: number
+  crew?: number
+  attack?: number
+  accuracy?: number
+  reach?: number
+  armour?: number
+  sighting?: number
+  gunner?: string | null
+  boarder?: string | null
+  /** the tick she comes up (a ship called or joining) */
+  from?: number
+  lv?: number
+  /** her class's name and its guns */
+  cls?: string
+  guns?: number
+  /** the crew her class needs, and what she may carry */
+  crew_need?: number
+  crew_max?: number
+  speed?: number
+  handling?: number
+  /** everything fitted: name, slot, wear (only when worn) */
+  fit?: { n: string; s: string; w?: number }[]
+  /** her captains: name and combat level */
+  caps?: { n: string; lv: number }[]
 }
 
 /** An event: `[t, side, kind, ...]` (side 0 = a = DEFENDER side, 1 = b = ATTACKER side, -1 = neither). See section 9.3:
@@ -4761,6 +4804,9 @@ export interface TickTimeline {
   out: 'EVADED' | 'DRIVEN_OFF' | 'RANSOM' | 'PLUNDERED'
   /** The result in fight_sides' shape (rounds = the windows): read by parseFightLog through the server's log, never re-derived. */
   r: unknown
+  /** 0450: the chance a run of each side would slip away, `[tick, per cent]` at each tick it changes (the server's own
+   *  figure: level, her hull and crew, her failed attempts are in it). Absent before 0450. */
+  rc?: { a: [number, number][]; b: [number, number][] }
 }
 
 export interface TickSide {
@@ -4789,6 +4835,8 @@ export interface BattleTicksRead {
   site?: { lat: number; lon: number }
   reach_nm?: number
   sides?: TickSide[]
+  /** 0450: every hull of the sheet, side a (the DEFENDER side) and side b, in the timeline's order. Absent before 0450. */
+  ships?: { a: BattleShipCard[]; b: BattleShipCard[] }
   mine?: string | null
   /** Null while it is fought. taken / loot / crew_lost are served to her own battle, or to everyone when no player's fleet is in it. */
   result?: {

@@ -1,7 +1,7 @@
 import { defineDict } from '../define'
 
 // THE BATTLE SCREEN (0435, docs/design/tick-combat.md section 11): a fight played tick by tick (src/live/battle/). The
-// ability names, the action bar (and, 0439, the short word for each refusal `cmd.battle_act` answers), the log's words and the end. Every label is one or two words; the numbers are the
+// ability names, the action bar (and, 0439, the short word for each refusal `cmd.battle_act` answers), the log's words, the end and (0450) the ships panel's few own words. Every label is one or two words; the numbers are the
 // server's timeline, and these are the words around them. SIMPLIFIED (owner 2026-11-15: "too much words. simplify all"): one status line, a log of
 // short lines behind Log, an action bar of icons with one word each, the end in one line (`out_*`, with `gold` when there is loot). The sides' names (Attacker, Defender) are `fight.sideA` /
 // `fight.sideD`, the one set.
@@ -50,6 +50,13 @@ export const battleDict = defineDict({
     act_E_BAD_CODE: 'Not allowed',
     act_E_TOO_SOON: 'Too fast',
     act_E_OTHER: 'Refused',
+    // 0450 (owner 2026-11-16: "in fight, i want to see levels, their stats, their crew state, equipments"): each side's ships
+    // panel (src/live/battle/ShipsPanel.tsx). The stat words are the ship panel's own (`ship.*`); these are the few it lacks.
+    shipsOf: 'Lv {lv} · Ships {n}',
+    guns: 'Guns',
+    tier: 'Tier',
+    short: 'Short',
+    captain: 'Captain',
   },
   ko: {
     title: '전투',
@@ -95,5 +102,10 @@ export const battleDict = defineDict({
     act_E_BAD_CODE: '불가',
     act_E_TOO_SOON: '너무 빠름',
     act_E_OTHER: '거절됨',
+    shipsOf: '레벨 {lv} · 배 {n}',
+    guns: '포',
+    tier: '등급',
+    short: '부족',
+    captain: '선장',
   },
 })

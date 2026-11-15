@@ -26,6 +26,22 @@
 // replay in that hour (10:xx on PC gkwng). The patch moves the pair one hour earlier in UTC hour
 // 01 and nowhere else. scripts/ops/harness/frozen-0226/ proves it for all 24 hours.
 //
+// 2026-11-15, 0266 / 0269 / 0270 / 0272 / 0273 / 0274: the fourth kind, THE PROBE'S OWN EYE. These six
+// compare an OLD body against a NEW one by a text digest of the rows each leaves (pg_temp.digest_NNNN).
+// The digest sorts a house's ledger rows and events by their JSON text and blanks the uuids only
+// AFTERWARDS, on the whole string. A ledger row's text is kind, player_id, created_at, ducats_delta,
+// ref_event_id, balance_after: two rows of one house with the same kind and the same amount are
+// therefore ordered by ref_event_id, a gen_random_uuid() made inside the probe, and they differ after
+// it (balance_after). Each run draws new uuids, so the two rows swap at random and the digests of two
+// IDENTICAL runs differ: "0270 self-assert FAIL: the loop leaves different rows" (main, run
+// 43708858363, the merchants leg from zero, 2026-11-15; the ledger leg passed on the same commit). It
+// needs a tied pair, which the market's dice deal or do not (0270's loop starts two merchants of one
+// house twice over, Casa da Índia and Kamer Amsterdam): measured on a world at 0269, 0 failures in 75
+// loop runs as dealt, and 17 of 24 applies of the file with every PROVISION made free (two rows of
+// amount 0 in one house); patched, 0 of 24 (scripts/ops/harness/frozen-0270/). The patch re-cuts the probe's own temp function at the head of the
+// self-assert, from its live text: the two row sets are blanked BEFORE they are sorted. Rows that tie
+// are then identical, and every row still counts, so a real difference still fails.
+//
 // WHY NOT EDIT THE FILES. An applied migration is history (supabase/migrations/README.md §1), and
 // editing one moves every prefix-cache key after it, prunes every kept snapshot and sends CI from
 // zero — the owner's law is that a pull request's CI never does that. So the files stay byte for
@@ -35,6 +51,8 @@
 //     only a self-assert's PROBE, which rolls itself back: the database a patched file leaves
 //     behind is the one the unpatched file leaves behind. Snapshots, images and their keys are
 //     unchanged (the prefix key and fingerprintChain() hash the FILE, which nobody alters).
+//     (The digest patches replace a pg_temp function the file itself created for its probe: it
+//     dies with the session and is in no snapshot's content digest, which reads no pg_ schema.)
 //   * Every patch names the exact text it replaces, and that text must occur EXACTLY ONCE — a
 //     patch that no longer fits is a loud failure, never a silent no-op.
 //   * Each patch keeps the assert able to fail.
@@ -56,6 +74,51 @@ export interface FrozenAssertPatch {
   replace: string
   /** One line, for the log and the reader. */
   why: string
+}
+
+const UUID_RE = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+
+/** The row text the six digests sort, as the files write it, and the same text with its uuids blanked first. */
+export function digestRow(alias: 'l' | 'e', table: 'ledger' | 'events'): { was: string; now: string } {
+  const was = `(to_jsonb(${alias}) - 'id')::text as x from public.${table} ${alias}`
+  return { was, now: `regexp_replace((to_jsonb(${alias}) - 'id')::text, '${UUID_RE}', 'U', 'g') as x from public.${table} ${alias}` }
+}
+
+/**
+ * 0266–0274's probe digest sorts ledger rows and events by a text that still holds the uuids the probe
+ * itself drew (header, "the fourth kind"). At the head of the self-assert the temp function is re-cut
+ * from its own live text: both row sets blanked before the sort. A body that is not the one this was
+ * written against raises — never a silent no-op.
+ */
+function digestSortsBlankedRows(file: string, n: string, args: string): FrozenAssertPatch {
+  const find = `  select * into v_b from before_${n};\n`
+  const ledger = digestRow('l', 'ledger')
+  const events = digestRow('e', 'events')
+  const grows = ledger.now.length - ledger.was.length + (events.now.length - events.was.length)
+  return {
+    file,
+    find,
+    replace:
+      `  -- src/lib/db/frozenAsserts.ts: pg_temp.digest_${n} sorts its ledger rows and events AFTER their uuids are blanked\n` +
+      '  declare\n' +
+      `    v_fz_was text := pg_get_functiondef('pg_temp.digest_${n}(${args})'::regprocedure);\n` +
+      '    v_fz     text;\n' +
+      '  begin\n' +
+      `    v_fz := replace(replace(v_fz_was, $fz$${ledger.was}$fz$,\n` +
+      `                                      $fz$${ledger.now}$fz$),\n` +
+      `                    $fz$${events.was}$fz$,\n` +
+      `                    $fz$${events.now}$fz$);\n` +
+      `    if length(v_fz) <> length(v_fz_was) + ${grows} then\n` +
+      `      raise exception '${n} frozen-assert patch FAIL: pg_temp.digest_${n} is not the body the patch was written against (% characters added, ${grows} expected)', length(v_fz) - length(v_fz_was);\n` +
+      '    end if;\n' +
+      '    execute v_fz;\n' +
+      '  end;\n' +
+      find,
+    why:
+      `${n}: the probe's digest sorts a house's ledger rows and events by text that still holds the uuids the probe drew ` +
+      '(ref_event_id stands before balance_after), so two rows of one kind and one amount swap at random and two identical runs ' +
+      'digest differently; the temp digest is re-cut at the head of the self-assert to blank the uuids before the sort',
+  }
 }
 
 export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
@@ -98,6 +161,12 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
       '    update public.ships set durability = durability * 0.5 where fleet_id = v_f2;   -- the second fleet is the slower now\n',
     why: "0367 (b): the probe halves the second fleet's hull to make her the slower, but each flagship rolls her own speed and hull from her id (0276: 1.000 to 1.200 here), and a halved hull that rolled 1.2 still sails at 0.84 of her speed: 0.84 x 1.2 = 1.008, so a first fleet that rolled 1.000 against a second that rolled both near 1.2 is not the faster and the assert raises. Rare (0 of 8,000 pairs measured; the same step at 0.6 of a hull, proof 68's, 15 of 8,000), but it is the dice and not the chain; the two speed rolls are made equal first, inside the rolled-back probe, so the worn hull alone decides (at most 0.84 against 1)",
   },
+  digestSortsBlankedRows('20260818000266_a_lap_starts_in_its_own_job.sql', '0266', 'uuid,uuid,uuid'),
+  digestSortsBlankedRows('20260818000269_the_quay_writes_down_its_long_holds.sql', '0269', 'uuid,uuid,uuid'),
+  digestSortsBlankedRows('20260818000270_the_clear_replans_her_lines_before_the_quay.sql', '0270', 'uuid,uuid,uuid'),
+  digestSortsBlankedRows('20260818000272_a_crew_shortage_is_paid_from_the_hold.sql', '0272', 'uuid,uuid,uuid'),
+  digestSortsBlankedRows('20260818000273_a_sale_is_the_whole_stack.sql', '0273', 'uuid,uuid,uuid,bigint'),
+  digestSortsBlankedRows('20260818000274_the_clear_acts_before_the_quay.sql', '0274', 'uuid,uuid,uuid'),
 ]
 
 const BY_FILE = new Map(FROZEN_ASSERT_PATCHES.map((p) => [p.file, p]))

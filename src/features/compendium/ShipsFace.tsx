@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { ALL, Card, Facts, FactsLine, FilterBar, Figure, Hint, Icon, ListPanel, PageSplit, RankBars, Row, Tray, type TrayDetent } from '../../components/ui'
 import { CargoHull, NavyHull, PirateHull } from '../../live/CargoHull'
+import { ShipsKey } from '../../live/ShipsKey'
 import { useServedRead } from '../../live/useServedRead'
 import { formatFixed, formatInt, formatKnots, formatOfTotal, formatTons } from '../../lib/format'
 import { worldStatsNow, type CrownHull, type SnapshotShipClass, type StatsNow } from '../../lib/rpc'
@@ -226,6 +227,7 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
         }
         side={
           <>
+            <ShipsKey />
             <CargoShipEntry classes={classes} />
             <Card title={t('codex.biggestCargo')} data-testid="codex-ships-cargo">
               <RankBars

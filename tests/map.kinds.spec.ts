@@ -409,6 +409,11 @@ test.describe('the pirate ship has a colour of her own', () => {
     const [m] = mapTrafficOf([{ id: 'p1', company: 'c', nation_code: 'PIR', ink: 'east', name: 'p', status: 'SAILING', ships: 1, hulls: ['xebec'], port: null, roadstead: null, anchor: [17.9, -76.8], voyage: null, lane: null, kind: 'PIRATE' } as unknown as TrafficFleet])
     expect(glyphs.shipKindOf(m)).toBe('pirate')
     expect(m.hulls).toEqual([glyphs.PIRATE_HULL])
+    // 2026-11-16 (owner: "every pirate ship's graphic is same"): once the snapshot has named her class she is her kind's hull AT ITS TIER, as many as she has
+    const [strong] = mapTrafficOf([{ id: 'p2', company: 'c', nation_code: 'PIR', ink: 'east', name: 'p', status: 'SAILING', ships: 2, hulls: ['square6', 'fore2'], port: null, roadstead: null, anchor: [17.9, -76.8], voyage: null, lane: null, kind: 'PIRATE' } as unknown as TrafficFleet])
+    expect(strong.hulls).toEqual([glyphs.kindHull('pirate', 4), glyphs.kindHull('pirate', 2)])
+    expect(glyphs.hullPath(strong.hulls![0])).not.toBe(glyphs.hullPath(strong.hulls![1]))
+    expect(glyphs.hullHalfLengthOf(strong.hulls![0])).toBeGreaterThan(glyphs.hullHalfLengthOf(strong.hulls![1]))
   })
 })
 
@@ -452,8 +457,10 @@ test.describe('one renderer, one table', () => {
   const src = readFileSync(path.join('src', 'chart', 'FleetsLayer.tsx'), 'utf8')
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-  test('FleetsLayer has one hullPath, one HullGroup, kindMarkPath once, and names no kind', () => {
-    expect(code.match(/hullPath\(/g)).toHaveLength(1)
+  test('FleetsLayer has one source of hulls (the kept mark), one HullGroup, kindMarkPath once, and names no kind', () => {
+    // 2026-11-16: every hull string comes from glyphs.ts `fleetMark` (built once a hull list), asked for by HullGroup and by your halo
+    expect(code.match(/hullPath\(/g)).toBeNull()
+    expect(code.match(/fleetMark\(/g)).toHaveLength(2)
     expect(code.match(/function HullGroup/g)).toHaveLength(1)
     expect(code.match(/kindMarkPath\(/g)).toHaveLength(1)
     expect(code).not.toMatch(/cargo|navy|pirate/i)

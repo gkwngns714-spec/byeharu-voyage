@@ -1,4 +1,4 @@
-import type { BattleRead, BattleTicksRead, TickTimeline } from '../src/lib/rpc'
+import type { BattleRead, BattleShipCard, BattleTicksRead, TickTimeline } from '../src/lib/rpc'
 
 // A TICK BATTLE'S READ, WRITTEN BY HAND PER THE CONTRACT (docs/design/tick-combat.md 9.2, 9.3), for
 // tests/battle.screen.spec.ts. A raid: the merchant Santa Rosa (side 0, the side set upon) runs from two raiders (side
@@ -33,12 +33,12 @@ export const TL: TickTimeline = {
     PY: { kind: 'pay' },
   },
   a: [
-    { n: 'Santa Rosa', fl: 'Santa Rosa', h: 400, m: 400, t: 2, r: 6, f: 0, g: true },
-    { n: 'Navy brig', fl: 'Navy brig', h: 350, m: 350, t: 3, r: 7, f: 14, g: true },
+    { n: 'Santa Rosa', fl: 'Santa Rosa', h: 400, m: 400, t: 2, r: 6, f: 0, g: true, lv: 2 },
+    { n: 'Navy brig', fl: 'Navy brig', h: 350, m: 350, t: 3, r: 7, f: 14, g: true, lv: 5 },
   ],
   b: [
-    { n: 'Black Gull', fl: 'Raiders', h: 300, m: 300, t: 2, r: 6, f: 0, g: true },
-    { n: 'Sea Wolf', fl: 'Raiders', h: 120, m: 120, t: 1, r: 5, f: 0, g: true },
+    { n: 'Black Gull', fl: 'Raiders', h: 300, m: 300, t: 2, r: 6, f: 0, g: true, lv: 5 },
+    { n: 'Sea Wolf', fl: 'Raiders', h: 120, m: 120, t: 1, r: 5, f: 0, g: true, lv: 5 },
   ],
   ai: { a: 'FLEE', b: 'FIGHT' },
   e: [
@@ -66,6 +66,42 @@ export const TL: TickTimeline = {
   ],
   out: 'DRIVEN_OFF',
   r: null,
+  // 0450: what a run would roll, [tick, per cent] where it changes: the merchant two levels behind starts low, loses
+  // points as her hull falls, and 5 more once she is caught at 23; the raiders' own figure does not move
+  rc: {
+    a: [
+      [0, 35],
+      [23, 30],
+    ],
+    b: [[0, 15]],
+  },
+}
+
+/** 0450: the hulls of the sheet, in the timeline's order: what the ships panel draws. Santa Rosa sails with fewer hands
+ *  than her class needs; the long ship and gear names are there so a card that cut a name would show it. */
+export const SHIPS: { a: BattleShipCard[]; b: BattleShipCard[] } = {
+  a: [
+    {
+      name: 'Santa Rosa', tier: 2, hull: 400, maxd: 400, crew: 10, attack: 55, accuracy: 41.5, reach: 25, armour: 12, sighting: 10.2, gunner: null, boarder: null,
+      lv: 2, cls: 'Caravela latina', guns: 2, crew_need: 12, crew_max: 30, speed: 19.8, handling: 71,
+      fit: [{ n: 'Starter Guns', s: 'weapon' }, { n: 'Starter Guns', s: 'weapon' }, { n: 'Boarding Gear', s: 'kit', w: 12 }],
+      caps: [{ n: 'Inês de Castro', lv: 3 }],
+    },
+    {
+      name: 'Navy brig', tier: 3, hull: 350, maxd: 350, crew: 90, attack: 120, accuracy: 56, reach: 28, armour: 18, sighting: 11.6, from: 14,
+      lv: 5, cls: 'Brigantine', guns: 14, crew_need: 60, crew_max: 110, speed: 24.5, handling: 80, fit: [{ n: 'Long Nines', s: 'weapon' }], caps: [],
+    },
+  ],
+  b: [
+    {
+      name: 'Black Gull', tier: 2, hull: 300, maxd: 300, crew: 70, attack: 90, accuracy: 51, reach: 24, armour: 10, sighting: 9.6,
+      lv: 5, cls: 'Xebec', guns: 12, crew_need: 40, crew_max: 70, speed: 26, handling: 84, fit: [{ n: 'Swivel Guns', s: 'weapon' }, { n: 'Grappling Irons', s: 'kit' }], caps: [],
+    },
+    {
+      name: 'Sea Wolf', tier: 1, hull: 120, maxd: 120, crew: 30, attack: 40, accuracy: 46, reach: 20, armour: 5, sighting: 8.6,
+      lv: 5, cls: 'Sloop', guns: 6, crew_need: 20, crew_max: 30, speed: 28, handling: 90, fit: [], caps: [],
+    },
+  ],
 }
 
 export const READ: BattleTicksRead = {
@@ -81,6 +117,7 @@ export const READ: BattleTicksRead = {
     { fleet: 'f-navy', name: 'Navy brig', side: 'DEFENDER', how: 'CALLED', kind: 'NAVY', nation: 'PRT', company: null, mine: false },
     { fleet: 'raiders', name: 'Raiders', side: 'ATTACKER', how: 'OPENED', kind: 'PIRATE', nation: null, company: null, mine: false },
   ],
+  ships: SHIPS,
   mine: null,
   result: null,
 }
@@ -94,6 +131,13 @@ export const RESULT: NonNullable<BattleTicksRead['result']> = {
   loot: 1250,
   crew_lost: 3,
   navy: 'Navy brig',
+}
+
+/** A battle opened before 0450: no `ships`, no levels on the timeline, no `rc`. The screen draws what there is. */
+export const READ_BEFORE_0450: BattleTicksRead = {
+  ...READ,
+  ships: undefined,
+  ticks: { ...TL, rc: undefined, a: TL.a.map((s) => ({ ...s, lv: undefined })), b: TL.b.map((s) => ({ ...s, lv: undefined })) },
 }
 
 /** An old round-by-round battle: `ticks` null, closed, with its result. */

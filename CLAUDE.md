@@ -40,6 +40,9 @@ A **LIVE** text-and-tabs age-of-sail trading game with real players.
 - **At most ONE builder reads production at a time**, and none while the gate is red.
 - **Never deploy load** (more ships, faster jobs) without first reading the gate and stating the expected extra rows a minute.
 - **No course crosses the drawn land.** A new harbour, lane, channel, raster or coast change runs `node scripts/db/audit-land-crossings.mjs` and adds no crossing; stored courses (the image's AND prod's, exported read-only) are re-sailed and roadsteads on land moved with `scripts/build-land-channels.mjs`; a strait the raster closes is a `charted` channel (`docs/NAVIGATION_PLAN.md` §8). `tests/sea.noLandCrossing.spec.ts` fails otherwise.
+- **No real strait closes.** A change to the raster, the coast, a channel or a roadstead keeps every real strait in `scripts/straits.mjs` passable: `tests/sea.straits.spec.ts` and proof 148 fail otherwise (0446, #745; 0440 closed Messina and three others by over-correcting). Compare the quoted distances before and after such a change.
+- **Ship states go through `public.fleet_state_of`.** One rule for laid up, wrecked, in battle, at sea, in port; one reading (`public.fleet_census`), one count (`public.fleet_tally`). No screen, read or migration derives a fleet's state a second way (`docs/STATS_ONE_COUNT.md`, proof 150, `tests/stats.oneCount.spec.ts`).
+- **Never cancel main's "Migrations — apply proof" run.** A long Supabase start there is a from-zero rebuild (about 1 hour), not a hang. When a PR's gates say "no usable snapshot", wait for main's run to finish and re-run the PR's checks.
 
 ## Where things are
 - `supabase/migrations/`: the chain. `docs/dev-log/`: one file per slice, with measurements.
@@ -63,3 +66,4 @@ ode_modules`), EXCEPT for a branch that changes the prefix cache or edits an app
   - Never re-run a red until it is green: diagnose it.
 - **Words:** every UI label is 1-2 plain words, EN and KO, through `src/lib/i18n/dict/*`. NO SPAGHETTI: one authority per concept.
 - **Bookkeeping:** each PR updates its own owner row in `docs/OWNER_REQUESTS.md` (state only; a closed row moves to `docs/OWNER_REQUESTS_DONE.md`) and adds one line to the top of `docs/WORK_QUEUE.md`.
+  - **When several builders are open at once**, keep the `WORK_QUEUE.md`, `OWNER_REQUESTS.md` and harness `README.md` lines OUT of the PR branches (hand them to the lead in the report), or every merge conflicts the others: the lead adds them in one docs commit.

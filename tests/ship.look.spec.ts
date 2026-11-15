@@ -1,0 +1,310 @@
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// A SHIP LOOKS LIKE WHAT SHE IS (owner, 2026-11-16: *"every pirate ship's graphic is same. the one with stronger
+// ships, multiple fleets should have different graphics. this goes to every kinds of ship too"*).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// What is held here, each against the REAL code (src/chart/shipShapes.ts, glyphs.ts, liveWorld.ts, the real
+// FleetsLayer and ShipArt bundled for node, tests/shipArt.entry.ts):
+//   1. THE TIER RULE: a served size is one of four tiers, and nothing but a served size picks one.
+//   2. A KIND HAS FOUR HULLS: each a closed outline, each longer and larger than the tier under it, and any two of
+//      the twelve at least a fifth of the smaller's area apart on a 2x glass (measured in a browser's own raster).
+//   3. A ROW IS READ AS WHAT SHE SAILS: a pirate, navy or cargo row draws her kind's hull at the tier of each
+//      served class, as many as she has; a class nobody has named draws the plain hull (no guessed tier).
+//   4. A FLEET OF SEVERAL SHOWS IT: one hull, a dot astern, two dots, a chevron; and three hulls with a chevron
+//      where the glass groups.
+//   5. THE CHART DRAWS THEM APART: different tiers, kinds and sizes come out of the real FleetsLayer as different marks.
+//   6. THE BIG PICTURE IS THE SAME FAMILY: twenty pictures (five families, four tiers), no two alike, a mast more
+//      as the tier rises, the navy's ports, the cargo ship's crates, the pirate's flag.
+// No server: pure reads, a node render and a blank page's canvas.
+
+import { test, expect } from '@playwright/test'
+import { rolldown } from 'rolldown'
+import { pathToFileURL } from 'node:url'
+import path from 'node:path'
+import * as glyphs from '../src/chart/glyphs'
+import * as shapes from '../src/chart/shipShapes'
+import { kindHullsOf, mapTrafficOf } from '../src/chart/liveWorld'
+import type { FleetOnChart, TrafficOnChart } from '../src/chart/chartModel'
+import type { TrafficFleet } from '../src/lib/rpc'
+
+const CLASSES = (['fore', 'square'] as const).flatMap((rig) => ([1, 2, 3, 4, 5, 6] as const).map((size) => ({ code: `${rig}${size}`, rig, tier: size, size })))
+const KINDS = ['cargo', 'navy', 'pirate'] as const
+
+let render: { renderLayer: (props: Record<string, unknown>) => string; renderShipArt: (props: Record<string, unknown>) => string; registerHullClasses: typeof glyphs.registerHullClasses }
+test.beforeAll(async () => {
+  const file = path.resolve('test-results', 'ship-look-render.mjs')
+  const bundle = await rolldown({
+    input: path.resolve('tests', 'shipArt.entry.ts'),
+    platform: 'node',
+    external: ['react', 'react-dom/server'],
+    transform: { jsx: { runtime: 'automatic' } },
+    logLevel: 'silent',
+    // the chart's barrel imports its coast and sea files as Vite assets (`?url`, `?raw`): nothing here draws a coast
+    plugins: [{ name: 'url-stub', resolveId: (id) => (/\?(url|raw)$/.test(id) ? `\0url:${id}` : null), load: (id) => (id.startsWith('\0url:') ? 'export default ""' : null) }],
+  })
+  await bundle.write({ file, format: 'esm' })
+  render = (await import(pathToFileURL(file).href)) as typeof render
+  render.registerHullClasses(CLASSES)
+  glyphs.registerHullClasses(CLASSES)
+})
+
+/** The corners of a closed straight-sided path. */
+const corners = (d: string) => d.replace(/^M/, '').replace(/Z$/, '').split('L').map((p) => p.trim().split(/\s+/).map(Number) as [number, number])
+const area = (d: string) => {
+  const p = corners(d)
+  return Math.abs(p.reduce((s, [x, y], i) => s + x * p[(i + 1) % p.length][1] - p[(i + 1) % p.length][0] * y, 0)) / 2
+}
+
+function row(id: string, hulls: string[], kind: Record<string, true> = {}, heading = 0): TrafficOnChart {
+  return { fleet: { id, hulls }, at: { lat: 0, lon: 0 }, voyage: null, track: null, heading, destinationCode: null, dockedAtCode: null, merchant: { ink: 'prt', ...kind }, loopD: null, laneD: null } as unknown as TrafficOnChart
+}
+const layerOf = (traffic: TrafficOnChart[], unitsPerPx: number, fleets: FleetOnChart[] = []) => render.renderLayer({ fleets, traffic, selectedId: null, unitsPerPx, sun: { lat: 90, lon: 0 } })
+const hullDs = (html: string) => [...html.matchAll(/<path d="([^"]+)"[^>]*data-hull-class="([^"]+)"/g)].map((m) => ({ d: m[1], cls: m[2] }))
+const countMark = (html: string) => /data-count-mark="(\w+)"/.exec(html)?.[1] ?? null
+/** The hull of a big picture: the one path that wears the outline. */
+const artHull = (html: string) => /<path d="([^"]+)" fill="[^"]+" stroke=/.exec(html)![1]
+
+test.describe('the tier of a ship', () => {
+  test('a served size is one of four tiers: small a sloop, light a brig, medium and heavy a frigate, capital and flagship a flagship', () => {
+    expect([1, 2, 3, 4, 5, 6].map(shapes.shipTierOf)).toEqual([1, 2, 3, 3, 4, 4])
+    expect(shapes.shipTierOf(0)).toBe(1)
+    expect(shapes.shipTierOf(9)).toBe(4)
+    expect(shapes.shipTierOf(Number.NaN)).toBe(1)
+    expect(shapes.SHIP_TIERS.map((t) => shapes.TIER_NAME[t])).toEqual(['sloop', 'brig', 'frigate', 'flagship'])
+  })
+
+  test('a class is tiered off its served size, and a class no snapshot has named has no tier', () => {
+    expect(glyphs.hullTierOf('fore1')).toBe(1)
+    expect(glyphs.hullTierOf('square4')).toBe(3)
+    expect(glyphs.hullTierOf('square6')).toBe(4)
+    expect(glyphs.hullTierOf('xebec')).toBeNull()
+    expect(glyphs.hullTierOf(null)).toBeNull()
+  })
+})
+
+test.describe('a kind has four hulls', () => {
+  test('each is one closed outline, longer and larger than the tier under it, and none is the plain hull', () => {
+    for (const kind of KINDS) {
+      const lengths = shapes.SHIP_TIERS.map((t) => glyphs.hullHalfLengthOf(glyphs.kindHull(kind, t)))
+      const areas = shapes.SHIP_TIERS.map((t) => area(glyphs.hullPath(glyphs.kindHull(kind, t))))
+      for (let i = 1; i < 4; i++) {
+        expect(lengths[i], `${kind} tier ${i + 1} length`).toBeGreaterThan(lengths[i - 1])
+        expect(areas[i] / areas[i - 1], `${kind} tier ${i + 1} area`).toBeGreaterThanOrEqual(1.15)
+      }
+      // the first rung is the length the kind has always been drawn at: her deck mark is 2 px thick there (tests/map.kinds.spec.ts)
+      expect(lengths[0]).toBe(glyphs.KIND_LOOK[kind].minHalfLength)
+      const plain = glyphs.hullPath(glyphs.kindHull(kind, null))
+      for (const t of shapes.SHIP_TIERS) {
+        const d = glyphs.hullPath(glyphs.kindHull(kind, t))
+        expect(d.match(/M/g), `${kind} ${t}`).toHaveLength(1)
+        expect(d.endsWith('Z')).toBe(true)
+        expect(d).not.toBe(plain)
+        expect(glyphs.hullShapeOf(glyphs.kindHull(kind, t))).toBe(`${kind}-${t}`)
+        // a tier's corners grow with it: a bigger ship has more to her, she is not the small one scaled
+        if (t > 1) expect(corners(d).length, `${kind} ${t} corners`).toBeGreaterThanOrEqual(corners(glyphs.hullPath(glyphs.kindHull(kind, (t - 1) as shapes.ShipTier))).length)
+      }
+    }
+    expect(new Set(KINDS.flatMap((k) => shapes.SHIP_TIERS.map((t) => glyphs.hullPath(glyphs.kindHull(k, t))))).size).toBe(12)
+  })
+
+  test('a path is built once: the same shape and length hand back the same string, and a fleet her same mark', () => {
+    expect(glyphs.hullPath(glyphs.kindHull('pirate', 3))).toBe(glyphs.hullPath(glyphs.kindHull('pirate', 3)))
+    expect(shapes.kindTierHull('navy', 4, 20)).toBe(shapes.kindTierHull('navy', 4, 20))
+    expect(shapes.fleetCountMark(5, 1, 7, 7)).toBe(shapes.fleetCountMark(5, 1, 7, 7))
+    const hulls = ['fore1', 'square3']
+    expect(glyphs.fleetMark(hulls, 0.01, 0)).toBe(glyphs.fleetMark(hulls, 0.01, 0))
+    expect(glyphs.fleetMark(hulls, 0.01, 0)).not.toBe(glyphs.fleetMark(hulls, 1, 0))
+    // the kept mark is what the two functions it keeps would say
+    const kept = glyphs.fleetMark(hulls, 0.01, 0)
+    expect(kept.marks).toEqual(glyphs.hullGroup(hulls, 0.01))
+    expect(kept.halo).toEqual(glyphs.hullGroupHalo(glyphs.hullGroup(hulls, 0.01)))
+  })
+
+  test('any two of the twelve are at least a fifth of the smaller one apart, on a 2x glass', async ({ page }) => {
+    const all = KINDS.flatMap((k) => shapes.SHIP_TIERS.map((t) => ({ code: `${k}-${t}`, d: glyphs.hullPath(glyphs.kindHull(k, t)) })))
+    const res = await page.evaluate((all) => {
+      const raster = (d: string) => {
+        const cv = document.createElement('canvas')
+        cv.width = 80
+        cv.height = 80
+        const c = cv.getContext('2d')!
+        c.scale(2, 2)
+        c.translate(20, 20)
+        c.fill(new Path2D(d))
+        return c.getImageData(0, 0, 80, 80).data
+      }
+      const imgs = all.map((a) => raster(a.d))
+      const areaOf = (a: Uint8ClampedArray) => {
+        let n = 0
+        for (let i = 3; i < a.length; i += 4) if (a[i] > 127) n++
+        return n
+      }
+      const out: { pair: string; share: number }[] = []
+      for (let i = 0; i < all.length; i++)
+        for (let j = i + 1; j < all.length; j++) {
+          let diff = 0
+          for (let k = 3; k < imgs[i].length; k += 4) if (imgs[i][k] > 127 !== imgs[j][k] > 127) diff++
+          out.push({ pair: `${all[i].code} / ${all[j].code}`, share: diff / Math.min(areaOf(imgs[i]), areaOf(imgs[j])) })
+        }
+      return out
+    }, all)
+    const least = [...res].sort((a, b) => a.share - b.share).slice(0, 5)
+    console.log('the closest pairs of kind hulls: ' + least.map((r) => `${r.pair} ${r.share.toFixed(2)}`).join(', '))
+    for (const r of res) expect(r.share, r.pair).toBeGreaterThanOrEqual(0.2)
+  })
+})
+
+test.describe('a row is read as what she sails', () => {
+  const served = (kind: TrafficFleet['kind'], hulls: string[]) =>
+    ({ id: 'k1', company: 'c', nation_code: 'PIR', ink: 'east', name: 'k', status: 'SAILING', ships: hulls.length, hulls, port: null, roadstead: null, anchor: [17.9, -76.8], voyage: null, lane: null, kind }) as unknown as TrafficFleet
+
+  test('a pirate, navy or cargo row draws her kind at the tier of each served class, flagship first, as many as she has', () => {
+    for (const [kind, family] of [['PIRATE', 'pirate'], ['NAVY', 'navy'], ['CARGO_SHIP', 'cargo']] as const) {
+      const [one] = mapTrafficOf([served(kind, ['fore2'])])
+      expect(one.hulls).toEqual([glyphs.kindHull(family, 2)])
+      const [three] = mapTrafficOf([served(kind, ['square6', 'fore1', 'square4'])])
+      expect(three.hulls).toEqual([glyphs.kindHull(family, 4), glyphs.kindHull(family, 1), glyphs.kindHull(family, 3)])
+      expect(glyphs.shipKindOf(three)).toBe(family)
+    }
+  })
+
+  test('a class nobody has named draws the plain hull, and a row with no list draws her count of them: never a guessed tier', () => {
+    const [m] = mapTrafficOf([served('PIRATE', ['xebec'])])
+    expect(m.hulls).toEqual([glyphs.PIRATE_HULL])
+    expect(kindHullsOf('navy', null, 3)).toEqual([glyphs.NAVY_HULL, glyphs.NAVY_HULL, glyphs.NAVY_HULL])
+    expect(kindHullsOf('cargo', [], 0)).toEqual([glyphs.CARGO_HULL])
+  })
+})
+
+test.describe('a fleet of several shows it', () => {
+  test('one ship is a hull alone; one more is a dot astern, two more are two; from four ships she wears a chevron', () => {
+    expect(shapes.countMarkOf(1, 1)).toBeNull()
+    expect(shapes.countMarkOf(3, 3)).toBeNull()
+    expect(shapes.countMarkOf(2, 1)).toBe('pips')
+    expect(shapes.countMarkOf(3, 1)).toBe('pips')
+    expect(shapes.countMarkOf(4, 1)).toBe('line')
+    expect(shapes.countMarkOf(8, 3)).toBe('line')
+    expect(shapes.fleetCountMark(1, 1, 7, 7)).toBeNull()
+    const two = shapes.fleetCountMark(2, 1, 7, 7)!
+    const three = shapes.fleetCountMark(3, 1, 7, 7)!
+    const four = shapes.fleetCountMark(4, 1, 7, 7)!
+    expect(two.match(/M/g)).toHaveLength(1)
+    expect(three.match(/M/g)).toHaveLength(2)
+    expect(four.match(/M/g)).toHaveLength(1)
+    expect(new Set([two, three, four]).size).toBe(3)
+    // a fleet of four and a fleet of eight are both a formation: one mark, not a count to be counted
+    expect(shapes.fleetCountMark(8, 1, 7, 7)).toBe(four)
+    // every part of it lies astern of the hull, and a dot is at least 2 px across
+    for (const d of [two, three]) for (const y of [...d.matchAll(/M[-\d.]+ ([-\d.]+)/g)].map((m) => Number(m[1]))) expect(y).toBeGreaterThan(7)
+    expect(Number(/a([\d.]+) /.exec(two)![1]) * 2).toBeGreaterThanOrEqual(2)
+    for (const [, y] of corners(four)) expect(y).toBeGreaterThan(7)
+  })
+
+  test('the real layer: pulled back, a fleet is her flagship and her count mark; close in, three hulls and a chevron for the rest', () => {
+    const far = 0.5
+    const near = 0.01
+    const lone = layerOf([row('a', ['square3'])], far)
+    const pair = layerOf([row('a', ['square3', 'fore1'])], far)
+    const trio = layerOf([row('a', ['square3', 'fore1', 'fore1'])], far)
+    const many = layerOf([row('a', ['square3', 'fore1', 'fore1', 'fore1', 'fore2'])], far)
+    expect([lone, pair, trio, many].map((h) => hullDs(h).length)).toEqual([1, 1, 1, 1])
+    expect([lone, pair, trio, many].map(countMark)).toEqual([null, 'pips', 'pips', 'line'])
+    expect(new Set([lone, pair, trio, many].map((h) => h.replace(/data-fleet-ships="\d+"/, ''))).size).toBe(4)
+    expect(/data-fleet-ships="5"/.test(many)).toBe(true)
+    // close in: every one of three is drawn and nothing is said astern; five are three hulls and the chevron
+    const trioNear = layerOf([row('a', ['square3', 'fore1', 'fore1'])], near)
+    const manyNear = layerOf([row('a', ['square3', 'fore1', 'fore1', 'fore1', 'fore2'])], near)
+    expect(hullDs(trioNear)).toHaveLength(3)
+    expect(countMark(trioNear)).toBeNull()
+    expect(hullDs(manyNear)).toHaveLength(3)
+    expect(countMark(manyNear)).toBe('line')
+  })
+})
+
+test.describe('the chart draws them apart', () => {
+  test('different tiers, kinds and sizes come out of the real layer as different marks', () => {
+    const marks: Record<string, string> = {}
+    for (const kind of KINDS) {
+      for (const t of shapes.SHIP_TIERS) marks[`${kind} ${t}`] = layerOf([row('a', [glyphs.kindHull(kind, t)], { [kind]: true })], 0.01)
+      marks[`${kind} flagship and two sloops`] = layerOf([row('a', [glyphs.kindHull(kind, 4), glyphs.kindHull(kind, 1), glyphs.kindHull(kind, 1)], { [kind]: true })], 0.01)
+      marks[`${kind} five, pulled back`] = layerOf([row('a', Array.from({ length: 5 }, () => glyphs.kindHull(kind, 2)), { [kind]: true })], 0.5)
+    }
+    for (const size of [1, 3, 6]) marks[`merchant square${size}`] = layerOf([row('a', [`square${size}`])], 0.01)
+    marks.yours = layerOf([], 0.01, [{ ...row('f', ['square3']), merchant: undefined } as unknown as FleetOnChart])
+    marks['yours, three'] = layerOf([], 0.01, [{ ...row('f', ['square3', 'fore2', 'fore2']), merchant: undefined } as unknown as FleetOnChart])
+    const names = Object.keys(marks)
+    expect(new Set(Object.values(marks)).size, 'every mark is its own').toBe(names.length)
+    // the hull itself differs by tier within a kind, and by kind at a tier
+    for (const kind of KINDS) expect(new Set(shapes.SHIP_TIERS.map((t) => hullDs(marks[`${kind} ${t}`])[0].d)).size).toBe(4)
+    for (const t of shapes.SHIP_TIERS) expect(new Set(KINDS.map((k) => hullDs(marks[`${k} ${t}`])[0].d)).size).toBe(3)
+    // what was already said about her is still said: her kind, her deck mark, her one colour
+    for (const kind of KINDS) {
+      const html = marks[`${kind} 4`]
+      expect(html).toContain(`data-ship-kind="${kind}"`)
+      expect(html).toContain('data-kind-mark')
+      expect(html).toContain(`--kind-fill:${glyphs.KIND_LOOK[kind].fill.token}`)
+    }
+    expect(marks.yours).toContain('data-testid="map-ship"')
+    expect(marks.yours).toContain('fill-accent')
+    // a ship in a fight keeps her red ground, whatever her tier
+    expect(render.renderLayer({ fleets: [], traffic: [row('a', [glyphs.kindHull('pirate', 4)], { pirate: true })], selectedId: null, unitsPerPx: 0.01, sun: { lat: 90, lon: 0 }, inFight: new Set(['a']) })).toContain('data-fight-ground')
+  })
+})
+
+test.describe('the big picture is the same family', () => {
+  const art = (family: shapes.ShipFamily, tier: shapes.ShipTier, extra: Record<string, unknown> = {}) => render.renderShipArt({ family, tier, ...extra })
+  const count = (html: string, attr: string) => (html.match(new RegExp(attr, 'g')) ?? []).length
+
+  test('twenty pictures, no two alike; her hull is the outline the chart draws for her family and tier', () => {
+    const all = shapes.SHIP_FAMILIES.flatMap((f) => shapes.SHIP_TIERS.map((t) => art(f, t)))
+    expect(new Set(all).size).toBe(20)
+    for (const family of shapes.SHIP_FAMILIES)
+      for (const tier of shapes.SHIP_TIERS) {
+        // the same outline the chart draws, at the picture's own length: the same corners in the same proportions
+        const a = corners(artHull(art(family, tier)))
+        const b = corners(glyphs.hullShapePath(glyphs.familyHullShape(family, tier), 10))
+        expect(a.length, `${family} ${tier}`).toBe(b.length)
+        const k = a[0][1] / b[0][1]
+        for (let i = 0; i < a.length; i++) {
+          expect(a[i][0]).toBeCloseTo(b[i][0] * k, 1)
+          expect(a[i][1]).toBeCloseTo(b[i][1] * k, 1)
+        }
+      }
+    // a kind's picture is her chart hull at that tier, so a pirate frigate is a frigate in both places
+    expect(glyphs.familyHullShape('pirate', 3)).toBe(glyphs.hullShapeOf(glyphs.kindHull('pirate', 3)))
+    expect(glyphs.familyHullShape('yours', 3)).toBe(glyphs.familyHullShape('merchant', 3))
+  })
+
+  test('a mast more as the tier rises and a longer hull; the ports of the navy, the crates of the cargo ship, the colours of each family', () => {
+    for (const family of shapes.SHIP_FAMILIES) {
+      expect(shapes.SHIP_TIERS.map((t) => count(art(family, t), 'data-ship-sail')), family).toEqual([1, 2, 3, 3])
+      const bows = shapes.SHIP_TIERS.map((t) => -corners(artHull(art(family, t)))[0][1])
+      for (let i = 1; i < 4; i++) expect(bows[i], `${family} tier ${i + 1} is longer`).toBeGreaterThan(bows[i - 1] * 1.1)
+      // a flagship's sails reach wider than a frigate's
+      expect(shapes.shipRig(family, 4).masts[0].span).toBeGreaterThan(shapes.shipRig(family, 3).masts[0].span)
+      expect(art(family, 2)).toContain(`data-ship-flag="${family}"`)
+      // struck, her colours come down
+      expect(art(family, 2, { struck: true })).not.toContain('data-ship-flag')
+    }
+    expect(shapes.SHIP_TIERS.map((t) => count(art('navy', t), 'data-ship-port'))).toEqual([4, 6, 8, 10])
+    expect(shapes.SHIP_TIERS.map((t) => count(art('cargo', t), 'data-ship-hold'))).toEqual([1, 2, 3, 4])
+    expect(shapes.SHIP_TIERS.map((t) => count(art('merchant', t), 'data-ship-port'))).toEqual([0, 0, 0, 0])
+    expect(shapes.SHIP_TIERS.map((t) => count(art('merchant', t), 'data-ship-hold'))).toEqual([0, 0, 1, 1])
+    // the pirate's sails are dark, everyone else's light: her sail is mostly the ground colour
+    const sailFill = (html: string) => /data-ship-sail="" d="[^"]+" fill="([^"]+)"/.exec(html)![1]
+    expect(sailFill(art('pirate', 3))).toContain('var(--color-bg)')
+    expect(sailFill(art('navy', 3))).toBe('var(--color-ink)')
+    expect(art('yours', 3)).toContain('var(--color-accent)')
+  })
+
+  test('whose picture a side of a battle wears is read from the served side', () => {
+    expect(shapes.familyOfSide({ kind: 'PIRATE', nation: 'PIR', mine: false }, true)).toBe('pirate')
+    expect(shapes.familyOfSide({ kind: 'NAVY', nation: 'PRT', mine: false }, false)).toBe('navy')
+    expect(shapes.familyOfSide({ kind: 'CARGO_SHIP', nation: 'PRT', mine: false }, false)).toBe('cargo')
+    expect(shapes.familyOfSide({ kind: 'MERCHANT', nation: 'PRT', mine: false }, false)).toBe('merchant')
+    expect(shapes.familyOfSide({ kind: 'MERCHANT', nation: 'PIR', mine: false }, false)).toBe('pirate')
+    expect(shapes.familyOfSide({ kind: 'PLAYER', nation: 'PRT', mine: true }, true)).toBe('yours')
+    // a raid's anonymous raiders have no served side
+    expect(shapes.familyOfSide(undefined, true)).toBe('pirate')
+    expect(shapes.familyOfSide(undefined, false)).toBe('merchant')
+  })
+})

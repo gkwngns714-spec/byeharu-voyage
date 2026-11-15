@@ -73,6 +73,7 @@ declare
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'convoys_enabled', 'combat_bite');
   update public.world_config set value = 'false'::jsonb where key in ('npc_refits_enabled', 'convoy_rich_enabled', 'convoy_armed_enabled');
+  update public.world_config set value = 'false'::jsonb where key = 'npc_ladder_enabled';   -- 0451: this proof drives 0328's own refit (one class for every cargo ship), which is public.cargo_hull's body with the ladder dark; lit, proof 154
   update public.world_config set value = to_jsonb(50000) where key = 'treasury_reserve_floor';
   insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
   update public.port_treasury set earned_day = v_last, ducats = 50000, reserve = 0;   -- only the aid runs; everyone exactly at target
