@@ -623,7 +623,8 @@ jobs:
           # 2026-11-15: the image pull froze twice in a row ("Pulling fs layer", then nothing for an hour). A start that has not
           # finished in 6 minutes is stopped (the data volume is kept: no --no-backup) and tried again, three times.
           for try in 1 2 3; do
-            if timeout 360 supabase start; then exit 0; fi
+            # The proof needs the database and the roles the auth, REST and storage services make; the rest is only pulled (seven images fewer).
+            if timeout 360 supabase start -x studio,imgproxy,edge-runtime,logflare,vector,mailpit,realtime; then exit 0; fi
             echo "::warning::supabase start did not finish (try $try); stopping and trying again"
             supabase stop || true
           done
