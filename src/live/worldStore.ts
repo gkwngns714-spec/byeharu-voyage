@@ -47,6 +47,7 @@
 // functions over an already-selected value for exactly that reason — they are not selectors.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+import { cutRosterRow } from './fightCuts'
 import { create } from 'zustand'
 import { useEffect } from 'react'
 import {
@@ -599,7 +600,8 @@ export const useWorld = create<LiveWorld>((set, get) => {
   /** The kept roster placed at this instant — the chart's `traffic`. */
   const placeRoster = (at: string): void => {
     const now = Date.now()
-    const fleets = [...roster.values()].map((f) => trafficRowAt(f, now))
+    // a fleet whose fight has just ended is placed with her hold cut to the fight's own length (./fightCuts.ts)
+    const fleets = [...roster.values()].map((f) => trafficRowAt(cutRosterRow(f), now))
     set({ traffic: { enabled: true, at, fleets, total: fleets.length, omitted: 0 }, trafficReadAt: now })
   }
   // THE LEDGER'S LAST READ: what moved the last time it was read, and when (see `refresh`).

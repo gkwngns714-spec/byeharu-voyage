@@ -8,7 +8,7 @@ import { serveFightWorld } from './fightWorld.fixture'
 // THE BATTLE SCREEN, OPENED FROM THE MAP, CLOSES (owner 2026-11-15: "after i press combat to view, i can't close it").
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // The world is tests/fightWorld.fixture.ts with `ticks` on: one real TICK battle (0435) that opens the moment the map
-// first asks. A press on its red ring opens the battle screen over the map (and the fight's card under it).
+// first asks. A press on its red ring opens the fight's card; Watch on the card opens the battle screen over the map.
 // THE BUG: the screen was drawn INSIDE the chart's surface, so the surface took the press on Close for a gesture of its
 // own (it captured the pointer) and the button never heard its click: no press and no touch closed the screen.
 //   · ✕ (top right, at least a touch target, inside the glass), by mouse and by touch
@@ -58,12 +58,16 @@ for (const size of [PHONE, WIDE]) {
   test.describe(`the battle screen from the map, at ${size.width}×${size.height}`, () => {
     test.use({ viewport: size, locale: 'en-US', hasTouch: phone })
 
-    test('a press on the ring opens it; ✕, Escape, the backdrop and Back each close it, and it stays closed', async ({ page, request, baseURL }) => {
+    test('the ring opens the card and Watch the screen; ✕, Escape, the backdrop and Back each close it, and it stays closed', async ({ page, request, baseURL }) => {
       test.setTimeout(420_000)
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`)
       const ring = await openMap(page)
       if (phone) await page.touchscreen.tap(ring.x, ring.y)
       else await page.mouse.click(ring.x, ring.y)
+      // the ring opens the fight's card; the battle screen opens from Watch on it (owner 2026-11-15)
+      await expect(page.getByTestId('fight-sheet')).toBeVisible()
+      await expect(screen(page), 'a press on the ring opens the card, not the battle screen').toHaveCount(0)
+      await page.getByTestId('fight-sheet-watch').click()
       await expect(screen(page)).toBeVisible()
       await expect(page.getByTestId('battle-body')).toBeVisible({ timeout: 30_000 })
       await page.screenshot({ path: path.join(SHOTS, `${TAG}-screen-watch-${size.width}.png`) })
@@ -87,7 +91,7 @@ for (const size of [PHONE, WIDE]) {
       else await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
       await staysClosed(page, '✕')
 
-      // the card is still there: who against whom, one Watch
+      // the card is still there: the sides, one Watch
       const sheet = page.getByTestId('fight-sheet')
       await expect(sheet).toBeVisible()
       await expect(page.getByTestId('fight-sheet-watch')).toHaveCount(1)
@@ -138,6 +142,10 @@ for (const size of [PHONE, WIDE]) {
       const ring = await openMap(page, true)
       if (phone) await page.touchscreen.tap(ring.x, ring.y)
       else await page.mouse.click(ring.x, ring.y)
+      // the ring opens the fight's card; the battle screen opens from Watch on it (owner 2026-11-15)
+      await expect(page.getByTestId('fight-sheet')).toBeVisible()
+      await expect(screen(page), 'a press on the ring opens the card, not the battle screen').toHaveCount(0)
+      await page.getByTestId('fight-sheet-watch').click()
       await expect(screen(page)).toBeVisible()
       await expect(page.getByTestId('battle-body')).toBeVisible({ timeout: 30_000 })
       await page.screenshot({ path: path.join(SHOTS, `${TAG}-screen-mine-${size.width}.png`) })
