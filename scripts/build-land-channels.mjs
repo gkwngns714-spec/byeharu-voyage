@@ -352,7 +352,7 @@ let prod = null
 if (prodFile) {
   prod = Object.values(JSON.parse(readFileSync(prodFile, 'utf8')).rows[0])[0]
   // prod must stand where the image stands: the same raster and the same roadsteads, or its courses mean other things
-  if (prod.raster_md5 !== md5(world.raster.cells_base64.replace(/s+/g, ''))) throw new Error('prod serves another raster than the image')
+  if (prod.raster_md5 !== md5(world.raster.cells_base64.replace(/\s+/g, ''))) throw new Error('prod serves another raster than the image')
   for (const [code, lat, lon] of prod.roads) {
     const p = portRows.find((x) => x.code === code)
     if (!p || p.rlat !== Number(lat) || p.rlon !== Number(lon)) throw new Error(`prod's roadstead of ${code} is not the image's`)
@@ -361,7 +361,7 @@ if (prodFile) {
   for (const [, , text] of prod.stops) texts.set(text, JSON.parse(text))
 }
 /** Postgres's text of a course read backwards, from its own text (each point's numbers kept as written). */
-const reversedText = (text) => `[${(text.match(/[[^[]]+]/g) ?? []).reverse().join(', ')}]`
+const reversedText = (text) => `[${(text.match(/\[[^[\]]+\]/g) ?? []).reverse().join(', ')}]`
 const len = (c) => c.reduce((s, p, i) => (i ? s + gcNm(c[i - 1][0], c[i - 1][1], p[0], p[1]) : s), 0)
 const landNm = (c) => crossingsOf(truth, c).reduce((s, x) => s + x.nm, 0)
 const fixes = []

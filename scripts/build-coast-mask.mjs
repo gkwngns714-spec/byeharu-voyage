@@ -17,7 +17,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import { drawnLand, PX_PER_DEG } from './lib/drawn-land.mjs'
-import { riverCarvedCells } from './sea-grid.mjs'
+import { riverCarvedCells, CHANNELS, gcNm } from './sea-grid.mjs'
 import { navFromServed } from '../src/lib/sea/index.ts'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -38,17 +38,44 @@ function subCellHasLand(land, north, west, size) {
   return false
 }
 
+/** THE FAIRWAYS (0446): a charted channel marked `fairway` in scripts/sea-grid.mjs is drawn narrower than
+ *  the course author's grid can pass (the western fairway of Surabaya: two pixels of the land bitmap,
+ *  1.5 nm, not lined up with the 1.5-nm cells). The fine cells its line runs through (2 x 2 sub-cells
+ *  each) are water in the mask, so the fairway is one fine cell wide at its narrowest. The line itself
+ *  is drawn water at every 0.25 nm (scripts/build-straits.mjs refuses otherwise), so a course in the
+ *  fairway is never further over the drawn coast than one sub-cell (0.75 nm), under the audit's
+ *  tolerance. Returns the sub-cells as `I * 28800 + J` (I, J: 1/80-degree rows from 90 N, columns from 180 W). */
+export function fairwaySubCells() {
+  const FINE = (SUB / 0.25) / 2 // fine cells a degree (src/lib/sea/refine.ts FINE_PER_DEG = 40)
+  const out = new Set()
+  for (const ch of CHANNELS) {
+    if (!ch.fairway) continue
+    if (!ch.charted) throw new Error(`coast mask: ${ch.id} is a fairway but not charted`)
+    for (let i = 0; i + 1 < ch.points.length; i++) {
+      const [a, b] = [ch.points[i], ch.points[i + 1]]
+      const n = Math.max(1, Math.ceil(gcNm(a[0], a[1], b[0], b[1]) / 0.1))
+      for (let s = 0; s <= n; s++) {
+        const A = Math.floor((90 - (a[0] + ((b[0] - a[0]) * s) / n)) * FINE) // the fine cell (1/40 degree): 2 x 2 sub-cells
+        const B = Math.floor((a[1] + ((b[1] - a[1]) * s) / n + 180) * FINE)
+        for (const I of [2 * A, 2 * A + 1]) for (const J of [2 * B, 2 * B + 1]) out.add(I * 28800 + J)
+      }
+    }
+  }
+  return out
+}
+
 /**
  * The mask for one served raster (`{ cols, rows, cell_deg, bits_per_cell, cells_base64 }`).
  * A raster WATER cell is listed when the chart draws land in any of its SUB x SUB sub-cells. A
  * river-carved cell (a channel the chart does not draw: land in 1:110m, water on purpose) is never
- * listed; a charted channel's cell is listed like any other (0440), and raster
+ * listed; a charted channel's cell is listed like any other (0440), but for a fairway's own line (0446); and raster
  * LAND is the raster's own answer (the refiner treats it as land throughout).
  */
 export function buildCoastMask(raster, land = drawnLand('fine')) {
   const nav = navFromServed(raster)
   if (nav.cols !== 1440 || nav.rows !== 720) throw new Error('coast mask: the raster is not the 0.25-degree world grid')
   const river = riverCarvedCells()
+  const fairway = fairwaySubCells()
   const bytesPerCell = Math.ceil((SUB * SUB) / 8)
   const idx = []
   const bits = []
@@ -63,6 +90,7 @@ export function buildCoastMask(raster, land = drawnLand('fine')) {
       let landSubs = 0
       for (let i = 0; i < SUB; i++) {
         for (let j = 0; j < SUB; j++) {
+          if (fairway.has((row * SUB + i) * 28800 + col * SUB + j)) continue // 0446: a fairway's own line is water
           if (subCellHasLand(land, lat0 - (i * nav.cellDeg) / SUB, lon0 + (j * nav.cellDeg) / SUB, nav.cellDeg / SUB)) {
             const b = i * SUB + j
             cell[b >> 3] |= 1 << (b & 7)

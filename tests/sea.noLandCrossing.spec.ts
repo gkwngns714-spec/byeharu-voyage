@@ -178,9 +178,10 @@ test('the charted channels are open water, and the land the chart draws in them 
   const mask = coastMaskFrom(JSON.parse(readFileSync(MASK, 'utf8')) as CoastMaskPayload)
   const { carved } = carveInventory()
   const charted = CHANNELS.filter((c) => c.charted)
-  // Three opened by 0440, and eight straits carved long before and held to their drawn land since.
+  // Three opened by 0440, eight straits carved long before and held to their drawn land since, and the four
+  // real straits 0440 and 0441 closed, opened by 0446 (tests/sea.straits.spec.ts holds those passable).
   expect(charted.map((c) => c.id).sort()).toEqual(
-    ['bab-el-mandeb', 'baltic-gulfs', 'corfu', 'hormuz', 'kerch', 'malacca', 'seto', 'sunda', 'tsugaru', 'western-scheldt', 'white-sea'],
+    ['bab-el-mandeb', 'baltic-gulfs', 'bangka', 'corfu', 'great-belt', 'hormuz', 'kerch', 'malacca', 'messina', 'seto', 'sunda', 'surabaya', 'tsugaru', 'western-scheldt', 'white-sea'],
   )
   for (const ch of charted) {
     for (const k of carved.get(ch.id) ?? []) expect(nav.cells[k], `${ch.id} cell ${k} is water`).not.toBe(0)
