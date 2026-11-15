@@ -21,5 +21,7 @@ test('kinds file under their sector; the city side of a trade flips; unknown kin
   expect(sectorOf('SHARE', 'company')).toBe('shares')
   expect(sectorOf('DIVIDEND', 'company')).toBe('shares')
   expect(sectorOf('SOMETHING_NEW', 'company')).toBe('other')
+  // 2026-11-15 owner: shorter words — tuition is its own sector
+  expect(sectorOf('TUITION', 'company')).toBe('tuition')
   expect(SECTORS).toContain('other')
 })

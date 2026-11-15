@@ -1,7 +1,8 @@
 import { useShellState } from '../../app/shellState'
 import { Empty, FilterBar, Row } from '../../components/ui'
 import { formatDucatsDelta, formatRelative } from '../../lib/format'
-import { properName, translateMaybe, useLocale, useT } from '../../lib/i18n'
+import { properName, useLocale, useT } from '../../lib/i18n'
+import { moneyKindWord } from '../../live/moneyWords'
 import type { MoneyMove } from '../../lib/rpc'
 import { moveAtMs, type MoveFilter, type MovePick } from './moneyFeed'
 import { SECTORS, type Sector } from './moneySectors'
@@ -52,10 +53,7 @@ export function MoneyRows({ rows }: { rows: readonly MoneyMove[] }) {
   const { nowMs } = useShellState()
   if (rows.length === 0) return <Empty className="my-1">{t('feed.none')}</Empty>
 
-  const word = (m: MoneyMove) =>
-    (m.holder === 'city' ? translateMaybe(locale, 'feed', `c_${m.kind}`) : null) ??
-    translateMaybe(locale, 'feed', `k_${m.kind}`) ??
-    m.word
+  const word = (m: MoneyMove) => moneyKindWord(locale, m.kind, m.word, m.holder)
   const who = (m: MoneyMove) => (m.holder === 'city' ? properName('port', m.who, m.who, locale) : m.who)
 
   return (
