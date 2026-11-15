@@ -52,6 +52,7 @@ import {
   fightRimWins,
   fightTapWins,
   hitTest,
+  onPlacedName,
   placedNames,
   mapFightsOf,
   mapFleetsOf,
@@ -443,7 +444,7 @@ function Chart({
       // A BATTLE'S RING (0364): the whole circle is its press target. A city's NAME under it is still the city (the
       // name is what the thumb was on); a small ring takes every other press inside it, and a wide one leaves a
       // harbour, a merchant or a fleet that is not in the battle its own press (`fightTapWins`).
-      const onName = placedNames().some((n) => at.x >= n.box.x && at.x <= n.box.x + n.box.width && at.y >= n.box.y && at.y <= n.box.y + n.box.height)
+      const onName = placedNames().some((n) => onPlacedName(n, at))
       const ring = onName ? null : fightAt(fightRings(fights, unitsPerPx), at, unitsPerPx)
       // THE RIM of a wide ring is the fight's too, off the mark's own centre (fightRimWins): where the mark under the press stands
       const under: LatLon | null =

@@ -43,6 +43,7 @@
 import { project, shortLonDelta, type Point } from '../lib/geo'
 import type { ChartModel } from './chartModel'
 import type { MapPort, MapSelection } from './mapTypes'
+import { boxDistance, onPlacedName, type PlacedName } from './placedNames'
 
 /** Chart-unit distance, east–west THE SHORT WAY ROUND (2026-10-14, the continuous chart): a tap
  *  at 179.9°W is 0.2° from a harbour at 179.9°E, on whichever copy of the sheet either was drawn.
@@ -82,9 +83,16 @@ export function hitTest(
    *  in chart units on the copy it was drawn on. A tap inside one is that harbour, before any
    *  reach is weighed: the name is the thing the thumb was on, and its far end lies beyond the
    *  mark's reach on a long name (PR #198 measured taps on a name's tail opening open water). */
-  names: readonly { code: string; box: { x: number; y: number; width: number; height: number } }[] = [],
+  names: readonly PlacedName[] = [],
 ): MapSelection {
-  const onName = names.find((n) => at.x >= n.box.x && at.x <= n.box.x + n.box.width && at.y >= n.box.y && at.y <= n.box.y + n.box.height)
+  // ON A NAME, OR WITHIN ITS FEW PIXELS OF MARGIN (./placedNames.ts: a tap just under "Gibraltar" was nearer Ceuta's mark and
+  // opened Ceuta). Where two margins meet, the name whose box is nearer wins; inside a box the distance is 0.
+  let onName: { code: string; d: number } | null = null
+  for (const n of names) {
+    if (!onPlacedName(n, at)) continue
+    const d = boxDistance(n.box, at)
+    if (!onName || d < onName.d) onName = { code: n.code, d }
+  }
   if (onName) return { kind: 'port', code: onName.code }
   let nearestFleet: { id: string; d: number; dockedAt: string | null } | null = null
   for (const f of model.fleets) {
