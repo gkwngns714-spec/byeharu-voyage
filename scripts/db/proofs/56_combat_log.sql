@@ -61,8 +61,12 @@ $h$, $h$      v_broke := true;
     end if;
     -- 0353: FLEE. She took this round's fire; now she rolls to slip, on her own stream. Away is EVADED with `fled`.
     if v_ao = 'FLEE' then
-      v_pf := least(public.wc_num('fight_evade_max'), greatest(public.wc_num('fight_flee_floor'),
-                public.wc_num('fight_flee_base') + (v_sa - v_sb) * public.wc_num('fight_evade_per_sighting')));
+      -- 0432: a raid's flee bonus (p_opts.a_flee: her speed and her company's handling, public.flee_bonus) within raid_flee_floor..raid_flee_max; without one, 0357's chance
+      v_pf := case when p_opts ? 'a_flee'
+                   then least(public.wc_num('raid_flee_max'), greatest(public.wc_num('raid_flee_floor'),
+                          public.wc_num('fight_flee_base') + (v_sa - v_sb) * public.wc_num('fight_evade_per_sighting') + (p_opts ->> 'a_flee')::numeric))
+                   else least(public.wc_num('fight_evade_max'), greatest(public.wc_num('fight_flee_floor'),
+                          public.wc_num('fight_flee_base') + (v_sa - v_sb) * public.wc_num('fight_evade_per_sighting'))) end;
       v_rows := jsonb_set(v_rows, array[(g - 1)::text, 'flee'], to_jsonb(round(v_pf, 4)));
       if voyage.rng(p_seed, p_round, format('fight:%s:flee', g)) < v_pf then
         v_fled := true; v_outcome := 'EVADED'; exit;
