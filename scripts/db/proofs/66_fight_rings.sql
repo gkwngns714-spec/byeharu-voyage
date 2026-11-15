@@ -17,6 +17,8 @@
 -- @pass FIGHTS_LIVE_COST the read with 75 navy rows, 5 of them recent, for a company at sea with a raid and for one in port, and the keeper's cost a navy fight, timed (printed, never judged)
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
+
 do $$
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'convoys_enabled', 'combat_bite');
@@ -183,7 +185,7 @@ begin
      or abs((v_c -> 'sides' -> 1 -> 'at' ->> 0)::numeric - (v_site ->> 'lat')::numeric) > 0.01 or abs((v_c -> 'sides' -> 1 -> 'at' ->> 1)::numeric - (v_site ->> 'lon')::numeric) > 0.01 then
     raise exception 'PROOF 66 FAIL: the card a neighbour reads: % (site %)', v_c, v_site;
   end if;
-  if exists (select 1 from jsonb_object_keys(v_c) k where k <> all (array['id', 'kind', 'size', 'status', 'lat', 'lon', 'started_at', 'resolves_at', 'round_seconds', 'rounds', 'rounds_done', 'next_at', 'fleets', 'ships', 'mine', 'sides', 'end']))
+  if exists (select 1 from jsonb_object_keys(v_c) k where k <> all (array['id', 'kind', 'size', 'status', 'lat', 'lon', 'started_at', 'resolves_at', 'round_seconds', 'rounds', 'rounds_done', 'next_at', 'fleets', 'ships', 'mine', 'sides', 'end', 'reach_nm', 'ticks']))   -- 0435: the circle's radius and whether it is a tick battle
      or exists (select 1 from jsonb_array_elements(v_c -> 'sides') s, jsonb_object_keys(s) k where k <> all (array['fleet', 'name', 'side', 'how', 'kind', 'company', 'nation', 'ships', 'here', 'at'])) then
     raise exception 'PROOF 66 FAIL: the card carries a key 0364 does not name: %', v_c;
   end if;

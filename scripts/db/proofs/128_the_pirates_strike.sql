@@ -16,6 +16,8 @@
 -- @pass PS_KEEP     a closed RAID older than raid_keep_hours is deleted with its sides and rounds by the job; a player's ATTACK battle is never deleted
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
+
 create function pg_temp.w_128() returns numeric language sql as $f$
   select (select coalesce(sum(public.treasury_balance(t.port_id)), 0) from public.port_treasury t)::numeric
        + (select coalesce(sum(p.ducats), 0) from public.players p)::numeric + public.funds_aboard()::numeric

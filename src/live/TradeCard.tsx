@@ -168,6 +168,12 @@ export function TradeCard({
   )
 }
 
+/** 0433: her purse against what the best full load needs (world.best_sales `have` / `need`), or null when the full load is
+ *  within her purse (or a server before 0433 serves neither). */
+function money(sale: BestSale): { have: string; need: string } | null {
+  return sale.have != null && sale.need != null ? { have: formatInt(sale.have), need: formatInt(sale.need) } : null
+}
+
 /** 0348: THE CARD'S MIDDLE — its two prices over ONE GOOD'S BEST SALE (world.best_sales: the city and the served profit)
  *  and its day line — as ONE block of at least 44 px (the tap-target floor) whose height is held whatever has landed. With a
  *  sale the block is the press that opens its trip. Green: it pays. Red "No gain": no city she can sail to pays (the figure
@@ -221,7 +227,9 @@ function SaleBlock({
         <span className={top}>{prices}</span>
         {sale ? (
           <span className={`${line} text-danger`} data-testid="best-sale" data-state="none" data-pays="false" data-short={sale.short ? 'true' : undefined}>
-            {t(sale.basis === 'step' ? 'desk.holdFull' : sale.short ? 'desk.noMoney' : 'desk.noGain')}
+            {sale.basis !== 'step' && sale.short && money(sale) !== null
+              ? t('desk.moneyHaveNeed', money(sale)!)
+              : t(sale.basis === 'step' ? 'desk.holdFull' : sale.short ? 'desk.noMoney' : 'desk.noGain')}
             <span className={tail}>{spark}</span>
           </span>
         ) : (
@@ -252,7 +260,14 @@ function SaleBlock({
         data-seconds={sale.seconds ?? undefined}
         data-far={sale.far?.port}
       >
-        {!sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>}
+        {/* 0433: the full load is beyond her purse: her purse against what it needs; the sale named is the most she can pay for */}
+        {money(sale) !== null ? (
+          <span className="shrink-0 font-medium text-danger" data-testid="best-sale-money">
+            {t('desk.moneyHaveNeed', money(sale)!)}
+          </span>
+        ) : (
+          !sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>
+        )}
         {/* the flag and the name stand together; in a card too narrow for both (산타크루스데테네리페 is 130 px, a 158-px card
             has 142 inside) the name takes the next line whole rather than being cut */}
         <span className={`flex flex-wrap items-center gap-x-1 ${KEEP_WORDS_CLASS}`} data-testid="best-sale-city">

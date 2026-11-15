@@ -5,11 +5,11 @@
 --   8fc074d4f0a09332b321eb55a600c2fc) and fights a wider matrix: 200 made-up fleets of 1 to 4 hulls, every knob a fight reads moved, the refusals, then a real company's fleet through
 --   voyage.fight. No credit, no treasury_post: nothing here touches money. Everything is rolled back by the runner.
 --
--- @pass FIGHT_PARITY_WIDE  1,200 fights of made-up fleets, word for word, old body against the skin
--- @pass FIGHT_PARITY_KNOBS each knob a fight reads, moved, word for word
+-- @pass FIGHT_PARITY_WIDE  1,200 fights of made-up fleets, figure for figure (0433 made the words short), old body against the skin
+-- @pass FIGHT_PARITY_KNOBS each knob a fight reads, moved, figure for figure
 -- @pass FIGHT_REFUSALS     the same refusals, with the same words
 -- @pass FIGHT_TWO_SIDES    a side without guns takes nothing, a sunk hull does not fire, range decides who fires, on both sides
--- @pass FIGHT_REAL_FLEET   a real company's fleet through voyage.fight, word for word, old body against the skin
+-- @pass FIGHT_REAL_FLEET   a real company's fleet through voyage.fight, figure for figure, old body against the skin
 -- @pass FIGHT_ROLLBACK     the old body goes back byte for byte, and the skin after it
 -- ═══════════════════════════════════════════════════════════
 
@@ -388,7 +388,7 @@ begin
       v_new := voyage.fight_resolve(c_seed, v_d, v_r, v_esc, v_h);
       v_n := v_n + 1;
       v_ends := jsonb_set(v_ends, array[v_old ->> 'outcome'], to_jsonb(coalesce((v_ends ->> (v_old ->> 'outcome'))::int, 0) + 1));
-      if v_old::text is distinct from v_new::text then
+      if (v_old - 'sentence' - 'rounds')::text is distinct from (v_new - 'sentence' - 'rounds')::text or jsonb_array_length(v_old -> 'rounds') <> jsonb_array_length(v_new -> 'rounds') then   -- 0433: the words are short now; every figure and line count still the old body's
         raise exception 'PROOF 28 FAIL: a fight changed (fleet %, strength %): old % new %', v_k, v_r, v_old, v_new;
       end if;
     end loop;
@@ -396,7 +396,7 @@ begin
   if not (v_ends ?& array['EVADED', 'DRIVEN_OFF', 'RANSOM', 'PLUNDERED']) then
     raise exception 'PROOF 28 FAIL: the matrix met too few endings: %', v_ends;
   end if;
-  raise notice 'PASS: FIGHT_PARITY_WIDE — % fights word for word, %', v_n, v_ends;
+  raise notice 'PASS: FIGHT_PARITY_WIDE — % fights figure for figure, %', v_n, v_ends;
 
   -- EACH KNOB MOVED: only armed raider classes (0320's header names the one corner an unarmed class moves)
   v_n := 0;
@@ -413,13 +413,13 @@ begin
         v_old := pg_temp.old_0320(c_seed, v_k, v_r, 9.5, v_h);
         v_new := voyage.fight_resolve(c_seed, v_k, v_r, 9.5, v_h);
         v_n := v_n + 1;
-        if v_old::text is distinct from v_new::text then
+        if (v_old - 'sentence' - 'rounds')::text is distinct from (v_new - 'sentence' - 'rounds')::text or jsonb_array_length(v_old -> 'rounds') <> jsonb_array_length(v_new -> 'rounds') then   -- 0433
           raise exception 'PROOF 28 FAIL: % = % changed a fight (fleet %, strength %): old % new %', v_kn.key, v_kn.val, v_k, v_r, v_old, v_new;
         end if;
       end loop;
     end loop;
   end loop;
-  raise notice 'PASS: FIGHT_PARITY_KNOBS — % fights word for word, 14 knob values, each on top of the last', v_n;
+  raise notice 'PASS: FIGHT_PARITY_KNOBS — % fights figure for figure, 14 knob values, each on top of the last', v_n;
 
   -- THE REFUSALS
   begin perform pg_temp.old_0320(c_seed, 1, 10, 0, '[]'::jsonb); exception when others then v_e1 := sqlerrm; end;
@@ -526,10 +526,10 @@ begin
   if replace(pg_get_functiondef(c_fr), E'\r', '') <> v_skin then
     raise exception 'PROOF 28 FAIL: the skin did not go back';
   end if;
-  if v_a::text is distinct from v_b::text then
+  if (select jsonb_object_agg(e.k, e.v - 'sentence' - 'rounds') from jsonb_each(v_a) e(k, v))::text is distinct from (select jsonb_object_agg(e.k, e.v - 'sentence' - 'rounds') from jsonb_each(v_b) e(k, v))::text then   -- 0433: the words are short now
     raise exception 'PROOF 28 FAIL: a real fleet''s fight changed';
   end if;
-  raise notice 'PASS: FIGHT_REAL_FLEET — % days of a real company''s fleet through voyage.fight, word for word', v_n;
+  raise notice 'PASS: FIGHT_REAL_FLEET — % days of a real company''s fleet through voyage.fight, figure for figure', v_n;
   raise notice 'PASS: FIGHT_ROLLBACK — the old body back by digest, the skin back after it';
 end
 $p$;

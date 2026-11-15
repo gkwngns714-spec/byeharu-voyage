@@ -406,7 +406,8 @@ begin
   v_led := world.ledger();
   select e->'payload'->'lines'->>0 into v_prose
     from jsonb_array_elements(v_led->'events') e where e->>'kind' = 'VOYAGE_REPORT' limit 1;
-  if v_prose is null or v_prose !~ '^Day [0-9]+\.' or length(v_prose) < 25 then
+  -- 0433 cut the day lines short ("Day 1. Quiet day."): a sentence after the day is the prose, not a length
+  if v_prose is null or v_prose !~ '^Day [0-9]+\. [A-Z][^.]*\.' then
     raise exception 'PROOF 4 FAILED — the after-action report is not prose: %', coalesce(v_prose, '(none)');
   end if;
   if (v_led->>'ducats')::bigint <> (v_led->>'ledger_sum')::bigint then

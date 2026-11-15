@@ -9,6 +9,7 @@ import { pageVarsClass } from '../components/ui'
 import { AuthPage } from '../features/auth/AuthPage'
 import { GalleryScreen } from '../features/gallery/GalleryScreen'
 import { PageGalleryScreen } from '../features/gallery/PageGalleryScreen'
+import { BattleGalleryScreen } from '../features/gallery/BattleGalleryScreen'
 import { GatesGalleryScreen } from '../features/found/GatesGalleryScreen'
 import { CommandScreen } from '../features/command/CommandScreen'
 import { FleetsScreen } from '../features/fleets/FleetsScreen'
@@ -57,6 +58,8 @@ export function App() {
         <Route path="/ui" element={<GalleryScreen />} />
         {/* THE PAGE PATTERN (2026-11-02, owner row 267): the gallery's second page — a stat strip, MAIN | SIDE, cards, a card list, a tray over the side. */}
         <Route path="/ui/page" element={<PageGalleryScreen />} />
+        {/* THE BATTLE SCREEN, FED A FIXTURE (0435): read by tests/battle.screen.spec.ts. Reads nothing from the world. */}
+        <Route path="/ui/battle" element={<BattleGalleryScreen />} />
         {/* THE THREE DOORS (2026-11-05): the book a new captain signs, the world opening, the world refusing — read by tests/gates.design.spec.ts. */}
         <Route
           path="/ui/gates/:state"

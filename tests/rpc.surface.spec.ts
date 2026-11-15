@@ -1049,7 +1049,9 @@ test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', as
   // exceeds the second — which is precisely why it refused.
   expect(r.figures!.need).toBeGreaterThan(0)
   expect(r.figures!.have).toBeLessThan(r.figures!.need)
-  expect(r.sentence).not.toMatch(/\d/)
+  // 0433 (owner row 350, "just tell me what i have, and what is required"): the sentence IS the have / need line, in the words
+  // docs/WORDS.md asks for (tons, never t): the figures above stay the contract the bar is drawn from.
+  expect(r.sentence).toMatch(/^Hold [\d.,]+ \/ [\d.,]+ tons$/)
 
   // The queue comes back with the refusal, so a screen can redraw without a second round trip —
   // and it carries the SAME figures, so the halted row draws the same bar rather than a second,
@@ -1601,6 +1603,15 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-13 with migration 0364 (owner row 321): every battle being fought, for the map's red rings, and any battle's log for a watcher. Reads, no
       // player id; dark ({on: false}) until attack_enabled. Landed WITH the faces (src/chart/FightRingsLayer.tsx, src/live/FightSheet.tsx).
       'worldFights', 'worldFight',
+      // Pin moved deliberately 2026-11-15 with migration 0435 (docs/design/tick-combat.md 9.2): a battle fought tick by tick: its timeline for the battle screen (a read, any
+      // signed-in player) and the close at its end (a nudge any reader may send; battle_resolve under the battle's lock decides). No player id.
+      'worldBattleTicks', 'cmdBattleEnd',
+      // Pin moved deliberately 2026-11-15 with migration 0436 (docs/design/tick-combat.md 8): JOINING A BATTLE is a choice, cmd.battle_join(battle, fleet, side).
+      // No player id; a fleet not yours is E_NOT_YOUR_FLEET, a side against a player E_HUMAN_TARGET. Landed WITH the face that presses it (src/live/battle/JoinBar.tsx).
+      'cmdBattleJoin',
+      // Pin moved deliberately 2026-11-15 with migration 0439 (docs/design/tick-combat.md 9.2): THE ACTION BAR, cmd.battle_act(battle, fleet, code, tick). No player id;
+      // a fleet not hers or not in the battle is E_NOT_YOUR_BATTLE, and an act adds no side (no PvP). Landed WITH the face that presses it (src/live/battle/BattleScreen.tsx).
+      'cmdBattleAct',
       // Pin moved deliberately 2026-10-11 with migration 0104 (owner row 121, docs/NPC_FLEET_SCALE.md
       // §1 slice E): ONE HARBOUR'S MERCHANTS — which merchant companies this quay concerns and what
       // each one is DOING there. A READ, no player id, dark until the owner's switch, and a player's

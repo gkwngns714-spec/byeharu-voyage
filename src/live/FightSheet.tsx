@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Bar, Figure, Row, SheetSection, Skeleton, Tray, TrayTitle, type TrayDetent } from '../components/ui'
 import { CHART_CHROME } from '../chart'
 import { formatInt } from '../lib/format'
@@ -75,7 +75,9 @@ function Side({ title, sides, hullPct, testId }: { title: string; sides: readonl
   )
 }
 
-export function FightSheet({ card, onClose, mode }: { card: FightCard; onClose: () => void; mode?: 'docked' | 'side' }) {
+/** `actions` (tick combat, docs/design/tick-combat.md 11): what the map puts on the circle's tray above the sides: the
+ *  battle screen's Watch and her Join bar (src/live/battle/JoinBar.tsx). */
+export function FightSheet({ card, onClose, mode, actions }: { card: FightCard; onClose: () => void; mode?: 'docked' | 'side'; actions?: ReactNode }) {
   const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('peek')
   const [got, setGot] = useState<{ value: BattleRead; at: number } | null>(null)
@@ -147,6 +149,7 @@ export function FightSheet({ card, onClose, mode }: { card: FightCard; onClose: 
       {...CHART_CHROME}
     >
       <div data-testid="fight-sheet-body" data-status={card.status}>
+        {actions}
         <Side title={t('fight.sideA')} sides={attackers} hullPct={attackerPct} testId="fight-side-attacker" />
         <Side title={t('fight.sideD')} sides={defenders} hullPct={defenderPct} testId="fight-side-defender" />
         <SheetSection heading={t('fight.log')} data-testid="fight-sheet-fight">
