@@ -591,7 +591,7 @@ as $b$ select false $b$
     exit when v_step = 'HOME';
     if v_step = 'IN_PORT' then
       v_now := v_now + interval '61 seconds';
-    elsif v_step <> 'SAILED' then
+    elsif v_step not in ('SAILED', 'HOMEWARD') then   -- 0430: emptied, she sails straight home
       raise exception 'PROOF 32 FAIL: step % on the lap, switch off', v_step;
     end if;
   end loop;
