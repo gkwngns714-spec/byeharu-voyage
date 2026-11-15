@@ -503,13 +503,8 @@ const TABLE = {
   // 0435 (docs/design/tick-combat.md 9.2): a battle fought tick by tick: its timeline for the battle screen (any signed-in reader), and the close at its end.
   worldBattleTicks: { schema: 'world', fn: 'battle_ticks', args: [{ name: 'p_battle', type: 'uuid' }] },
   cmdBattleEnd: { schema: 'cmd', fn: 'battle_end', mutates: true, args: [{ name: 'p_battle', type: 'uuid' }] },
-  // 0436 (docs/design/tick-combat.md 9.2): a fleet of hers inside a battle's circle joins a side, from the next tick. Never against a player.
-  cmdBattleJoin: {
-    schema: 'cmd',
-    fn: 'battle_join',
-    mutates: true,
-    args: [{ name: 'p_battle', type: 'uuid' }, { name: 'p_fleet', type: 'uuid' }, { name: 'p_side', type: 'text' }],
-  },
+  // 0436 (docs/design/tick-combat.md 8, 9.2): a fleet of hers JOINS a battle on a side she picks. Joining is a choice; the server refuses PvP (E_HUMAN_TARGET).
+  cmdBattleJoin: { schema: 'cmd', fn: 'battle_join', mutates: true, args: [{ name: 'p_battle', type: 'uuid' }, { name: 'p_fleet', type: 'uuid' }, { name: 'p_side', type: 'text' }] },
   cmdPreviewTow: { schema: 'cmd', fn: 'preview_tow', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdTow: {
     schema: 'cmd',

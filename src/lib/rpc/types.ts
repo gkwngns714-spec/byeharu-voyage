@@ -4686,14 +4686,3 @@ export interface BattleEndReceipt {
   status: 'FIGHTING' | 'RESOLVED' | 'BROKEN_OFF'
   resolves_at: string
 }
-
-/** 0436 `cmd.battle_join`: the side a fleet joins (ATTACKER = the side that closed, DEFENDER = the side set upon). */
-export type BattleJoinSide = 'ATTACKER' | 'DEFENDER'
-
-/** 0436 `cmd.battle_join`: she joined; her ships come up at `from_tick` (the next tick) and the timeline is re-run (`ticks.k` + 1). */
-export interface BattleJoinReceipt {
-  ok: true
-  battle: string
-  side: BattleJoinSide
-  from_tick: number
-}

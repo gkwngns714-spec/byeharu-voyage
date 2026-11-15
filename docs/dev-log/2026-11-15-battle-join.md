@@ -6,7 +6,7 @@ and she is locked to the end. No PvP, ever. The contract is `docs/design/tick-co
 
 ## What it does
 
-- **The Join door** `cmd.battle_join(p_battle, p_fleet, p_side)` -> `{ok, battle, side, from_tick}` (catalogue `cmdBattleJoin`). The core is
+- **The Join door** `cmd.battle_join(p_battle, p_fleet, p_side)` -> `{ok, battle, side, from_tick}` (catalogue `cmdBattleJoin`; the client wrapper is `src/lib/rpc/battleJoin.ts` from #728, the one authority). The core is
   `public.battle_join_for` (the NPC rule uses it too). Refusals, in the short have / need style of 0433 where there are figures:
   `E_BAD_SIDE` (not ATTACKER/DEFENDER, or a player's ship on the pirates' side of a raid), `E_NO_BATTLE`, `E_BATTLE_OVER` (closed, an old round
   battle, or the next tick past the timeline's last), `E_NOT_YOUR_FLEET`, `E_FLEET_BUSY` (held, in a battle, in her port time, no hull, or a

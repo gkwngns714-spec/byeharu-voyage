@@ -40,6 +40,7 @@ export function fightWorld(mine: boolean): Promise<Buffer> {
       ${SECRET_SQL}
       update public.world_config set value = 'true'::jsonb where key in ('attack_enabled', 'convoys_enabled', 'city_treasury_enabled');
       update public.world_config set value = '${FIGHT_ROUND_SECONDS}'::jsonb where key = 'battle_round_seconds';
+      update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: these specs drive the round-by-round battle
       insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
       update public.port_treasury set ducats = 50000000, reserve = 0;
       select public.tick_cargo_ships(now(), n.id) from public.nations n where n.code = 'ESP';

@@ -16,6 +16,7 @@ import { formatDict } from './format'
 import { foundDict } from './found'
 import { historyDict } from './history'
 import { innDict } from './inn'
+import { joinDict } from './join'
 import { mapDict } from './map'
 import { marketsDict } from './markets'
 import { newsDict } from './news'
@@ -51,6 +52,7 @@ export const DICT = {
   found: foundDict,
   history: historyDict,
   inn: innDict,
+  join: joinDict,
   map: mapDict,
   markets: marketsDict,
   news: newsDict,

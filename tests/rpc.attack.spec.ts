@@ -30,6 +30,8 @@ test.beforeAll(async () => {
   await db.callAs(`select cmd.found_house('Attack Spec', 'PRT') as result`)
   await db.callAs(`with t as (update public.port_treasury set ducats = 50000000, reserve = 0 returning 1) select count(*)::int as result from t`)
   await light(['city_treasury_enabled', 'convoys_enabled'], true)
+  // 0435: these tests drive the round-by-round battle; a tick battle is proof 136's
+  await db.callAs(`with u as (update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds' returning 1) select count(*)::int as result from u`)
   // 0375 lights attack_enabled in the chain, so the built world opens with attacks ON. The first test below is the DARK seam (what the switch off does: the state after a
   // rollback), so the switch is put off here; the next test lights it again, as it always did.
   await light(['attack_enabled'], false)
