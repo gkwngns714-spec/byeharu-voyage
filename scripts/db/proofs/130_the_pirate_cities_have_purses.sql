@@ -136,6 +136,9 @@ begin
   raise notice 'PASS: PP_ALLOT — %, the world''s money unmoved', v_r;
 
   -- ── PP_CARGO ──
+  -- pinned (0430): the pirates' cargo ships are their share of cargo_fleet_total once the fleet sizes carry their row (7 on this world); this
+  -- scene is 0429's five, so their share is held at 5 (prod's, cargo_pirate_min). Before 0430 (no row) this touches nothing.
+  update public.cargo_fleet_sizes s set ships = 5 where s.nation_id = v_pir;
   select p.id into v_city from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR'
    where a.nation_id = v_pir and p.id <> v_cap order by p.code limit 1;
   perform public.treasury_post(v_city, 'PIRATE_ALLOT', -6000000, null, null);
