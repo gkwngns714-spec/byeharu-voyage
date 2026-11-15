@@ -102,6 +102,8 @@ export function PlanVoyage({
           // 0218: the seas on the way, per city, as HAVE / NEED — unless lit and closing it: then the reach note below says so
           if (!r.sea || (seaBite && r.sea.refusal && r.sailable === false)) return null
           const pairs = seaPairs(r.sea, { title: s?.title?.level ?? null, wave })
+          // a sea that asks nothing (every ask 0) has no line: the reach line below names the city
+          if (pairs.length === 0 && !r.sea.refusal) return null
           return (
             <Hint key={`sea:${r.port}`} data-testid="plan-sea-ask">
               {name(r.port)}
@@ -120,7 +122,7 @@ export function PlanVoyage({
               <Note key={r.port} tone="danger" className="mt-2" data-testid="plan-unreachable">
                 {`${name(r.port)} — ${reachWords(r, reachBoard(board))}`}
               </Note>
-            ) : r.sea ? null : (
+            ) : r.sea && (r.sea.refusal || seaPairs(r.sea, null).length > 0) ? null : (
               // a city whose sea row stands above is already named there: one line a city
               <Hint key={r.port} data-testid="plan-reach">
                 {t('desk.reachOk', { port: name(r.port) })}
