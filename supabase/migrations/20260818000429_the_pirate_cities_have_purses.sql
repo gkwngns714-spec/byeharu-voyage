@@ -45,8 +45,14 @@
 --   knobs back. Quick: pirate_cargo_ships 0 (no new ship, none loaded; those at sea come home and return what they carry), pirate_wakes_per_run 0,
 --   pirate_hoard_floor 2000000000 (every payment back under the room). The allotment is not taken back (moved gold; the cities spend it).
 -- SELF-ASSERT: every hunk once and reversing; grants, volatility, definer, search path, owner unmoved; no other function moved; the new functions
---   server-only; the capital is Port Royal; the knobs; the allotment (lit purses: every pirate city at 10 M or more, Port Royal at 30 M or more,
---   the purses' sum unmoved); THE PROBE, rolled back: one tick of public.pirate_purse_step.
+--   server-only; the capital is Port Royal; the knobs; the allotment (its own PIRATE_ALLOT rows: one a city given, Port Royal's their negative,
+--   no gift over what a city lacked; lit, every pirate city under 10 M topped up to it unless Port Royal came to 30 M first; Port Royal never
+--   under 30 M); THE PROBE, rolled back: one tick of public.pirate_purse_step. Every check runs on every world, dark or lit (see section 6).
+-- THE FIRST PUSH (2026-11-15, ~/bin/bv-deploy.sh 720) FAILED on prod and rolled back whole: "world_config key pirate_city_purse does not exist"
+--   (22023). The allotment's check compared a purse against public.wc_num('pirate_city_purse') in a WHERE; this file is one statement, and the
+--   planner evaluates a STABLE function there (to estimate the comparison) under the statement's first snapshot, from before section 2 inserted
+--   the knob. On CI the check sat behind `if city_treasury_on()` (dark), so it was never planned there. Now the knobs are read into variables
+--   (section 2) and every check runs on every world (docs/dev-log/2026-11-15-pirate-purses.md).
 -- VERSION: 0429 = 0428 (db-room, #707) + 1, after 0427 (#706). 0427 hunked tick_pirates' return line: this file's hunk is cut from 0427's text.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -66,7 +72,10 @@ declare
   v_fn_before text;
   v_meta      text;
   v_kept      text := '';
-  v_sum0      numeric;
+  v_city_purse bigint;
+  v_cap_purse  bigint;
+  v_cap       uuid;
+  v_purses0   jsonb;
   v_allot     jsonb;
   v_probe     jsonb;
   v_note      text;
@@ -109,6 +118,14 @@ begin
          description = description || ' 0429: 0.006 -> 0.01 ("raise the cap more"); pay, wakes and refits no longer wait on it (pirate_hoard_floor).'
    where key = 'pirate_spend_day_pct' and value = to_jsonb(0.006);
   if not found then v_kept := v_kept || 'pirate_spend_day_pct '; end if;
+  -- THE KNOBS THIS FILE'S CHECKS READ, read here by plain expressions (each takes a fresh snapshot, so it sees the rows just inserted). This
+  -- whole file is ONE statement: a query of it whose WHERE compares against public.wc_num(<a knob inserted above>) is PLANNED under the
+  -- snapshot the statement began with (the planner evaluates a STABLE function to estimate the comparison, before the query takes its own
+  -- snapshot) and public.wc raises "world_config key ... does not exist" (22023). That is how 0429's first push to prod failed (2026-11-15,
+  -- rolled back whole). No query of this file names a knob it inserted: it names these.
+  v_city_purse := public.wc_num('pirate_city_purse')::bigint;
+  v_cap_purse := public.wc_num('pirate_capital_purse')::bigint;
+  v_cap := public.pirate_capital();
 
   -- ── 3. THE NEW FUNCTIONS ──
   execute $f$
@@ -356,19 +373,36 @@ $h$);
   end if;
 
   -- ── 6. THE ALLOTMENT, ONCE (lit purses: real rows, moved) ──
-  v_sum0 := (select coalesce(sum(public.treasury_balance(t.port_id)), 0) from public.port_treasury t);
+  -- Every check here is ONE query run on EVERY world, dark or lit: the lit condition is inside it, never an IF around it, so CI's dark apply
+  -- plans and runs each one as prod does (the check that failed on prod sat inside `if city_treasury_on()`: dark on CI, it was first planned
+  -- on prod). Each reads the knobs from section 2's variables, and counts only this file's own rows (the PIRATE_ALLOT kind is new here) or the
+  -- pirate purses it read itself: never a sum of every purse of a live game, which other players' trades move between two statements.
+  v_purses0 := (select coalesce(jsonb_object_agg(p.code, public.treasury_balance(p.id)), '{}'::jsonb)
+                  from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR'
+                 where a.nation_id = public.pirate_nation() and p.id <> v_cap);
   v_allot := public.pirate_purses_allot(now());
-  if (select coalesce(sum(public.treasury_balance(t.port_id)), 0) from public.port_treasury t) <> v_sum0 then
-    raise exception '0429 self-assert FAIL: the allotment changed the purses'' sum (it must only move)';
+  -- moved, never made: one PIRATE_ALLOT row at each city given (its gift, never more than it lacked), and Port Royal's rows their negative
+  if exists (with h as (select p.id, p.code from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR'
+                         where a.nation_id = public.pirate_nation()),
+                  r as (select h.code, h.id = v_cap as cap, count(f.id) as n, coalesce(sum(f.ducats), 0) as d
+                          from h left join public.treasury_flows f on f.port_id = h.id and f.kind = 'PIRATE_ALLOT' group by h.code, h.id)
+             select 1 from r
+              where (not r.cap and (r.n <> case when v_allot ? r.code then 1 else 0 end or r.d <> coalesce((v_allot ->> r.code)::bigint, 0)))
+                 or (r.cap and (r.n <> (select count(*) from jsonb_object_keys(v_allot))
+                                or r.d <> -coalesce((select sum((e.value)::text::bigint) from jsonb_each(v_allot) e), 0))))
+     or exists (select 1 from jsonb_each(v_allot) e
+                 where not (v_purses0 ? e.key) or (e.value)::text::bigint <= 0
+                    or (e.value)::text::bigint > v_city_purse - (v_purses0 ->> e.key)::bigint) then
+    raise exception '0429 self-assert FAIL: the allotment is not one row a city given and its negative at Port Royal, each gift at most what the city lacked: % (before: %)', v_allot, v_purses0;
   end if;
-  if public.city_treasury_on() and public.city_surplus(public.pirate_capital()) >= public.wc_num('pirate_capital_purse') + 8 * public.wc_num('pirate_city_purse') then
-    if exists (select 1 from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR'
-                where a.nation_id = public.pirate_nation() and p.id <> public.pirate_capital() and public.treasury_balance(p.id) < public.wc_num('pirate_city_purse')) then
-      raise exception '0429 self-assert FAIL: a pirate city is under pirate_city_purse after the allotment: %', v_allot;
-    end if;
+  -- lit: every pirate city under pirate_city_purse was topped up to it exactly, unless Port Royal came down to pirate_capital_purse first
+  if exists (select 1 from jsonb_each(v_purses0) b
+              where public.city_treasury_on() and (b.value)::text::bigint < v_city_purse
+                and coalesce((v_allot ->> b.key)::bigint, 0) <> v_city_purse - (b.value)::text::bigint)
+     and public.city_surplus(v_cap) > v_cap_purse then
+    raise exception '0429 self-assert FAIL: a pirate city was not topped up to pirate_city_purse while Port Royal could pay: % (before: %)', v_allot, v_purses0;
   end if;
-  if public.city_treasury_on() and public.city_surplus(public.pirate_capital()) < public.wc_num('pirate_capital_purse')
-     and v_allot <> '{}'::jsonb then
+  if public.city_surplus(v_cap) < v_cap_purse and v_allot <> '{}'::jsonb then
     raise exception '0429 self-assert FAIL: the allotment took Port Royal under pirate_capital_purse';
   end if;
 

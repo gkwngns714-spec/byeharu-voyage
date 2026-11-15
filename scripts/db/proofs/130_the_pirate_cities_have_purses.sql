@@ -13,6 +13,8 @@
 -- @pass PP_ALLOT    every pirate harbour but Port Royal is topped up to 10 M from Port Royal, kind PIRATE_ALLOT, two rows a city; the world's money unmoved
 -- @pass PP_CARGO    the step makes the pirate cargo ships at Port Royal (one a minute), builds their circuit, loads what the pirate cities lack; she sails, tops a city up to 10 M, and never takes a new home; the world's money unmoved
 -- @pass PP_NEVER    never raided by pirates: a hunting pirate beside her finds no target, and a passage of hers names no pirate raider (a merchant's does)
+-- @pass PP_ONE_STATEMENT  as prod applies 0429: the knobs absent when the statement begins, written in it, then (lit, Port Royal rich, the cities under it)
+--                    the allotment tops every pirate city to the scene's 20 M, moved, and the minute's step runs without error, the knobs read as 0429 reads them
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 create function pg_temp.w_130() returns numeric language sql as $f$
@@ -136,6 +138,9 @@ begin
   raise notice 'PASS: PP_ALLOT — %, the world''s money unmoved', v_r;
 
   -- ── PP_CARGO ──
+  -- pinned (0430): the pirates' cargo ships are their share of cargo_fleet_total once the fleet sizes carry their row (7 on this world); this
+  -- scene is 0429's five, so their share is held at 5 (prod's, cargo_pirate_min). Before 0430 (no row) this touches nothing.
+  update public.cargo_fleet_sizes s set ships = 5 where s.nation_id = v_pir;
   select p.id into v_city from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR'
    where a.nation_id = v_pir and p.id <> v_cap order by p.code limit 1;
   perform public.treasury_post(v_city, 'PIRATE_ALLOT', -6000000, null, null);
@@ -202,5 +207,58 @@ begin
     raise exception 'PROOF 130 FAIL: the freeze: hers %, a merchant''s %', voyage.freeze_raiders(v_seg, v_cp), voyage.freeze_raiders(v_seg, v_m);
   end if;
   raise notice 'PASS: PP_NEVER — no pirate target beside her; her passage names no raider, a merchant''s names %', voyage.freeze_raiders(v_seg, v_m) -> 0 ->> 'raider';
+end
+$p$;
+
+-- ── PP_ONE_STATEMENT ── 0429 AS PROD APPLIES IT (its first push failed there, 2026-11-15): the knobs are not in the world when the statement
+-- begins; ONE statement writes them, then, lit, with Port Royal rich and every pirate city under the scene's purse, allots and steps. The knobs
+-- go first, in a statement of their own (rolled back with the proof's transaction), so the next statement begins without them, as on prod.
+-- The scene's city purse is 20 M, over what any pirate city holds after the scenes above.
+delete from public.world_config where key in ('pirate_hoard_floor', 'pirate_city_purse', 'pirate_capital_purse', 'pirate_cargo_ships', 'pirate_wakes_per_run');
+do $p$
+declare
+  t0      timestamptz := date_trunc('day', now()) + interval '1 day 8 hours';
+  v_cap   uuid := public.pirate_capital();
+  v_pir   uuid := public.pirate_nation();
+  v_city  bigint;
+  v_keep  bigint;
+  v_r     jsonb;
+  v_step  jsonb;
+  v_w0    numeric;
+  v_pre   jsonb;
+  v_hz    text;
+  v_n     int;
+  r       record;
+begin
+  perform pg_temp.purse_130(v_cap, 900000000);
+  insert into public.world_config (key, value, description) values
+    ('pirate_hoard_floor', to_jsonb(100000000), 'proof 130'), ('pirate_city_purse', to_jsonb(20000000), 'proof 130'),
+    ('pirate_capital_purse', to_jsonb(30000000), 'proof 130'), ('pirate_cargo_ships', to_jsonb(5), 'proof 130'), ('pirate_wakes_per_run', to_jsonb(20), 'proof 130');
+  -- THE HAZARD 0429 now keeps clear of: in this statement, a WHERE comparing against a knob written in it is planned under the statement's
+  -- first snapshot, and public.wc raises (22023). Reported, not required: it is the engine's behaviour, not this game's.
+  begin
+    v_n := (select count(*) from public.ports p where public.treasury_balance(p.id) < public.wc_num('pirate_city_purse'));
+    v_hz := 'read (no raise)';
+  exception when sqlstate '22023' then
+    v_hz := 'raised 22023';
+  end;
+  -- 0429's way: the knobs read into variables by plain expressions; the allotment and the minute's step read them themselves
+  v_city := public.wc_num('pirate_city_purse')::bigint;
+  v_keep := public.wc_num('pirate_capital_purse')::bigint;
+  v_w0 := pg_temp.w_130();
+  v_pre := (select jsonb_object_agg(p.code, public.treasury_balance(p.id)) from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR'
+             where a.nation_id = v_pir and p.id <> v_cap);
+  v_r := public.pirate_purses_allot(t0);
+  if exists (select 1 from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR'
+              where a.nation_id = v_pir and p.id <> v_cap
+                and (public.treasury_balance(p.id) <> v_city or (v_r ->> p.code)::bigint is distinct from v_city - (v_pre ->> p.code)::bigint))
+       or v_city <> 20000000 or public.city_surplus(v_cap) < v_keep or pg_temp.w_130() <> v_w0 then
+    raise exception 'PROOF 130 FAIL: the allotment in the statement that wrote its knobs: % (money moved by %)', v_r, pg_temp.w_130() - v_w0;
+  end if;
+  v_step := public.pirate_purse_step(t0 + interval '1 minute');
+  if v_step ? 'error' then
+    raise exception 'PROOF 130 FAIL: the minute''s step in the statement that wrote its knobs: %', v_step;
+  end if;
+  raise notice 'PASS: PP_ONE_STATEMENT — knobs written and read in one statement, lit: allotted %; step %; a WHERE against a just-written knob %', v_r, v_step, v_hz;
 end
 $p$;

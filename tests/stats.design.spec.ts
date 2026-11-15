@@ -51,6 +51,11 @@ const FACES = [
   // 0419 (owner row 339, "in stats, show like merchants navy, pirates, anad cargo"): the Ships face stands BEFORE Me in the strip
   // (statsFaces.ts). The walk opens faces by place, so without this row it measured Ships under Me's name and called Me's figures
   // gone. Ships is new, so U3 has nothing of an old face to keep there; its design laws are measured like every face's.
+  // 0431 (owner, 2026-11-15: "a separate tab for navy, pirates, and cargoships like merchants"): Navy, Pirates and Cargo stand after Merchants and
+  // before Ships. New faces: U3 has nothing of an old face to keep; their design laws are measured like every face's.
+  { name: 'Navy', panel: 'stats-navy-list', row: null, ids: [] },
+  { name: 'Pirates', panel: 'stats-pirates-list', row: null, ids: [] },
+  { name: 'Cargo', panel: 'stats-cargo-list', row: null, ids: [] },
   { name: 'Ships', panel: 'stats-ships-by-country', row: null, ids: [] },
   { name: 'Me', panel: 'stats-best-trades', row: null, ids: ['stats-me', 'stats-me-week', 'stats-me-bars'] },
 ] as const

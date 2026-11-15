@@ -11,7 +11,7 @@
 --   io_waiting          > 5 sessions on the disk now
 --   oldest_xact_s       > 300: a transaction open five minutes holds back every vacuum
 --   invalid_indexes     any: a REINDEX CONCURRENTLY was interrupted (RUNBOOK step 2: drop the _ccnew and run it again)
---   dead_pct            > 20 on a table over 50 MB: its vacuum is behind
+--   dead_pct            > 20 on a table over 50 MB: its vacuum is behind (port_goods left out: its dead rows are HOT, pruned on the page; 0428)
 --   hot_set_mb          > 700: the ten biggest tables' heap + indexes no longer fit the ~700 MB of cache the instance has
 --   cache_hit_pct       < 99 since the statistics were reset: the game reads the disk
 --   autovac_low         a table over 50 MB set to a fixed autovacuum threshold under 20,000 with scale factor 0, or autovacuum off
@@ -80,7 +80,10 @@ with beat as (
   union all select 'io_waiting ' || io_waiting || ' sessions on the disk (over 5)' from act where io_waiting > 5
   union all select 'oldest_xact_s ' || oldest_xact_s || ' (over 300): a long transaction holds every vacuum back' from act where oldest_xact_s > 300
   union all select 'invalid_index ' || i.indexrelid::regclass::text || ': drop it and rebuild (RUNBOOK step 2)' from pg_index i where not i.indisvalid
+  -- KNOWN, left out (0428): port_goods' dead rows are HOT versions pruned on their page at the next touch (99 % of its updates are HOT; its heap has
+  -- stood at 84 MB since 11-01 with no vacuum). Since 0420 its dead share is a 2-35 % saw every 13 minutes, not a vacuum behind; its size shows in top10.
   union all select 'dead_pct ' || dead_pct || ' on ' || tbl || ' (' || mb || ' MB): its vacuum is behind' from top10 where dead_pct > 20 and mb > 50
+                                                                                                                       and tbl <> 'public.port_goods'
   union all select 'hot_set_mb ' || sum(mb) || ': the ten biggest tables no longer fit ~700 MB of cache' from top10 having sum(mb) > 700
   union all select 'cache_hit_pct ' || pct || ' (under 99): the game reads the disk' from hit where pct < 99
   union all select 'autovac_low ' || tbl || ' ' || setting || ' (floor 20,000 with scale factor 0; or off)' from autovac_low

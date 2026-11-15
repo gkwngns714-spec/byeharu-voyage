@@ -1746,6 +1746,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-15 with migration 0419 (the owner: "in stats, show like merchants navy, pirates, anad cargo"): the Stats face
       // Ships' one READ, world.stats_fleets, over the count's small row (public.stats_fleets). No arguments. Landed WITH the face (features/stats/Ships.tsx).
       'worldStatsFleets',
+      // Pin moved deliberately 2026-11-15 with migration 0431 (the owner: "a separate tab for navy, pirates, and cargoships like merchants"): the faces
+      // Navy, Pirates and Cargo read world.stats_fleet_list (a kind's list, one row by key) and world.stats_fleet (one fleet's page). Landed WITH the
+      // faces (features/stats/Fleets.tsx).
+      'worldStatsFleetList', 'worldStatsFleet',
       // Pin moved deliberately 2026-11-15 with migration 0424 (the owner: "in port, there should be a beginner's gear for ships"):
       // STARTER GEAR, world.starter_gear(fleet) - a READ, no player id (her fleet's ships and each piece's state) - and its door
       // cmd.buy_starter(fleet, ship, item), a quay verb like the basket's: client-direct, no orders row, a fleet that is not

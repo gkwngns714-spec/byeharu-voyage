@@ -1,11 +1,10 @@
 -- ═════════════════════════════════════════════════════════════════════════════
 -- PROOF 35 — CARGO SHIPS FOLLOW WEALTH  (migration 0326, owner 2026-11-06: "bigger country with more cash - max 50, min 20"; "the country wealth will change, so will the cargoship numbers.")
 --
+--   0430 replaced the curve and its dead band by the share of cargo_fleet_total by harbours: proof 131 proves the number; SIZE_CURVE and SIZE_BAND left with it.
 --   0326's self-assert reads the catalog only. This proof sets every realm's purse by hand and runs the REAL job, commission, load, voyage engine and retire, both ways. The sea is stubbed quiet. The economy is CLOSED here, as on prod.
 --
--- @pass SIZE_CURVE     richest 50, poorest 20, a log between; a realm far under richest / span is at min and does not move the rest; all level is min
 -- @pass SIZE_FLAT_GONE no knob and no body names the flat number; convoy_ships_of reads the rest
--- @pass SIZE_BAND      inside the band a number stays; past it, it moves to the curve; a number outside min..max always moves; the curve is read once an hour
 -- @pass SIZE_RISE      the job makes a country's number, convoy_commission_per_run a run, one country a run, inside its ords; no purse moves
 -- @pass SIZE_NO_SURPLUS_LOAD a surplus ship takes no load
 -- @pass SIZE_FALL      surplus ships lay up highest ord first, convoy_retire_per_run a run; a ship at sea with funds is left alone until her lap is done, then she lays up with nothing aboard
@@ -63,47 +62,11 @@ end
 $b$
   $f$;
   execute $f$
-create function pg_temp.realm(p_code text, p_cash bigint)
-returns void
-language plpgsql
-as $b$
--- a probe's hand: the realm's whole cash in its capital, its other harbours at nothing
-declare
-  q record;
-  v_cap uuid := (select p.id from public.nations n join public.ports p on p.code = n.capital_port_code and p.kind = 'HARBOUR' where n.code = p_code);
-  v_nat uuid := (select n.id from public.nations n where n.code = p_code);
-begin
-  for q in select a.port_id from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR' where a.nation_id = v_nat loop
-    perform pg_temp.purse(q.port_id, case when q.port_id = v_cap then p_cash else 0 end);
-  end loop;
-end
-$b$
-  $f$;
-  execute $f$
-create function pg_temp.want(p_code text)
-returns int
-language sql
-as $b$
-  select w.ships from public.convoy_ships_wanted() w join public.nations n on n.id = w.nation_id where n.code = p_code
-$b$
-  $f$;
-  execute $f$
 create function pg_temp.size(p_code text)
 returns int
 language sql
 as $b$
   select public.convoy_ships_of(n.id) from public.nations n where n.code = p_code
-$b$
-  $f$;
-  execute $f$
-create function pg_temp.settle()
-returns int
-language plpgsql
-as $b$
-begin
-  update public.cargo_fleet_sizes set read_at = '2000-01-01';
-  return public.convoy_fleet_settle(now());
-end
 $b$
   $f$;
   execute $f$
@@ -150,40 +113,6 @@ $b$
   select id into v_nat3 from public.nations where code = 'JOS';
   v_cap := public.realm_capital(v_nat);
 
-  -- ── THE CURVE ── the prod numbers of 2026-11-06
-  perform pg_temp.realm('PRT', 4380000000);
-  perform pg_temp.realm('FRA', 3360000000);
-  perform pg_temp.realm('ESP', 2400000000);
-  perform pg_temp.realm('NLD', 1600000000);
-  perform pg_temp.realm('MNG', 640000000);
-  perform pg_temp.realm('OTT', 350000000);
-  perform pg_temp.realm('JPN', 290000000);
-  perform pg_temp.realm('MUG', 100000000);
-  perform pg_temp.realm('ENG', 72000000);
-  perform pg_temp.realm('JOS', 13000000);
-  if pg_temp.want('PRT') <> 50 or pg_temp.want('JOS') <> 20 or pg_temp.want('ENG') <> 23 or pg_temp.want('ESP') <> 46 or pg_temp.want('JPN') <> 32 then
-    raise exception 'PROOF 35 FAIL: the curve: PRT % JOS % ENG % ESP % JPN %', pg_temp.want('PRT'), pg_temp.want('JOS'), pg_temp.want('ENG'), pg_temp.want('ESP'), pg_temp.want('JPN');
-  end if;
-  v_n := pg_temp.want('ENG');
-  perform pg_temp.realm('JOS', 1);
-  if pg_temp.want('ENG') <> v_n or pg_temp.want('JOS') <> 20 then
-    raise exception 'PROOF 35 FAIL: a nearly broke realm moved another realm''s number';
-  end if;
-  perform pg_temp.realm('JOS', 13000000);
-  for r in select n.code from public.great_powers g join public.nations n on n.id = g.nation_id loop
-    perform pg_temp.realm(r.code, 5000000);
-  end loop;
-  if exists (select 1 from public.convoy_ships_wanted() w where w.ships <> 20) then
-    raise exception 'PROOF 35 FAIL: all level is not min';
-  end if;
-  -- a spread narrower than the span: the poorest is the anchor, still 20 and 50
-  perform pg_temp.realm('PRT', 50000000);
-  perform pg_temp.realm('JOS', 1000000);
-  if pg_temp.want('PRT') <> 50 or pg_temp.want('JOS') <> 20 or pg_temp.want('ENG') not between 21 and 49 then
-    raise exception 'PROOF 35 FAIL: a narrow spread: PRT % JOS % ENG %', pg_temp.want('PRT'), pg_temp.want('JOS'), pg_temp.want('ENG');
-  end if;
-  raise notice 'PASS: SIZE_CURVE — 50 for the richest, 20 for the poorest, the log between; a realm near nothing moves nobody';
-
   -- ── THE FLAT NUMBER ──
   if exists (select 1 from public.world_config c where c.key = 'convoy_ships_per_nation')
      or exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -195,33 +124,6 @@ $b$
     raise exception 'PROOF 35 FAIL: convoy_ships_of does not read the rest';
   end if;
   raise notice 'PASS: SIZE_FLAT_GONE — no knob, no body, one reader';
-
-  -- ── THE DEAD BAND ── wanted for ENG lies between; hold it within the band, then past it
-  perform pg_temp.realm('ENG', 10000000);
-  v_n := pg_temp.want('ENG');
-  update public.cargo_fleet_sizes s set ships = v_n + public.wc_int('convoy_ships_band') where s.nation_id = v_nat2;
-  perform pg_temp.settle();
-  if pg_temp.size('ENG') <> v_n + public.wc_int('convoy_ships_band') then
-    raise exception 'PROOF 35 FAIL: inside the band the number moved: % wanted %', pg_temp.size('ENG'), v_n;
-  end if;
-  update public.cargo_fleet_sizes s set ships = v_n + public.wc_int('convoy_ships_band') + 1 where s.nation_id = v_nat2;
-  perform pg_temp.settle();
-  if pg_temp.size('ENG') <> v_n then
-    raise exception 'PROOF 35 FAIL: past the band the number did not move to the curve';
-  end if;
-  update public.cargo_fleet_sizes s set ships = 51 where s.nation_id = v_nat;   -- outside min..max, by a band of the curve
-  perform pg_temp.settle();
-  if pg_temp.size('PRT') <> 50 then
-    raise exception 'PROOF 35 FAIL: a number outside min..max stayed';
-  end if;
-  update public.cargo_fleet_sizes s set ships = 40 where s.nation_id = v_nat;
-  if public.convoy_fleet_settle(now() + interval '59 minutes') <> 0 or pg_temp.size('PRT') <> 40 then
-    raise exception 'PROOF 35 FAIL: the curve was read inside the hour';
-  end if;
-  if public.convoy_fleet_settle(now() + interval '61 minutes') < 1 or pg_temp.size('PRT') <> 50 then
-    raise exception 'PROOF 35 FAIL: the curve was not read after the hour';
-  end if;
-  raise notice 'PASS: SIZE_BAND — within the band it holds, past it it moves, outside min..max it moves, read once an hour';
 
   -- ── UP ── a world of 4 and 12 ships; the job makes them
   update public.cargo_fleet_sizes s set ships = 4, read_at = v_now + interval '2 hours';
