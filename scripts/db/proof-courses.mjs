@@ -26,7 +26,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { navFromServed, floodFrom, floodPathTo, findPath } from '../../src/lib/sea/index.ts'
+import { navFromServed, floodFrom, floodPathTo, findPath, refineCourse, coastMaskFrom, coastLand } from '../../src/lib/sea/index.ts'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const CACHE = path.join(HERE, '.proof-courses.json')
@@ -43,7 +43,7 @@ const COVER_NM = 1900
  *  every course end from the quay to the ROADSTEAD without moving one water cell or one port.
  *  0085 moved 25 roadsteads onto their channels without moving a cell or a port either — the
  *  fingerprint now covers the served roadsteads too, and the shape is bumped for the same reason. */
-const SHAPE = '0085-served-roadstead'
+const SHAPE = '0442-sailed-course'
 
 /**
  * THE ROADSTEAD a place is reached from is READ, never re-derived. Until 0085 this file kept its
@@ -99,6 +99,7 @@ export async function installProofCourses(db, { log = console.log } = {}) {
   if (!cache) {
     const t0 = performance.now()
     const nav = navFromServed(raster)
+    const land = coastLand(coastMaskFrom(JSON.parse(readFileSync(path.join(HERE, '..', '..', 'public', 'coast', 'mask.json'), 'utf8'))), nav)
     // 0076: ROADSTEAD to ROADSTEAD, because that is the passage cmd.do_sail verifies. A proposal
     // that still began at the quay would be refused E_OFF_COURSE for every place whose roadstead
     // lies further from it than `course_join_nm` (15 nm, 0047:106) — a large minority of them.
@@ -112,7 +113,10 @@ export async function installProofCourses(db, { log = console.log } = {}) {
       if (!flood) throw new Error(`proof-courses: ${a.code}'s roadstead cannot reach water`)
       for (let j = i + 1; j < ports.length; j++) {
         const b = ports[j]
-        const r = floodPathTo(flood, ra, roads.get(b.code))
+        const r0 = floodPathTo(flood, ra, roads.get(b.code))
+        // 0442: THE COURSE A PLAYER SAILS. Since 0440 the browser re-sails the search's course off the drawn land before it sends it
+        // (src/domain/passage proposeCourse), and since 0442 the quay quotes that course's length. A proof sails the same course.
+        const r = r0 && { ...r0, path: refineCourse(nav, land, r0.path).path }
         if (!r || r.nm > COVER_NM) continue
         courses[`${a.code}|${b.code}`] = r.path.map(([lat, lon]) => [
           Number(lat.toFixed(4)),
@@ -126,7 +130,8 @@ export async function installProofCourses(db, { log = console.log } = {}) {
       if (!a || !b) throw new Error(`proof-courses: special pair ${ac}-${bc} names a missing port`)
       const key = ac < bc ? `${ac}|${bc}` : `${bc}|${ac}`
       if (courses[key]) continue
-      const r = findPath(nav, a, b)
+      const r0 = findPath(nav, a, b)
+      const r = r0 && { ...r0, path: refineCourse(nav, land, r0.path).path }
       if (!r) throw new Error(`proof-courses: no course for special pair ${ac}-${bc}`)
       courses[key] = r.path.map(([lat, lon]) => [Number(lat.toFixed(4)), Number(lon.toFixed(4))])
     }
