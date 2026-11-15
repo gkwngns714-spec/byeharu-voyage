@@ -34,6 +34,9 @@ begin
   -- 0421 moved pirate_add_minutes 10 -> 5 (the roster fills faster). This proof's ticks were spaced for 10 (7 h then 7 h 5 min): pinned to 10
   -- here, rolled back with the proof, so the scene stays the one it was written for. Proof 118 is the roster at the live pace.
   update public.world_config set value = to_jsonb(10) where key = 'pirate_add_minutes';
+  -- 0427 moved pirate_respawn_minutes 60 -> 5. PH_REBORN's ticks are spaced for 60 (a check at 30 minutes, the rebirth at 61): pinned to 60 here,
+  -- rolled back with the proof. Proof 128 reads the live knob.
+  update public.world_config set value = to_jsonb(60) where key = 'pirate_respawn_minutes';
   -- PH_ORDER
   if (select count(*) from public.pirate_hubs hb join public.port_allegiance a on a.port_id = hb.port_id where a.nation_id = v_pir and not a.home) <> 5
      or (select jsonb_object_agg(g.ground, g.s) from (select hb.ground, sum(x.n) as s from public.pirate_hubs hb join public.pirate_roster r on r.hub_port = hb.port_id
