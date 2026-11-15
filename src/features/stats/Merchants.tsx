@@ -19,7 +19,6 @@ import {
   Row,
   Segmented,
   Skeleton,
-  StackedBar,
   StatCell,
   Tray,
   ALL,
@@ -28,7 +27,7 @@ import {
   useFilterChoice,
   type RankRow,
 } from '../../components/ui'
-import { formatDucats, formatDucatsDelta, formatInt, formatPct } from '../../lib/format'
+import { formatDucats, formatDucatsDelta, formatInt, formatKoreaTime, formatPct, instantMs } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsMerchants, type StatsMerchantHouse, type StatsMerchants } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
@@ -40,6 +39,7 @@ import { companyLines } from '../../live/historyLines'
 import { firstAtMs, useChartNews } from '../../live/useChartNews'
 import { useChartSpan } from '../../store/chartSpan'
 import { MERCHANT_SORTS, countriesOf, sortMerchants } from './statsFilters'
+import { FleetStates } from './FleetStatesBar'
 
 // MERCHANTS — the companies the world keeps, ALL ON THE FACE (owner, 2026-11-01, row 260), in cards (2026-11-02, row 267:
 // *"it looks so wrong … too packed"*). MAIN | SIDE (screenLayout.ts "THE PAGE"): the SIDE — the tray's column — holds the
@@ -68,13 +68,6 @@ export function MerchantsFace() {
   if (!v) return <Note tone="danger">{t('stats.merchantsFailed')}</Note>
   if (v.houses === undefined) return <Empty data-testid="stats-empty">{t('stats.noFigures')}</Empty>
 
-  const states = [
-    { id: 'sailing', label: t('stats.sailing'), value: v.sailing ?? 0, tone: 'info' as const },
-    { id: 'docked', label: t('stats.inPort'), value: v.docked ?? 0, tone: 'success' as const },
-    { id: 'repairing', label: t('stats.repairing'), value: v.repairing ?? 0, tone: 'warning' as const },
-    { id: 'unable', label: t('stats.cannotSail'), value: v.unable ?? 0, tone: 'danger' as const },
-    { id: 'laid_up', label: t('stats.laidUp'), value: v.laid_up ?? 0, tone: 'neutral' as const },
-  ]
   const houses = (list: readonly StatsMerchantHouse[]): RankRow[] =>
     list.map((h) => ({
       id: h.name,
@@ -89,6 +82,7 @@ export function MerchantsFace() {
       note: t('stats.laps', { n: formatInt(h.laps), count: h.laps }),
     }))
 
+  const countedMs = instantMs(v.counted_at)
   const list = v.list ?? []
   const countries = countriesOf(list.map((h) => h[1]))
     .map((code) => ({ id: code, label: nationNameOf(nationByCode, code) }))
@@ -122,7 +116,7 @@ export function MerchantsFace() {
               />
             </Card>
             <Card title={t('stats.fleetsAtSea')} data-testid="stats-chart-sea">
-              <Counter value={v.sailing ?? 0} format={formatInt} size="figure" />
+              <Counter value={v.sea ?? 0} format={formatInt} size="figure" />
               <StatsChart
                 look="chart"
                 title={t('stats.fleetsAtSea')}
@@ -257,8 +251,14 @@ export function MerchantsFace() {
           </Card>
 
           <Card title={t('stats.whereFleets')} data-testid="stats-merchant-fold">
-            <Figure value={formatInt(v.fleets ?? 0)} size="figure" />
-            <StackedBar parts={states} format={formatInt} label={t('stats.whereFleets')} className="mt-4" data-testid="stats-merchant-states" />
+            {/* 0448: the COUNT's tally, the same figures, words and order as the merchants' card on the Ships face (FleetStatesBar.tsx). It was a
+                live read by another rule, and its five figures did not add up to the fleets. */}
+            <FleetStates tally={v} label={t('stats.whereFleets')} data-testid="stats-merchant-states" />
+            {countedMs !== null && (
+              <Hint className="mt-3" data-testid="stats-merchant-counted">
+                {t('stats.countedAt', { time: formatKoreaTime(countedMs) })}
+              </Hint>
+            )}
           </Card>
         </>
       }
