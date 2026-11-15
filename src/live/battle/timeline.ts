@@ -229,6 +229,20 @@ export function barLock(tl: TickTimeline, side: SideState, code: TickAbilityCode
   return 'ready'
 }
 
+/** 0450: the chance (per cent) a run of `side` would slip away at `tick`, as the SERVER computed it (`rc`: her level against
+ *  theirs, her hull and crew, her failed attempts, the floor and the cap are all in it; nothing is re-derived here). Null:
+ *  a timeline from before 0450, or no figure yet. */
+export function runChanceAt(tl: TickTimeline, side: 0 | 1, tick: number): number | null {
+  const steps = side === 0 ? tl.rc?.a : tl.rc?.b
+  if (!Array.isArray(steps)) return null
+  let pct: number | null = null
+  for (const step of steps) {
+    if (!Array.isArray(step) || num(step[0]) > tick) break
+    pct = num(step[1])
+  }
+  return pct
+}
+
 /** The tick the server's clock is at, from a read: floor((now - started_at) / ms), never under 0. */
 export function serverTick(startedAt: string, now: string, ms: number): number {
   const d = Date.parse(now) - Date.parse(startedAt)

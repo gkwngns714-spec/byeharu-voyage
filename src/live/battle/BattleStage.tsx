@@ -5,7 +5,7 @@ import { sceneSize, shipPose, type SceneSize } from './scene'
 import type { BattleEvent, BattleState } from './timeline'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE STAGE (0435, docs/design/tick-combat.md 11): the ships ENLARGED, our own plain SVG hulls seen from above, circling.
+// THE STAGE (0435, docs/design/tick-combat.md 11): our own plain SVG hulls seen from above, circling.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TWO CLOCKS, ON PURPOSE. React draws once a TICK (600 ms): the hull bars, the brace ring, who is down, and the tick's
 // effects (a flash and smoke at the gun, a tracer, a splash at a miss, the hit number rising, larger at a crit). Between
@@ -13,13 +13,20 @@ import type { BattleEvent, BattleState } from './timeline'
 // nothing else 60 times a second. Each effect is a CSS animation keyed by its event, mounted for two ticks.
 // REDUCED MOTION: no loop at all, the orbit held still; each tick's effects stand still for their two ticks (the
 // `data-motion` rule in src/index.css), and a ship that is down is drawn down.
+// SMALLER SHIPS, A WIDER SEA (owner 2026-11-16: "fighting graphics (ships), make it smaller, and fight scene more wider"):
+// a hull is drawn at SHIP_SCALE (six tenths of what it was), her bar, her name and her brace ring with her; the hit numbers
+// and the ability's word keep their size, so they stay readable. The wider circle is ./scene.ts.
 
 const SIDE_TONE = ['var(--color-info)', 'var(--color-danger)'] as const
 const HULL_FILL = 'color-mix(in srgb, var(--color-accent) 30%, var(--color-bg))'
 const DECK_FILL = 'color-mix(in srgb, var(--color-accent) 48%, var(--color-bg))'
 
+/** A hull's drawn size against the shape's own units: six tenths (it was 1). */
+const SHIP_SCALE = 0.6
+/** A hit number (and a patch's) begins this far above her middle: over her bar and her name, which sit close on a small hull. */
+const NUM_UP = 80
 /** How much bigger a heavier hull is drawn. */
-const tierScale = (t: number) => 1.02 + Math.min(5, Math.max(1, t || 1)) * 0.08
+const tierScale = (t: number) => (1.02 + Math.min(5, Math.max(1, t || 1)) * 0.08) * SHIP_SCALE
 
 function hullTone(share: number) {
   return share > 0.5 ? 'var(--color-success)' : share > 0.25 ? 'var(--color-warning)' : 'var(--color-danger)'
@@ -143,15 +150,15 @@ export function BattleStage({
       fx.push(
         <g key={`f${ev.id}`}>
           <line className="bv-bt-fx bv-bt-trace" x1={from.x} y1={from.y} x2={to.x + jx} y2={to.y} stroke="var(--color-harbour-light)" strokeWidth={2} />
-          <circle className="bv-bt-fx bv-bt-smoke" cx={from.x} cy={from.y} r={26} fill="var(--color-ink)" />
-          <circle className="bv-bt-fx bv-bt-flash" cx={from.x} cy={from.y} r={14} fill="var(--color-harbour-light)" />
+          <circle className="bv-bt-fx bv-bt-smoke" cx={from.x} cy={from.y} r={17} fill="var(--color-ink)" />
+          <circle className="bv-bt-fx bv-bt-flash" cx={from.x} cy={from.y} r={10} fill="var(--color-harbour-light)" />
           {ev.dmg > 0 ? (
             <text
               className={`bv-bt-fx bv-bt-num${ev.crit ? ' bv-bt-crit' : ''}`}
               data-testid="battle-hit"
               data-crit={ev.crit ? '1' : '0'}
               x={to.x + jx}
-              y={to.y - 34}
+              y={to.y - NUM_UP}
               textAnchor="middle"
               fontSize={ev.crit ? 40 : 28}
               fontWeight={ev.crit ? 800 : 700}
@@ -163,7 +170,7 @@ export function BattleStage({
               {`-${Math.round(ev.dmg)}${ev.crit ? '!' : ''}`}
             </text>
           ) : (
-            <g transform={`translate(${to.x + jx * 3} ${to.y + 34})`}>
+            <g transform={`translate(${to.x + jx * 2} ${to.y + 26}) scale(0.75)`}>
               <g className="bv-bt-fx bv-bt-splash" data-testid="battle-splash">
                 <path d="M -12 0 L -6 -22 L 0 -6 L 6 -26 L 12 0 Z" fill="var(--color-ship-light)" fillOpacity={0.8} />
                 <ellipse cx={0} cy={2} rx={22} ry={6} fill="none" stroke="var(--color-ship-light)" strokeWidth={2} />
@@ -175,7 +182,7 @@ export function BattleStage({
     } else if (ev.kind === 'patch') {
       const at = poseAt(ev.s, ev.i, ev.t)
       fx.push(
-        <text key={`p${ev.id}`} className="bv-bt-fx bv-bt-num" x={at.x} y={at.y - 34} textAnchor="middle" fontSize={28} fontWeight={700} fill="var(--color-success)" stroke="var(--color-bg)" strokeWidth={4} paintOrder="stroke">
+        <text key={`p${ev.id}`} className="bv-bt-fx bv-bt-num" x={at.x} y={at.y - NUM_UP} textAnchor="middle" fontSize={28} fontWeight={700} fill="var(--color-success)" stroke="var(--color-bg)" strokeWidth={4} paintOrder="stroke">
           {`+${Math.round(ev.amount)}`}
         </text>,
       )
@@ -183,7 +190,7 @@ export function BattleStage({
       const i = Math.max(0, state.ships[ev.s].findIndex((x) => x.up && !x.struck))
       const at = poseAt(ev.s, i, ev.t)
       fx.push(
-        <text key={`u${ev.id}`} className="bv-bt-fx bv-bt-call" data-testid="battle-call" x={at.x} y={at.y + 78} textAnchor="middle" fontSize={24} fontWeight={700} fill="var(--color-accent)" stroke="var(--color-bg)" strokeWidth={4} paintOrder="stroke">
+        <text key={`u${ev.id}`} className="bv-bt-fx bv-bt-call" data-testid="battle-call" x={at.x} y={at.y + 56} textAnchor="middle" fontSize={24} fontWeight={700} fill="var(--color-accent)" stroke="var(--color-bg)" strokeWidth={4} paintOrder="stroke">
           {t(`battle.ab_${ev.code}` as never)}
         </text>,
       )
@@ -223,20 +230,20 @@ export function BattleStage({
                     </g>
                   </g>
                 </g>
-                {braced && <circle data-testid="battle-brace" r={78} fill="none" stroke="var(--color-info)" strokeWidth={3} strokeDasharray="10 8" opacity={0.8} />}
+                {braced && <circle data-testid="battle-brace" r={50} fill="none" stroke="var(--color-info)" strokeWidth={2.5} strokeDasharray="8 6" opacity={0.8} />}
                 {/* her hull bar, level whatever her heading */}
-                <g transform="translate(-50 -78)">
-                  <rect width={100} height={10} rx={5} fill="var(--color-chart-deep)" opacity={0.85} />
-                  <rect data-testid="battle-hp" data-hull={Math.round(sh.hull)} width={100 * share} height={10} rx={5} fill={hullTone(share)} />
+                <g transform="translate(-33 -52)">
+                  <rect width={66} height={8} rx={4} fill="var(--color-chart-deep)" opacity={0.85} />
+                  <rect data-testid="battle-hp" data-hull={Math.round(sh.hull)} width={66 * share} height={8} rx={4} fill={hullTone(share)} />
                 </g>
                 {/* her name only where a side has more than one ship: a lone ship's is the side's own, above the stage */}
                 {side.length > 1 && (
-                  <text y={-90} textAnchor="middle" fontSize={20} fontWeight={600} fill="var(--color-ink)" stroke="var(--color-bg)" strokeWidth={4} paintOrder="stroke">
+                  <text y={-60} textAnchor="middle" fontSize={18} fontWeight={600} fill="var(--color-ink)" stroke="var(--color-bg)" strokeWidth={4} paintOrder="stroke">
                     {sh.ship.n}
                   </text>
                 )}
                 {sh.struck && (
-                  <text y={8} textAnchor="middle" fontSize={22} fontWeight={700} fill="var(--color-danger)" stroke="var(--color-bg)" strokeWidth={4} paintOrder="stroke">
+                  <text y={7} textAnchor="middle" fontSize={19} fontWeight={700} fill="var(--color-danger)" stroke="var(--color-bg)" strokeWidth={4} paintOrder="stroke">
                     {t('battle.sunk')}
                   </text>
                 )}

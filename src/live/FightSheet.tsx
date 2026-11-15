@@ -65,6 +65,8 @@ function Side({ title, sides, hullPct, testId }: { title: string; sides: readonl
         >
           <span className="break-words text-t-caption text-ink-muted">
             {(s.kind === 'COMPANY' || s.kind === 'MERCHANT') && s.company ? <span data-testid="fight-side-company">{s.company} · </span> : null}
+            {/* 0450: her fleet's best level beside her ship count (the ship panel's own "Lv n") */}
+            {typeof s.lv === 'number' ? <span data-testid="fight-side-level">{t('ship.level', { n: formatInt(s.lv) })} · </span> : null}
             {t('fight.shipsN', { n: formatInt(s.ships) })}
             {!s.here && ` · ${t('fight.onWay')}`}
           </span>

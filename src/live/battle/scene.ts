@@ -31,8 +31,8 @@ const LAP_S = 56
 const JOIN_TICKS = 4
 const TURN_BACK_TICKS = 8
 const FADE_TICKS = 6
-/** how near the edge a ship's middle may come: half a hull, so she is never cut */
-const EDGE = 80
+/** how near the edge a ship's middle may come: half a hull (drawn at six tenths since 2026-11-16), so she is never cut */
+const EDGE = 52
 
 const smooth = (x: number) => {
   const c = Math.min(1, Math.max(0, x))
@@ -45,8 +45,11 @@ function orbit(side: number, idx: number, count: number, sec: number, size: Scen
   // 62 % down (it was 54 %), so there is clear air under the two sides' bars. The circle is no taller than the room
   // left under it (a hull's half-length from the bottom edge), so no ship is pressed flat against the edge.
   const cy = size.h * 0.62
-  const rx = size.w * 0.3
-  const ry = Math.max(70, Math.min(Math.max(size.h * 0.26, 110), size.h - EDGE - cy))
+  // A WIDER CIRCLE (owner 2026-11-16: "fight scene more wider"): the sides sail 38 % of the stage out from its middle (it
+  // was 30 %), so with the smaller hulls they sit well apart and the sea between them is seen.
+  // (a narrow glass keeps a hull's length clear of each edge)
+  const rx = Math.min(size.w * 0.38, size.w / 2 - 110)
+  const ry = Math.max(50, Math.min(Math.max(size.h * 0.28, 90), size.h - EDGE - cy))
   const spread = Math.min(0.9, 1.8 / Math.max(1, count))
   const theta = (side === 0 ? Math.PI : 0) + (sec / LAP_S) * Math.PI * 2 + (idx - (count - 1) / 2) * spread
   const k = 1 - 0.22 * (idx % 2)
@@ -98,7 +101,8 @@ function place(side: number, idx: number, count: number, sec: number, tf: number
   }
   if (ship?.up && !(ship.upAt > 0 && tf < ship.upAt + JOIN_TICKS)) {
     x = Math.min(size.w - EDGE, Math.max(EDGE, x))
-    y = Math.min(size.h - EDGE, Math.max(EDGE + 30, y))
+    // the top keeps room for her bar, her name and a hit number over them
+    y = Math.min(size.h - EDGE, Math.max(EDGE + 56, y))
   }
   return { x, y, alpha }
 }
@@ -113,9 +117,11 @@ export function shipPose(side: number, idx: number, count: number, sec: number, 
   return { x: a.x, y: a.y, heading, alpha: a.alpha }
 }
 
-/** The stage's drawing box for a glass of `w` x `h` px: a narrow glass gets a smaller box, so the ships are drawn larger. */
+/** The stage's drawing box for a glass of `w` x `h` px: a narrow glass gets a smaller box, so the ships are drawn larger.
+ *  The box takes the glass's own shape down to a quarter as tall as it is wide (it was 0.42), so a wide, low stage is
+ *  filled edge to edge and not letter-boxed. */
 export function sceneSize(w: number, h: number): SceneSize {
   const sw = Math.round(Math.min(1100, Math.max(620, w * 1.6)))
-  const sh = Math.round(Math.min(sw * 1.8, Math.max(sw * 0.42, (sw * h) / Math.max(1, w))))
+  const sh = Math.round(Math.min(sw * 1.8, Math.max(sw * 0.25, (sw * h) / Math.max(1, w))))
   return { w: sw, h: sh }
 }
