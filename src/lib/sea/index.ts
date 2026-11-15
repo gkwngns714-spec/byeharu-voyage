@@ -29,6 +29,7 @@ export {
 export {
   refineCourse,
   courseIsWater,
+  courseRefusedAt,
   courseLandRuns,
   segmentLandRuns,
   LAND_TOLERANCE_NM,

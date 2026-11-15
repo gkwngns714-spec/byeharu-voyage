@@ -27,7 +27,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { lonLerp } from '../geo/index.ts'
-import { gcNm, type SeaNav } from './grid.ts'
+import { colOf, gcNm, rowOf, type SeaNav } from './grid.ts'
 import { findPath, segmentIsWater, type SeaPath } from './pathfind.ts'
 
 /** The fine grid's cells a degree: 0.025 degrees, 1.5 nm north-south. */
@@ -113,9 +113,10 @@ const pointAt = (a: readonly [number, number], b: readonly [number, number], f: 
   lonLerp(a[1], b[1], f),
 ]
 
-/** THE SERVER'S APPROACH SLACK: voyage.path_refusal lets a course's first and last stretch run
- *  over raster land for the harbour's snap plus this flat allowance (0076), so a course joined to
- *  its roadstead is judged here exactly as cmd.do_sail judges it. */
+/** THE SERVER'S APPROACH ALLOWANCE (0076, 0441): an end of a course that stands on raster LAND may
+ *  run over that land, unbroken, for this far before it reaches water (voyage.path_refusal). A
+ *  roadstead is water, so a course between two harbours has no allowance at either end: every
+ *  sample of it is read (./pathfind.ts segmentIsWater holds the rule). */
 export const APPROACH_SLACK_NM = 25
 
 /** Is the straight line A→B clear by both rules? `head`/`tail`: it starts/ends the course. */
@@ -134,14 +135,57 @@ function clear(
   )
 }
 
-/** Does every segment of a course verify against the raster, as voyage.path_refusal reads it? */
-export function courseIsWater(nav: SeaNav, path: SeaPath): boolean {
-  for (let k = 1; k < path.length; k++) {
-    const head = k === 1 ? APPROACH_SLACK_NM : 0
-    const tail = k === path.length - 1 ? APPROACH_SLACK_NM : 0
-    if (!segmentIsWater(nav, path[k - 1], path[k], head, tail)) return false
+/**
+ * Does a course verify against the raster? THE MIRROR of voyage.path_refusal's sampling (0441),
+ * over the whole course: the same half-cell samples, the same rule for an end's approach (an end on
+ * land may leave it in one unbroken run inside its allowance; an end on water has none; a course
+ * that never reaches water is refused). `headNm`/`tailNm` are what cmd.do_sail grants: 25 at a
+ * harbour, her measured snap plus 25 at a fleet's own position.
+ */
+export function courseIsWater(nav: SeaNav, path: SeaPath, headNm = APPROACH_SLACK_NM, tailNm = APPROACH_SLACK_NM): boolean {
+  return courseRefusedAt(nav, path, headNm, tailNm) === null
+}
+
+/** Where voyage.path_refusal would refuse a course (the land sample it names), or null for water. */
+export function courseRefusedAt(
+  nav: SeaNav,
+  path: SeaPath,
+  headNm = APPROACH_SLACK_NM,
+  tailNm = APPROACH_SLACK_NM,
+): [number, number] | null {
+  const n = path.length
+  if (n < 2) return n ? [path[0][0], path[0][1]] : [0, 0]
+  const wet = (p: readonly [number, number]) => nav.cells[rowOf(nav, p[0]) * nav.cols + colOf(nav, p[1])] !== 0
+  let total = 0
+  for (let k = 1; k < n; k++) total += gcNm(path[k - 1][0], path[k - 1][1], path[k][0], path[k][1])
+  let headOpen = headNm > 0 && !wet(path[0])
+  const tailOpen = tailNm > 0 && !wet(path[n - 1])
+  let tailRun: [number, number] | null = null
+  let done = 0
+  for (let k = 1; k < n; k++) {
+    const a = path[k - 1]
+    const b = path[k]
+    const nm = gcNm(a[0], a[1], b[0], b[1])
+    const steps = Math.max(2, Math.ceil(nm / (nav.cellDeg * 60 * 0.5)))
+    for (let s = 1; s < steps; s++) {
+      const f = s / steps
+      const at = done + f * nm
+      const p: [number, number] = [a[0] + (b[0] - a[0]) * f, lonLerp(a[1], b[1], f)]
+      if (wet(p)) {
+        if (tailRun) return tailRun
+        headOpen = false
+        continue
+      }
+      if (headOpen && at < headNm) continue
+      if (tailOpen && total - at < tailNm) {
+        tailRun ??= p
+        continue
+      }
+      return p
+    }
+    done += nm
   }
-  return true
+  return headOpen && tailOpen ? [path[0][0], path[0][1]] : null
 }
 
 /**

@@ -1,11 +1,11 @@
 {
- "note": "scripts/db/audit-land-crossings.mjs --write-known. Courses and roadsteads still on the drawn land (owner row 352). EMPTY since 0440: a new crossing is fixed (scripts/build-land-channels.mjs), never listed. This list may only shrink.",
+ "note": "scripts/db/audit-land-crossings.mjs --write-known. Courses and roadsteads still on the drawn land (owner row 352). EMPTY since 0440, and the pair sample crosses 0 times since 0441 (Panama City to Portobelo went by the approach allowance): a new crossing is fixed (scripts/build-land-channels.mjs, scripts/build-isthmus.mjs), never listed. This list may only shrink.",
  "toleranceNm": 2,
  "crossings": [],
  "roadsteads": [],
  "pairSample": {
   "every": 22,
   "pairs": 3471,
-  "crossing": 1
+  "crossing": 0
  }
 }

@@ -4,8 +4,10 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 //   node scripts/db/audit-land-crossings.mjs [world-image.tar.gz] [--pairs [--raw]] [--all] [--json out.json]
-//                                            [--apply <migration.sql>] [--write-known]
+//                                            [--apply <migration.sql>] [--write-known] [--allowance]
 //                                            [--prod prod-courses.json [--legs prod-legs.json]]
+//   (--allowance, 0441: the straight line between every two harbours' roadsteads, by the approach rule as it
+//   stood before 0441 and as it stands: which lines an allowance alone let through, and over how much land)
 //   (--prod: audit PRODUCTION's own courses, exported read-only by scripts/ops/harness/no-land/prod-courses.sql
 //   and prod-legs.sql, on this image's raster; fails on anything not in land-crossings.prod-known.json)
 //   (--apply: apply a migration not yet in the image first, rolled back after; --write-known: write
@@ -35,6 +37,11 @@
 // cell the game opened ON PURPOSE (land in 1:110m, water in the served raster: a declared channel,
 // a river or strait such as the Thames or the Bosphorus; scripts/sea-grid.mjs CHANNELS).
 //
+// REFUSED (0441): a stored course the SERVER'S OWN LAW refuses (voyage.path_refusal, mirrored by
+// src/lib/sea/refine.ts courseRefusedAt): a raster land sample outside an end's own approach. A
+// merchant sent down such a lane is refused E_LAND at cmd.do_sail, so it is listed like a crossing
+// (lanes, route legs, coast courses and the pairs; not the frozen legs, which no order judges).
+//
 // A CROSSING is a run of consecutive samples (every 0.25 nm) on that land longer than TOLERANCE_NM
 // (2 nm: the chart's mid-level coast is itself simplified by 0.03 degrees, 1.8 nm). A run that
 // begins at a course's first point, or ends at its last, when that point is itself on drawn land,
@@ -55,7 +62,7 @@ import { PGlite } from '@electric-sql/pglite'
 import { drawnLand, gcNm } from '../lib/drawn-land.mjs'
 import { riverCarvedCells, rowOf as gridRow, colOf as gridCol, COLS as GRID_COLS } from '../sea-grid.mjs'
 import { navFromServed, floodFrom, floodPathTo } from '../../src/lib/sea/index.ts'
-import { segmentLandRuns, refineCourse, LAND_TOLERANCE_NM } from '../../src/lib/sea/refine.ts'
+import { segmentLandRuns, refineCourse, courseRefusedAt, LAND_TOLERANCE_NM } from '../../src/lib/sea/refine.ts'
 import { coastMaskFrom, coastLand } from '../../src/lib/sea/coastMask.ts'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -227,16 +234,29 @@ export function auditWorld(world, { pairs = false, raw = false, pairFilter = nul
   const crossings = []
   const seen = new Map()
   const counted = { npc: 0, route: 0, coast: 0, leg: 0, roadstead: 0, pair: 0 }
-  const add = (kind, key, course, rows = 1, text = null) => {
+  const add = (kind, key, course, rows = 1, text = null, law = true) => {
     const c = crossingsOf(truth, course)
-    if (!c.length) return
+    // 0441: the server's own law, as cmd.do_sail judges a course between two harbours' roads. Not asked of a
+    // frozen leg: its pieces are a lane's segments cut shorter (voyage.segments_from_course), read at other
+    // samples, and no order judges them (a circuit departs by voyage.depart). A leg is held to the drawn land.
+    const at = law ? courseRefusedAt(nav, course) : null
+    if (!c.length && !at) return
     const id = `${kind} ${key}`
     const had = seen.get(id)
     if (had) {
       had.rows += rows
       return
     }
-    const entry = { kind, key: id, rows, text, worst: c.reduce((m, x) => (x.nm > m.nm ? x : m)), runs: c.length, landNm: Math.round(c.reduce((s, x) => s + x.nm, 0) * 10) / 10 }
+    const entry = {
+      kind,
+      key: id,
+      rows,
+      text,
+      refused: at ? [round3(at[0]), round3(at[1])] : null,
+      worst: c.length ? c.reduce((m, x) => (x.nm > m.nm ? x : m)) : { seg: 0, nm: 0, at: [round3(at[0]), round3(at[1])] },
+      runs: c.length,
+      landNm: Math.round(c.reduce((s, x) => s + x.nm, 0) * 10) / 10,
+    }
     seen.set(id, entry)
     crossings.push(entry)
   }
@@ -251,7 +271,7 @@ export function auditWorld(world, { pairs = false, raw = false, pairFilter = nul
   }
   for (const l of world.legs ?? []) {
     counted.leg += l.rows
-    add('leg', l.key, l.course, l.rows, l.text)
+    add('leg', l.key, l.course, l.rows, l.text, false)
   }
   for (const c of world.coast ?? []) {
     counted.coast++
@@ -286,6 +306,71 @@ export function auditWorld(world, { pairs = false, raw = false, pairFilter = nul
   return { counted, crossings, roadsteads }
 }
 
+/** THE APPROACH RULE AS IT STOOD BEFORE 0441 (0046, 0076): every sample within the allowance of an end
+ *  was skipped unread. Kept here only so the audit can say what that let through. */
+export function flatAllowanceIsWater(nav, course, headNm = 25, tailNm = 25) {
+  let total = 0
+  for (let k = 1; k < course.length; k++) total += gcNm(course[k - 1][0], course[k - 1][1], course[k][0], course[k][1])
+  let done = 0
+  for (let k = 1; k < course.length; k++) {
+    const [a, b] = [course[k - 1], course[k]]
+    const nm = gcNm(a[0], a[1], b[0], b[1])
+    const steps = Math.max(2, Math.ceil(nm / (nav.cellDeg * 60 * 0.5)))
+    let dLon = b[1] - a[1]
+    if (dLon > 180) dLon -= 360
+    else if (dLon < -180) dLon += 360
+    for (let s = 1; s < steps; s++) {
+      const f = s / steps
+      if (done + f * nm < headNm || total - (done + f * nm) < tailNm) continue
+      const lat = a[0] + (b[0] - a[0]) * f
+      const lon = a[1] + dLon * f
+      const row = Math.min(nav.rows - 1, Math.max(0, Math.floor((90 - lat) / nav.cellDeg)))
+      const col = ((Math.floor((lon + 180) / nav.cellDeg) % nav.cols) + nav.cols) % nav.cols
+      if (!nav.cells[row * nav.cols + col]) return false
+    }
+    done += nm
+  }
+  return true
+}
+
+/**
+ * THE ALLOWANCE AUDIT (0441, the owner: "no ship crosses land, ever"). The straight line between every
+ * two harbours' roadsteads, which is what cmd.do_sail tries for a SAIL sent with no course:
+ *   accepted     the rule as it stood (a flat 25 nm unread at each end) let it through
+ *   byAllowance  ... only because of the allowance: the rule as it stands refuses it (raster land under it)
+ *   canals       ... and it runs over more than the tolerance of DRAWN land: a canal (Panama City to Portobelo)
+ *   still        lines the rule as it stands accepts with a raster land sample under them: must be none
+ *   unseen       lines the rule accepts over drawn land the 0.25-degree raster cannot see (no allowance is
+ *                involved: the server holds no coast mask; the browser's course author re-sails every course)
+ */
+export function auditAllowance(world) {
+  const nav = navFromServed(world.raster)
+  const truth = truthLand(nav)
+  const harbours = world.ports.filter((p) => Number.isFinite(p.rlat))
+  const out = { pairs: 0, accepted: 0, byAllowance: 0, canals: [], still: [], unseen: 0 }
+  for (let i = 0; i < harbours.length; i++) {
+    for (let j = i + 1; j < harbours.length; j++) {
+      const a = [harbours[i].rlat, harbours[i].rlon]
+      const b = [harbours[j].rlat, harbours[j].rlon]
+      if (a[0] === b[0] && a[1] === b[1]) continue
+      out.pairs++
+      const now = courseRefusedAt(nav, [a, b]) === null
+      if (now && courseRefusedAt(nav, [a, b], 0, 0) !== null) out.still.push(`${harbours[i].code}-${harbours[j].code}`)
+      if (!flatAllowanceIsWater(nav, [a, b])) continue
+      out.accepted++
+      const land = crossingsOf(truth, [a, b]).reduce((s, x) => s + x.nm, 0)
+      if (now) {
+        if (land > 0) out.unseen++
+        continue
+      }
+      out.byAllowance++
+      if (land > 0) out.canals.push({ key: `${harbours[i].code}-${harbours[j].code}`, a: harbours[i].name, b: harbours[j].name, nm: Math.round(gcNm(a[0], a[1], b[0], b[1]) * 10) / 10, landNm: Math.round(land * 10) / 10 })
+    }
+  }
+  out.canals.sort((x, y) => x.nm - y.nm)
+  return out
+}
+
 // ── CLI ─────────────────────────────────────────────────────────────────────────────────────────
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2)
@@ -311,6 +396,18 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     world = worldFromExport(world, unwrap(prodFile), legsFile ? unwrap(legsFile) : null)
     console.log(`audit: PROD's courses from ${path.basename(prodFile)}${legsFile ? ` and ${path.basename(legsFile)}` : ''} on this image's raster`)
   }
+  if (args.includes('--allowance')) {
+    const al = auditAllowance(world)
+    console.log(`audit: THE APPROACH ALLOWANCE: ${al.pairs} harbour pairs; the straight line between their roadsteads:`)
+    console.log(`  accepted by the rule as it stood before 0441 (25 nm unread at each end): ${al.accepted}`)
+    console.log(`  of those, let through by the allowance alone (the rule as it stands refuses them): ${al.byAllowance}`)
+    console.log(`  of those, over more than ${TOLERANCE_NM} nm of drawn land (a canal): ${al.canals.length}`)
+    for (const c of al.canals) console.log(`    ${c.key.padEnd(8)} ${c.a} - ${c.b}: ${c.nm} nm apart, ${c.landNm} nm of drawn land`)
+    console.log(`  accepted by the rule as it stands with raster land under them: ${al.still.length} ${al.still.join(' ')}`)
+    console.log(`  accepted by the rule as it stands over drawn land the raster cannot see (no allowance involved): ${al.unseen}`)
+    if (jsonOut) await writeFile(jsonOut, JSON.stringify(al, null, 1))
+    process.exit(al.still.length ? 1 : 0)
+  }
   const t0 = Date.now()
   const out = auditWorld(world, { pairs: args.includes('--pairs'), raw: args.includes('--raw'), log: console.log })
   if (args.includes('--write-known')) {
@@ -318,7 +415,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const origins = new Set(codes.filter((_, i) => i % PAIR_SAMPLE_EVERY === 0))
     const sample = auditWorld(world, { pairs: true, pairFilter: (a) => origins.has(a.code) })
     const known = {
-      note: 'scripts/db/audit-land-crossings.mjs --write-known. Courses and roadsteads still on the drawn land (owner row 352). EMPTY since 0440: a new crossing is fixed (scripts/build-land-channels.mjs), never listed. This list may only shrink.',
+      note: 'scripts/db/audit-land-crossings.mjs --write-known. Courses and roadsteads still on the drawn land (owner row 352). EMPTY since 0440, and the pair sample crosses 0 times since 0441 (Panama City to Portobelo went by the approach allowance): a new crossing is fixed (scripts/build-land-channels.mjs, scripts/build-isthmus.mjs), never listed. This list may only shrink.',
       toleranceNm: TOLERANCE_NM,
       crossings: [...new Set(out.crossings.filter((c) => c.kind !== 'pair').map((c) => c.key))].sort(),
       roadsteads: [...out.roadsteads].sort(),
@@ -334,12 +431,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     rows[c.kind] = (rows[c.kind] ?? 0) + c.rows
   }
   console.log(`audit: checked ${JSON.stringify(out.counted)} in ${Math.round((Date.now() - t0) / 1000)} s`)
-  console.log(`audit: ${out.crossings.length} distinct course(s) cross over ${TOLERANCE_NM} nm of drawn land ${JSON.stringify(byKind)}; rows ${JSON.stringify(rows)}`)
+  console.log(`audit: ${out.crossings.length} distinct course(s) cross over ${TOLERANCE_NM} nm of drawn land or are refused by the server's law ${JSON.stringify(byKind)}; rows ${JSON.stringify(rows)}; refused ${out.crossings.filter((c) => c.refused).length}`)
   console.log(`audit: ${out.roadsteads.length} roadstead(s) on drawn land: ${out.roadsteads.join(' ')}`)
   const sorted = [...out.crossings].sort((a, b) => b.landNm - a.landNm)
   for (const c of sorted.slice(0, args.includes('--all') ? sorted.length : 40)) {
     const w = c.worst
-    console.log(`  ${c.key.padEnd(18)} land ${String(c.landNm).padStart(6)} nm in ${c.runs} run(s); worst ${w.nm} nm at ${w.at.join(',')} near ${nearestHarbour(world.ports, w.at[0], w.at[1])}`)
+    console.log(`  ${c.key.padEnd(18)} land ${String(c.landNm).padStart(6)} nm in ${c.runs} run(s); worst ${w.nm} nm at ${w.at.join(',')} near ${nearestHarbour(world.ports, w.at[0], w.at[1])}${c.refused ? `; REFUSED by the server at ${c.refused.join(',')}` : ''}`)
   }
   if (jsonOut) await writeFile(jsonOut, JSON.stringify(out, null, 1))
   if (prodFile) {

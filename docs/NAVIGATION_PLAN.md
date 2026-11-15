@@ -336,3 +336,28 @@ or a harbour is added: it moves only what is on land or in a pocket.
 Not covered by the audit, by design: a RIVER carve's cells (the Thames, the Scheldt above Flushing, the
 Gironde), where the chart draws land over the water the game sails on purpose, and the three straits
 named above that the fine grid cannot pass.
+
+### 0441: an approach is not a canal (owner row 352)
+
+0440 left one case: Panama City to Portobelo. Their roadsteads lie 45.9 nm apart across the isthmus, and
+`voyage.path_refusal` skipped every sample within 25 nm of each end of a course unread, so the straight line
+had no sample left. **The rule now: an approach is the land an end stands in, and nothing else.** A land sample
+is passed only when the stated end is itself in a land cell and the sample is in the unbroken run of land from
+that end, inside its allowance. A roadstead is raster water (all 268; proof 143), so a course between two
+harbours has every sample read. A course with no water between two land ends is refused. The browser's
+`segmentIsWater` and `courseRefusedAt` (src/lib/sea) read the same rule, sample for sample.
+
+What this adds to the procedure above:
+
+- The audit lists a stored lane, route leg or coast course that the SERVER'S LAW refuses beside the crossings
+  (image, `--prod`, and the guard spec). A merchant sent down such a lane is refused E_LAND.
+- `node scripts/db/audit-land-crossings.mjs --allowance`: the straight line between every two roadsteads, by
+  the rule as it stood and as it stands. It exits 1 if the rule accepts a line with raster land under it. Run
+  it after a harbour is added or a roadstead moves.
+- A new roadstead must lie in a raster water cell: a roadstead in a land cell would have an approach again.
+- When the approach rule, the raster or the roadsteads change: `node scripts/build-isthmus.mjs <image> --prod
+  courses.json` re-sails every stored course the rule refuses or that is over drawn land (set MIGRATION_NAME),
+  and `node scripts/ops/harness/isthmus/prod-shaped.mjs <image> courses.json legs.json --rollback` applies it
+  to prod's own lanes, stops and frozen legs in an image and audits the result.
+- Still open: the server holds no coast mask (a hand-made straight course over an island the raster cannot
+  see is accepted: 593 harbour pairs), and `course_join_nm` lets a course begin 15 nm from where she lies.
