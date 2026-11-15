@@ -20,7 +20,7 @@ import { FleetRoom } from './FleetRoom'
 import { FleetShipPage } from './FleetShipPage'
 import { FleetShipSheet } from './FleetShipSheet'
 import { HullGauge } from './HullGauge'
-import { NewFleet } from './NewFleet'
+import { NewFleet, NewFleetPage } from './NewFleet'
 import { fleetDue } from './fleetLine'
 import { tabWord } from '../../app/navTabs'
 import { useLocale, useT } from '../../lib/i18n'
@@ -121,6 +121,8 @@ function FleetsBody({ title }: { title: string }) {
   const [openShipId, setOpenShipId] = useState<string | null>(null)
   // F5: her whole sheet (Stats), over her own page; closing it gives that page back.
   const [statsOpen, setStatsOpen] = useState(false)
+  // F5: the New fleet page, mounted beside the list panel, never inside it (NewFleet.tsx says why).
+  const [newOpen, setNewOpen] = useState(false)
   const closeShip = () => {
     setStatsOpen(false)
     setOpenShipId(null)
@@ -172,8 +174,9 @@ function FleetsBody({ title }: { title: string }) {
               ))
             )}
             {/* F5: a new fleet is made from here (NewFleet.tsx). Dark, it is a line that says "Not open yet", never a button. */}
-            {fleets.length > 0 && <NewFleet />}
+            {fleets.length > 0 && <NewFleet open={newOpen} onOpen={() => setNewOpen(true)} />}
           </ListPanel>
+          {newOpen && <NewFleetPage onClose={() => setNewOpen(false)} />}
           {/* 0367: her armadas, and the door to form one (Armadas.tsx). Nothing is drawn while armadas are switched off. */}
           <Armadas />
           </>
