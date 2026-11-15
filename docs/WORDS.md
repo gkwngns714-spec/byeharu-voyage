@@ -157,7 +157,7 @@ Never "PvP", "affinity", "regard", "raid target". The full list is `docs/WORLD_P
 | the country a company sails for (0143) | **Country** (`Sail for England`, `Your company now sails for England`); a merchant's company shows its flag | nation (on screen), faction, allegiance |
 | a country's weight in a city (0144) | **Influence** (`Influence · Portugal 54%`, `Your influence 1,500`) | share (that word is 0123's), control, sway |
 | a gift of coin to a city (0144) | **Donate** (`Donate 5,000 🪙`, `Gave 5,000 🪙 to Havana.`, `5,000 🪙 / 20,000 🪙 given today`) | patronage, aid, tribute |
-| the top giver of the country that holds a city (0147) | **Mayor** (`Mayor · Casa Lopes`, `Your tax here 7.5% (half: your country holds this city)`) | governor |
+| the top giver of the country that holds a city (0147) | **Mayor** (`Mayor · Casa Lopes`, `Your tax 7.5% (half: your country)`) | governor |
 | a city changing country at the daily count (0146) | **now flies the flag of …**; the count is **Next count 09:47** | flipped, captured, occupied; evaluation, tick |
 | what a sea asks before you may sail into it (0215, docs/SEA_CONDITIONS_AND_REGIONS.md; the Plans face's **Can you go there?**) | **title** (`Your title · 3 · Master`) and **wave resistance** (the fleet's figure, `Wave resistance · 21`); while the switch is dark, *Sea conditions are not in force yet, so no sea is closed to you.* | zone gate, wave stat, 내파 in English text, captain level |
 | a newer build published while the tab is open (2026-10-19, `NewVersionToast`) | **New version — tap to refresh** (the whole toast is the button); the ✕ is **Dismiss** (its label only; nothing else is printed — no build id, no changelog) | update available, new build, reload, refresh required, outdated |
