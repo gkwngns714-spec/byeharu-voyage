@@ -59,5 +59,6 @@ rpc.battle, rpc.armadaBattle, rpc.fights specs; and the proofs listed in the PR.
 
 ## Left
 
-- 0436: `cmd.battle_join` + the NPC join rule (PR #728 and its builder). Slice 2 (0437): `cmd.battle_act`, the action bar live.
-- The battle screen and the map's red ships (client builders, merged into this branch).
+- Merged into this branch and deployed with it: 0436 (#730, joining by choice: `cmd.battle_join`, the NPC join rule; proof 137), the battle
+  screen (#729, `src/live/battle/`) and the map's red ships and Join bar (#728). Proofs 130-137 52/52 on the chain 0431-0436.
+- Slice 2 (0437): `cmd.battle_act`, the action bar live.
