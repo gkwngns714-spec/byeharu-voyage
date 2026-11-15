@@ -8,9 +8,11 @@ import { OLD_FIGHT, OLD_READ, READ, READ_MINE, RESULT } from './battleTicks.fixt
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // The page is /ui/battle (src/features/gallery/BattleGalleryScreen.tsx): the real screen over a fixture source, outside
 // sign-in, no world. tests/battleTicks.fixture.ts is a timeline written per the contract.
+// THE VIEW IS SMALL (owner 2026-11-15: "too much words. simplify all"): each side's name with a hull bar and a thin Fury
+// bar, the stage, ONE status line, and the log shut behind Log; a watcher has no action bar at all.
 //   LATE OPENER  the battle began 10 s before the read: the screen jumps to tick 16 with the log up to it at once.
-//   PLAYBACK     hit numbers rise (a crit marked), the log names each shot, the run's roll with its chance, the join,
-//                the patch, the ship struck and the break-off; the end is DRIVEN_OFF; `cmd.battle_end` is asked ONCE and
+//   PLAYBACK     hit numbers rise (a crit marked), the log's short lines name each shot, the run with its chance, the join,
+//                the patch, the ship sunk and the break-off; the end is ONE line; `cmd.battle_end` is asked ONCE and
 //                the read after it brings the loot; Replay starts again from 0 and does not ask again.
 //   REDUCED      under prefers-reduced-motion the stage is still (`data-motion` reduced), a hit number stands at full
 //                strength, and the struck ship is drawn struck.
@@ -45,17 +47,25 @@ test('a late opener jumps to the tick now, the fight plays tick by tick to its e
   await expect(body).toHaveAttribute('data-motion', 'full')
   await expect.poll(async () => Number(await body.getAttribute('data-tick'))).toBeGreaterThanOrEqual(16)
   expect(Number(await body.getAttribute('data-tick'))).toBeLessThan(20)
+  // THE MAIN VIEW: the two sides by name, ONE status line, no paragraph; the log is shut until Log is pressed
+  await expect(page.getByTestId('battle-side-0')).toHaveText('Santa Rosa, Navy brig')
+  await expect(page.getByTestId('battle-side-1')).toHaveText('Raiders')
+  await expect(page.getByTestId('battle-status')).toHaveText(/^(Navy brig hits 40|Black Gull hits 22|Navy brig joins|Miss)$/)
+  await expect(page.getByTestId('battle-log')).toHaveCount(0)
+  await page.screenshot({ path: path.join(SHOTS, 'wide-main.png') })
+  await page.getByTestId('battle-log-toggle').click()
   const early = await logText(page)
-  expect(early).toContain('Black Gull · Broadside → Santa Rosa · Hit 31 · Critical · Hull 345')
-  expect(early).toContain('Gunfire → Santa Rosa · Miss · Hull 345')
-  expect(early).toContain('Navy brig · Joins · Santa Rosa, Navy brig')
-  expect(early).toContain('Brace · Fury 0')
-  expect(early).not.toContain('Struck')
-  // the Fury bar and the action row: the raiders used Chain Shot at 12 (Fury 20); a watcher's row is watch-only
+  expect(early).toContain('Black Gull → Santa Rosa 31!')
+  expect(early).toContain('Miss')
+  expect(early).toContain('Navy brig joins')
+  expect(early).toContain('Flees 35%')
+  expect(early).toContain('Brace')
+  expect(early).not.toContain('sunk')
+  // every line is short: a clock and a few words, never a sentence
+  for (const line of early.split('\n').filter((l) => l.trim() !== '' && !/^\d+:\d\d$/.test(l.trim()))) expect(line.trim().split(/\s+/).length, line).toBeLessThanOrEqual(6)
+  // the thin Fury bar: the raiders used Chain at 12 (Fury 20); A WATCHER HAS NO ACTION BAR
   await expect(page.getByTestId('battle-fury-1')).toHaveAttribute('data-fury', '20')
-  await expect(page.getByTestId('battle-actions')).toHaveAttribute('data-mode', 'watch')
-  await expect(page.getByTestId('battle-actions').getByRole('button')).toHaveCount(8)
-  for (const b of await page.getByTestId('battle-actions').getByRole('button').all()) await expect(b).toBeDisabled()
+  await expect(page.getByTestId('battle-actions')).toHaveCount(0)
   // the joiner is on the stage: four ships, two a side
   await expect(page.getByTestId('battle-ship')).toHaveCount(4)
   await page.screenshot({ path: path.join(SHOTS, 'wide-playing.png') })
@@ -68,16 +78,16 @@ test('a late opener jumps to the tick now, the fight plays tick by tick to its e
   await expect(page.getByTestId('battle-end')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByTestId('battle-outcome')).toHaveAttribute('data-outcome', 'DRIVEN_OFF')
   const done = await logText(page)
-  expect(done).toContain('Santa Rosa, Navy brig · Run 35% · Caught')
-  expect(done).toContain('Black Gull · Patch · Repaired +24 · Hull 229')
-  expect(done).toContain('Navy brig · Gunfire → Sea Wolf · Hit 60 · Critical · Hull 0')
-  expect(done).toContain('Sea Wolf · Struck')
-  expect(done).toContain('Raiders · Broke off')
+  expect(done).toContain('Caught')
+  expect(done).toContain('Patch +24')
+  expect(done).toContain('Navy brig → Sea Wolf 60!')
+  expect(done).toContain('Sea Wolf sunk')
+  expect(done).toContain('Broke off')
   await expect(page.locator('[data-testid="battle-ship"][data-struck="1"]')).toHaveCount(1)
   // ONE end asked, and the read after it brings the loot to the end card and the log's last line
   await expect.poll(async () => (await calls(page)).end).toBe(1)
-  await expect(page.getByTestId('battle-end')).toContainText('Loot 1,250')
-  await expect(page.getByTestId('battle-log-line').first()).toHaveText(/End · Driven off · Loot 1,250 · Crew lost 3/)
+  await expect(page.getByTestId('battle-end')).toHaveText('Driven off · 1,250 gold')
+  await expect(page.getByTestId('battle-log-line').first()).toHaveText(/Driven off · 1,250 gold$/)
   await page.screenshot({ path: path.join(SHOTS, 'wide-end.png') })
 
   // REPLAY from 0: the log empties back, the end is not asked again
@@ -130,6 +140,7 @@ test('an old round-by-round battle shows its sides and its result, with no stage
   await expect(page.getByTestId('battle-old')).toContainText('Santa Rosa, Navy brig')
   await expect(page.getByTestId('battle-old')).toContainText('Raiders')
   await expect(page.getByTestId('battle-outcome')).toHaveAttribute('data-outcome', 'PLUNDERED')
+  await expect(page.getByTestId('battle-outcome')).toHaveText('Plundered · 900 gold')
   await expect(page.getByTestId('battle-stage')).toHaveCount(0)
   expect((await calls(page)).end).toBe(0)
   await page.screenshot({ path: path.join(SHOTS, 'phone-old.png') })
@@ -142,15 +153,18 @@ test('her own ship: the action bar presses, greys what it cannot pay for, says a
   const body = page.getByTestId('battle-body')
   const bar = page.getByTestId('battle-actions')
   const btn = (code: string) => bar.locator(`button[data-code="${code}"]`)
-  await expect(bar).toHaveAttribute('data-mode', 'act')
+  await expect(bar.getByRole('button')).toHaveCount(8)
+  await page.getByTestId('battle-log-toggle').click()
   await expect.poll(async () => Number(await body.getAttribute('data-tick'))).toBeGreaterThanOrEqual(25)
-  // her bar is empty: Rake, Grapeshot and Patch are grey, their cost unlit; Brace is cooling (used at 7); the rest are ready
+  // an icon and ONE word each
+  for (const b of await bar.getByRole('button').all()) expect(((await b.innerText()).trim().split(/\s+/).length)).toBeLessThanOrEqual(2)
+  await expect(btn('CH')).toContainText('Chain')
+  // her bar is empty: Rake, Grapeshot and Patch are grey; Brace is cooling (used at 7); the rest are ready
   for (const code of ['RK', 'GR', 'PT']) {
     await expect(btn(code)).toBeDisabled()
     await expect(btn(code)).toHaveAttribute('data-lock', 'fury')
     await expect(btn(code)).toHaveAttribute('data-afford', '0')
   }
-  await expect(btn('RK').getByTestId('battle-cost')).toHaveText('50')
   await expect(btn('BR')).toHaveAttribute('data-lock', 'cooldown')
   await expect(btn('BR')).toBeDisabled()
   for (const code of ['BS', 'CH', 'RN', 'PY']) await expect(btn(code)).toBeEnabled()
@@ -173,8 +187,8 @@ test('her own ship: the action bar presses, greys what it cannot pay for, says a
   const after = Number(await body.getAttribute('data-tick'))
   expect(after).toBeGreaterThanOrEqual(before)
   expect(after).toBeLessThan(before + 4)
-  await expect(page.getByTestId('battle-log')).toContainText('Santa Rosa, Navy brig · Broadside · Fury 10')
-  await expect(page.getByTestId('battle-log')).toContainText('Santa Rosa, Navy brig · Run 35% · Caught')
+  await expect(page.getByTestId('battle-log')).toContainText('Broadside')
+  await expect(page.getByTestId('battle-log')).toContainText('Caught')
   await expect(page.getByTestId('battle-fury-0')).toHaveAttribute('data-fury', '10')
   await expect(btn('BS')).toHaveAttribute('data-lock', 'cooldown')
   await expect(page.getByTestId('battle-act-refusal')).toHaveCount(0)
@@ -188,11 +202,17 @@ test('her own ship: the action bar presses, greys what it cannot pay for, says a
   await page.screenshot({ path: path.join(SHOTS, 'wide-act-taken.png') })
 })
 
-test('her own ship on a phone: the bar fits, a watcher\'s bar stays disabled', async ({ page }) => {
+test('her own ship on a phone: the bar fits, ✕ is a touch target at the top right and closes it', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await openFixture(page, { read: READ_MINE, agoMs: 15_000, result: RESULT })
-  await expect(page.getByTestId('battle-actions')).toHaveAttribute('data-mode', 'act')
+  await expect(page.getByTestId('battle-actions').getByRole('button')).toHaveCount(8)
   await expect(page.getByTestId('battle-actions').locator('button[data-code="BS"]')).toBeEnabled()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.screenshot({ path: path.join(SHOTS, 'phone-act-bar.png') })
+  const box = (await page.getByTestId('battle-close').boundingBox())!
+  expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(44)
+  expect(box.x + box.width).toBeLessThanOrEqual(390)
+  expect(box.x).toBeGreaterThan(195)
+  await page.getByTestId('battle-close').click()
+  await expect(page.getByTestId('battle-screen')).toHaveCount(0)
 })
