@@ -158,7 +158,7 @@ test('the Town Hall shows the treasury, offers no Invest away from your fleet, a
   await expect(page.getByTestId('townhall-holder')).toContainText('Home city')
   await expect(page.getByTestId('townhall-influence-share').filter({ hasText: world.investorNation })).toHaveCount(1)
   await expect(page.getByTestId('townhall-donate')).toHaveCount(0)
-  await expect(page.getByTestId('townhall-donate-none')).toHaveText('Not taking gifts yet.')
+  await expect(page.getByTestId('townhall-donate-none')).toHaveText('Not taking gifts') // 2026-11-15 owner: shorter words
 })
 
 test('0144: lit, a company docked at Lisbon donates, and its influence there is counted', async ({ page, request, baseURL }) => {

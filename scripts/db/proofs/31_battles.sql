@@ -157,7 +157,7 @@ begin
   end if;
   update public.world_config set value = 'true'::jsonb where key = 'attack_enabled';
   for v_case in select * from (values
-      ('RAID'::text, v_h, v_n, 'E_BAD_KIND'),
+      ('SIEGE'::text, v_h, v_n, 'E_BAD_KIND'),   -- a kind there is none of (0427 made RAID a kind: a pirate ship's)
       ('PROBE', v_h, v_h, 'E_BAD_TARGET'),
       ('PROBE', v_h, v_h2, 'E_HUMAN_TARGET'),
       ('PROBE', v_h, v_quay, 'E_TARGET_DOCKED')) c(k, a, d, code) loop

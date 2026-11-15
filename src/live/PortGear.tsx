@@ -55,9 +55,6 @@ export function PortGear({ fleet }: { fleet: FleetView | null }) {
       ) : !view.here ? (
         <Note tone="warning" className="mb-3">{t('town.g_notHere')}</Note>
       ) : null}
-      {view.purse !== null && (
-        <Row label={t('town.g_purse')} value={<Figure value={formatDucats(view.purse)} />} hairline={false} data-testid="gear-purse" />
-      )}
       <TileField>
         {view.items.map((piece) => (
           <Tile

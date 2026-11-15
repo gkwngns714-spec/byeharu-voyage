@@ -21,7 +21,7 @@ import {
 import { fleetHoldBreakdown, fleetHoldTotal, fleetHoldUsed } from '../domain/fleet'
 import { findVerb, moveEstimate, orderText, useCommandDraft } from '../domain/order'
 import { hasBuilding } from '../domain/port'
-import { formatFixed, formatInt, formatOfTotal, formatTons, formatUnits, tonsWord } from '../lib/format'
+import { formatFixed, formatOfTotal, formatTons, formatUnits, tonsWord } from '../lib/format'
 import type { FleetView, Refusal, SnapshotPort, StoredGood } from '../lib/rpc'
 import { PortForge } from './PortForge'
 import { useForge } from './useForge'
@@ -143,7 +143,6 @@ export function PortProduction({
                     pct={shed.cap > 0 ? (shed.used / shed.cap) * 100 : 0}
                     tone={free > 0 ? 'accent' : 'warning'}
                     label={t('inn.howFull')}
-                    figure={<Figure value={formatInt(free)} unit={t('inn.tonsFree')} />}
                   />
                   {stored.length === 0 ? (
                     <Row label={t('inn.nothing')} tone="muted" hairline={false} />
@@ -189,7 +188,8 @@ export function PortProduction({
                   ) : (
                     <p className="mb-1 text-t-label text-ink-muted" data-testid="production-fleet">{fleet.name}</p>
                   )}
-                  <CargoBar used={fleetHoldUsed(fleet)} total={fleetHoldTotal(fleet)} free={fleet.free_hold} className="py-2" />
+                  {/* bare: the card's own title already says Cargo (2026-11-15 owner: shorter words) */}
+                  <CargoBar used={fleetHoldUsed(fleet)} total={fleetHoldTotal(fleet)} free={fleet.free_hold} bare className="py-2" />
                   {read.view === null ? (
                     read.loading ? <Skeleton className="h-28 w-full" /> : null
                   ) : aboard.length === 0 && supplies <= 0 ? (
