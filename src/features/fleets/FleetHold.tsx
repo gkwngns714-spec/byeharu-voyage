@@ -49,6 +49,9 @@ export function FleetHold({ fleet }: { fleet: Hulls }) {
 
   // ONE FIGURE COLUMN (owner, 2026-11-12): "0% · 0 tons" and "98% · 176 tons" are not one width, so each row's bar ended
   // somewhere else. Every figure takes the widest one's room and the three bars end on one line.
+  // 2026-11-15 owner: shorter words. One share alone (an empty hold: "Empty 100 %") repeats the cargo bar above it: draw the split only when there is one.
+  if (shares.filter((s) => s.tons > 0).length < 2) return null
+
   const figure = (s: (typeof shares)[number]) => t('fleets.holdFigure', { pct: formatPct(s.share), tons: formatInt(s.tons), word })
   const widest = Math.max(...shares.map((s) => figure(s).length))
   return (

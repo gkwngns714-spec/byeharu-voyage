@@ -222,11 +222,11 @@ function NewArmadaPage({ read, onClose }: { read: ArmadasRead; onClose: () => vo
   return (
     <DetailPage title={t('fleets.armadaNew')} onClose={onClose} data-testid="armada-new-page">
       <p className="text-t-body text-ink-muted" data-testid="armada-new-what">
-        {t('fleets.armadaWhat', { max: formatInt(read.max) })}
+        {t('fleets.armadaWhat')}
       </p>
       {free.length < 2 ? (
         <Note tone="neutral" data-testid="armada-new-need">
-          {t('fleets.armadaNeed')}
+          {t('fleets.armadaNeed', { have: formatInt(free.length) })}
         </Note>
       ) : (
         <div data-testid="armada-new-pick">
