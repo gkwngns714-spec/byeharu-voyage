@@ -613,6 +613,9 @@ jobs:
         run: node scripts/ci/patch-frozen-asserts.mjs supabase/migrations
 
       - name: Start disposable local Supabase (a restored volume boots from the snapshot; a fresh one applies the WHOLE chain, in order)
+        # 2026-11-15: a restored boot hung for an hour in `supabase start` and every PR's disposable-chain waited on it. A restored
+        # boot takes a few minutes, so it gets 20; a fresh volume applies the whole chain and keeps the job's own limit.
+        timeout-minutes: ${{ steps.plan.outputs.usable == 'true' && 20 || 110 }}
         run: |
           # supabase binds 54320-54329, inside Linux's temporary port range, and a runner's outbound connection can take one first:
           # "failed to bind host port ... address already in use" before any migration runs (seen 3+ times on 2026-11-05).
