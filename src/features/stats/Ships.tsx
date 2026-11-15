@@ -15,7 +15,6 @@ import {
   Row,
   Segmented,
   Skeleton,
-  StackedBar,
   StatCell,
   deltaTone,
 } from '../../components/ui'
@@ -25,14 +24,15 @@ import { worldStatsFleets, type StatsFleetKind, type StatsFleets } from '../../l
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { useLiveRead } from '../../live/liveRead'
 import { portName } from './statsFaces'
+import { FleetStates } from './FleetStatesBar'
 
 // SHIPS — the merchants, the navy, the pirates and the cargo ships on one face (0419; the owner, 2026-11-15: *"in stats, show like merchants
 // navy, pirates, anad cargo"*). ONE READ, world.stats_fleets: the Stats count's own small row (twice an hour) and the last 24 hours of its windows,
 // asked on the tab's one rule (useLiveRead). The face decides nothing: every figure and every state is the server's.
 //
-// MAIN | SIDE (screenLayout.ts "THE PAGE"): MAIN holds the four kinds, a card each, two across from 768 px: how many ships and fleets, where the
-// fleets are (one stacked bar: at sea, in port, laid up, wrecked; the server puts each fleet in ONE of them), and the kind's figures of the last
-// 24 hours; above them (0427) the battles of the last 24 hours. The SIDE holds the ONE list: the navy by country, or the pirates by home.
+// MAIN | SIDE (screenLayout.ts "THE PAGE"): MAIN holds the four kinds, a card each, two across from 768 px: how many fleets and ships, where the
+// FLEETS are (one stacked bar, the five states of fleetStates.ts; the server puts each fleet in ONE of them and counts, 0448), and the kind's
+// figures of the last 24 hours; above them (0427) the battles of the last 24 hours. The SIDE holds the ONE list: the navy by country, or the pirates by home.
 
 type View = 'navy' | 'homes'
 
@@ -97,7 +97,7 @@ export function FleetsByKindFace() {
             <KindCard title={t('stats.pirates')} kind={pirates} testid="stats-ships-pirates">
               <StatCell look="line" label={t('stats.plunder')} value={pirates.plunder_day} format={formatDucats} />
               <StatCell look="line" label={t('stats.raidsPaid')} value={pirates.raids_paid_day} format={formatInt} />
-              <StatCell look="line" label={t('stats.wrecked')} value={pirates.wrecks_day} format={formatInt} />
+              <StatCell look="line" label={t('stats.wrecks')} value={pirates.wrecks_day} format={formatInt} />
               <StatCell look="line" label={t('stats.rebuilt')} value={pirates.reborn_day} format={formatInt} />
             </KindCard>
             <KindCard title={t('stats.cargoShips')} kind={cargo} testid="stats-ships-cargo" now>
@@ -166,19 +166,9 @@ export function FleetsByKindFace() {
 /** One kind's card: its ships (the figure) and fleets, where its fleets are, and its own figures under "Last 24 h" (or, `now`, as they stand). */
 function KindCard({ title, kind, testid, now = false, children }: { title: string; kind: StatsFleetKind; testid: string; now?: boolean; children: ReactNode }) {
   const t = useT()
-  const parts = [
-    { id: 'sea', label: t('stats.atSea'), value: kind.sea, tone: 'info' as const },
-    { id: 'port', label: t('stats.inPort'), value: kind.port, tone: 'success' as const },
-    { id: 'laid_up', label: t('stats.laidUp'), value: kind.laid_up, tone: 'neutral' as const },
-    { id: 'wrecked', label: t('stats.wrecked'), value: kind.wrecked, tone: 'danger' as const },
-  ]
   return (
     <Card title={title} data-testid={testid}>
-      <div className="grid grid-cols-2 gap-x-4">
-        <StatCell look="stacked" label={t('stats.shipsWord')} value={kind.ships} format={formatInt} />
-        <StatCell look="stacked" label={t('stats.fleetsWord')} value={kind.fleets} format={formatInt} />
-      </div>
-      <StackedBar parts={parts} format={formatInt} label={title} className="mt-4" data-testid={`${testid}-states`} />
+      <FleetStates tally={kind} label={title} data-testid={`${testid}-states`} />
       <div className="mt-4">
         {!now && <Hint>{t('stats.last24')}</Hint>}
         {children}
