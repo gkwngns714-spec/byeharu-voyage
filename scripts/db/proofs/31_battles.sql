@@ -157,7 +157,7 @@ begin
   end if;
   update public.world_config set value = 'true'::jsonb where key = 'attack_enabled';
   for v_case in select * from (values
-      ('RAID'::text, v_h, v_n, 'E_BAD_KIND'),
+      ('SIEGE'::text, v_h, v_n, 'E_BAD_KIND'),   -- a kind there is none of (0427 made RAID a kind: a pirate ship's)
       ('PROBE', v_h, v_h, 'E_BAD_TARGET'),
       ('PROBE', v_h, v_h2, 'E_HUMAN_TARGET'),
       ('PROBE', v_h, v_quay, 'E_TARGET_DOCKED')) c(k, a, d, code) loop
@@ -528,8 +528,8 @@ begin
       raise exception 'PROOF 31 FAIL: % round(s) told for % fought', jsonb_array_length(v_r), v_n;
     end if;
     -- side b, the attacker, is `you`: her own hits are the first number of the line
-    v_me := format('you hit with %s of %s shot', (v_f -> 'rounds' -> 0 -> 'b' ->> 'hits'), (v_f -> 'rounds' -> 0 -> 'b' ->> 'fired'));
-    if position(v_me in v_r ->> 0) = 0 or position('The enemy are' in v_r ->> 0) = 0 then
+    v_me := format('we hit %s of %s', (v_f -> 'rounds' -> 0 -> 'b' ->> 'hits'), (v_f -> 'rounds' -> 0 -> 'b' ->> 'fired'));   -- 0433: short words
+    if position(v_me in v_r ->> 0) = 0 or position('Enemy −' in v_r ->> 0) = 0 then
       raise exception 'PROOF 31 FAIL: the round is not told from the attacker''s deck: % / %', v_r ->> 0, v_f -> 'rounds' -> 0;
     end if;
     v_ok := v_ok + 1;

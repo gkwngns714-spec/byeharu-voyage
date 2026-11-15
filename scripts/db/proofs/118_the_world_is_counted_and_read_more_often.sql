@@ -23,15 +23,21 @@ declare
   v_r     jsonb;
 begin
   -- PU_KNOBS
-  if public.wc_int('pirate_add_minutes') <> 5 or public.wc_int('contract_wind_retry_minutes') <> 30
+  -- 0427 moved pirate_add_minutes on to 1: 0421's 5 or faster is what this proof reads (the description still names 0421's change)
+  if public.wc_int('pirate_add_minutes') > 5 or public.wc_int('contract_wind_retry_minutes') <> 30
      or not exists (select 1 from public.world_config wc where wc.key = 'pirate_add_minutes' and wc.description like '%10 before 0421%')
      or not exists (select 1 from public.world_config wc where wc.key = 'contract_wind_retry_minutes' and wc.description like '%60 before 0421%') then
     raise exception 'PROOF 118 FAIL: the knobs are not 0421''s (pirate_add_minutes %, contract_wind_retry_minutes %)',
       public.wc_int('pirate_add_minutes'), public.wc_int('contract_wind_retry_minutes');
   end if;
-  raise notice 'PASS: PU_KNOBS — pirate_add_minutes 5 (was 10), contract_wind_retry_minutes 30 (was 60), the old values written into their descriptions';
+  raise notice 'PASS: PU_KNOBS — pirate_add_minutes 5 or faster (was 10), contract_wind_retry_minutes 30 (was 60), the old values written into their descriptions';
 
-  -- PU_ROSTER: proof 115's scene, at the live pace
+  -- PU_ROSTER: proof 115's scene, at 0421's pace. Pinned, rolled back with the proof: pirate_add_minutes 5 (0427 moved it to 1),
+  -- pirate_spend_day_pct 0.0024 (0427 and 0429 raised the room; the scene is a SPENT room) and pirate_hoard_floor out of reach (0429 pays the
+  -- hour and a refit outside the room: this scene's wrecks wait on the room, as they did). Proof 130 is the pay under 0429's rule.
+  update public.world_config set value = to_jsonb(5) where key = 'pirate_add_minutes';
+  update public.world_config set value = to_jsonb(0.0024) where key = 'pirate_spend_day_pct';
+  update public.world_config set value = to_jsonb(9000000000000) where key = 'pirate_hoard_floor';
   update public.world_config set value = 'true'::jsonb where key in ('pirates_bite', 'city_treasury_enabled', 'npc_refits_enabled', 'economy_closed');
   v_cap := public.pirate_capital();
   update public.port_treasury t set ducats = 975934180 where t.port_id = v_cap;

@@ -80,8 +80,7 @@ export function ZoneTray({
         />
         {fix !== '' && <p className="pt-1 text-t-caption text-ink" data-testid="map-zone-fix">{fix}</p>}
         {!seas.bite && <Hint>{t('seas.dark')}</Hint>}
-        <Hint>{t('seas.howTitle')}</Hint>
-        <Hint>{t('seas.howWaves')}</Hint>
+        <Hint>{t('seas.how')}</Hint>
         <Button variant="secondary" size="sm" className="mt-2" onClick={() => navigate('/compendium?face=seas')} data-testid="map-zone-codex">
           {t('map.allSeas')}
         </Button>

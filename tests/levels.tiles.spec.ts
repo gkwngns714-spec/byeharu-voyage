@@ -208,11 +208,12 @@ for (const size of SIZES) {
         await ready(page)
         const all = page.getByTestId('you-all-levels')
         await expect(all).toBeVisible({ timeout: 60_000 })
+        // 2026-11-15 owner: no repeated words — Trading, Exploration and Combat stand as bars above, so the tiles are the other seven
         const small = all.getByTestId('level-tiles').locator('button')
-        await expect(small).toHaveCount(CODES.length)
-        for (const [i, code] of CODES.entries()) {
+        await expect(small).toHaveCount(CODES.length - 3)
+        for (const [i, code] of CODES.slice(3).entries()) {
           await expect(small.nth(i)).toHaveAttribute('data-testid', `levels-${code}`)
-          await expect(small.nth(i)).toContainText(words.names[i])
+          await expect(small.nth(i)).toContainText(words.names[i + 3])
           expect((await small.nth(i).boundingBox())!.height, `${code}: a small tile is a press target`).toBeGreaterThanOrEqual(44)
         }
         await nothingCut(page, all, 'the You page tiles')

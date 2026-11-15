@@ -23,6 +23,10 @@ begin
   -- 0421 moved pirate_add_minutes 10 -> 5. This proof counts three roster fleets in 25 minutes at 10: pinned to 10 here, rolled back with the
   -- proof. Proof 118 is the same scene at the live pace (six in 25 minutes).
   update public.world_config set value = to_jsonb(10) where key = 'pirate_add_minutes';
+  -- 0427 and 0429 raised the day's room (0.0024 -> 0.006 -> 0.01) and 0429 pays the hour and a refit outside it, down to pirate_hoard_floor.
+  -- This scene is a SPENT room with its wrecks waiting on it: both pinned to what they were, rolled back with the proof (proof 130 is 0429's rule).
+  update public.world_config set value = to_jsonb(0.0024) where key = 'pirate_spend_day_pct';
+  update public.world_config set value = to_jsonb(9000000000000) where key = 'pirate_hoard_floor';
   update public.world_config set value = 'true'::jsonb where key in ('pirates_bite', 'city_treasury_enabled', 'npc_refits_enabled', 'economy_closed');
   v_cap := public.pirate_capital();
   update public.port_treasury t set ducats = 975934180 where t.port_id = v_cap;
