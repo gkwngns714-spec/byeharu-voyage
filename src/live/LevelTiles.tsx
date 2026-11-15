@@ -152,9 +152,7 @@ export function LevelDetail({ card, skill, titled = true }: { card: LevelSkillsC
           {t('command.lvCombatDark')}
         </Note>
       )}
-      {skill.kept === 'record' ? (
-        <span className="mt-1 block text-t-caption text-ink-faint">{t('command.lvFromRecord')}</span>
-      ) : (
+      {skill.kept === 'record' ? null : (
         <>
           <span className="mt-1 block text-t-caption text-ink-muted" data-testid="level-detail-today">
             {t('command.lvTodayCap', { a: formatInt(skill.today ?? 0), b: formatInt(skill.cap ?? 0) })}
