@@ -176,17 +176,19 @@ begin
      or (v_c ->> 'resolves_at')::timestamptz is distinct from v_t + make_interval(secs => 60 * (v_n + 1)) or v_c ? 'end'
      or jsonb_array_length(v_c -> 'sides') is distinct from 2
      or (v_c -> 'sides' -> 0) - 'at' is distinct from jsonb_build_object('fleet', a, 'name', 'Ronda 1', 'side', 'ATTACKER', 'how', 'OPENED', 'kind', 'COMPANY', 'company', 'Casa Ronda 1', 'nation', 'PRT',
-                                                        'ships', (select count(*)::int from public.ships s where s.fleet_id = a), 'here', true)
+                                                        'ships', (select count(*)::int from public.ships s where s.fleet_id = a), 'here', true,
+                                                        'lv', (select coalesce(max(public.ship_level(s.id)), 1)::int from public.ships s where s.fleet_id = a))   -- 0450: lv, her fleet's best level
      or (v_c -> 'sides' -> 1) - 'at' is distinct from jsonb_build_object('fleet', d, 'name', (select f.name from public.fleets f where f.id = d), 'side', 'DEFENDER', 'how', 'OPENED', 'kind', 'CARGO_SHIP',
                                                         'company', null, 'nation', (select n.code from public.cargo_ships c join public.nations n on n.id = c.nation_id where c.fleet_id = d),
-                                                        'ships', (select count(*)::int from public.ships s where s.fleet_id = d), 'here', true)
+                                                        'ships', (select count(*)::int from public.ships s where s.fleet_id = d), 'here', true,
+                                                        'lv', (select coalesce(max(public.ship_level(s.id)), 1)::int from public.ships s where s.fleet_id = d))
      -- where each lies now: her anchor, 0.3 degrees north of the place; the ship set upon is held at the place
      or (v_c -> 'sides' -> 0 -> 'at' ->> 0)::numeric is distinct from (v_site ->> 'lat')::numeric + 0.3 or (v_c -> 'sides' -> 0 -> 'at' ->> 1)::numeric is distinct from (v_site ->> 'lon')::numeric
      or abs((v_c -> 'sides' -> 1 -> 'at' ->> 0)::numeric - (v_site ->> 'lat')::numeric) > 0.01 or abs((v_c -> 'sides' -> 1 -> 'at' ->> 1)::numeric - (v_site ->> 'lon')::numeric) > 0.01 then
     raise exception 'PROOF 66 FAIL: the card a neighbour reads: % (site %)', v_c, v_site;
   end if;
   if exists (select 1 from jsonb_object_keys(v_c) k where k <> all (array['id', 'kind', 'size', 'status', 'lat', 'lon', 'started_at', 'resolves_at', 'round_seconds', 'rounds', 'rounds_done', 'next_at', 'fleets', 'ships', 'mine', 'sides', 'end', 'reach_nm', 'ticks']))   -- 0435: the circle's radius and whether it is a tick battle
-     or exists (select 1 from jsonb_array_elements(v_c -> 'sides') s, jsonb_object_keys(s) k where k <> all (array['fleet', 'name', 'side', 'how', 'kind', 'company', 'nation', 'ships', 'here', 'at'])) then
+     or exists (select 1 from jsonb_array_elements(v_c -> 'sides') s, jsonb_object_keys(s) k where k <> all (array['fleet', 'name', 'side', 'how', 'kind', 'company', 'nation', 'ships', 'here', 'at', 'lv'])) then   -- 0450: lv
     raise exception 'PROOF 66 FAIL: the card carries a key 0364 does not name: %', v_c;
   end if;
   -- two called ships, rows of this proof (no navy is lit here): one on her way, one that has come up

@@ -81,7 +81,7 @@ for (const glass of GLASSES) {
       // the same tray as any hull: her own to run, and the gates as served
       await pressKeepsPlace(page, page.getByTestId('hull-galion'), 'yard-tray')
       const tray = page.getByTestId('yard-tray')
-      await expect(tray.getByTestId('yard-crown-note')).toContainText('you pay crew and supplies')
+      await expect(tray.getByTestId('yard-crown-note')).toContainText('You pay crew and supplies')
       await expect(tray.getByTestId('yard-country')).toBeVisible()
       await expect(tray.getByTestId('yard-needs')).toBeVisible()
       await noSideways(page, 'the yard tray')
@@ -133,7 +133,7 @@ test.describe('the words, in Korean', () => {
     await expect(page.getByTestId('hull-navire').getByTestId('hull-crown')).toHaveText('화물선')
     await expect(page.getByTestId('hull-galion').getByTestId('hull-crown')).toHaveText('군함')
     await page.getByTestId('hull-navire').click()
-    await expect(page.getByTestId('yard-crown-note')).toContainText('내 배입니다')
+    await expect(page.getByTestId('yard-crown-note')).toContainText('선원·보급은 내 부담')
     await noSideways(page, 'the Korean yard')
     await page.screenshot({ path: info.outputPath('yard-ko.png') })
   })

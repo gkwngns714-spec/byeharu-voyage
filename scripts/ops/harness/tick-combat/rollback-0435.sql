@@ -8,3 +8,6 @@
 --   The column battles.ticks and the knobs stay (harmless, read by nothing once the hunks are reversed); a battle still FIGHTING with a timeline must
 --   close first (wait one battle length, ~75 s, after the quick rollback) or battle_fight would re-run its sheet round by round.
 -- The hunks to reverse, in this order (OLD <- NEW), are the five `hunks_0435` rows of the migration file.
+-- THIS FILE IS NOTES, every line a comment: nothing in it runs. It carries the harness guard (the next line) so the tree's reader knows it for a
+-- local draft and not a prod check, and so that a statement uncommented here later still refuses to run on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;

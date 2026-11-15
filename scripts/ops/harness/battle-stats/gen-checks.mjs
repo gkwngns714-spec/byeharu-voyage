@@ -83,6 +83,9 @@ const rollback = `-- 0450 ROLLBACK DRAFT (forward, owner only; NOT a migration u
 --   delete from public.world_config where key in ('raid_flee_base', 'flee_per_level', 'flee_level_max', 'flee_hurt_under', 'flee_hurt_max', 'flee_per_try');
 --   and raid_flee_floor 0.10, raid_flee_max 0.80 as above. Hulls already carded on a sheet keep their card (read by nothing then).
 ${hunks.map((h) => `--   ${key(h)}  (${h.fn})`).join('\n')}
+-- THIS FILE IS NOTES, every line a comment: nothing in it runs. It carries the harness guard (the next line) so the tree's reader knows it for a
+-- local draft and not a prod check, and so that a statement uncommented here later still refuses to run on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 `
 
 const files = { 'check.sql': check, 'rollback-0450.sql': rollback }

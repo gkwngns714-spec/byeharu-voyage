@@ -90,7 +90,7 @@ test('lit, every raid day is fought in rounds and the report hangs each fight un
   const fights = payloadFights(report.payload)
   expect(fights.length, 'the report does not carry one fight per raid day').toBe(raids.length)
   fights.forEach((f, i) => {
-    expect(lines[f.line], `fight ${i} points at a line that is not its day's`).toMatch(new RegExp(`^Day ${raids[i].day}\\. Sail sighted`))
+    expect(lines[f.line], `fight ${i} points at a line that is not its day's`).toMatch(new RegExp(`^Day ${raids[i].day}\\. Pirates\\.`))   // 0433: the day line opens "Pirates." (it was "Sail sighted to windward.")
     expect(f.rounds).toEqual(raids[i].rounds)
   })
   // 0353: a company's raid keeps its log beside the sentences, and the reader takes it: as many rounds as were fought,
@@ -129,5 +129,5 @@ test('dark, a raided passage reads as it always did: no rounds, no fights in the
   const report = await reportOf(voyage)
   expect('fights' in report.payload).toBe(false)
   expect(payloadFights(report.payload)).toEqual([])
-  expect(payloadLines(report.payload).some((l) => /Sail sighted/.test(l))).toBe(true)
+  expect(payloadLines(report.payload).some((l) => /^Day \d+\. Pirates\./.test(l))).toBe(true)   // 0433: "Pirates." (it was "Sail sighted to windward.")
 })

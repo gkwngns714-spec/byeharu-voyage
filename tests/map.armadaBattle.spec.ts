@@ -55,15 +55,23 @@ async function ringOnGlass(page: Page) {
 async function openFight(page: Page) {
   const g = await ringOnGlass(page)
   const sheet = page.getByTestId('fight-sheet')
-  // just inside the rim, in each direction until one is clear of the harbour's own reach (a press that found the harbour is pressed again, which lets it go)
-  for (const [dx, dy] of [[0, -0.93], [-0.93, 0], [0, 0.93], [0.93, 0], [-0.66, -0.66], [0.66, 0.66]] as const) {
-    await page.mouse.click(g.x + dx * g.r, g.y + dy * g.r)
-    await page.waitForTimeout(400)
+  // ROUND THE RIM UNTIL THE FIGHT OPENS (2026-11-16). The 12 px inside the line are the fight's (fightRimWins) unless a harbour's mark is
+  // within half a touch or a city's name is under the thumb (a name is its city by rule, MapScreen `onName`). Since the names grew
+  // (2026-11-15) this ring off Cadiz holds seven of them and five harbours' marks, and the names are re-planned as the fleets move, so no
+  // fixed point is clear on every glass: the old loop's four points all found a city at 390 px. And it pressed a wrong hit again "to let it
+  // go", which on a phone presses the city's sheet, not the chart under it. So: every 30 degrees, and a city that opened is CLOSED by its own
+  // close before the next press. What a press on a ring means is held, rule by rule, in tests/map.fightRings.spec.ts; this spec needs the sheet.
+  const tray = page.getByTestId('tray-close').first()
+  for (let deg = 180; deg < 540 && !(await sheet.isVisible().catch(() => false)); deg += 30) {
+    await page.mouse.click(g.x + (g.r - 6) * Math.cos((deg * Math.PI) / 180), g.y + (g.r - 6) * Math.sin((deg * Math.PI) / 180))
+    await page.waitForTimeout(500)
     if (await sheet.isVisible().catch(() => false)) break
-    await page.mouse.click(g.x + dx * g.r, g.y + dy * g.r)
-    await page.waitForTimeout(300)
+    if (await tray.isVisible().catch(() => false)) {
+      await tray.click()
+      await expect(tray, 'the city a press found did not close').toHaveCount(0)
+    }
   }
-  await expect(sheet, 'a press inside the ring opens the fight').toBeVisible()
+  await expect(sheet, 'no press on the rim of the ring, all the way round, opens the fight').toBeVisible()
   return sheet
 }
 

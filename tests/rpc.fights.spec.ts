@@ -3,7 +3,7 @@ import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
 import { clearBackend, createLocalBackend, setBackend, worldBattle, worldFight, worldFights } from '../src/lib/rpc'
-import { fightRing } from '../src/chart/fightRings'
+import { fightCountRadiusPx, fightRing } from '../src/chart/fightRings'
 import { mapFightsOf } from '../src/chart/liveWorld'
 import { parseFightLog, parseFightLoss } from '../src/live/fightLines'
 import { RAID_LOG } from './raidWorld.fixture'
@@ -145,8 +145,8 @@ test('lit: a battle another company opened is on the watcher’s map, with its p
   // only the keys 0364 names ride on a card and on a side
   expect(card.kind).toBe('BATTLE')
   expect(card.size).toBe(2)
-  expect(Object.keys(card).sort()).toEqual(['fleets', 'id', 'kind', 'lat', 'lon', 'mine', 'next_at', 'resolves_at', 'round_seconds', 'rounds', 'rounds_done', 'ships', 'sides', 'size', 'started_at', 'status'])
-  for (const s of card.sides) expect(Object.keys(s).sort()).toEqual(['at', 'company', 'fleet', 'here', 'how', 'kind', 'name', 'nation', 'ships', 'side'])
+  expect(Object.keys(card).sort()).toEqual(['fleets', 'id', 'kind', 'lat', 'lon', 'mine', 'next_at', 'reach_nm', 'resolves_at', 'round_seconds', 'rounds', 'rounds_done', 'ships', 'sides', 'size', 'started_at', 'status', 'ticks'])   // 0435: reach_nm (the circle's radius) and ticks (a tick battle or not) ride on a card too
+  for (const s of card.sides) expect(Object.keys(s).sort()).toEqual(['at', 'company', 'fleet', 'here', 'how', 'kind', 'lv', 'name', 'nation', 'ships', 'side'])   // 0450: lv, the fleet's level on her card
 })
 
 test('the watcher’s log: open and empty before the first round, nothing of the attacker’s own, and her own card is not the watcher’s to read', async () => {
@@ -218,7 +218,9 @@ test('the log grows a round at a time for the watcher; over, the ring carries th
   expect(kept.value.fights[0].end).toBe(log.end)
   expect(kept.value.fights[0].next_at).toBeNull()
   expect(kept.value.fights[0].sides.every((s) => !('at' in s))).toBe(true)
-  expect(mapFightsOf(kept.value.fights)[0].over).toBe(true)
+  // #743 (owner 2026-11-15): a ring is a fight being fought. The card is still SERVED for that minute (an open card keeps its result),
+  // and the chart draws no ring from it (before #743 it drew one, marked `over`).
+  expect(mapFightsOf(kept.value.fights)).toEqual([])
   // 61 s after its end it has left the map; its log still reads
   await db.callAs(`with u as (update public.battles set started_at = now() - interval '10 minutes', resolves_at = now() - interval '61 seconds' where id = $1 returning 1) select count(*)::int as result from u`, [battle])
   const gone = await worldFights()
@@ -261,10 +263,11 @@ test('her own raid: a PIRATES day that kept its log is on HER map for 300 s, wit
   expect(log?.attacker).toBe(false)
   expect(log?.rounds).toHaveLength(RAID_LOG.r.length)
   expect(parseFightLoss(raid.loss)).toEqual({ crewBefore: 8, crew: 2, cargo: { SUGAR: 3 }, ransom: 0 })
-  // the ring: five raiders' ships and her fleet draw 46 px, on the raid's own place
-  const [ring] = mapFightsOf(raids).map((f) => fightRing(f, 0.01))
-  expect(ring.rPx).toBe(46)
-  expect(ring.over).toBe(false)
+  // #743 (owner 2026-11-15): a raid day is settled in an instant, over before any ring could show, so the chart draws NO ring from its card
+  // (before #743: five raiders' ships and her fleet drew 46 px on the raid's own place). The card is still served, and its count is the ring's
+  // size when a battle of that many is fought (map.fightRings.spec.ts).
+  expect(mapFightsOf(raids)).toEqual([])
+  expect(fightCountRadiusPx(raid.size as number)).toBe(46)
   // the other company reads nothing of it
   const theirs = await db.callAs<number>(
     `with i as materialized (select cmd.assume_identity($1::uuid) as x)
@@ -304,7 +307,8 @@ test('a navy fight kept by the server is on EVERY map for 300 s, with its two sh
   expect(log?.attacker).toBe(true)
   expect(card.end).toBe(log?.end)
   expect(Object.keys(card.log as object).every((k) => ['v', 'atk', 'first', 'foe', 'you', 'r', 'board', 'after', 'end'].includes(k))).toBe(true)
-  expect(mapFightsOf(navy)[0].kind).toBe('NAVY')
+  expect(navy.map((c) => c.kind)).toEqual(['NAVY'])
+  expect(mapFightsOf(navy), 'a navy fight is settled in an instant too: no ring (#743)').toEqual([])
   await db.callAs(`with u as (update public.navy_fight_log set at = now() - interval '301 seconds' returning 1) select count(*)::int as result from u`)
   const gone = await worldFights()
   expect(gone.ok && gone.value.fights.filter((f) => f.kind === 'NAVY')).toEqual([])

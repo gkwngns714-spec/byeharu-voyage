@@ -265,7 +265,9 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   // between two sides rather than a restatement of one. The old assertion pinned the sentence's
   // wording ("room for"), so shortening the prose would have reddened a correct chain.
   expect(tooMuch.refusal.figures).toEqual({ have: room, need: room + 20, unit: 't' })
-  expect(tooMuch.refusal.sentence).not.toMatch(/\d/)
+  // 0433 (the server says have and need): the sentence IS the short have / need line now, written from the same two figures
+  // by cmd.refusal, so it is held to them (before 0433 it was prose with no number in it, and this line refused any digit).
+  expect(tooMuch.refusal.sentence).toBe(`Hold ${room.toLocaleString('en-US')} / ${(room + 20).toLocaleString('en-US')} tons`)
   // CLEAR drops pending orders AND releases the halt a failed one puts the fleet under (§F.3).
   expectOk(await cmdClear(fleet.id))
 
@@ -350,8 +352,9 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   expect(report).toBeDefined()
   const lines = report.payload.lines as string[]
   expect(Array.isArray(lines)).toBe(true)
-  expect(lines[0]).toMatch(/^Day \d+\./)
-  expect(lines[0].length).toBeGreaterThan(25)
+  // 0433 (the short server words): a day's line is short now ("Day 1. Quiet day." is 17 letters, where "Day 1. A quiet watch; nothing to
+  // report." was 40), so the old floor of 25 letters is gone: the line is its day and a sentence after it.
+  expect(lines[0]).toMatch(/^Day \d+\. \S.*\.$/)
 
   // ── the beat K.1 leaves implied: cargo in the hold is not ducats in the purse ─────────────────
   const sold = expectOk(await cmdIssue(fleet.id, `SELL ${homeward.code} ALL`, fleet.version))

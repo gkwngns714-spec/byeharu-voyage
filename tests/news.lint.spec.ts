@@ -16,6 +16,20 @@ import type { NewsItem } from '../src/lib/rpc'
 const DIR = path.resolve('supabase', 'migrations')
 const FIRST = 347
 
+// APPLIED WITHOUT EITHER LINE (2026-11-16). These four were deployed on 2026-11-15 and 16 with no `public.news_update(` call and no
+// `-- news: none` line: this spec runs on a PR only when the diff reaches it, their PRs did not, and main's own run was red for
+// other reasons that day. An applied migration is frozen (CLAUDE.md: editing one sends CI from zero), so the missing line cannot
+// be added to the file; it is recorded HERE instead, with what each file is. They posted no News row and none is owed by this
+// list: if the owner wants one told, a later migration posts it. The list is closed: an entry must be an applied file that still
+// has neither line (an entry that is no longer true fails), and nothing after the last entry may be added to it.
+const APPLIED_WITHOUT: Readonly<Record<string, string>> = {
+  '20260818000439_a_player_acts_in_a_fight.sql': 'cmd.battle_act and the action bar (row 351, slice 2); shipped without its news line',
+  '20260818000440_no_course_crosses_the_drawn_land.sql': 'stored courses re-sailed and roadsteads moved off the land; a repair, shipped without "-- news: none"',
+  '20260818000441_an_approach_is_not_a_canal.sql': 'the canal rule and its courses repaired; shipped without "-- news: none"',
+  '20260818000442_the_pair_table_keeps_step_with_the_courses.sql': 'the pair table re-read from the re-sailed courses; a repair, shipped without "-- news: none"',
+}
+const LAST_APPLIED_WITHOUT = 442
+
 test('every migration from 0347 on posts its UPDATE row once, or says it is not news', () => {
   const files = readdirSync(DIR).filter((f) => /^\d{14}_.+\.sql$/.test(f))
   const checked = files.filter((f) => Number(f.slice(8, 14)) >= FIRST)
@@ -25,10 +39,19 @@ test('every migration from 0347 on posts its UPDATE row once, or says it is not 
     const sql = readFileSync(path.join(DIR, f), 'utf8')
     const calls = (sql.match(/\bselect\s+public\.news_update\(|\bperform\s+public\.news_update\(/gi) ?? []).length
     const none = /^--\s*news:\s*none\b/m.test(sql)
+    if (f in APPLIED_WITHOUT) {
+      if (calls > 0 || none) bad.push(`${f}: listed in APPLIED_WITHOUT, but it has a news line now; take it off the list`)
+      continue
+    }
     if (calls === 0 && !none) bad.push(`${f}: no public.news_update( call and no "-- news: none" line`)
     if (calls > 1) bad.push(`${f}: ${calls} news_update calls — one row per file`)
     if (calls > 0 && none) bad.push(`${f}: both a news_update call and "-- news: none"`)
   }
+  for (const f of Object.keys(APPLIED_WITHOUT)) {
+    if (!checked.includes(f)) bad.push(`${f}: listed in APPLIED_WITHOUT, but it is not a migration from 0347 on`)
+    if (Number(f.slice(8, 14)) > LAST_APPLIED_WITHOUT) bad.push(`${f}: the APPLIED_WITHOUT list is closed at 0${LAST_APPLIED_WITHOUT}; a new migration carries its line`)
+  }
+  expect(Object.keys(APPLIED_WITHOUT), 'the APPLIED_WITHOUT list is closed: four files, never more').toHaveLength(4)
   expect(bad, bad.join('\n')).toEqual([])
 })
 

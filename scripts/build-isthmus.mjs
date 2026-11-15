@@ -350,6 +350,8 @@ writeFileSync(
 -- migration if the owner wants it undone: the rule's hunks come back out (voyage.path_refusal skips the allowance unread again, and
 -- Panama City to Portobelo is a canal again), and the re-sailed courses go back. (Frozen cargo and patrol legs keep their pieces: a
 -- circuit is rebuilt by public.cargo_circuit_build when its ships are home.) The courses must go back LAST: the old rule accepts both sets.
+-- A DRAFT that WRITES: it runs on a local PGlite world only while it carries the next line (the guard). To deploy it, strip that line. Owner only.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   v_def text;

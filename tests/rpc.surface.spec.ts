@@ -250,8 +250,11 @@ test('world.snapshot() gives EVERY port the roads it is reached from, and the li
   //     the whole table, or (a) and (b) would both pass over a table of quay coordinates.
   const ownWater = snap.ports.filter((p) => p.roadstead.nm === 0)
   const offQuay = snap.ports.filter((p) => p.roadstead.nm > 0)
-  expect(ownWater.length).toBeGreaterThan(50)
-  expect(offQuay.length).toBeGreaterThan(100)
+  // 0440 (no course crosses the drawn land) moved 69 of these: a quay the raster called water but the chart draws as land is
+  // reached from a drawn roadstead off the quay now (voyage.drawn_roadsteads). 20 harbours are left on their own water, where
+  // 89 were; the floor is what the claim needs (some, and not all), not the old count.
+  expect(ownWater.length).toBeGreaterThan(10)
+  expect(offQuay.length).toBeGreaterThan(150)
   for (const p of ownWater) {
     expect({ lat: p.roadstead.lat, lon: p.roadstead.lon }, `${p.code}`).toEqual({ lat: p.lat, lon: p.lon })
   }

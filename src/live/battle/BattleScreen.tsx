@@ -134,7 +134,7 @@ export function BattleScreenFrom({ source, battleId, onClose, actions }: { sourc
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-black/70"
+      className="fixed inset-0 z-[70] bg-app/70"
       data-testid="battle-backdrop"
       onClick={(e) => {
         if (e.target === e.currentTarget) close()

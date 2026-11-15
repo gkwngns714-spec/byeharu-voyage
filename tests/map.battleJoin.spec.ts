@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { rolldown } from 'rolldown'
 import { pathToFileURL } from 'node:url'
 import path from 'node:path'
-import { fightRing } from '../src/chart/fightRings'
+import { fightCountRadiusPx, fightRing } from '../src/chart/fightRings'
 import { mapFightsOf } from '../src/chart/liveWorld'
 import type { FleetOnChart, TrafficOnChart } from '../src/chart/chartModel'
 import { project } from '../src/lib/geo'
@@ -113,7 +113,11 @@ test('a tick battle’s ring is its join circle: centred on the site, reach_nm a
   expect(close.r).toBeCloseTo(0.5, 6) // 30 nm = half a degree
   expect(close.rPx).toBeCloseTo(500, 3)
   const wide = fightRing(raid, 1)
-  expect(wide.rPx).toBe(22)
+  expect(wide.rPx, 'zoomed out, the count of its fleets sets it (three here)').toBe(fightCountRadiusPx(raid.fleets))
+  expect(fightRing({ ...raid, fleets: 2 }, 1).rPx, 'two fleets: half a touch').toBe(22)
+  // …and never under what the count of fleets gives (owner row 321: more fleets, a bigger circle): seven fleets, zoomed out
+  expect(fightRing({ ...raid, fleets: 7 }, 1).rPx).toBe(fightCountRadiusPx(7))
+  expect(fightRing({ ...raid, fleets: 7 }, 0.001).rPx).toBeCloseTo(500, 3)
   const html = render.renderRings({ rings: [close], selectedId: null, unitsPerPx: 0.001 })
   expect(html).toContain('data-fight="raid-1"')
   expect(html).toContain('r="0.5"')

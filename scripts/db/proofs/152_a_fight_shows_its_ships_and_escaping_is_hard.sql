@@ -28,6 +28,8 @@ create function pg_temp.open_152(p_a jsonb, p_b jsonb, p_opts jsonb) returns num
   select (public.tick_fight('00000000-0450-4000-8000-0000000149aa'::uuid, p_a, p_b, p_opts) #>> '{rc,a,0,1}')::numeric;
 $f$;
 
+update public.world_config set value = case key when 'pirate_strike_from_port' then 'true'::jsonb else to_jsonb(720) end where key in ('pirate_strike_from_port', 'pirate_port_minutes');   -- 0445: this proof's pirate lies at her haunt and raids from it, as proof 136's does (0427's world, by 0445's two way-back knobs); the cruise and the raid under sail are proof 147's
+
 do $p$
 declare
   t0      timestamptz := date_trunc('minute', now()) + interval '1 day';

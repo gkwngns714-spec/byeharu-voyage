@@ -140,7 +140,7 @@ test('SAIL … INSURED charges the price once, Lisbon insures it, and the book a
     },
     name,
   )
-  expect(paid).toBe(`${lis.name}'s insurance paid ${fleet.name} ${formatDucats(1800)} for cargo lost to pirates (worth ${formatDucats(2000)}).`)
+  expect(paid).toBe(`${lis.name}'s insurance paid ${fleet.name} ${formatDucats(1800)}: cargo lost to pirates (worth ${formatDucats(2000)}).`)
 })
 
 test('the plan builder writes INSURED on the laden legs alone, and only when asked', async () => {

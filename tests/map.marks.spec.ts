@@ -73,7 +73,11 @@ test.describe('every port is on the sheet; the zoom decides dot or mark', () => 
     )
     // …and since 2026-11-14 (the map's look, THIN_DENSITY) the thinning reads the glass's degrees a pixel too, so the tap asks
     // for the same ships the sheet drew at this density: a hull that is not drawn cannot be pressed.
-    expect(screen).toMatch(/const drawn = shipMarks\(model\.fleets, model\.traffic, view, unitsPerPx\)/)
+    // …and since 2026-11-15 (#743, a fight on the map) the fleets in a fight too: the tap hands shipMarks the same set
+    // the sheet does (ChartCanvas), so the two thin alike.
+    expect(screen).toMatch(/const drawn = shipMarks\(model\.fleets, model\.traffic, view, unitsPerPx, inFight\)/)
+    const canvas = readFileSync(path.join(process.cwd(), 'src', 'chart', 'ChartCanvas.tsx'), 'utf8')
+    expect(canvas).toContain('shipMarks(model.fleets, model.traffic, window, unitsPerPx, inFight)')
     expect(screen).not.toContain('portMarks(')
     // The two halves partition the sheet: no harbour in both, none in neither.
     const roles = buildChartModel(mapFleetsOf([]), PORTS).portRoles

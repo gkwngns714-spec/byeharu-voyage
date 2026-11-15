@@ -87,17 +87,34 @@ export function hitTest(
 ): MapSelection {
   // ON A NAME, OR WITHIN ITS FEW PIXELS OF MARGIN (./placedNames.ts: a tap just under "Gibraltar" was nearer Ceuta's mark and
   // opened Ceuta). Where two margins meet, the name whose box is nearer wins; inside a box the distance is 0.
-  let onName: { code: string; d: number } | null = null
+  let onName: { code: string; d: number; pad: number } | null = null
   for (const n of names) {
     if (!onPlacedName(n, at)) continue
     const d = boxDistance(n.box, at)
-    if (!onName || d < onName.d) onName = { code: n.code, d }
+    if (!onName || d < onName.d) onName = { code: n.code, d, pad: n.pad ?? 0 }
   }
-  if (onName) return { kind: 'port', code: onName.code }
+  // ANOTHER HARBOUR'S OWN MARK, DEAD UNDER THE THUMB, IS THAT HARBOUR (2026-11-16). Since the names grew (2026-11-15) a word can lie
+  // over a neighbour's mark: at 44 % on a phone "Santa Cruz de Tenerife" is set under Las Palmas's mark and a press ON that mark
+  // opened Tenerife; one step out, Safi's word took it (tests/map.routebuilder.spec.ts, red since). A press within the names' own
+  // margin (5 px, `pad`) of a full mark's centre is on the mark, whoever's letters run across it; anywhere else on the word the
+  // name still answers. Only the full half is asked: a dot stays behind the names (the Cádiz/Sanlúcar rule in the header).
+  if (onName && onName.pad > 0) {
+    const mark = nearestOf(ports, at, onName.pad)
+    if (mark && mark.port.code !== onName.code) return { kind: 'port', code: mark.port.code }
+  }
+  // ON THE LETTERS' OWN BOX the name is the thing the thumb was on, whatever lies near.
+  if (onName && onName.d === 0) return { kind: 'port', code: onName.code }
+  // IN THE MARGIN ONLY (2026-11-16): the margin exists to settle a name against ANOTHER HARBOUR'S MARK. A hull that lies there,
+  // under the thumb, is still the hull: a cargo ship a few miles out of Seville, standing just past the end of the word
+  // "Seville", could not be pressed at all at any zoom (tests/battle.live.spec.ts, red from the day the margin came). So in the
+  // margin a fleet or a merchant within HALF A TOUCH of the thumb and nearer than every harbour's mark answers first (the rule
+  // every other press on the sheet has); with none, the margin's name answers as before.
+  const margin = onName !== null
+  const hullReach = margin ? (dotRadius > 0 ? Math.min(radius, dotRadius) : radius / 2) : radius
   let nearestFleet: { id: string; d: number; dockedAt: string | null } | null = null
   for (const f of model.fleets) {
     const d = distance(project(f.at), at)
-    if (d <= radius && (!nearestFleet || d < nearestFleet.d)) nearestFleet = { id: f.fleet.id, d, dockedAt: f.dockedAtCode }
+    if (d <= hullReach && (!nearestFleet || d < nearestFleet.d)) nearestFleet = { id: f.fleet.id, d, dockedAt: f.dockedAtCode }
   }
 
   const named = nearestOf(ports, at, radius)
@@ -115,7 +132,8 @@ export function hitTest(
   const harbourD = !named ? dot?.d : !dot ? named.d : Math.min(named.d, dot.d)
 
   // THE ONE RULE (header): her hull on the mark of the harbour she is docked in is that harbour.
-  const docksHere = nearestFleet !== null && nearestPort !== null && nearestFleet.dockedAt === nearestPort.port.code
+  const docksHere =
+    nearestFleet !== null && ((nearestPort !== null && nearestFleet.dockedAt === nearestPort.port.code) || (onName !== null && nearestFleet.dockedAt === onName.code))
   if (nearestFleet && !docksHere && (harbourD === undefined || nearestFleet.d <= harbourD)) {
     return { kind: 'fleet', id: nearestFleet.id }
   }
@@ -131,12 +149,13 @@ export function hitTest(
   for (const t of traffic) {
     const d = distance(project(t.at), at)
     const berthed = t.merchant.docked && t.merchant.berthCode !== null && dotCodes.has(t.merchant.berthCode)
-    const reach = berthed && dotRadius > 0 ? Math.min(radius, dotRadius) : radius
+    const reach = Math.min(hullReach, berthed && dotRadius > 0 ? Math.min(radius, dotRadius) : radius)
     if (d <= reach && (!nearestMerchant || d < nearestMerchant.d)) nearestMerchant = { id: t.fleet.id, d }
   }
   if (nearestMerchant && (harbourD === undefined || nearestMerchant.d < harbourD)) {
     return { kind: 'merchant', id: nearestMerchant.id }
   }
+  if (onName) return { kind: 'port', code: onName.code }
   if (nearestPort) return { kind: 'port', code: nearestPort.port.code }
   return null
 }
