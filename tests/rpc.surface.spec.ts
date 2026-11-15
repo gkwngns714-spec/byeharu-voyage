@@ -1601,6 +1601,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-13 with migration 0364 (owner row 321): every battle being fought, for the map's red rings, and any battle's log for a watcher. Reads, no
       // player id; dark ({on: false}) until attack_enabled. Landed WITH the faces (src/chart/FightRingsLayer.tsx, src/live/FightSheet.tsx).
       'worldFights', 'worldFight',
+      // Pin moved deliberately 2026-11-15 with migration 0435 (docs/design/tick-combat.md 9.2): a battle fought tick by tick: its timeline for the battle screen (a read, any
+      // signed-in player) and the close at its end (a nudge any reader may send; battle_resolve under the battle's lock decides). No player id.
+      'worldBattleTicks', 'cmdBattleEnd',
       // Pin moved deliberately 2026-10-11 with migration 0104 (owner row 121, docs/NPC_FLEET_SCALE.md
       // §1 slice E): ONE HARBOUR'S MERCHANTS — which merchant companies this quay concerns and what
       // each one is DOING there. A READ, no player id, dark until the owner's switch, and a player's
