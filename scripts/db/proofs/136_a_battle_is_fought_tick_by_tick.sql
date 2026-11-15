@@ -8,7 +8,7 @@
 --   nothing here assumes who wins; what is proved is the shape, the clock, the rules each event keeps, and what the close does with it.
 --
 -- @pass TK_OPEN   the raid is run whole at its open: battles.ticks, its end (last tick + 2) within 75 s, the job due at the end, a window a round; both sides held to that end
--- @pass TK_LINE   the timeline keeps its rules: ticks in order, one ability a side per global cooldown and each on its cooldown, Fury 0..100, every hit's hull after, every run's chance 0432's, the end event its outcome
+-- @pass TK_LINE   the timeline keeps its rules: ticks in order, one ability a side per global cooldown and each on its cooldown, Fury 0..100, every hit's hull after, every run's chance within the raid's floor and cap (0450; proof 152 holds the formula), the end event its outcome
 -- @pass TK_READ   world.battle_ticks serves the timeline, the clock, the circle and both sides to a signed-in player; nothing to no house or no battle
 -- @pass TK_END    cmd.battle_end does nothing before the end; at the end it closes the raid (the timeline's result, raid_close's take, the fleets freed, her 5 minutes of peace); the read then serves the result
 -- @pass TK_JOB    a raid nobody watches is closed by the minute job at its end, from the same result
@@ -104,9 +104,7 @@ begin
   v_gcd := array[-99, -99];
   v_rdy := '{}'::jsonb;
   v_hull := jsonb_build_object('0', (select jsonb_agg(s -> 'h') from jsonb_array_elements(v_tl -> 'a') s), '1', (select jsonb_agg(s -> 'h') from jsonb_array_elements(v_tl -> 'b') s));
-  v_pf_chance := round(least(v_hi, greatest(v_lo, public.wc_num('fight_flee_base')
-                   + ((select max((x ->> 'sighting')::numeric) from jsonb_array_elements(v_b.sheet -> 'a') x) - (select max((x ->> 'sighting')::numeric) from jsonb_array_elements(v_b.sheet -> 'b') x))
-                   * public.wc_num('fight_evade_per_sighting') + (v_b.sheet ->> 'a_flee')::numeric)) * 100);
+  v_pf_chance := (v_tl #>> '{rc,a,0,1}')::numeric;   -- 0450: the chance she would run on at the open, as the timeline serves it
   for e in select x from jsonb_array_elements(v_tl -> 'e') x loop
     v_n := v_n + 1;
     if (e ->> 0)::int < v_last then
@@ -133,8 +131,10 @@ begin
       v_hull := jsonb_set(v_hull, array[(1 - (e ->> 1)::int)::text, (e ->> 4)], to_jsonb((e ->> 7)::numeric));
     elsif e ->> 2 = 'P' then
       v_hull := jsonb_set(v_hull, array[(e ->> 1), (e ->> 3)], to_jsonb((e ->> 5)::numeric));
-    elsif e ->> 2 = 'X' and (e ->> 1)::int = 0 and (e ->> 3)::numeric <> v_pf_chance then
-      raise exception 'PROOF 136 FAIL: her run rolled on % %%, not the raid''s rule %', e ->> 3, v_pf_chance;
+    -- 0450: a run's chance is no longer one figure a fight (her hull, her failed attempts and the levels move it: proof 152 holds the formula);
+    -- here: every roll within the raid's floor and cap
+    elsif e ->> 2 = 'X' and (e ->> 1)::int = 0 and ((e ->> 3)::numeric < round(v_lo * 100) or (e ->> 3)::numeric > round(v_hi * 100)) then
+      raise exception 'PROOF 136 FAIL: her run rolled on % %%, outside the raid''s floor % and cap %', e ->> 3, v_lo, v_hi;
     end if;
   end loop;
   if (v_tl -> 'e' -> -1 ->> 2) <> 'E' or (v_tl -> 'e' -> -1 ->> 3) <> (v_tl ->> 'out') or (v_tl -> 'r' ->> 'outcome') <> (v_tl ->> 'out')
@@ -144,7 +144,7 @@ begin
   if (v_tl -> 'ai' ->> 'a') <> public.battle_stance_at(v_b.id, v_m, 'infinity') then
     raise exception 'PROOF 136 FAIL: the side set upon was not fought by her opening stance: % / %', v_tl -> 'ai', public.battle_stance_at(v_b.id, v_m, 'infinity');
   end if;
-  raise notice 'PASS: TK_LINE — % events in tick order; abilities on their cooldowns and the global one, Fury within its bar, every hit''s hull after, her runs on % %% (0432), AI %',
+  raise notice 'PASS: TK_LINE — % events in tick order; abilities on their cooldowns and the global one, Fury within its bar, every hit''s hull after, her runs within the raid''s floor and cap (% %% at the open), AI %',
     v_n, v_pf_chance, v_tl -> 'ai';
 
   -- ── TK_READ ──

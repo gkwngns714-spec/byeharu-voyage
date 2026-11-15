@@ -4646,6 +4646,8 @@ export interface FightSide {
   company: string | null
   nation: string | null
   ships: number
+  /** 0450: her fleet's best hull level (public.ship_level). Absent from a server before 0450. */
+  lv?: number
   here: boolean
   at?: [number, number]
 }
@@ -4735,6 +4737,42 @@ export interface TickShip {
   r: number
   f: number
   g: boolean
+  /** 0450: her level (public.ship_level, frozen at the open). Absent before 0450. */
+  lv?: number
+}
+
+/** 0450: one hull of the battle sheet as it was frozen (`world.battle_ticks().ships.a|b[i]`, the timeline's order): what
+ *  the fight fights with (voyage.fleet_hulls) and her card (public.battle_hull_card). A battle opened before 0450 has no
+ *  card: every field of it is optional, and the screen draws what there is. */
+export interface BattleShipCard {
+  name: string
+  tier?: number
+  /** her hull at the open, and her size */
+  hull?: number
+  maxd?: number
+  crew?: number
+  attack?: number
+  accuracy?: number
+  reach?: number
+  armour?: number
+  sighting?: number
+  gunner?: string | null
+  boarder?: string | null
+  /** the tick she comes up (a ship called or joining) */
+  from?: number
+  lv?: number
+  /** her class's name and its guns */
+  cls?: string
+  guns?: number
+  /** the crew her class needs, and what she may carry */
+  crew_need?: number
+  crew_max?: number
+  speed?: number
+  handling?: number
+  /** everything fitted: name, slot, wear (only when worn) */
+  fit?: { n: string; s: string; w?: number }[]
+  /** her captains: name and combat level */
+  caps?: { n: string; lv: number }[]
 }
 
 /** An event: `[t, side, kind, ...]` (side 0 = a = DEFENDER side, 1 = b = ATTACKER side, -1 = neither). See section 9.3:
@@ -4761,6 +4799,9 @@ export interface TickTimeline {
   out: 'EVADED' | 'DRIVEN_OFF' | 'RANSOM' | 'PLUNDERED'
   /** The result in fight_sides' shape (rounds = the windows): read by parseFightLog through the server's log, never re-derived. */
   r: unknown
+  /** 0450: the chance a run of each side would slip away, `[tick, per cent]` at each tick it changes (the server's own
+   *  figure: level, her hull and crew, her failed attempts are in it). Absent before 0450. */
+  rc?: { a: [number, number][]; b: [number, number][] }
 }
 
 export interface TickSide {
@@ -4789,6 +4830,8 @@ export interface BattleTicksRead {
   site?: { lat: number; lon: number }
   reach_nm?: number
   sides?: TickSide[]
+  /** 0450: every hull of the sheet, side a (the DEFENDER side) and side b, in the timeline's order. Absent before 0450. */
+  ships?: { a: BattleShipCard[]; b: BattleShipCard[] }
   mine?: string | null
   /** Null while it is fought. taken / loot / crew_lost are served to her own battle, or to everyone when no player's fleet is in it. */
   result?: {

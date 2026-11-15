@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Button, Empty, Skeleton, useBackLayer } from '../../components/ui'
 import { cmdBattleEnd, worldBattleTicks, worldFight } from '../../lib/rpc'
-import type { BattleEndReceipt, BattleRead, BattleTicksRead, RpcResult, TickAbilityCode, TickTimeline } from '../../lib/rpc'
+import type { BattleEndReceipt, BattleRead, BattleShipCard, BattleTicksRead, RpcResult, TickAbilityCode, TickTimeline } from '../../lib/rpc'
 import { BATTLE_ACT_REFUSALS, cmdBattleAct, type BattleActReceipt } from '../../lib/rpc/battleAct'
+import { formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { FightLog } from '../FightLog'
 import { parseFightLog } from '../fightLines'
 import { BattleLog } from './BattleLog'
 import { BattleStage } from './BattleStage'
 import { eventLine, resultLine } from './lines'
-import { BAR_CODES, barLock, cooldownAt, lastTick, playableTimeline, readEvents, stateAt, type BarLock, type BattleEvent } from './timeline'
+import { sideLevel } from './shipCards'
+import { ShipsPanel } from './ShipsPanel'
+import { BAR_CODES, barLock, cooldownAt, lastTick, playableTimeline, readEvents, runChanceAt, stateAt, type BarLock, type BattleEvent } from './timeline'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE BATTLE SCREEN (0435, docs/design/tick-combat.md 9 and 11; owner 2026-11-15: a wide battle screen, ships enlarged,
@@ -36,6 +39,12 @@ import { BAR_CODES, barLock, cooldownAt, lastTick, playableTimeline, readEvents,
 // it is not hers to order (Pay: only the ship set upon; Run: only a ship that began the fight). A press (or the keys 1-8 on
 // a desk) asks `cmd.battle_act` for the next tick; the answer is the re-run timeline, swapped in at the same tick (no jump:
 // the past is the same). A refusal shows its short word under the bar.
+// EACH SIDE'S SHIPS (0450; owner 2026-11-16: "in fight, i want to see levels, their stats, their crew state, equipments ...
+// fighting graphics (ships), make it smaller, and fight scene more wider"): under each side's name, "Lv 5 · Ships 4" opens
+// that side's ships (./ShipsPanel.tsx: level, class, hull, crew, guns, the fight's stats, what is fitted, her captains; the
+// figures frozen on the battle sheet). The side set upon on the left, the side that closed on the right; open on a desk,
+// shut on a phone until pressed. The sheet is nearly the whole window on a desk, the stage has its full width, and the
+// ships on it are drawn at six tenths (./BattleStage.tsx). THE RUN BUTTON SAYS ITS CHANCE (the server's `rc`).
 
 const POLL_MS = 10_000
 
@@ -132,7 +141,7 @@ export function BattleScreenFrom({ source, battleId, onClose, actions }: { sourc
       }}
     >
       <div
-        className="absolute inset-x-0 bottom-0 top-10 flex flex-col overflow-hidden rounded-t-sheet bg-app text-ink shadow-2xl lg:inset-x-[3vw] lg:inset-y-[5vh] lg:rounded-sheet"
+        className="absolute inset-x-0 bottom-0 top-10 flex flex-col overflow-hidden rounded-t-sheet bg-app text-ink shadow-2xl lg:inset-x-[1vw] lg:inset-y-[2vh] lg:rounded-sheet"
         role="dialog"
         aria-modal="true"
         aria-label={t('battle.title')}
@@ -249,6 +258,12 @@ function TickBattle({
   const t = useT()
   const reduced = useReducedMotion()
   const [logOpen, setLogOpen] = useState(false)
+  // each side's ships: open on a desk, shut on a phone until its line is pressed
+  const [shipsOpen, setShipsOpen] = useState<[boolean, boolean]>(() => {
+    const wide = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+    return [wide, wide]
+  })
+  const toggleShips = useCallback((s: 0 | 1) => setShipsOpen((o) => (s === 0 ? [!o[0], o[1]] : [o[0], !o[1]])), [])
   const events = useMemo(() => readEvents(tl), [tl])
   const endTick = useMemo(() => lastTick(tl, events), [tl, events])
   const { tick, clock, replay } = usePlayback(tl, origin, endTick)
@@ -283,8 +298,17 @@ function TickBattle({
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row" data-motion={reduced ? 'reduced' : 'full'} data-tick={shown} data-testid="battle-body">
       <div className="flex min-h-0 flex-1 flex-col">
-        <SideRow state={state} names={names} />
-        <div className="relative min-h-[30vh] flex-1 lg:min-h-[14rem]">
+        <SideRow state={state} names={names} cards={read.ships} open={shipsOpen} onToggle={toggleShips} />
+        {(shipsOpen[0] || shipsOpen[1]) && (
+          <div className="grid max-h-[28vh] shrink-0 gap-x-4 gap-y-2 overflow-y-auto px-4 pb-2 lg:max-h-[38vh] lg:grid-cols-2" data-testid="battle-ships">
+            {([0, 1] as const).map((s) => (
+              <div key={s} className="min-w-0 empty:hidden lg:empty:block">
+                {shipsOpen[s] && <ShipsPanel side={s} ships={state.ships[s]} cards={s === 0 ? read.ships?.a : read.ships?.b} />}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="relative min-h-[30vh] flex-1 lg:min-h-[12rem]">
           <BattleStage tl={tl} events={events} state={state} tick={shown} clock={clock} reduced={reduced} endWords={endWords} />
         </div>
         <div className="flex min-h-14 flex-wrap items-center gap-2 px-4 py-2">
@@ -318,36 +342,63 @@ function TickBattle({
   )
 }
 
-/** Each side: its name, its hull bar, and under it a thin Fury bar. No figures, no captions. */
-function SideRow({ state, names }: { state: ReturnType<typeof stateAt>; names: [string, string] }) {
+/** Each side: its name, its hull bar, under it a thin Fury bar, and the line that opens its ships ("Lv 5 · Ships 4"). */
+function SideRow({
+  state,
+  names,
+  cards,
+  open,
+  onToggle,
+}: {
+  state: ReturnType<typeof stateAt>
+  names: [string, string]
+  cards: { a: BattleShipCard[]; b: BattleShipCard[] } | undefined
+  open: [boolean, boolean]
+  onToggle: (s: 0 | 1) => void
+}) {
   const t = useT()
   return (
-    <div className="grid grid-cols-2 gap-4 py-3 pl-4 pr-16">
+    <div className="grid grid-cols-2 gap-4 pb-1 pl-4 pr-16 pt-3">
       {([0, 1] as const).map((s) => {
         const sd = state.sides[s]
         const up = state.ships[s].filter((x) => x.up)
         const hull = up.reduce((n, x) => n + Math.max(0, x.hull), 0)
         const max = up.reduce((n, x) => n + x.ship.m, 0)
         const pct = max > 0 ? Math.max(0, Math.min(100, (hull / max) * 100)) : 0
+        const lv = sideLevel(s === 0 ? cards?.a : cards?.b)
+        const n = formatInt(state.ships[s].length)
         return (
-          <div key={s} className="flex min-w-0 flex-col gap-1" data-testid={`battle-side-${s}`}>
-            <span className={`break-words text-t-label font-semibold ${s === 0 ? 'text-info' : 'text-danger'}`}>{names[s]}</span>
-            <div className="h-3 overflow-hidden rounded-chip bg-surface-2" role="img" aria-label={`${t('battle.hull')} ${Math.round(pct)}%`}>
-              <div
-                className={`h-full rounded-chip transition-[width] duration-300 ${pct > 50 ? 'bg-success' : pct > 25 ? 'bg-warning' : 'bg-danger'}`}
-                style={{ width: `${pct}%` }}
-                data-testid={`battle-side-hp-${s}`}
-                data-pct={Math.round(pct)}
-              />
+          <div key={s} className="flex min-w-0 flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1" data-testid={`battle-side-${s}`}>
+              <span className={`break-words text-t-label font-semibold ${s === 0 ? 'text-info' : 'text-danger'}`}>{names[s]}</span>
+              <div className="h-3 overflow-hidden rounded-chip bg-surface-2" role="img" aria-label={`${t('battle.hull')} ${Math.round(pct)}%`}>
+                <div
+                  className={`h-full rounded-chip transition-[width] duration-300 ${pct > 50 ? 'bg-success' : pct > 25 ? 'bg-warning' : 'bg-danger'}`}
+                  style={{ width: `${pct}%` }}
+                  data-testid={`battle-side-hp-${s}`}
+                  data-pct={Math.round(pct)}
+                />
+              </div>
+              <div className="h-1 overflow-hidden rounded-chip bg-surface-2" role="img" aria-label={`${t('battle.fury')} ${Math.round(sd.fury)}`}>
+                <div
+                  className="h-full rounded-chip bg-accent transition-[width] duration-300"
+                  style={{ width: `${Math.max(0, Math.min(100, sd.fury))}%` }}
+                  data-testid={`battle-fury-${s}`}
+                  data-fury={Math.round(sd.fury)}
+                />
+              </div>
             </div>
-            <div className="h-1 overflow-hidden rounded-chip bg-surface-2" role="img" aria-label={`${t('battle.fury')} ${Math.round(sd.fury)}`}>
-              <div
-                className="h-full rounded-chip bg-accent transition-[width] duration-300"
-                style={{ width: `${Math.max(0, Math.min(100, sd.fury))}%` }}
-                data-testid={`battle-fury-${s}`}
-                data-fury={Math.round(sd.fury)}
-              />
-            </div>
+            <button
+              type="button"
+              onClick={() => onToggle(s)}
+              aria-expanded={open[s]}
+              data-testid="battle-ships-toggle"
+              data-side={s}
+              className="flex min-h-8 items-center gap-1 self-start rounded-control px-1 text-t-caption text-ink-muted hover:bg-surface-2 hover:text-ink"
+            >
+              <span>{lv !== null ? t('battle.shipsOf', { lv: formatInt(lv), n }) : t('fight.shipsN', { n })}</span>
+              <span aria-hidden="true">{open[s] ? '▴' : '▾'}</span>
+            </button>
           </div>
         )
       })}
@@ -489,6 +540,8 @@ function ActionBar({
           const deg = Math.round(cd.share * 360)
           const cost = Number(tl.ab?.[code]?.cost) || 0
           const lock = act.locks[code]
+          // 0450: what her run would roll now, the server's own figure
+          const chance = code === 'RN' ? runChanceAt(tl, side, tick) : null
           return (
             <button
               key={code}
@@ -514,7 +567,15 @@ function ActionBar({
               <span aria-hidden="true" className="relative text-xl leading-none">
                 {ABILITY_ICON[code]}
               </span>
-              <span className="relative">{t(`battle.ab_${code}`)}</span>
+              <span className="relative">
+                {t(`battle.ab_${code}`)}
+                {chance !== null && (
+                  <span className="tabular-nums" data-testid="battle-run-chance" data-chance={chance}>
+                    {' '}
+                    {formatInt(chance)}%
+                  </span>
+                )}
+              </span>
             </button>
           )
         })}

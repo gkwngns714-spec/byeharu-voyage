@@ -11,7 +11,7 @@
 -- @pass BA_RATE     a second act of the same fleet at once is E_TOO_SOON; three ticks on the cap is lifted
 -- @pass BA_COOLDOWN an ability inside its cooldown in the current timeline is E_COOLDOWN ("Ready n / cd")
 -- @pass BA_FURY     Rake with Fury under 50 is E_NO_FURY ("Fury n / 50"); Patch at the tick her bar first holds 50 is taken and spends it
--- @pass BA_RUN      Run: her guns fall silent and she rolls at its end with the raid's chance (10-80 %)
+-- @pass BA_RUN      Run: her guns fall silent and she rolls at its end with the raid's chance (within raid_flee_floor..raid_flee_max: 3-45 % since 0450)
 -- @pass BA_PAY      Pay by the ship set upon: the fight ends at its tick in a RANSOM (paid), the past the same, the end moved to it
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -189,7 +189,8 @@ begin
     v_new := v_r -> 'ticks';
     select e into v_x from jsonb_array_elements(v_new -> 'e') e where e ->> 2 = 'X' and e ->> 1 = '0' and (e ->> 0)::int > v_t order by (e ->> 0)::int limit 1;
     if not exists (select 1 from jsonb_array_elements(v_new -> 'e') e where (e ->> 0)::int = v_t and e ->> 1 = '0' and e ->> 2 = 'U' and e ->> 3 = 'RN')
-       or v_x is null or (v_x ->> 0)::int <> v_t + 20 or (v_x ->> 3)::numeric not between 10 and 80
+       or v_x is null or (v_x ->> 0)::int <> v_t + 20 or (v_x ->> 3)::numeric not between round(public.wc_num('raid_flee_floor') * 100) and round(public.wc_num('raid_flee_max') * 100)   -- 0450: 3..45 (was 10..80)
+      
        or exists (select 1 from jsonb_array_elements(v_new -> 'e') e where e ->> 1 = '0' and e ->> 2 = 'A' and (e ->> 0)::int > v_t and (e ->> 0)::int <= v_t + 20) then
       raise exception 'PROOF 140 FAIL: the run is not silent guns and a roll at its end: U at %, roll %', v_t, v_x;
     end if;
