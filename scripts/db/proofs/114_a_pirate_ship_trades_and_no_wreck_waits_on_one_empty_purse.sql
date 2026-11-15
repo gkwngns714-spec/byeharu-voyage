@@ -105,6 +105,8 @@ begin
   -- the day's room is pirate_spend_day_pct of the hoard, a rate per real day that the clock's door moves (0413): the scene's hoard is sized from the served knob so one day's room is 5,000,000, whatever the clock
   update public.port_treasury t set ducats = ceil(5000000 / public.wc_num('pirate_spend_day_pct'))::bigint where t.port_id = v_cap;
   update public.pirate_ships set laid_up_at = v_now where laid_up_at is null;                    -- the proof's own fleets only are at work
+  -- 0451 leads the first squadron of a hub with a kalyon (a Dread: proof 154); this proof's figures are 0414's squadrons' (a galeoncete's 708,000; Flores's led by a korsan)
+  update public.pirate_roster_hulls h set class = case when (select q.hub_port from public.pirate_roster q where q.ord = h.ord) = v_hub2 then 'korsan' else 'galeoncete' end where h.class = 'kalyon';
   for r in select q.ord from public.pirate_roster q where q.hub_port in (v_hub, v_hub2) and q.ord % 1000 in (1, 4, 6) order by q.ord loop
     v_f := public.pirate_commission_fleet(r.ord, public.refit_yard((select q.hub_port from public.pirate_roster q where q.ord = r.ord)), v_now);
     if v_f is null then
