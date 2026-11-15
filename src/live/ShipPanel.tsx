@@ -207,7 +207,7 @@ function Box({ b }: { b: SlotBox }) {
     <div
       data-fitted={on || undefined}
       data-locked={shut || undefined}
-      title={on ? `${b.word}: ${b.fitted}${worn ? ` — ${worn}` : ''}` : shut ? `${b.word} — level ${b.opensAt}` : `${b.word} — empty`}
+      title={on ? `${b.word}: ${b.fitted}${worn ? ` — ${worn}` : ''}` : shut ? `${b.word} — ${t('ship.level', { n: b.opensAt ?? '' })}` : `${b.word} — ${t('ship.slotEmpty')}`}
       className={[
         'relative flex aspect-square min-w-0 flex-col items-center justify-center gap-1 rounded-control p-1.5 text-center',
         'shadow-[inset_0_1px_0_rgb(255_255_255/0.04),inset_0_-2px_4px_rgb(0_0_0/0.35)]',
