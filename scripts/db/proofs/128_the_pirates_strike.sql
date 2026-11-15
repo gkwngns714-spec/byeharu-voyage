@@ -130,13 +130,13 @@ begin
   -- ── PS_REST ── (the scene's pirate is mended and manned again, as at her haunt, so the second fight is a fight)
   update public.ships s set durability = (select b.durability from public.ship_base(s.id) b), crew = (select b.crew_max from public.ship_base(s.id) b) where s.fleet_id = v_pf;
   update public.fleets f set status = 'DOCKED' where f.id = v_pf;
-  update public.world_config set value = to_jsonb(10) where key = 'pirate_strike_minutes';
+  update public.world_config set value = to_jsonb(60) where key = 'pirate_strike_minutes';   -- longer than any battle: a fight that ends in a round brings its close in
   v_s := public.pirate_strike(v_pf, v_b1.resolves_at + interval '30 seconds');
   update public.world_config set value = to_jsonb(5) where key = 'pirate_strike_minutes';
   if v_s <> 'RESTING' then
     raise exception 'PROOF 128 FAIL: a pirate who struck within pirate_strike_minutes answered %', v_s;
   end if;
-  v_r := public.tick_pirates(v_b1.resolves_at + interval '1 minute');
+  v_r := public.tick_pirates(greatest(v_b1.resolves_at, v_b1.started_at + interval '5 minutes') + interval '1 minute');   -- past her rest, whenever the fight closed
   select b.* into v_b2 from public.battles b where b.id <> v_b1.id;
   if (v_r #>> '{struck,STRUCK}')::int is distinct from 1 or v_b2.kind <> 'RAID'
      or not exists (select 1 from public.battle_sides s where s.battle_id = v_b2.id and s.fleet_id = v_h and s.side = 'DEFENDER') then
