@@ -219,13 +219,8 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
       title={t('you.ships')}
       count={
         ships.length === 0 ? undefined : (
-          <span data-testid="you-ships-count">
-            {t('you.shipsCount', {
-              ships: formatInt(ships.length),
-              fleets: formatInt(fleets.length),
-              count: fleets.length,
-            })}
-          </span>
+          // 2026-11-15 owner: shorter words — the count alone, like the captains'; the fleets stand in the room line above
+          <span data-testid="you-ships-count">{formatInt(ships.length)}</span>
         )
       }
       data-testid="you-ships"
@@ -240,12 +235,13 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
             // IN A NARROW ROW HER FLEET GOES UNDER HER NAME (owner, 2026-11-12): beside a 24-letter fleet name the ship's own name
             // stood on three lines ("Nossa / Senhora da / Estrela") in a 320-px card, and on two at 390. The row is its own query
             // container (ListPanel `columns="fit"`), so the row's width decides, never the window's.
-            value={<span className="text-t-caption text-ink-muted pair:hidden">{fleet.name}</span>}
+            // A fleet named after its ship (every founding fleet) is not said twice (2026-11-15).
+            value={fleet.name === ship.name ? undefined : <span className="text-t-caption text-ink-muted pair:hidden">{fleet.name}</span>}
             hairline={i < ships.length - 1}
             data-testid="you-ship"
           >
             <Facts className="block text-t-caption text-ink-faint pair:hidden" items={[ship.class, ship.is_flagship ? t('you.flagship') : null]} />
-            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name, ship.class, ship.is_flagship ? t('you.flagship') : null]} />
+            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name === ship.name ? null : fleet.name, ship.class, ship.is_flagship ? t('you.flagship') : null]} />
           </Row>
         ))
       )}

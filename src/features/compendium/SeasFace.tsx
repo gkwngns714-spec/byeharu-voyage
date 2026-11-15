@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Chip, Hint, ListPanel, Note, PageSplit, Row, seaName, seaWallAsks, seaWallFix } from '../../components/ui'
 import type { SeaRow } from '../../domain/seas'
-import { formatInt } from '../../lib/format'
+import { formatInt, formatOfTotal } from '../../lib/format'
 import { properName, useLocale, useT } from '../../lib/i18n'
 import { fold, foldedMatch } from '../../lib/text'
 import { useFleetSeas } from '../../live/useFleetSeas'
@@ -35,7 +35,29 @@ export function SeasFace({ query, search }: { query: string; search: ReactNode }
   const open = walled ? rows.filter((r) => r.wall === null) : rows
   const closed = walled ? rows.filter((r) => r.wall !== null) : []
 
-  const asks = (r: SeaRow) => `${t('seas.asksTitle', { n: formatInt(r.zone.title_min) })} · ${t('seas.asksWaves', { n: formatInt(r.zone.wave_min) })}`
+  // HAVE / NEED (owner, 2026-11-15: "just tell me what i have, and what is required"): `Title 1 / 4 · Waves 12 / 30`, the ask she is
+  // short of in the danger tone. Which one is short is the SERVER'S verdict (the wall's `shortTitle` / `shortWave`), never compared here;
+  // hers are the wall's figures, or the face's own title and fleet waves where the sea is open.
+  const fleetWave = seas.fleet?.wave ?? null
+  const ask = (key: 'seas.asksTitle' | 'seas.asksWaves', have: number | null, need: number, short: boolean, which: string) => (
+    <span className={short ? 'text-danger' : undefined} data-testid="sea-ask" data-ask={which} data-short={short ? 'yes' : 'no'}>
+      {t(key, { n: have === null ? formatInt(need) : formatOfTotal(have, need) })}
+    </span>
+  )
+  // An ask of 0 is no ask (it read `Waves 12 / 0`), and home waters never ask her title (0396: the row says Home waters).
+  const asks = (r: SeaRow) => {
+    const w = walled ? r.wall : null
+    const pieces = [
+      !isHome(r) && r.zone.title_min > 0 ? ask('seas.asksTitle', w?.title ?? title?.level ?? null, r.zone.title_min, w?.shortTitle === true, 'title') : null,
+      r.zone.wave_min > 0 ? ask('seas.asksWaves', w?.wave ?? fleetWave, r.zone.wave_min, w?.shortWave === true, 'waves') : null,
+    ].filter((p) => p !== null)
+    return pieces.map((p, i) => (
+      <span key={i}>
+        {i > 0 && ' · '}
+        {p}
+      </span>
+    ))
+  }
   const list = (items: SeaRow[]) =>
     items.length === 0 ? (
       <NoAnswer />
@@ -63,7 +85,8 @@ export function SeasFace({ query, search }: { query: string; search: ReactNode }
           )}
           {walled && r.wall && (
             <span className="block text-t-caption text-ink-muted" data-testid="sea-row-why">
-              {[seaWallAsks(locale, r.wall), seaWallFix(locale, r.wall)].filter((s) => s !== '').join(' ')}
+              {/* the figures stand in the row's value (have / need); this line is the fix alone, or the whole ask on a world that does not say which one is short */}
+              {r.wall.shortTitle === null || r.wall.shortWave === null ? seaWallAsks(locale, r.wall) : seaWallFix(locale, r.wall)}
             </span>
           )}
         </Row>

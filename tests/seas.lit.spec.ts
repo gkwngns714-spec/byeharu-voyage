@@ -85,13 +85,20 @@ for (const glass of [
       await expect(page.locator('[data-testid="sea-row"][data-sea="MED"]').getByTestId('sea-row-home')).toHaveText(ko ? '본국 바다' : 'Home waters')
       const ocean = page.locator('[data-testid="sea-row"][data-sea="NOR-MID"]')
       await expect(ocean).toHaveAttribute('data-open', 'no')
-      // title AND hull are short there: both asks and both pieces of advice are said
-      // 2026-11-15 owner: shorter words (have / need)
-      await expect(ocean.getByTestId('sea-row-why')).toHaveText(ko ? /직함\s1\s\/\s4.*내파\s12\s\/\s30.*교역.*닻/ : /Title\s1\s\/\s4.*Waves\s12\s\/\s30.*Trading.*anchors/)
+      // 2026-11-15 owner: shorter words — a closed sea prints HAVE / NEED (`Title 1 / 4 · Waves 12 / 30`), the short ask in the
+      // danger tone, and under it the fix alone.
+      // title AND hull are short there: both asks are short and both pieces of advice are said
+      await expect(ocean.locator('[data-testid="sea-ask"][data-ask="title"]')).toHaveText(/1 \/ 4/)
+      await expect(ocean.locator('[data-testid="sea-ask"][data-ask="title"]')).toHaveAttribute('data-short', 'yes')
+      await expect(ocean.locator('[data-testid="sea-ask"][data-ask="waves"]')).toHaveText(/12 \/ 30/)
+      await expect(ocean.locator('[data-testid="sea-ask"][data-ask="waves"]')).toHaveAttribute('data-short', 'yes')
+      await expect(ocean.getByTestId('sea-row-why')).toHaveText(ko ? /교역.*닻/ : /Trading.*anchors/)
       // a coastal sea a barca holds: only the title is short, and nothing is said of her hull
       const guinea = page.locator('[data-testid="sea-row"][data-sea="GUL"]')
-      await expect(guinea.getByTestId('sea-row-why')).toHaveText(ko ? /직함\s1\s\/\s3/ : /Title\s1\s\/\s3/)
-      await expect(guinea.getByTestId('sea-row-why')).not.toHaveText(ko ? /내파/ : /Waves/)
+      await expect(guinea.locator('[data-testid="sea-ask"][data-ask="title"]')).toHaveText(/1 \/ 3/)
+      await expect(guinea.locator('[data-testid="sea-ask"][data-ask="title"]')).toHaveAttribute('data-short', 'yes')
+      await expect(guinea.locator('[data-testid="sea-ask"][data-ask="waves"][data-short="yes"]')).toHaveCount(0)
+      await expect(guinea.getByTestId('sea-row-why')).not.toHaveText(ko ? /닻/ : /anchors/)
       await expect(page.getByTestId('seas-title')).toContainText('1')
       await expect(page.getByTestId('seas-waves')).toContainText('12')
       expect(await noSideScroll(page), `the Seas face scrolls sideways at ${glass.tag}`).toBe(true)
