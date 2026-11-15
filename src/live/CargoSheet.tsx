@@ -9,6 +9,7 @@ import { CargoHull } from './CargoHull'
 import { AttackSection } from './AttackSection'
 import { HullCountry } from './HullCountry'
 import { useT } from '../lib/i18n'
+import { cargoStateWordKey } from './cargoState'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CARGO SHIP SHEET — one crown's cargo ship (0310, docs/CITY_CONVOYS.md section 2). Read-only, but for Attack while attacks are lit (0327)
@@ -72,10 +73,16 @@ function CargoBody({ card }: { card: CargoShipCard }) {
   const portByCode = useWorld((s) => s.portByCode)
   const bound = card.to ?? card.fleet.port ?? card.home
   const more = card.stops_left - card.next.length
+  // 0437: with nothing on board she says what she is doing (Returning, At home, Laid up), not 0 gold
+  const word = cargoStateWordKey(card.state, card.funds)
   return (
     <div data-testid="cargo-sheet-body">
       <TileField className="mt-2">
-        <Tile name={t('map.funds')} figure={<Figure size="figure" value={formatDucats(card.funds)} />} data-testid="cargo-funds" />
+        <Tile
+          name={t('map.funds')}
+          figure={<Figure size="figure" value={word ? t(word) : formatDucats(card.funds)} />}
+          data-testid="cargo-funds"
+        />
       </TileField>
       <SheetSection surface>
         {/* A CITY'S NAME AS THE FIGURE (2026-11-14, owner row 318): under 375 px the name goes under its word (Row, wholeName). Beside
