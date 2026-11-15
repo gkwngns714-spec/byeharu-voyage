@@ -66,6 +66,7 @@
 // The chart's own word for a served ship class lives with the rest of the read model; what each
 // class LOOKS like is this file's, and this is the only thing it imports.
 import type { HullClass } from './mapTypes'
+import { KIND_TIER_HALF_LENGTH, SHIP_TIERS, countMarkOf, fleetCountMark, kindTierHull, shipTierOf, type CountMark, type KindFamily, type ShipFamily, type ShipTier } from './shipShapes'
 
 /**
  * THE TOUCH FLOOR, in CSS pixels — the smallest a target may be for a finger.
@@ -467,7 +468,10 @@ export function shipPath(halfLength: number): string {
 /** The six sizes a silhouette is drawn at (`class_profile.size`, clamped to 1-6). */
 export type HullSize = 1 | 2 | 3 | 4 | 5 | 6
 /** A silhouette: rig family × size. */
-export type HullShape = `${'fore' | 'square'}-${HullSize}` | 'cargo' | 'navy' | 'pirate'
+type ClassShape = `${'fore' | 'square'}-${HullSize}`
+/** 2026-11-16: a kind's hull at a tier (./shipShapes.ts): `pirate-3` is a pirate frigate. */
+type KindTierShape = `${KindFamily}-${ShipTier}`
+export type HullShape = ClassShape | 'cargo' | 'navy' | 'pirate' | KindTierShape
 
 /** The served facts a silhouette is read from — `world.snapshot().ship_classes` rows. */
 export interface HullClassFacts {
@@ -487,6 +491,16 @@ export const CARGO_HULL: HullClass = 'cargo-ship'
 export const NAVY_HULL: HullClass = 'navy-ship'
 /** 0339: THE PIRATE SHIP'S, on the same terms: ./liveWorld.ts names it for a row the server marks `kind: PIRATE`. */
 export const PIRATE_HULL: HullClass = 'pirate-ship'
+const KIND_PLAIN: Readonly<Record<KindFamily, HullClass>> = { cargo: CARGO_HULL, navy: NAVY_HULL, pirate: PIRATE_HULL }
+/**
+ * 2026-11-16 (owner: *"every pirate ship's graphic is same. the one with stronger ships ... should have different graphics"*):
+ * A KIND'S HULL AT A TIER, as the chart's word for it, on the same terms as the three above: no served class has this
+ * code, ./liveWorld.ts names it from the class the server says she sails (`hullTierOf`). Tier null (a class no snapshot
+ * has named) is the kind's plain hull above, which claims no tier.
+ */
+export function kindHull(family: KindFamily, tier: ShipTier | null): HullClass {
+  return tier === null ? KIND_PLAIN[family] : `${KIND_PLAIN[family]}:${tier}`
+}
 
 /**
  * W0a (docs/WORLD_POWERS.md section 9) — EVERY KIND OF SHIP HAS ITS LOOK, IN THIS ONE TABLE, and nothing else
@@ -534,8 +548,12 @@ const LIVE_SHAPES: Readonly<Record<string, HullShape>> = {
   [CARGO_HULL]: KIND_LOOK.cargo.hull!,
   [NAVY_HULL]: KIND_LOOK.navy.hull!,
   [PIRATE_HULL]: KIND_LOOK.pirate.hull!,
+  ...Object.fromEntries(
+    (['cargo', 'navy', 'pirate'] as const).flatMap((family) => SHIP_TIERS.map((tier): [string, HullShape] => [kindHull(family, tier), `${family}-${tier}`])),
+  ),
 }
 let servedShapes: ReadonlyMap<string, HullShape> = new Map()
+let servedTiers: ReadonlyMap<string, ShipTier> = new Map()
 
 /** The silhouette of a rig and a size — the one rule. */
 export function hullShapeFor(rig: string, size: number): HullShape {
@@ -547,6 +565,12 @@ export function hullShapeFor(rig: string, size: number): HullShape {
 /** THE SERVED CLASSES — called by the world store with each snapshot's `ship_classes`. */
 export function registerHullClasses(classes: readonly HullClassFacts[]): void {
   servedShapes = new Map(classes.map((c) => [c.code, hullShapeFor(c.rig, c.size ?? c.tier)]))
+  servedTiers = new Map(classes.map((c) => [c.code, shipTierOf(c.size ?? c.tier)]))
+}
+
+/** A served class code → her tier (./shipShapes.ts `shipTierOf`, off the same served size her silhouette reads), or null for a code no snapshot has named. */
+export function hullTierOf(cls: HullClass | null): ShipTier | null {
+  return cls === null ? null : (servedTiers.get(cls) ?? null)
 }
 
 /** A served class code → its silhouette, the live three's pins when no snapshot named it, or null. */
@@ -555,7 +579,13 @@ export function hullShapeOf(cls: HullClass | null): HullShape | null {
   return servedShapes.get(cls) ?? LIVE_SHAPES[cls] ?? null
 }
 
-const sizeOfShape = (shape: Exclude<HullShape, 'cargo' | 'navy' | 'pirate'>): HullSize => Number(shape.slice(-1)) as HullSize
+const sizeOfShape = (shape: ClassShape): HullSize => Number(shape.slice(-1)) as HullSize
+const KIND_TIER = /^(cargo|navy|pirate)-([1-4])$/
+/** A kind's hull at a tier, read back out of its shape; null for every other shape. */
+function kindTierOf(shape: HullShape): { readonly family: KindFamily; readonly tier: ShipTier } | null {
+  const m = KIND_TIER.exec(shape)
+  return m ? { family: m[1] as KindFamily, tier: Number(m[2]) as ShipTier } : null
+}
 
 /**
  * HOW LONG THIS HULL IS DRAWN, centre to bow, in CSS px. A class the server did not name is the
@@ -568,7 +598,9 @@ export function hullHalfLengthOf(cls: HullClass | null): number {
   if (shape === 'cargo') return GLYPH.cargoHullHalfLength
   if (shape === 'navy') return GLYPH.navyHullHalfLength
   if (shape === 'pirate') return GLYPH.pirateHullHalfLength
-  return GLYPH.hullHalfLength[sizeOfShape(shape)]
+  const kind = kindTierOf(shape)
+  if (kind) return KIND_TIER_HALF_LENGTH[kind.family][kind.tier - 1]
+  return GLYPH.hullHalfLength[sizeOfShape(shape as ClassShape)]
 }
 
 /**
@@ -598,15 +630,44 @@ export function hullHalfLengthOf(cls: HullClass | null): number {
  * lozenge the port ramps draw. A circle is a destination, a roadstead, an islet or a halo.
  */
 export function hullPath(cls: HullClass | null, halfLength: number = hullHalfLengthOf(cls)): string {
-  const l = halfLength
-  const shape = hullShapeOf(cls)
+  return hullShapePath(hullShapeOf(cls), halfLength)
+}
+
+/** Every hull string this chart has built, by shape and length: about 1,500 fleets re-render on a zoom step, and none of them builds a path twice. */
+const hullPaths = new Map<string, string>()
+
+/**
+ * A SILHOUETTE BY ITS SHAPE (2026-11-16), for a caller that holds no served class: the battle stage and the Codex
+ * key draw a family and a tier (`familyHullShape`). `hullPath` is this, after resolving the class. Built once a
+ * shape and length.
+ */
+export function hullShapePath(shape: HullShape | null, halfLength: number): string {
+  const key = `${shape}@${halfLength}`
+  let d = hullPaths.get(key)
+  if (d === undefined) {
+    d = buildHullPath(shape, halfLength)
+    hullPaths.set(key, d)
+  }
+  return d
+}
+
+/** The merchants' four, of the twelve they sail: the coaster, the light square-rigger, the carrack, the flagship. */
+const MERCHANT_TIER_SHAPE: readonly ClassShape[] = ['square-1', 'square-2', 'square-3', 'square-6']
+/** The silhouette a family draws at a tier: a kind's own hull, a merchant's (and yours) one of the class silhouettes. */
+export function familyHullShape(family: ShipFamily, tier: ShipTier): HullShape {
+  return family === 'merchant' || family === 'yours' ? MERCHANT_TIER_SHAPE[tier - 1] : `${family}-${tier}`
+}
+
+function buildHullPath(shape: HullShape | null, l: number): string {
   // THE CLASS-LESS HULL IS `shipPath` AND NOT A NINTH SILHOUETTE. One hull-with-no-class on this
   // chart, drawn by the function the minimap and row 90's whole measurement already use.
   if (shape === null) return shipPath(l)
   if (shape === 'cargo') return cargoHullPath(l)
   if (shape === 'navy') return navyHullPath(l)
   if (shape === 'pirate') return pirateHullPath(l)
-  if (shape !== 'fore-1' && shape !== 'fore-2' && shape !== 'square-3') return waveAHullPath(shape, l)
+  const kind = kindTierOf(shape)
+  if (kind) return kindTierHull(kind.family, kind.tier, l)
+  if (shape !== 'fore-1' && shape !== 'fore-2' && shape !== 'square-3') return waveAHullPath(shape as ClassShape, l)
   if (shape === 'fore-1') {
     const b = l * 0.33
     return (
@@ -684,7 +745,7 @@ function mirrored(half: readonly (readonly [number, number])[]): string {
  *   fore-6    the great galley (the Baştarda-i Hümayun) — the longest, slimmest hull: a long ram, an
  *             outrigger of oars down the whole waist, a raised poop at the stern.
  */
-function waveAHullPath(shape: Exclude<HullShape, 'cargo' | 'navy' | 'pirate'>, l: number): string {
+function waveAHullPath(shape: ClassShape, l: number): string {
   if (shape === 'square-1') {
     const b = l * 0.4
     return mirrored([[0, -l], [b * 0.7, -l * 0.6], [b, -l * 0.1], [b, l * 0.75], [b * 0.85, l * 0.9], [0, l * 0.9]])
@@ -952,6 +1013,54 @@ export function hullGroupHalo(marks: readonly HullMark[]): { readonly cx: number
   const cy = marks.reduce((s, m) => s + m.dy, 0) / marks.length
   const r = Math.max(...marks.map((m) => Math.hypot(m.dx - cx, m.dy - cy) + halo(m.halfLength)))
   return { cx, cy, r }
+}
+
+/** What a fleet's mark is made of, worked out once: her hulls, the circle round them, and the aftermost point drawn. */
+export interface FleetMark {
+  readonly marks: readonly HullMark[]
+  readonly halo: { readonly cx: number; readonly cy: number; readonly r: number }
+  /** Each hull's outline, in `marks`' order. THE FLAGSHIP'S CARRIES THE COUNT MARK (./shipShapes.ts `fleetCountMark`): the ships
+   *  her mark does not draw are more shapes of the same path, so a fleet of several costs the sheet no element more. */
+  readonly paths: readonly string[]
+  /** How the ships not drawn are said astern, or null when every ship is drawn. */
+  readonly count: CountMark | null
+  /** How many ships she is. */
+  readonly ships: number
+}
+
+const fleetMarks = new WeakMap<readonly (HullClass | null)[], Map<number, FleetMark>>()
+const NO_HULLS: readonly (HullClass | null)[] = []
+
+/**
+ * A FLEET'S MARK, KEPT (2026-11-16). `hullGroup` and `hullGroupHalo` are pure in her hull list, in whether the glass
+ * groups (`HULL_GROUP_MAX_UNITS_PER_PX`) and in her kind's floor (`minHalfLength`), so the answer is kept on the list
+ * itself: a model's hull lists live from one read to the next, and every zoom step and pan in between re-renders about
+ * 1,500 fleets without building one array. A new read brings new lists, and the old answers go with the old lists.
+ */
+export function fleetMark(hulls: readonly (HullClass | null)[] | undefined, unitsPerPx: number, minHalfLength: number): FleetMark {
+  const list = hulls ?? NO_HULLS
+  const grouped = Number.isFinite(unitsPerPx) && unitsPerPx <= HULL_GROUP_MAX_UNITS_PER_PX
+  const key = minHalfLength * 2 + (grouped ? 1 : 0)
+  let byKey = fleetMarks.get(list)
+  if (!byKey) {
+    byKey = new Map()
+    fleetMarks.set(list, byKey)
+  }
+  let mark = byKey.get(key)
+  if (!mark) {
+    const marks = hullGroup(list, grouped ? 0 : Number.POSITIVE_INFINITY).map((m) => (m.halfLength >= minHalfLength ? m : { ...m, halfLength: minHalfLength }))
+    const ships = Math.max(list.length, 1)
+    const more = fleetCountMark(ships, marks.length, marks[0].halfLength, Math.max(...marks.map((m) => m.dy + m.halfLength)))
+    mark = {
+      marks,
+      halo: hullGroupHalo(marks),
+      paths: marks.map((m, i) => hullPath(m.cls, m.halfLength) + (i === 0 && more !== null ? more : '')),
+      count: countMarkOf(ships, marks.length),
+      ships,
+    }
+    byKey.set(key, mark)
+  }
+  return mark
 }
 
 /**

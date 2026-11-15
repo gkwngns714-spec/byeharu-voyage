@@ -18,7 +18,7 @@
 
 import { haversineNm, type LatLon } from '../lib/geo'
 import type { FightCard, FightSide } from '../lib/rpc'
-import { CARGO_HULL, NAVY_HULL, PIRATE_HULL } from './glyphs'
+import { kindHullsOf } from './liveWorld'
 import type { MapFleet, MapTraffic, MerchantInk } from './mapTypes'
 
 /** One fleet of a battle being fought: where the map draws her, and what the card says she is. */
@@ -89,7 +89,7 @@ function markOf(pin: FightPin): MapTraffic {
     name: s.name,
     enduranceDays: Number.NaN,
     hulls:
-      s.kind === 'CARGO_SHIP' ? [CARGO_HULL] : s.kind === 'NAVY' ? [NAVY_HULL] : s.kind === 'PIRATE' ? [PIRATE_HULL] : Array.from({ length: Math.max(1, Math.trunc(s.ships) || 1) }, () => null),
+      s.kind === 'CARGO_SHIP' ? kindHullsOf('cargo', null, s.ships) : s.kind === 'NAVY' ? kindHullsOf('navy', null, s.ships) : s.kind === 'PIRATE' ? kindHullsOf('pirate', null, s.ships) : Array.from({ length: Math.max(1, Math.trunc(s.ships) || 1) }, () => null),
     at: pin.at,
     company: s.company ?? '',
     ink: s.kind === 'PIRATE' ? 'pir' : INKS.includes(nation) ? nation : 'eng',

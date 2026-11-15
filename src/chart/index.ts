@@ -152,6 +152,11 @@ export {
   PIRATE_HULL,
   hullHalfLengthOf,
   hullPath,
+  // 2026-11-16: a kind's hull at a tier, and a silhouette by family and tier (the battle stage, the Codex key).
+  familyHullShape,
+  hullShapePath,
+  hullTierOf,
+  kindHull,
   // 0135 — eight silhouettes by rig family × size; the store registers the served classes.
   hullShapeFor,
   hullShapeOf,
@@ -164,6 +169,22 @@ export {
   trianglePath,
   type HullMark,
 } from './glyphs'
+// 2026-11-16: THE FAMILY OF SHIP PICTURES (./shipShapes.ts): the tier rule, a deck's rig and the count mark.
+export {
+  countMarkOf,
+  familyOfSide,
+  fleetCountMark,
+  sailPath,
+  SHIP_FAMILIES,
+  SHIP_TIERS,
+  shipRig,
+  shipTierOf,
+  TIER_NAME,
+  type KindFamily,
+  type ShipFamily,
+  type ShipRig,
+  type ShipTier,
+} from './shipShapes'
 export { toClosedRingsD, toPolylineD } from './svgPath'
 export { buildTrack, sheetPieces, type TrackPaths } from './route'
 // 0076 — WHICH PORTS SHOW THEIR ROADS, AND WHERE THE TWO ENDS ARE. The DECISION, exported; the

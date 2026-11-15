@@ -30,7 +30,8 @@
 
 import type { FightCard, FleetShip, FleetView, SnapshotPort, TrafficFleet } from '../lib/rpc'
 import type { MapFight } from './fightRings'
-import { CARGO_HULL, NAVY_HULL, PIRATE_HULL, hullShapeOf } from './glyphs'
+import { hullShapeOf, hullTierOf, kindHull } from './glyphs'
+import type { KindFamily } from './shipShapes'
 import type { HullClass, MapFleet, MapPort, MapTraffic } from './mapTypes'
 import { heldUntilMs, whereabouts } from '../domain/fleet'
 import { instantMs } from '../lib/format'
@@ -181,7 +182,8 @@ export function mapTrafficOf(
       // served fact, one reading of it. A merchant with no list falls back to her count of
       // class-less hulls, which is what this chart drew for her before the read carried classes.
       // 0310: A CARGO SHIP IS DRAWN BY HER KIND, NOT THE CLASS SHE IS BUILT ON (docs/CITY_CONVOYS.md section 2).
-      hulls: t.kind === 'CARGO_SHIP' ? [CARGO_HULL] : t.kind === 'NAVY' ? [NAVY_HULL] : t.kind === 'PIRATE' ? [PIRATE_HULL] : t.hulls && t.hulls.length > 0
+      // 2026-11-16: ... AND BY HOW STRONG THAT CLASS IS, AND AS MANY AS SHE HAS (`kindHullsOf`).
+      hulls: t.kind ? kindHullsOf(KIND_FAMILY[t.kind], t.hulls, t.ships) : t.hulls && t.hulls.length > 0
         ? hullCodesOf(t.hulls)
         : Array.from({ length: Math.max(0, Math.trunc(t.ships)) || 0 }, () => null),
     })
@@ -216,6 +218,21 @@ export function mapTrafficOf(
     })
   }
   return out
+}
+
+const KIND_FAMILY: Readonly<Record<NonNullable<TrafficFleet['kind']>, KindFamily>> = { CARGO_SHIP: 'cargo', NAVY: 'navy', PIRATE: 'pirate' }
+
+/**
+ * A KIND'S HULLS (2026-11-16, owner: *"every pirate ship's graphic is same. the one with stronger ships, multiple fleets
+ * should have different graphics. this goes to every kinds of ship too"*). Until now a cargo, navy or pirate row drew ONE
+ * hull of her kind whatever she sailed, though the read has always served her every hull's class (`hulls`, 0102) and her
+ * count (`ships`). Now each served hull is her kind's hull AT THE TIER OF ITS CLASS (./glyphs.ts `hullTierOf`, off the
+ * served size), flagship first, as many as she has. A class no snapshot has named draws the kind's plain hull, and a row
+ * with no list draws her count of them: the lesser answer, never a guessed tier.
+ */
+export function kindHullsOf(family: KindFamily, hulls: readonly string[] | null | undefined, ships: number | null | undefined): HullClass[] {
+  if (hulls && hulls.length > 0) return hulls.map((code) => kindHull(family, hullTierOf(code)))
+  return Array.from({ length: Math.max(1, Math.trunc(ships ?? 1) || 1) }, () => kindHull(family, null))
 }
 
 /**
