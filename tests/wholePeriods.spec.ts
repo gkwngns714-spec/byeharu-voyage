@@ -114,9 +114,9 @@ test('wholeRows: a Stats read\'s rows, by its span, up to its last count', () =>
   // 1d (and a read of no span) is the count's own rows: only the live point goes
   expect(sold(wholeRows(stamp('1d'), quarters))).toEqual([27_173_751, 25_022_617, 26_122_487])
   expect(sold(wholeRows(stamp(null), quarters))).toEqual([27_173_751, 25_022_617, 26_122_487])
-  // 1w and 1m are hourly buckets, 1y and all daily ones (public.stats_span_unit, 0246): the bucket being counted goes with the live point
-  for (const span of ['1w', '1m']) expect(sold(wholeRows(stamp(span), hours))).toEqual([93_732_446, 101_091_608])
-  for (const span of ['1y', 'all']) expect(sold(wholeRows(stamp(span), days))).toEqual([2_411_307_084, 2_371_026_924])
+  // 1w is hourly buckets, 1m, 1y and all daily ones (public.stats_span_unit, 0246; 1m daily since 0428): the bucket being counted goes with the live point
+  for (const span of ['1w']) expect(sold(wholeRows(stamp(span), hours))).toEqual([93_732_446, 101_091_608])
+  for (const span of ['1m', '1y', 'all']) expect(sold(wholeRows(stamp(span), days))).toEqual([2_411_307_084, 2_371_026_924])
 
   // the rows handed back are the served rows themselves
   expect(wholeRows(stamp('1d'), quarters)[0]).toBe(quarters[0])

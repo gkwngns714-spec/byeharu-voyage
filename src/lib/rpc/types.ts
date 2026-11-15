@@ -4112,6 +4112,123 @@ export interface StatsFleets {
   battles?: { raids_day: number; won_day: number; held_day: number; navy_day: number; attacks_day: number; navy_fights_day: number }
 }
 
+/** 0431: the three kinds the faces Navy, Pirates and Cargo list (the server's words). */
+export type StatsFleetKindId = 'NAVY' | 'PIRATE' | 'CARGO'
+
+/** 0431: a fleet's book over a window, numbers by key (public.fleet_book): upkeep, repairs, refits, fights, won, lost, sunk (pirates she sank),
+ *  hull (hull lost), wrecks, stops, fines, prizes, raids, raids_won, raids_lost, loot (ransom + gold), ransom, gold, paid, navy_fights, attacked,
+ *  held, loaded, delivered, returned, looted and their `_n` counts. A key that never happened is absent (read it as 0). */
+export type StatsFleetFigs = Partial<Record<string, number>>
+
+/** 0431: one state of a fleet, by 0419's rule (laid up, else wrecked, else at sea, else in port). */
+export type StatsFleetState = 'sea' | 'port' | 'laid_up' | 'wrecked'
+
+/** 0431: one fleet in a kind's list, as the newest Stats count saw her, with her 7 days. */
+export interface StatsFleetListRow {
+  id: string
+  name: string
+  /** a roster pirate's Korean name */
+  name_ko?: string
+  /** her country's code (the pirates' for a pirate) */
+  nation?: string
+  /** her home (a pirate, a cargo ship) or station (a navy ship), a port code */
+  home?: string
+  ships: number
+  state: StatsFleetState
+  week: StatsFleetFigs
+}
+
+/** 0431: world.stats_fleet_list — the face of one kind from the newest Stats count (four an hour). Before the first count only `at`, `kind` and
+ *  `counted_at` (null). `since` is the book's first hour inside the 7 days (the book starts with 0431). */
+export interface StatsFleetList {
+  at: string
+  kind: StatsFleetKindId
+  counted_at: string | null
+  fleets?: number
+  ships?: number
+  sea?: number
+  port?: number
+  laid_up?: number
+  wrecked?: number
+  day?: StatsFleetFigs
+  week?: StatsFleetFigs
+  since?: string | null
+  list?: StatsFleetListRow[]
+}
+
+/** 0431: one line of a fleet's page (public.fleet_lines), newest first. `kind` says which keys are there. */
+export interface StatsFleetLine {
+  at: string
+  kind: 'FIGHT' | 'STOP' | 'BATTLE' | 'RAID' | 'TAKE' | 'REFIT'
+  /** FIGHT, STOP, BATTLE, RAID: the other side's name */
+  foe?: string
+  /** FIGHT: NAVY or PIRATE (the other side); the navy's country on a pirate's line */
+  foe_kind?: string
+  nation?: string
+  /** her side of it */
+  result?: 'WON' | 'LOST' | 'DREW'
+  /** FIGHT: she sank the foe; she was wrecked */
+  sank?: boolean
+  wrecked?: boolean
+  hull?: number
+  sea?: string
+  /** STOP: the fine paid and the prize taken */
+  fine?: number
+  prize?: number
+  outcome?: string
+  /** BATTLE, RAID: the battle's kind and her side */
+  battle?: string
+  side?: string
+  how?: string
+  /** TAKE: RANSOM or LOOT, how much, from whom */
+  amount?: number
+  victim?: string
+  victim_kind?: string
+  /** REFIT: the cost and her home */
+  cost?: number
+  port?: string
+}
+
+/** 0431: one gold row of a cargo ship (public.convoy_cargo), newest first: `from` is where the load was taken on, `after` the seconds since. */
+export interface StatsCargoRow {
+  at: string
+  stage: 'LOADED' | 'DELIVERED' | 'RETURNED' | 'LOOTED'
+  port: string
+  ducats: number
+  from?: string
+  after?: number
+}
+
+/** 0431: world.stats_fleet — one navy, pirate or cargo ship's Stats page. */
+export interface StatsFleetPage {
+  at: string
+  kind: StatsFleetKindId
+  id: string
+  name: string
+  name_ko?: string
+  house?: string
+  house_ko?: string
+  nation?: string
+  home?: string
+  mission?: string
+  state: StatsFleetState
+  /** voyage.where_now: SAILING, DOCKED, ... */
+  status?: string
+  port?: string
+  from?: string
+  to?: string
+  departed?: string
+  eta?: string
+  ships: { name: string; class: string; class_code: string; flagship: boolean; hull: number; hull_max: number | null; crew: number }[]
+  day: StatsFleetFigs
+  week: StatsFleetFigs
+  /** her first hour in the book inside the 7 days, and the book's own first (the book starts with 0431) */
+  since?: string | null
+  book_from?: string | null
+  lines: StatsFleetLine[]
+  cargo?: { aboard: number; load: { port: string; ducats: number; at: string } | null; rows: StatsCargoRow[] }
+}
+
 /** One money move in `world.money_feed` (0235): one purse's gain or loss. Both ends of a sale are two moves. */
 export interface MoneyMove {
   /** 'L' + ledger id or 'F' + flow id — unique; the list's dedupe key. */

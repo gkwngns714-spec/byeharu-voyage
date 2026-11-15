@@ -8,7 +8,7 @@
 -- @pass BRETHREN_FREE_PORT  at each of the four homes a company of Portugal pays tax 0 and dock fee 0 and the dues line says factor 0, war; a control city asks its tax and fee; a city the pirates WIN keeps its own rate
 -- @pass BRETHREN_TAX_DOOR   cmd.set_tax at a pirate home is refused E_FREE_PORT; at a control city it is refused E_NOT_MAYOR as before; depth_day leaves a home at 0.5 whatever is invested and moves a control city
 -- @pass BRETHREN_LEVER      pirate_ports_free false: no port is free, the four ask the tax, the fee and the war factor of any city, set_tax answers as at any city, depth_day moves them; true again: free as before
--- @pass BRETHREN_NO_CROWN   city_capital is null at the four; crown_aid aids a poor Portuguese city and not a poor pirate one, and moves no pirate gold; convoys lit: no fleet number, circuit or ship for the pirates, the other realms keep theirs
+-- @pass BRETHREN_NO_CROWN   city_capital is null at the four; crown_aid aids a poor Portuguese city and not a poor pirate one, and moves no pirate gold; convoys lit: the pirates hold a share (0430) but no circuit or ship, the other realms keep theirs
 -- @pass BRETHREN_NO_NAVY    navy lit: navy_read writes the ten and not the pirates; navy_plan_step plans no station for them and still plans another realm's
 -- @pass BRETHREN_DOORS      pirates_joinable false: found_house and change_country refuse PIR (E_MINOR_POWER, the fixes name the ten), a minor is refused alike, a great power is let in; true: PIR is let in at Port Royal, paid by Port Royal
 -- @pass BRETHREN_SNAPSHOT   world.snapshot serves great for 11 and joinable for 10 (PIR great, not joinable); the four homes fly PIR with tax 0
@@ -198,20 +198,21 @@ begin
   perform public.convoy_fleet_settle(v_t0);
   v_r := public.tick_cargo_ships(v_t0, v_pir);
   v_x := public.tick_cargo_ships(v_t0, null);
-  if exists (select 1 from public.cargo_fleet_sizes s where s.nation_id = v_pir) or exists (select 1 from public.cargo_circuits c where c.nation_id = v_pir)
+  -- 0430: the pirates have a share of the world's cargo ships (proof 131), but the crown job still builds them no circuit and no ship
+  if exists (select 1 from public.cargo_circuits c where c.nation_id = v_pir)
      or exists (select 1 from public.cargo_ships c where c.nation_id = v_pir) or exists (select 1 from public.cargo_ships c join public.players p on p.id = c.player_id where p.nation_id = v_pir)
-     or (select count(*) from public.cargo_fleet_sizes) <> 10 or (v_r ->> 'built') is not null or (v_r ->> 'made')::int <> 0
+     or (select count(*) from public.cargo_fleet_sizes) <> 11 or (v_r ->> 'built') is not null or (v_r ->> 'made')::int <> 0
      or not exists (select 1 from public.cargo_circuits c) or not exists (select 1 from public.cargo_ships c) then
     raise exception 'PROOF 45 FAIL: the cargo job touched the pirates, or stopped serving the ten: sizes %, run for the pirates %, run for all %', (select count(*) from public.cargo_fleet_sizes), v_r, v_x;
   end if;
-  if (select count(*) from public.convoy_ships_wanted()) <> 10 or exists (select 1 from public.convoy_ships_wanted() w where w.nation_id = v_pir) then
-    raise exception 'PROOF 45 FAIL: convoy_ships_wanted names the pirates';
+  if (select count(*) from public.convoy_ships_wanted()) <> 11 or not exists (select 1 from public.convoy_ships_wanted() w where w.nation_id = v_pir and w.ships >= 1) then
+    raise exception 'PROOF 45 FAIL: convoy_ships_wanted does not share the ships among the eleven, the pirates too (0430)';
   end if;
   update public.world_config set value = 'false'::jsonb where key = 'convoys_enabled';
   if pg_temp.w_45() <> v_w0 then
     raise exception 'PROOF 45 FAIL: the cargo run made or lost gold: % -> %', v_w0, pg_temp.w_45();
   end if;
-  raise notice 'PASS: BRETHREN_NO_CROWN — Port Royal untouched at %, Lingga 0, Setubal aided % by Lisbon; convoys lit: % fleet numbers, % circuits, % ships, none the pirates''', v_d0, public.treasury_balance(v_set),
+  raise notice 'PASS: BRETHREN_NO_CROWN — Port Royal untouched at %, Lingga 0, Setubal aided % by Lisbon; convoys lit: % fleet numbers (the pirates'' share among them, 0430), % circuits, % ships, none the pirates''', v_d0, public.treasury_balance(v_set),
     (select count(*) from public.cargo_fleet_sizes), (select count(*) from public.cargo_circuits), (select count(*) from public.cargo_ships);
 
   -- ── NO NAVY ──
