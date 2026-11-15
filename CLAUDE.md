@@ -38,6 +38,7 @@ A **LIVE** text-and-tabs age-of-sail trading game with real players.
 - **The deploy gate:** `bv-deploy.sh` refuses (nothing pushed) while `db-health/gate.sql` is red (beat over 2 s, database over 1,500 MB, over 5 sessions waiting on the disk). Override only with `BV_DEPLOY_FORCE=1 BV_DEPLOY_REASON="why"`.
 - **At most ONE builder reads production at a time**, and none while the gate is red.
 - **Never deploy load** (more ships, faster jobs) without first reading the gate and stating the expected extra rows a minute.
+- **No course crosses the drawn land.** A new harbour, lane, channel, raster or coast change runs `node scripts/db/audit-land-crossings.mjs` and adds no crossing; stored lanes are re-sailed with `scripts/build-clear-courses.mjs` (`docs/NAVIGATION_PLAN.md` §8). `tests/sea.noLandCrossing.spec.ts` fails otherwise.
 
 ## Where things are
 - `supabase/migrations/`: the chain. `docs/dev-log/`: one file per slice, with measurements.

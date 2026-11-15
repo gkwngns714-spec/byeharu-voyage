@@ -40,6 +40,7 @@ import {
   cellLat,
   cellLon,
   findPath,
+  refineCourse,
   snapToNav,
   type SeaNav,
   type SeaPath,
@@ -163,15 +164,22 @@ export function fleetNow(fleet: FleetView, portByCode: Record<string, SnapshotPo
 /**
  * The proposal. Null when the two points share no sailable water — which the server would refuse
  * anyway; a null here just lets the screen say so without a round trip.
+ *
+ * OFF THE DRAWN LAND (owner row 352): once the coast mask has arrived (`nav.coast`), the search's
+ * course is re-sailed off the land the chart draws (src/lib/sea/refine.ts): the raster is 1:110m and
+ * has no Socotra, so the straightened search alone ran straight over islands and capes. The
+ * re-sailed course is still raster water by the server's own rule, or the search's course is kept.
  */
 export function proposeCourse(nav: SeaNav, from: LatLon, to: LatLon): SeaPath | null {
-  const r = findPath(nav, from, to, SCRATCH)
+  const t0 = typeof performance !== 'undefined' ? performance.now() : 0
+  const found = findPath(nav, from, to, SCRATCH)
+  const r = found && nav.coast ? { ...found, path: refineCourse(nav, nav.coast, found.path).path } : found
   // A `performance` measure, so the cost the player pays is a NUMBER anyone can read off the
   // Performance panel (or a driver) rather than a claim: the plan budgeted <=166 ms for the worst
   // search and the acceptance run re-measures it in the real browser. Marks are free when nobody
   // is looking; nothing is logged.
   if (r && typeof performance !== 'undefined' && typeof performance.measure === 'function') {
-    performance.measure('passage-search', { start: performance.now() - r.ms, end: performance.now() })
+    performance.measure('passage-search', { start: t0, end: performance.now() })
   }
   return r ? r.path : null
 }

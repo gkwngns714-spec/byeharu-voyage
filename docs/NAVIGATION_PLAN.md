@@ -246,3 +246,43 @@ circle (×1.000); the 17 pieces she sails sum to 8,615.2 nm (×1.033 — 0047 me
 straight line, not the arc; on the short segments of every earlier course the two agree within
 0.1 %); one straddle, no vertex left on the seam; Lisbon → Amsterdam byte-identical. Before: the
 same search proposed 8,358.4 nm with a kink on the seam and the server refused it.
+
+---
+
+## 8. NO COURSE CROSSES THE DRAWN LAND — the rule, and the procedure (0440, owner row 352, 2026-11-15)
+
+The owner: *"some ships go pass through land - such as hadibu ... fix this properly, and make
+procedures that this won't happen again"*.
+
+**The cause.** The raster above is Natural Earth 1:110m at 0.25°: it has no Socotra at all, no
+Bangka, and coasts straight for 60 nm. The search straightens its course against that raster
+alone, and the server judges the same line the same way, so every course was legal water and was
+then drawn on the chart's 1:10m coast (`public/coast`) straight over islands, capes and peninsulas.
+On the main world: 774 of 1,141 stored lanes, 2,422 of 3,350 route legs and 62,024 of 71,556
+harbour-to-harbour courses ran over more than 2 nm of drawn land.
+
+**The rule now.** Every course is re-sailed off the land the chart draws before it is offered:
+`src/lib/sea/refine.ts` searches the stretch round the land again on a 1.5 nm grid whose cells are
+water by BOTH the raster and the coast mask (`public/coast/mask.json`, `src/lib/sea/coastMask.ts`:
+the chart's 1:10m land inside every raster water cell, at 0.75 nm). The result is still raster
+water by `voyage.path_refusal`'s own rule, or the search's course is kept. One function, used by
+the browser's course author (`src/domain/passage` `proposeCourse`) and by the generator of the
+stored lanes (`scripts/build-clear-courses.mjs`). The server's law is unchanged: the raster.
+
+**The guard.** `tests/sea.noLandCrossing.spec.ts` runs on every PR that touches the pathfinder,
+the coast, the sea grid, the ports, or a migration that writes `npc_courses`,
+`standing_route_stops`, `sea_reaches`, `sea_raster` or `cargo_circuit_legs`. It fails on any course
+over more than 2 nm of drawn land that is not on `scripts/db/land-crossings.known.json` (the
+courses whose water the raster closes, for a later raster slice), on a known one that no longer
+crosses (the list only shrinks), on a stale mask, and on the owner's own example (Hadibu to Kilwa).
+
+### Adding a harbour, a lane, a channel, or changing the coast
+
+1. Make the change, then `npm run build` (it writes the world image the tools read; no prod load).
+2. If the raster or the coast tiles changed: `node scripts/build-coast-mask.mjs`.
+3. If lanes or routes were seeded or the raster changed: `node scripts/build-clear-courses.mjs`
+   writes the re-sailing migration (rename it to prod head + 1).
+4. `node scripts/db/audit-land-crossings.mjs [image] [--apply <your migration>]` lists every
+   crossing with its lane, its ports and where the land is. Zero new ones, or fix them.
+   `--pairs` adds every harbour-to-harbour course the browser would propose (about 30 minutes).
+5. Only when a crossing is FIXED: `--write-known` rewrites the known list (it may only shrink).
