@@ -620,7 +620,14 @@ jobs:
           # supabase binds 54320-54329, inside Linux's temporary port range, and a runner's outbound connection can take one first:
           # "failed to bind host port ... address already in use" before any migration runs (seen 3+ times on 2026-11-05).
           sudo sysctl -w net.ipv4.ip_local_port_range="32768 50000"
-          supabase start
+          # 2026-11-15: the image pull froze twice in a row ("Pulling fs layer", then nothing for an hour). A start that has not
+          # finished in 6 minutes is stopped (the data volume is kept: no --no-backup) and tried again, three times.
+          for try in 1 2 3; do
+            if timeout 360 supabase start; then exit 0; fi
+            echo "::warning::supabase start did not finish (try $try); stopping and trying again"
+            supabase stop || true
+          done
+          echo "::error title=supabase start::did not start in three tries"; exit 1
 
       - name: Restore the migration files as committed (before anything hashes them)
         if: always() && steps.plan.outputs.usable != 'true'
