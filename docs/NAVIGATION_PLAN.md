@@ -246,3 +246,118 @@ circle (×1.000); the 17 pieces she sails sum to 8,615.2 nm (×1.033 — 0047 me
 straight line, not the arc; on the short segments of every earlier course the two agree within
 0.1 %); one straddle, no vertex left on the seam; Lisbon → Amsterdam byte-identical. Before: the
 same search proposed 8,358.4 nm with a kink on the seam and the server refused it.
+
+---
+
+## 8. NO COURSE CROSSES THE DRAWN LAND — the rule, and the procedure (0440, owner row 352, 2026-11-15)
+
+The owner: *"some ships go pass through land - such as hadibu ... fix this properly, and make
+procedures that this won't happen again"*.
+
+**The cause.** The raster above is Natural Earth 1:110m at 0.25°: it has no Socotra at all, no
+Bangka, and coasts straight for 60 nm. The search straightens its course against that raster
+alone, and the server judges the same line the same way, so every course was legal water and was
+then drawn on the chart's 1:10m coast (`public/coast`) straight over islands, capes and peninsulas.
+On the main world: 774 of 1,141 stored lanes, 2,422 of 3,350 route legs and 62,024 of 71,556
+harbour-to-harbour courses ran over more than 2 nm of drawn land.
+
+**The rule now.** Every course is re-sailed off the land the chart draws before it is offered:
+`src/lib/sea/refine.ts` searches the stretch round the land again on a 1.5 nm grid whose cells are
+water by BOTH the raster and the coast mask (`public/coast/mask.json`, `src/lib/sea/coastMask.ts`:
+the chart's 1:10m land inside every raster water cell, at 0.75 nm). The result is still raster
+water by `voyage.path_refusal`'s own rule, or the search's course is kept. One function, used by
+the browser's course author (`src/domain/passage` `proposeCourse`) and by the generator of the
+stored lanes (`scripts/build-land-channels.mjs`). The server's law is unchanged: the raster.
+
+**The guard.** `tests/sea.noLandCrossing.spec.ts` runs on every PR that touches the pathfinder,
+the coast, the sea grid, the ports, or a migration that writes `npc_courses`,
+`standing_route_stops`, `sea_reaches`, `sea_raster` or `cargo_circuit_legs`. It fails on any course
+over more than 2 nm of drawn land that is not on `scripts/db/land-crossings.known.json` (the
+courses whose water the raster closes, for a later raster slice), on a known one that no longer
+crosses (the list only shrinks), on a stale mask, and on the owner's own example (Hadibu to Kilwa).
+
+### Adding a harbour, a lane, a channel, or changing the coast
+
+1. Make the change, then `npm run build` (it writes the world image the tools read; no prod load).
+2. If the raster or the coast tiles changed: `node scripts/build-coast-mask.mjs`.
+3. If lanes or routes were seeded, a channel was charted, a harbour was added, or the raster changed:
+   export prod's courses (read only: `scripts/ops/harness/no-land/prod-courses.sql`, gate green first),
+   then `node scripts/build-land-channels.mjs <image of the chain before your migration> --prod courses.json`
+   writes the re-sailing migration (set MIGRATION_NAME to prod head + 1). It re-sails prod's own rows too:
+   prod holds courses no image has.
+4. `node scripts/db/audit-land-crossings.mjs [image] [--apply <your migration>]` lists every
+   crossing with its lane, its ports and where the land is. Zero new ones, or fix them.
+   `--pairs` adds every harbour-to-harbour course the browser would propose (about 30 minutes).
+5. Only when a crossing is FIXED: `--write-known` rewrites the known list (it may only shrink).
+6. Every day (the lead), and after any deploy that writes courses: export prod's courses and legs
+   (`prod-courses.sql`, `prod-legs.sql`, read only) and run the audit with `--prod courses.json --legs legs.json`
+   on an image of prod's chain. It fails on anything not on `scripts/db/land-crossings.prod-known.json` (empty).
+
+### 0440, second half: the straits opened, the roads put on the water, production re-sailed (owner row 352)
+
+The first draft left 52 lanes and 50 route legs over land, and 57 roadsteads on it, and it was cut from the
+world image alone: production held 937 crossing lanes, 682 route-stop courses and 732 frozen legs of its own
+(`docs/dev-log/2026-11-15-land-channels.md`). One migration, 0440, now takes all of it. Three causes, three fixes:
+
+- **A turn on an island.** A course's turning points are raster cell centres, and the raster cannot see
+  an island, so a turn could sit on drawn land (Strangford Lough, Oland, Saaremaa). The refiner searched
+  segment by segment, so each half began or ended in a pocket of the coast the 1.5 nm grid cannot leave,
+  and the course was kept as it was. `src/lib/sea/refine.ts` now measures the land runs along the whole
+  course, so one search window spans the turn; a stretch kept from the old course whose samples touch a
+  raster land cell is searched again (`mend`); a course that runs exactly along an edge of the land
+  bitmap's pixels is read on both sides of it. This alone cleared the Hebrides, the North Channel,
+  Moon Sound, Oland and Chios.
+- **Water the raster closes and the chart draws.** `scripts/sea-grid.mjs` CHANNELS entries with
+  `charted: true`: `corfu` (both Corfu channels), `tsugaru` (the strait's northern half, which
+  1:110m draws as Hokkaido) and `western-scheldt` (the Wielingen). Unlike a river carve, a charted
+  channel's drawn land stays land in the coast mask and in the audit
+  (`riverCarvedCells()` is the cells the mask and the audit leave alone). Each new polyline runs down
+  the drawn water; the generator refuses one that touches drawn land. Eight straits carved long before
+  are charted too (Kerch, Bab-el-Mandeb, Hormuz, Malacca, Sunda, Seto, the White Sea's Gorlo, the Baltic
+  gulfs): their raster is unchanged, but the land the chart draws in their cells now counts, and 98
+  more stored courses that ran over it there are re-sailed. Measured and NOT charted: the Danish straits and
+  the Gulf of Suez (their drawn water is not continuous on the 1.5 nm grid inside a one-cell carve: 65
+  courses could not be re-sailed), the Dardanelles and the Bosphorus (narrower than the chart's pixel).
+- **A roadstead on the land, or in a pocket.** A harbour whose raster roadstead lies on drawn land, or in
+  drawn water the open sea cannot reach on the 1.5 nm grid (Toulon's inner harbour, New York's upper
+  bay), is reached from the nearest point to its quay that is drawn water with 1.5 nm of drawn water
+  round it and joined to the open sea. `voyage.drawn_roadsteads` holds the point; `voyage.water_roadstead`
+  answers it for that quay, and `scripts/build-sea-migration.mjs`'s `roadsteadOf` reads the same table,
+  so the rule stays one answer. Harbours that shared one raster roadstead (Hormuz, Bandar Abbas) share
+  one drawn point. No move is over 12 nm, so a stored route's first point stays inside course_join_nm.
+  Stockholm's own water (Saltsjon) is not joined to the sea even in the 1:10m drawing, so its roads are
+  in the archipelago, 15 nm off the quay.
+
+`node scripts/build-land-channels.mjs` does all three for the stored courses (lanes, route legs, coast
+courses, and the cargo circuits' and navy patrols' frozen pieces) and writes the migration, the mask, the
+prod checks and the forward rollback. Run it again, as the next migration, whenever a channel is charted
+or a harbour is added: it moves only what is on land or in a pocket.
+
+Not covered by the audit, by design: a RIVER carve's cells (the Thames, the Scheldt above Flushing, the
+Gironde), where the chart draws land over the water the game sails on purpose, and the three straits
+named above that the fine grid cannot pass.
+
+### 0441: an approach is not a canal (owner row 352)
+
+0440 left one case: Panama City to Portobelo. Their roadsteads lie 45.9 nm apart across the isthmus, and
+`voyage.path_refusal` skipped every sample within 25 nm of each end of a course unread, so the straight line
+had no sample left. **The rule now: an approach is the land an end stands in, and nothing else.** A land sample
+is passed only when the stated end is itself in a land cell and the sample is in the unbroken run of land from
+that end, inside its allowance. A roadstead is raster water (all 268; proof 143), so a course between two
+harbours has every sample read. A course with no water between two land ends is refused. The browser's
+`segmentIsWater` and `courseRefusedAt` (src/lib/sea) read the same rule, sample for sample.
+
+What this adds to the procedure above:
+
+- The audit lists a stored lane, route leg or coast course that the SERVER'S LAW refuses beside the crossings
+  (image, `--prod`, and the guard spec). A merchant sent down such a lane is refused E_LAND.
+- `node scripts/db/audit-land-crossings.mjs --allowance`: the straight line between every two roadsteads, by
+  the rule as it stood and as it stands. It exits 1 if the rule accepts a line with raster land under it. Run
+  it after a harbour is added or a roadstead moves.
+- A new roadstead must lie in a raster water cell: a roadstead in a land cell would have an approach again.
+- When the approach rule, the raster or the roadsteads change: `node scripts/build-isthmus.mjs <image> --prod
+  courses.json` re-sails every stored course the rule refuses or that is over drawn land (set MIGRATION_NAME),
+  and `node scripts/ops/harness/isthmus/prod-shaped.mjs <image> courses.json legs.json --rollback` applies it
+  to prod's own lanes, stops and frozen legs in an image and audits the result.
+- Still open: the server holds no coast mask (a hand-made straight course over an island the raster cannot
+  see is accepted: 593 harbour pairs), and `course_join_nm` lets a course begin 15 nm from where she lies.

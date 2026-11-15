@@ -25,6 +25,8 @@
 -- @pass CLOSED_ONCE         a retry of the job, the closer and the door closes nothing twice: one report, one ledger row, no new round
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
+
 create temp table hunks_60 (fn text, n int, old text, new text) on commit drop;
 insert into hunks_60 (fn, n, old, new) values
 -- hunks:begin
@@ -934,7 +936,7 @@ begin
      or jsonb_typeof(v_r -> 'board') is distinct from 'null'
      or exists (select 1 from jsonb_array_elements(v_w -> 'fleets') f where f ->> 'busy' is not null or f ->> 'status' = 'IN_BATTLE')
      or v_w -> 'events' -> 0 -> 'payload' -> 'lines' ->> 0 is distinct from 'We broke off.' or v_w -> 'events' -> 0 -> 'payload' -> 'fights' -> 0 -> 'log' ->> 'end' is distinct from 'FLED'
-     or v_w -> 'events' -> 0 -> 'payload' -> 'fights' -> 0 -> 'rounds' ->> 1 not like '%you run before them%'
+     or v_w -> 'events' -> 0 -> 'payload' -> 'fights' -> 0 -> 'rounds' ->> 1 not like '%we run%'
      or v_w -> 'events' -> 0 -> 'payload' ->> 'outcome' is distinct from v_r ->> 'outcome' then
     raise exception 'PROOF 60 FAIL: a break-off: battle %, events %', v_w -> 'battle', v_w -> 'events';
   end if;

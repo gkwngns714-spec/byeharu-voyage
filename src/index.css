@@ -918,6 +918,60 @@ html:lang(ko) body {
   animation: bv-fight-ring 2.4s ease-in-out infinite;
 }
 
+/* THE BATTLE SCREEN'S EFFECTS (src/live/battle/BattleStage.tsx, 0435). Each is mounted for two ticks (1.2 s) at its
+   event and plays once: a flash and smoke at the gun, a tracer, a splash at a miss, the hit number rising (a crit larger),
+   an ability's name, a struck ship heeling and settling low. Under reduced motion the effects stand still for their two
+   ticks (`data-motion='reduced'` below wins over the sweep, which would land them on their faded last stop), and a struck
+   ship is drawn at her last stop at once. */
+.bv-bt-fx,
+.bv-bt-sink {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes bv-bt-flash {
+  from { opacity: 1; transform: scale(0.6); }
+  to { opacity: 0; transform: scale(1.7); }
+}
+@keyframes bv-bt-smoke {
+  from { opacity: 0.45; transform: scale(0.5); }
+  to { opacity: 0; transform: scale(2.2); }
+}
+@keyframes bv-bt-trace {
+  from { opacity: 0.7; }
+  to { opacity: 0; }
+}
+@keyframes bv-bt-rise {
+  0% { opacity: 0; transform: translateY(8px) scale(0.8); }
+  15% { opacity: 1; transform: translateY(0) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-38px); }
+}
+@keyframes bv-bt-splash {
+  0% { opacity: 0; transform: scaleY(0.1); }
+  30% { opacity: 1; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(0.3); }
+}
+@keyframes bv-bt-sink {
+  to { opacity: 0.4; transform: scale(0.9, 0.55) rotate(8deg); filter: grayscale(1); }
+}
+.bv-bt-flash { animation: bv-bt-flash 0.35s ease-out forwards; }
+.bv-bt-smoke { animation: bv-bt-smoke 1.1s ease-out forwards; }
+.bv-bt-trace { animation: bv-bt-trace 0.4s linear forwards; }
+.bv-bt-num { animation: bv-bt-rise 1.15s ease-out forwards; }
+.bv-bt-crit { animation-duration: 1.3s; }
+.bv-bt-call { animation: bv-bt-rise 1.2s ease-out forwards; }
+.bv-bt-splash { animation: bv-bt-splash 0.9s ease-out forwards; }
+.bv-bt-sink { animation: bv-bt-sink 3.6s ease-in forwards; }
+[data-motion='reduced'] .bv-bt-fx {
+  animation: none !important;
+}
+[data-motion='reduced'] .bv-bt-smoke {
+  opacity: 0.3;
+}
+[data-motion='reduced'] .bv-bt-trace {
+  opacity: 0.5;
+}
+
 /* A side panel FOLDED for a go-to on a narrow glass (MapScreen): slid out past the right edge,
    still mounted, so its state is all there when the tab beside the edge brings it back. */
 [data-panels-folded] [data-tray-mode='side'],

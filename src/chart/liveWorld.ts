@@ -374,5 +374,6 @@ export function mapFightsOf(cards: readonly FightCard[]): MapFight[] {
     over: (c.kind ?? 'BATTLE') === 'BATTLE' && c.status !== 'FIGHTING',
     mine: c.mine,
     kind: c.kind ?? 'BATTLE',
+    reachNm: c.reach_nm,
   }))
 }

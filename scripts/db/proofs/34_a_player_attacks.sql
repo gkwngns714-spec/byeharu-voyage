@@ -22,6 +22,8 @@
 -- @pass ATTACK_REAL_FIGHT    through the real engine: gold if and only if the fight says so, every purse summed moves 0
 -- ═══════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
+
 do $$
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'convoys_enabled', 'combat_bite');
@@ -354,7 +356,7 @@ begin
   exception when others then
     v_msg := sqlerrm;
   end;
-  if v_msg !~ '[0-9]+ miles off, and you reach 240' then
+  if v_msg !~ '^E_OUT_OF_REACH: Range 240 / [0-9,.]+ miles$' then   -- 0433: have / need, `Range 240 / 3,092.1 miles`
     raise exception 'PROOF 34 FAIL: the reach refusal prints no distance: %', v_msg;
   end if;
 

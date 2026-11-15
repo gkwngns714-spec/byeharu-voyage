@@ -62,11 +62,12 @@ begin
      or (v_rb -> 'figures' -> 'short_title') <> 'true'::jsonb or (v_rb -> 'figures' -> 'short_wave') <> 'false'::jsonb
      or (v_ra -> 'figures' ->> 'title')::int <> 1 or (v_ra -> 'figures' ->> 'wave')::numeric <> 12 or (v_rb -> 'figures' ->> 'wave')::numeric <> 39
      or (select count(*) from jsonb_object_keys(v_ra -> 'figures')) <> 8
-     or (v_ra ->> 'sentence') <> format('%s asks title %s and wave resistance %s — you are title 1 and your fleet holds 12',
+     -- 0433: the sentence says what she has and what is needed (cmd.refusal_line)
+     or (v_ra ->> 'sentence') <> format('%s closed. Title 1 / %s. Waves 12 / %s.',
                                         v_ra -> 'figures' ->> 'zone_name', v_ra -> 'figures' ->> 'needs_title', v_ra -> 'figures' ->> 'needs_wave') then
     raise exception 'PROOF 91 FAIL: lit, the gate on a course into the ocean: barca % ; nau %', v_ra, v_rb;
   end if;
-  raise notice 'PASS: WALL_SHORT — the gate refuses % to both: the barca is short of title and wave, the nau of title only; eight figures, the sentence unmoved', v_ra -> 'figures' ->> 'zone_name';
+  raise notice 'PASS: WALL_SHORT — the gate refuses % to both: the barca is short of title and wave, the nau of title only; eight figures, the sentence have / need (0433)', v_ra -> 'figures' ->> 'zone_name';
 
   -- ── WALL_HOME_WATERS ──
   declare

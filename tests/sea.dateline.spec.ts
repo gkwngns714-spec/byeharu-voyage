@@ -319,10 +319,14 @@ test.describe('the chart draws a straddling segment the short way', () => {
 test('Lisbon → Amsterdam is the course it was before the sea was round', async () => {
   // Recorded on main 2209a92, 2026-09-14, by the same search over the same raster (4 dp): a
   // course nowhere near the seam, for which the short-way step is bit-for-bit the linear one.
+  // RECORDED AGAIN 2026-11-15 with 0441 (an approach is not a canal): the straightener may no longer
+  // skip the first 21 nm out of Lisbon's roads unread, where the old course (38.625,-9.625 to
+  // 40.375,-9.875 to 44.125,-9.375; 1,123.2 nm) ran over a cell of land at 38.86,-9.66. She now
+  // clears that cell first. Nothing about the seam moved.
   const BEFORE: [number, number][] = [
     [38.625, -9.625],
-    [40.375, -9.875],
-    [44.125, -9.375],
+    [38.875, -9.875],
+    [43.875, -9.625],
     [50.375, -3.125],
     [50.625, 0.625],
     [52.875, 4.375],
@@ -334,6 +338,6 @@ test('Lisbon → Amsterdam is the course it was before the sea was round', async
     expect(lat).toBeCloseTo(BEFORE[i][0], 4)
     expect(lon).toBeCloseTo(BEFORE[i][1], 4)
   })
-  expect(pathLengthNm(course.map(([lat, lon]) => ({ lat, lon })))).toBeCloseTo(1123.2, 1)
+  expect(pathLengthNm(course.map(([lat, lon]) => ({ lat, lon })))).toBeCloseTo(1129.1, 1)
   expect((await serverRefusal(course, portByCode['LIS'], portByCode['AMS'])).ref).toBeNull()
 })

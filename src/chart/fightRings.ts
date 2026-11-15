@@ -49,6 +49,9 @@ export interface MapFight {
   readonly mine: string | null
   /** BATTLE (timed, being fought or just over), RAID (her own, just settled) or NAVY (a navy ship and a pirate ship, just fought). */
   readonly kind: 'BATTLE' | 'RAID' | 'NAVY'
+  /** 0435: the join circle's radius in nm (`reach_nm`), round the battle's own place. Absent or null: the ring is sized
+   *  round its fleets as before. */
+  readonly reachNm?: number | null
 }
 
 export const FIGHT_RING = {
@@ -89,9 +92,19 @@ export interface FightRing {
   readonly kind: MapFight['kind']
 }
 
+/** Chart units (degrees of latitude) in one nautical mile: a minute of arc. */
+const UNITS_PER_NM = 1 / 60
+
 /** One battle's ring at a zoom (`unitsPerPx`: chart units a screen pixel covers). */
 export function fightRing(fight: MapFight, unitsPerPx: number): FightRing {
   const origin = project(fight.at)
+  // 0435 (docs/design/tick-combat.md 8, 9.4): A TICK BATTLE'S RING IS ITS JOIN CIRCLE: centre the battle's site, radius
+  // `reach_nm`, the same circle the Join bar measures by. Never under half a touch, so it can always be pressed.
+  if (typeof fight.reachNm === 'number' && fight.reachNm > 0) {
+    const upp = unitsPerPx > 0 ? unitsPerPx : 1
+    const rPx = Math.max(FIGHT_RING.basePx, (fight.reachNm * UNITS_PER_NM) / upp)
+    return { id: fight.id, centre: origin, r: rPx * upp, rPx, over: fight.over, mine: fight.mine !== null, fleetIds: fight.fleetIds, kind: fight.kind }
+  }
   // every place measured from the battle's own place THE SHORT WAY ROUND, so a fight on the date line is one ring
   const offsets = fight.places.map((p) => {
     const q = project(p)
