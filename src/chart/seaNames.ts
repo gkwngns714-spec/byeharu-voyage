@@ -80,9 +80,12 @@ export function seaNameRequests(seas: readonly MapSea[], view: { x: number; y: n
       id: `sea:${sea.id}`,
       text: properName('sea', sea.name, sea.name),
       at,
-      priority: LABEL_PRIORITY.sea,
+      priority: sea.kind === 'ocean' ? LABEL_PRIORITY.ocean : LABEL_PRIORITY.sea,
       tone: 'sea',
       placement: 'centred',
+      // give (2026-11-15, "some names aren't showed"): a line up or down, then a third of its width aside (./labels.ts
+      // `centredNear`), before a water's name is dropped; an ocean is wide water and takes four lines (still inside it)
+      slackLines: sea.kind === 'ocean' ? 4 : 1,
       sizePx: sea.kind === 'ocean' ? GLYPH.oceanNameSize : GLYPH.seaNameSize,
       spacingEm: GLYPH.seaNameSpacingEm,
     })

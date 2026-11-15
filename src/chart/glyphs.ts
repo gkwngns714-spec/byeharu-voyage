@@ -270,8 +270,13 @@ export const GLYPH = {
    * THE SHALLOWS (row 90): three bands of paler water hugging every coast, drawn as non-scaling
    * strokes of the land path UNDER the land body, widest first. In px so the band is the same
    * width at every zoom — a shore has shallows whether you are looking at the globe or a bay.
+   *
+   * [10, 6, 3] since 2026-11-15 (the owner: *"the outer layer of map is too thick"*). Was [40, 22, 10]: a stroke is
+   * centred on the coast, so the widest band reached 20 px out to sea from every shore (measured off Portugal at
+   * 1440×900 and at 390×844: 21 px of paler water against a 1.4 px coast line), a blue rim fourteen times the line it
+   * hugged, and the thick outer layer the owner saw round every coast. Now 5 px at the most, a fine rim under the line.
    */
-  shallowHaloPx: [40, 22, 10],
+  shallowHaloPx: [10, 6, 3],
   /** THE RELIEF: the inner shadow along the coast, clipped to the land. Non-scaling. */
   reliefPx: 6,
   /** THE GRATICULE: one hairline per 15° of latitude and longitude, quieter than the coast. */
