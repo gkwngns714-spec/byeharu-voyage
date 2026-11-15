@@ -11,6 +11,7 @@ import { MarketsFace } from './Markets'
 import { MeFace } from './Me'
 import { MerchantsFace } from './Merchants'
 import { FleetsByKindFace } from './Ships'
+import { FleetsFace } from './Fleets'
 import { NewsFace } from './News'
 import { OverviewFace } from './Overview'
 import { STATS_FACES, type StatsFace } from './statsFaces'
@@ -86,8 +87,10 @@ function StatsBody({ title }: { title: string }) {
         value={face}
         onChange={setFace}
         label={t('stats.facesLabel')}
-        // SEVEN FACES, ONE ROW from 1,024 px (2026-11-15 owner: shorter, cleaner) — four over three left a ragged second row on a wide glass
-        className="w-fit max-w-full max-sm:w-full lg:grid-cols-7"
+        // TEN FACES (0431: Navy, Pirates, Cargo): five over five below 1,024 px and ONE ROW from it (2026-11-15 owner: shorter, cleaner) — four
+        // columns would leave a ragged third row of two
+        columns={5}
+        className="w-fit max-w-full max-sm:w-full lg:grid-cols-10"
       />
       <LiveNow live={live} />
       {face === 'overview' && <OverviewFace live={live} />}
@@ -95,6 +98,9 @@ function StatsBody({ title }: { title: string }) {
       {face === 'markets' && <MarketsFace />}
       {face === 'cities' && <CitiesFace />}
       {face === 'merchants' && <MerchantsFace />}
+      {face === 'navy' && <FleetsFace key="NAVY" kind="NAVY" />}
+      {face === 'pirates' && <FleetsFace key="PIRATE" kind="PIRATE" />}
+      {face === 'cargo' && <FleetsFace key="CARGO" kind="CARGO" />}
       {face === 'ships' && <FleetsByKindFace />}
       {face === 'me' && <MeFace />}
     </Sheet>
