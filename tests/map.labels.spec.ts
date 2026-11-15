@@ -747,6 +747,7 @@ test.describe('row 193: every city named at 47 %', () => {
     const upp = sx / w
     let marks = 0
     const unnamed: string[] = []
+    const bare: string[] = []
     for (const centre of PORTS) {
       const at = project(centre)
       const viewBox: ViewBox = { x: at.x - sx / 2, y: at.y - (sx * h) / w / 2, width: sx, height: (sx * h) / w }
@@ -778,6 +779,13 @@ test.describe('row 193: every city named at 47 %', () => {
           unnamed.push(port.code)
           continue
         }
+        // A NAME WITHOUT ITS FLAG (2026-11-15, the owner: "some names aren't showed"): where the name with its flag fits
+        // nowhere, the planner sets the name alone rather than nothing (./labels.ts, the third pass). Every one of these was
+        // UNNAMED before, so the two lists together are held to the old bound below.
+        if (label.flag === undefined) {
+          bare.push(port.code)
+          continue
+        }
         expect(label.flag, `${port.name} is named without its flag`).toBe('POR')
       }
     }
@@ -786,7 +794,9 @@ test.describe('row 193: every city named at 47 %', () => {
     // bigger collides sooner; the planner hides the lesser one rather than overprint (still zero overlaps above), and each
     // keeps its mark and its tap. MEASURED: Sanlúcar, Rotterdam, Gibraltar, Cádiz, Setúbal, Málaga, Middelburg and their like,
     // each in the densest clusters (the Guadalquivir mouth, the Scheldt, the Strait), in a handful of the 214 frames.
-    console.log(`47 %: ${marks - unnamed.length} of ${marks} marks named; unnamed: ${unnamed.join(', ')}`)
-    expect(unnamed.length, `unnamed: ${unnamed.join(', ')}`).toBeLessThanOrEqual(20)
+    console.log(`47 %: ${marks - unnamed.length} of ${marks} marks named (${bare.length} without the flag: ${bare.join(', ')}); unnamed: ${unnamed.join(', ')}`)
+    expect(unnamed.length + bare.length, `unnamed: ${unnamed.join(', ')}; without the flag: ${bare.join(', ')}`).toBeLessThanOrEqual(20)
+    // and the flagless pass only ADDS: fewer names are missing than the 19 measured before it (2026-11-15)
+    expect(unnamed.length, `unnamed: ${unnamed.join(', ')}`).toBeLessThan(19)
   })
 })
