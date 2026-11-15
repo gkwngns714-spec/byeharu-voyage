@@ -254,7 +254,7 @@ export function LabelsLayer({
   const ground = labels.filter(isGround)
   const places = labels.filter((l) => !isGround(l))
   // The names actually drawn, for the map's tap (./placedNames.ts): a tap on a name opens its city.
-  useLayoutEffect(() => setPlacedNames(labels), [labels])
+  useLayoutEffect(() => setPlacedNames(labels, unitsPerPx), [labels, unitsPerPx])
   return (
     <>
       <MapFlagDefs codes={places.flatMap((l) => (l.flag ? [l.flag] : []))} />

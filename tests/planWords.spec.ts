@@ -127,3 +127,9 @@ test('what the seas on the way ask, with no refusal, is the route\'s most', () =
   expect(seaAsksWords({ ...closed, needs_title: 4, needs_wave: 30, refusal: null }, { title: 1, wave: 12 })).toBe('Waves 12 / 30 · Title 1 / 4')
   expect(seaAsksWords(closed)).not.toMatch(/\bnm\b|\bher\b|\bpassage\b|\bstores\b/)
 })
+
+// 2026-11-15 owner: an ask of 0 is never printed ("Setubal · Waves 12 / 0" was noise), as the map and the Codex hide it
+test('an ask of 0 is left out', () => {
+  expect(seaAsksWords({ ...closed, needs_title: 2, needs_wave: 0, refusal: null }, { title: 1, wave: 12 })).toBe('Title 1 / 2')
+  expect(seaAsksWords({ ...closed, needs_title: 0, needs_wave: 0, refusal: null }, { title: 1, wave: 12 })).toBe('')
+})
