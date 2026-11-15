@@ -184,12 +184,12 @@ begin
   end if;
   raise notice 'PASS: FB_REFIT — the pirate wreck reborn, booked refits 1, repairs %, a REFIT line', coalesce((select b.figs ->> 'repairs' from public.fleet_book b where b.fleet_id = v_p[2]), '0 (free)');
 
-  -- ── FB_BATTLE ── a battle: the third pirate opens on a cargo ship of another realm; the navy's second ship called in time, its first too late; the cargo ship holds
+  -- ── FB_BATTLE ── a battle, kind RAID (0427's pirate strike; the trigger books every kind alike): the third pirate opens on a cargo ship of another realm; the navy's second ship called in time, its first too late; the cargo ship holds
   select c.fleet_id into v_cgn from public.cargo_ships c where c.nation_id <> v_nat order by c.ord, c.fleet_id limit 1;
   select s.id into v_cs from public.ships s where s.fleet_id = v_cgn order by s.id limit 1;
   select s.id into v_ps from public.ships s where s.fleet_id = v_p[3] order by s.id limit 1;
   insert into public.battles (id, kind, site, started_at, resolves_at, status)
-  values (v_bat, 'ATTACK', '{}'::jsonb, v_t - interval '10 minutes', v_t, 'FIGHTING');
+  values (v_bat, 'RAID', '{}'::jsonb, v_t - interval '10 minutes', v_t, 'FIGHTING');
   insert into public.battle_sides (battle_id, fleet_id, side, joined_at, arrives_at, how) values
     (v_bat, v_p[3], 'ATTACKER', v_t - interval '10 minutes', v_t - interval '10 minutes', 'OPENED'),
     (v_bat, v_cgn, 'DEFENDER', v_t - interval '10 minutes', v_t - interval '10 minutes', 'OPENED'),

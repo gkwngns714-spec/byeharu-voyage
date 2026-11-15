@@ -32,7 +32,7 @@ import { portName } from './statsFaces'
 //
 // MAIN | SIDE (screenLayout.ts "THE PAGE"): MAIN holds the four kinds, a card each, two across from 768 px: how many ships and fleets, where the
 // fleets are (one stacked bar: at sea, in port, laid up, wrecked; the server puts each fleet in ONE of them), and the kind's figures of the last
-// 24 hours. The SIDE holds the ONE list: the navy by country, or the pirates by home.
+// 24 hours; above them (0427) the battles of the last 24 hours. The SIDE holds the ONE list: the navy by country, or the pirates by home.
 
 type View = 'navy' | 'homes'
 
@@ -55,6 +55,7 @@ export function FleetsByKindFace() {
   const pirates = v.pirates
   const cargo = v.cargo
   const merchants = v.merchants ?? null
+  const battles = v.battles ?? null
 
   return (
     <PageSplit
@@ -65,6 +66,20 @@ export function FleetsByKindFace() {
             {countedMs !== null && t('stats.countedAt', { time: formatKoreaTime(countedMs) })}
             {shortDay && fromMs !== null && <> · {t('stats.dayFrom', { time: formatKoreaTime(fromMs) })}</>}
           </Hint>
+          {battles && (
+            // 0427 (the owner, 2026-11-15: "in stats i see no engagement"): the engagements of the last 24 hours, the server's figures
+            <Card title={t('stats.battles')} data-testid="stats-ships-battles">
+              <Hint>{t('stats.last24')}</Hint>
+              <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2">
+                <StatCell look="line" label={t('stats.raids')} value={battles.raids_day} format={formatInt} />
+                <StatCell look="line" label={t('stats.pirateWins')} value={battles.won_day} format={formatInt} />
+                <StatCell look="line" label={t('stats.merchantsHeld')} value={battles.held_day} format={formatInt} />
+                <StatCell look="line" label={t('stats.navyCame')} value={battles.navy_day} format={formatInt} />
+                <StatCell look="line" label={t('stats.navyFights')} value={battles.navy_fights_day} format={formatInt} />
+                <StatCell look="line" label={t('stats.playerAttacks')} value={battles.attacks_day} format={formatInt} />
+              </div>
+            </Card>
+          )}
           <CardRow>
             {merchants && (
               <KindCard title={t('stats.merchants')} kind={merchants} testid="stats-ships-merchants">

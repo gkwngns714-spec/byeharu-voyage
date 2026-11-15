@@ -25,6 +25,8 @@ export const shipDict = defineDict({
     sighting: 'Sighting',
     power: 'Power',
     level: 'Lv {n}',
+    // 2026-11-15 owner: shorter words. An equipment place with nothing fitted, on its hover title.
+    slotEmpty: 'Empty',
     flagship: 'Flagship',
     hull: 'Hull',
     crew: 'Crew',
@@ -89,6 +91,7 @@ export const shipDict = defineDict({
     sighting: '시야',
     power: '전력',
     level: '레벨 {n}',
+    slotEmpty: '비어 있음',
     flagship: '기함',
     hull: '내구',
     crew: '선원',
