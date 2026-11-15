@@ -8,7 +8,7 @@
 --
 -- WHAT THIS FILE DOES (no table, no knob, no switch, no job):
 --   1. A REFUSAL SAYS WHAT SHE HAS AND WHAT IS NEEDED. New cmd.refusal_line(code, figures) (IMMUTABLE, server-only) and cmd.refusal_figure(numeric):
---      figures {have, need, unit} -> "<Label> have / need[ unit]": `Money 5,000 / 9,000`, `Supplies 2.9 / 33 days`, `Hold 120 / 150 t`, `Crew 6 / 8`,
+--      figures {have, need, unit} -> "<Label> have / need[ unit]": `Money 5,000 / 9,000`, `Supplies 2.9 / 33 days`, `Hold 120 / 150 tons`, `Crew 6 / 8`,
 --      `Range 300 / 450 miles`, `Reputation 60 / 300`; the label by code (E_ENDURANCE Supplies, E_HOLD_FULL Hold, E_CITY_BROKE City money, ...), else
 --      by unit (ducats Money, crew Crew, ...). A closed sea's figures (public.sea_refusal, 0215/0396) -> `<Sea> closed. Title 1 / 2. Waves 12 / 30.`
 --      (the asks she is short of, as the client's seaWallWords prints them). ONE HUNK in cmd.refusal, THE one maker of a refusal value (cmd.refuse
@@ -469,14 +469,14 @@ begin
     when p_code = 'E_ATTACK_COOLDOWN' then 'Wait'
     when p_code in ('E_CONTRACT_SHORT', 'E_CONTRACT_EXPIRED') then 'Delivered'
     when p_code = 'E_OVER_DECK' then 'Deck'
-    when p_code = 'E_OVER_HANDS' then 'Hands'
+    when p_code = 'E_OVER_HANDS' then 'Crew'
     when p_code = 'E_PREPARING' then 'Ready'
     else case v_unit when 'ducats' then 'Money' when 'crew' then 'Crew' when 'days' then 'Days' when 't' then 'Cargo'
                      when 'miles' then 'Range' when 'minutes' then 'Wait' when 'seconds' then 'Wait' when 'reputation' then 'Reputation'
                      when 'level' then 'Level' when 'levels' then 'Level' when 'depth' then 'Depth' else initcap(v_unit) end
   end;
   return format('%s %s / %s', v_label, cmd.refusal_figure((p_figures->>'have')::numeric), cmd.refusal_figure((p_figures->>'need')::numeric))
-         || case v_unit when 'days' then ' days' when 't' then ' t' when 'miles' then ' miles' when 'minutes' then ' min' when 'seconds' then ' s' else '' end;
+         || case v_unit when 'days' then ' days' when 't' then ' tons' when 'miles' then ' miles' when 'minutes' then ' min' when 'seconds' then ' s' else '' end;
 end
 $fn$
 $f$;
@@ -585,7 +585,7 @@ $f$;
   -- ── 6. THE PROBE: pure calls, no row written ──
   if cmd.refusal('E_INSUFFICIENT_FUNDS', 'a long sentence', cmd.figures(5000, 9000, 'ducats'))->>'sentence' <> 'Money 5,000 / 9,000'
      or cmd.refusal('E_ENDURANCE', 'a long sentence', cmd.figures(2.9, 33, 'days'))->>'sentence' <> 'Supplies 2.9 / 33 days'
-     or cmd.refusal('E_HOLD_FULL', 'more Pepper than the hold will take', cmd.figures(120, 150, 't'))->>'sentence' <> 'Hold 120 / 150 t'
+     or cmd.refusal('E_HOLD_FULL', 'more Pepper than the hold will take', cmd.figures(120, 150, 't'))->>'sentence' <> 'Hold 120 / 150 tons'
      or cmd.refusal('E_CREW_SHORT', 'a long sentence', cmd.figures(6, 8, 'crew'))->>'sentence' <> 'Crew 6 / 8'
      or cmd.refusal('E_OUT_OF_REACH', 'a long sentence', cmd.figures(300, 1450, 'miles'))->>'sentence' <> 'Range 300 / 1,450 miles'
      or cmd.refusal('E_CREW_SHORT', 'Almiranta: Crew 6 / 8', cmd.figures(6, 8, 'crew'))->>'sentence' <> 'Almiranta: Crew 6 / 8'
@@ -601,7 +601,7 @@ $f$;
     v_s := sqlerrm;
     v_r := cmd.refusal_caught(sqlerrm, '{"have": 1.5, "need": 20000, "unit": "t"}');
   end;
-  if v_s is distinct from 'E_HOLD_FULL: Hold 1.5 / 20,000 t' or v_r->>'sentence' <> 'Hold 1.5 / 20,000 t' or v_r->>'code' <> 'E_HOLD_FULL' then
+  if v_s is distinct from 'E_HOLD_FULL: Hold 1.5 / 20,000 tons' or v_r->>'sentence' <> 'Hold 1.5 / 20,000 tons' or v_r->>'code' <> 'E_HOLD_FULL' then
     raise exception '0433 self-assert FAIL: a raised refusal is not have / need: % / %', v_s, v_r;
   end if;
   select zz.code, zz.name, zz.title_min, zz.wave_min into z from public.sea_zones zz where zz.title_min > 1 order by zz.ord limit 1;

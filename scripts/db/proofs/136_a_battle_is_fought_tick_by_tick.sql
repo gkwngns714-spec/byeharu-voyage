@@ -164,14 +164,15 @@ begin
   raise notice 'PASS: TK_READ — the timeline, clock, circle (% nm) and both sides served to a signed-in reader', v_x ->> 'reach_nm';
 
   -- ── TK_END ── (the door reads the wall clock: the battle is put on it, its span kept)
-  update public.battles b set started_at = now() - interval '5 seconds', resolves_at = now() - interval '5 seconds' + v_span, next_round_at = now() - interval '5 seconds' + v_span where b.id = v_b.id;
-  update public.fleets f set busy_until = now() - interval '5 seconds' + v_span where f.id in (v_pf, v_m);
+  -- the door reads clock_timestamp(), later than this transaction's now(): the battle is put on that clock, its end ahead by its own span (>= 2 ticks)
+  update public.battles b set started_at = clock_timestamp(), resolves_at = clock_timestamp() + v_span, next_round_at = clock_timestamp() + v_span where b.id = v_b.id;
+  update public.fleets f set busy_until = (select b.resolves_at from public.battles b where b.id = v_b.id) where f.id in (v_pf, v_m);
   v_x := cmd.battle_end(v_b.id);
   if not coalesce((v_x ->> 'ok')::boolean, false) or v_x ->> 'status' <> 'FIGHTING' then
     raise exception 'PROOF 136 FAIL: the door closed a battle before its end: %', v_x;
   end if;
-  update public.battles b set started_at = now() - interval '5 seconds' - v_span, resolves_at = now() - interval '5 seconds', next_round_at = now() - interval '5 seconds' where b.id = v_b.id;
-  update public.fleets f set busy_until = now() - interval '5 seconds' where f.id in (v_pf, v_m);
+  update public.battles b set started_at = clock_timestamp() - interval '5 seconds' - v_span, resolves_at = clock_timestamp() - interval '5 seconds', next_round_at = clock_timestamp() - interval '5 seconds' where b.id = v_b.id;
+  update public.fleets f set busy_until = (select b.resolves_at from public.battles b where b.id = v_b.id) where f.id in (v_pf, v_m);
   v_x := cmd.battle_end(v_b.id);
   select * into v_b from public.battles b where b.id = v_b.id;
   if not coalesce((v_x ->> 'ok')::boolean, false) or v_b.status = 'FIGHTING' or v_x ->> 'status' <> v_b.status then

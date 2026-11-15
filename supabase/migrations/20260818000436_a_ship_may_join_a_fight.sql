@@ -468,6 +468,7 @@ $h$         bool_or(bs.how not in ('OPENED', 'ARMADA') and (bs.how <> 'JOINED' o
   begin
     update public.world_config set value = 'true'::jsonb where key = 'attack_enabled' and value is distinct from 'true'::jsonb;
     update public.world_config set value = '["RAID", "ATTACK"]'::jsonb where key = 'tick_fight_kinds';
+    update public.world_config set value = to_jsonb(0) where key = 'fight_evade_per_sighting';   -- no slip at tick 0 on any world's dice: the door is probed on a battle being fought
     select nf.fleet_id into v_m
       from public.npc_fleets nf join public.fleets f on f.id = nf.fleet_id
      where exists (select 1 from public.ships s where s.fleet_id = nf.fleet_id and s.durability > 0)
@@ -493,6 +494,13 @@ $h$         bool_or(bs.how not in ('OPENED', 'ARMADA') and (bs.how <> 'JOINED' o
     v_b := public.battle_open('ATTACK', v_f1, v_m, clock_timestamp());
     -- the battle starts now, on the wall clock: the door reads clock_timestamp()
     update public.battles bt set resolves_at = clock_timestamp() + (bt.resolves_at - bt.started_at), started_at = clock_timestamp() where bt.id = v_b;
+    -- every world rolls its own dice: a fight may end at once (she saw them first and slipped, n 0) and the door would rightly answer E_BATTLE_OVER to
+    -- every probe. The probe needs a battle still being fought, so its timeline is held open to the boarding (n = the windows' end, the end with it):
+    -- what is proved here is the door, not this world's fight. Rolled back with the probe.
+    update public.battles bt
+       set ticks = jsonb_set(bt.ticks, '{n}', to_jsonb(jsonb_array_length(public.wc('fight_ranges')) * public.wc_int('tick_window'))),
+           resolves_at = bt.started_at + make_interval(secs => (jsonb_array_length(public.wc('fight_ranges')) * public.wc_int('tick_window') + 2) * public.wc_int('tick_ms') / 1000.0)
+     where bt.id = v_b;
     select * into v_bt from public.battles bt where bt.id = v_b;
     if v_bt.ticks is null then
       raise exception '0436 self-assert FAIL: an ATTACK under tick_fight_kinds has no timeline';

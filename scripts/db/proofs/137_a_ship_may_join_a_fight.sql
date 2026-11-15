@@ -86,7 +86,9 @@ begin
   update public.ships s set cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb where s.fleet_id = v_h;
   perform pg_temp.lie_137(v_h, v_slat + 0.3, v_slon);   -- 18 miles off the site
 
-  -- the raid
+  -- the raid. Every world rolls its own dice; one where the merchant sees the pirate first may slip away at tick 0, and then no ship could join
+  -- (E_BATTLE_OVER, rightly). The slip is not what this proof is about: it is off here, so the fight is still being fought at the next tick.
+  update public.world_config set value = to_jsonb(0) where key = 'fight_evade_per_sighting';
   v_r := public.tick_pirates(t0);
   select b.* into v_b from public.battles b join public.battle_sides s on s.battle_id = b.id and s.fleet_id = v_m and s.side = 'DEFENDER';
   if v_b.id is null or v_b.kind <> 'RAID' or v_b.ticks is null then
