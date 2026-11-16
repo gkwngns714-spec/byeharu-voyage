@@ -8,7 +8,7 @@
 --   nothing here assumes who wins; what is proved is the shape, the clock, the rules each event keeps, and what the close does with it.
 --
 -- @pass TK_OPEN   the raid is run whole at its open: battles.ticks, its end (last tick + 2) within 75 s, the job due at the end, a window a round; both sides held to that end
--- @pass TK_LINE   the timeline keeps its rules: ticks in order, one ability a side per global cooldown and each on its cooldown, Fury 0..100, every hit's hull after, every run's chance within the raid's floor and cap (0450; proof 152 holds the formula), the end event its outcome
+-- @pass TK_LINE   the timeline keeps its rules: ticks in order, one ability a side per global cooldown and each on its cooldown, Fury 0..100, every hit's hull after, every run's chance within the raid's floor and cap (0450; 0453: the chase's, proof 156 holds its formula; proof 152 the rollback's), the end event its outcome
 -- @pass TK_READ   world.battle_ticks serves the timeline, the clock, the circle and both sides to a signed-in player; nothing to no house or no battle
 -- @pass TK_END    cmd.battle_end does nothing before the end; at the end it closes the raid (the timeline's result, raid_close's take, the fleets freed, her 5 minutes of peace); the read then serves the result
 -- @pass TK_JOB    a raid nobody watches is closed by the minute job at its end, from the same result
@@ -38,8 +38,9 @@ declare
   v_tl    jsonb;
   v_x     jsonb;
   e       jsonb;
-  v_lo    numeric := public.wc_num('raid_flee_floor');
-  v_hi    numeric := public.wc_num('raid_flee_max');
+  -- 0453: a run's floor and cap are the chase's (chase_floor .. chase_cap) while chase_enabled is true; 0450's raid_flee_floor .. raid_flee_max under the rollback
+  v_lo    numeric := case when public.wc('chase_enabled') = 'true'::jsonb then public.wc_num('chase_floor') else public.wc_num('raid_flee_floor') end;
+  v_hi    numeric := case when public.wc('chase_enabled') = 'true'::jsonb then public.wc_num('chase_cap') else public.wc_num('raid_flee_max') end;
   v_ms    int := public.wc_int('tick_ms');
   v_last  int;
   v_gcd   int[];

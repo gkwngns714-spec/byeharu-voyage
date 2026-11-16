@@ -34,6 +34,8 @@ const MARKS: Record<string, LevelMark> = {
   // there and back
   routes: { paths: ['M4 8.5h14', 'm15 5.5 3 3-3 3', 'M20 15.5H6', 'm9 12.5-3 3 3 3'] },
   investment: { icon: 'stats' },
+  // a hull turning away, her wake behind her (0453)
+  evasion: { paths: ['M14.5 3.5 20.5 9.5 16 14 10 8Z', 'M10.5 12.5 6 17', 'M8 10 3.5 14.5', 'M13 15 8.5 19.5'] },
 }
 
 export function levelMark(code: string): LevelMark {

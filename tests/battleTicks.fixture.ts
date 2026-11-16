@@ -83,7 +83,7 @@ export const SHIPS: { a: BattleShipCard[]; b: BattleShipCard[] } = {
   a: [
     {
       name: 'Santa Rosa', tier: 2, hull: 400, maxd: 400, crew: 10, attack: 55, accuracy: 41.5, reach: 25, armour: 12, sighting: 10.2, gunner: null, boarder: null,
-      lv: 2, cls: 'Caravela latina', guns: 2, crew_need: 12, crew_max: 30, speed: 19.8, handling: 71,
+      lv: 2, cls: 'Caravela latina', guns: 2, crew_need: 12, crew_max: 30, speed: 19.8, handling: 71, ev: 4, run: 30,
       fit: [{ n: 'Starter Guns', s: 'weapon' }, { n: 'Starter Guns', s: 'weapon' }, { n: 'Boarding Gear', s: 'kit', w: 12 }],
       caps: [{ n: 'Inês de Castro', lv: 3 }],
     },

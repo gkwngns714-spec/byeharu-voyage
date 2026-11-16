@@ -8,7 +8,7 @@ import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 // this game" and "with exp table, exp info, with benefits when leveling up, what activity needs done etc."
 //
 // FIXED FACTS, on a new company, phone 320 and 390 and desktop 1280, EN and KO:
-//   - the Levels page shows ten tiles in the served order, each with its name in her language, level 1 and a bar;
+//   - the Levels page shows eleven tiles (0453: Evasion, the eleventh) in the served order, each with its name in her language, level 1 and a bar;
 //   - a pressed tile shows FOUR things for that level: her experience (level, experience, into this level, to go; today
 //     against the day's limit and the newest grants for a level raised by doing), what raises it with the served figures,
 //     what every level gives, and the whole experience table (twenty rows: hers marked, the next one lit with what is left);
@@ -18,7 +18,7 @@ import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 //   - (0417) a level raised by doing lists its own benefit: what it is worth now or the level it begins at, and each step in the
 //     table with its running figure (Supplies: 1 % less at level 4, 5 % at level 20; Routes: one more route at 8, two at 16);
 //     Trading, counted from her record, lists none of those;
-//   - (0417) the You page shows the same ten tiles, small, under its three bars; a pressed one opens the same level in a tray;
+//   - (0417) the You page shows the same tiles, small, under its three bars; a pressed one opens the same level in a tray;
 //   - nothing is cut and the page does not scroll sideways.
 // AND THE HOOK ON THE GLASS (390, EN): after a first voyage that made a port, Supplies holds the experience of its days at sea
 // (2 a day, a whole even number), today's figure is the same, and the newest grant is on the list.
@@ -33,12 +33,12 @@ const SIZES = [
   { width: 1280, height: 800 },
 ] as const
 
-const CODES = ['trading', 'exploration', 'combat', 'supplies', 'weather', 'shipbuilding', 'requests', 'craft', 'routes', 'investment'] as const
+const CODES = ['trading', 'exploration', 'combat', 'supplies', 'weather', 'shipbuilding', 'requests', 'craft', 'routes', 'investment', 'evasion'] as const
 
 // 2026-11-15 owner: shorter words (fed, cap, noCap re-pinned; the levels-vs-skills sentence cut)
 const WORDS = {
   en: {
-    names: ['Trading', 'Exploration', 'Combat', 'Supplies', 'Weather', 'Shipbuilding', 'Requests', 'Craft', 'Routes', 'Investment'],
+    names: ['Trading', 'Exploration', 'Combat', 'Supplies', 'Weather', 'Shipbuilding', 'Requests', 'Craft', 'Routes', 'Investment', 'Evasion'],
     fed: /A day at sea with enough supplies: 2 exp a day \(100 miles\+ trip into port\)/,
     cap: 'Max 300 exp a day',
     every: 'Reputation +10 × the level',
@@ -55,7 +55,7 @@ const WORDS = {
     lapRep: 'A profitable route lap gives 20% more Reputation',
   },
   ko: {
-    names: ['교역', '탐험', '전투', '보급', '악천후', '조선', '의뢰', '제작', '항로', '투자'],
+    names: ['교역', '탐험', '전투', '보급', '악천후', '조선', '의뢰', '제작', '항로', '투자', '회피'],
     fed: /보급이 충분한 항해 하루: 하루에 경험치 2 \(100.*이상 항해 후 입항\)/,
     cap: '하루 최대 경험치 300',
     every: '평판 +10 × 레벨',
@@ -107,7 +107,7 @@ for (const size of SIZES) {
     test.describe(`Levels at ${size.width}×${size.height}, ${lang}`, () => {
       test.use({ viewport: size })
 
-      test('ten tiles; a pressed level shows its experience, what raises it, what levels give and the experience table', async ({ page, request, baseURL }) => {
+      test('eleven tiles; a pressed level shows its experience, what raises it, what levels give and the experience table', async ({ page, request, baseURL }) => {
         test.setTimeout(420_000)
         expect(await reachable(request, baseURL ?? ''), `nothing served at ${baseURL}: run a preview (or set PLAYWRIGHT_BASE_URL)`).toBe(true)
         const words = WORDS[lang]
@@ -203,12 +203,12 @@ for (const size of SIZES) {
         await rows.nth(3).scrollIntoViewIfNeeded()
         await shot(page, `levels-routes-table-${size.width}-${lang}`)
 
-        // THE YOU PAGE (0417): the same ten tiles, small, under the three bars; a pressed one opens the same level in a tray
+        // THE YOU PAGE (0417): the same tiles, small, under the three bars; a pressed one opens the same level in a tray
         await page.goto('you')
         await ready(page)
         const all = page.getByTestId('you-all-levels')
         await expect(all).toBeVisible({ timeout: 60_000 })
-        // 2026-11-15 owner: no repeated words — Trading, Exploration and Combat stand as bars above, so the tiles are the other seven
+        // 2026-11-15 owner: no repeated words — Trading, Exploration and Combat stand as bars above, so the tiles are the others (eight since 0453)
         const small = all.getByTestId('level-tiles').locator('button')
         await expect(small).toHaveCount(CODES.length - 3)
         for (const [i, code] of CODES.slice(3).entries()) {

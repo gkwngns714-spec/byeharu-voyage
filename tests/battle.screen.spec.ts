@@ -93,7 +93,7 @@ test('a late opener jumps to the tick now, the fight plays tick by tick to its e
   await expect(rosa.getByTestId('battle-ship-crew')).toHaveAttribute('data-short', '1')
   await expect(rosa.getByTestId('battle-ship-crew')).toHaveText(/10\/30\s*Short/)
   await expect(theirs.nth(0).getByTestId('battle-ship-crew')).toHaveAttribute('data-short', '0')
-  for (const label of ['Guns 2', 'Attack 55', 'Accuracy 42', 'Reach 25', 'Armour 12', 'Sighting 10', 'Speed 19.8', 'Handling 71', 'Tier 2'])
+  for (const label of ['Guns 2', 'Attack 55', 'Accuracy 42', 'Reach 25', 'Armour 12', 'Sighting 10', 'Speed 19.8', 'Handling 71', 'Tier 2', 'Evasion 4'])
     await expect(rosa.getByTestId('battle-ship-stats').getByLabel(label, { exact: true })).toBeVisible()
   await expect(rosa.getByTestId('battle-ship-fit')).toHaveText(/Starter Guns ×2 · Boarding Gear/)
   await expect(rosa.getByTestId('battle-ship-caps')).toHaveText(/Inês de Castro Lv 3/)
