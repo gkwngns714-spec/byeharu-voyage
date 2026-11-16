@@ -123,7 +123,7 @@ test.describe('a fitting made here, and the words in Korean', () => {
     if ((await sails.getAttribute('data-port')) === 'LIS') {
       await expect(sails).toContainText('여기서 제작')
       await sails.click()
-      await expect(page).toHaveURL(/\/command$/)
+      await expect(page).toHaveURL(/\/office$/)
       await expect(page.getByTestId('port-workstation')).toBeVisible({ timeout: 60_000 })
       await page.screenshot({ path: info.outputPath('workshop.png') })
     }

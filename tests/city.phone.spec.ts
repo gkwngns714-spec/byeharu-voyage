@@ -123,7 +123,7 @@ test.describe('in Korean', () => {
 // the page is asked for again at the glass under test, and the Production tile is pressed: the row stands, and the four laws hold on it.
 async function stockOneLot(page: Page) {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('command')
+  await page.goto('office')
   await ready(page)
   await page.getByRole('tab', { name: /^(City|도시)$/ }).first().click()
   await expect(page.getByTestId('desk-city')).toBeVisible()

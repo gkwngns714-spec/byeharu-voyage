@@ -13,15 +13,16 @@ import { serveVeteranWorld, VETERAN_CAPTAINS, VETERAN_HULLS } from './manyFleets
 // Fleets and the Map are on the page; YOU is next, held to the SAME laws by the SAME apparatus (tests/design.fixture.ts).
 //
 // YOU WAS figures over ONE panel that scrolled inside itself (the sheets-grow slice). It is now a PAGE (`Sheet layout="page"`): MAIN the
-// ships and the captains as two card lists, SIDE (the tray's column) the three level tracks. The page scrolls; nothing inside it does.
+// ships and the captains as two card lists, SIDE (the tray's column) the levels: every level as a tile (2026-11-16: the Trade desk's
+// Levels face moved here, and its tiles replaced the three track bars that repeated them). The page scrolls; nothing inside it does.
 // A captain's tray slides over the side column and moves nothing behind it (tests/fleets.you.grow.spec.ts keeps the tray and cut-name tests).
 //
-// THE LAWS: (a) the width used (centred from 1,024; 80 % from 1,280) · (b) the defect rules · (c) the level figures at least 24 px
+// THE LAWS: (a) the width used (centred from 1,024; 80 % from 1,280) · (b) the defect rules · (c) the level figures (a tile's level, the title voice) at least 20 px
 // over labels of at least 13, every ship and captain row at least 52 px and at most 36 rem · (e) the levels stand in the side column from
 // 1,024, the ships and captains in the main · (f) no box scrolls inside itself · (g) the ships come first on a phone · U3 every old id stays.
 
 const SHEET = '[data-testid="you"]'
-const FIGURES = ['level-track'] as const
+const FIGURES = ['levels-trading', 'levels-exploration'] as const
 const ROWS = ['you-ship', 'your-captain'] as const
 
 /** Where a block stands: inside the side column (`[data-page-side]`) or not. Self-contained, shipped into the page. */
@@ -90,12 +91,11 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         for (const c of d.smallControls) failures.push(`${where}: (b) a control under 44 px — ${c}`)
 
         // (c) THE HIERARCHY
-        const tracks = await page.getByTestId('level-track').count()
-        const waits = await page.getByTestId('combat-waits').count()
-        if (tracks + waits !== 3) failures.push(`${where}: (c) ${tracks} level bars and ${waits} combat lines — the three tracks are not all there`)
+        for (const track of ['trading', 'exploration', 'combat'])
+          if ((await page.getByTestId(`levels-${track}`).count()) !== 1) failures.push(`${where}: (c) the ${track} level is not a tile`)
         if (d.figures.length < 1) failures.push(`${where}: (c) no level figure is shown`)
         for (const f of d.figures) {
-          if (f.font < 24) failures.push(`${where}: (c) the level figure is ${f.font} px — the law is 24`)
+          if (f.font < 20) failures.push(`${where}: (c) the level figure is ${f.font} px — the law is 20`)
           if (f.label !== null && f.label < 13) failures.push(`${where}: (c) the level label is ${f.label} px — the law is 13`)
         }
         if (d.rows.length < VETERAN_HULLS + VETERAN_CAPTAINS)

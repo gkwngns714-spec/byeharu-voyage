@@ -11,7 +11,7 @@ import type { TKey } from '../../lib/i18n'
 // reading of a served payload with no React, no store and no screen in it, kept beside the one screen that asks for it.
 //
 // WHERE IT LIVES, AND WHY. It is the History screen's own vocabulary (its faces, its kinds) over its own read; no other screen
-// reads the ledger page (Stats' Me face reads world.report; the desk's Report face too). THE SECOND CALLER is implausible
+// reads the ledger page (Stats' Me face reads world.report; the Office's Report face too). THE SECOND CALLER is implausible
 // by construction — a second screen printing the ledger's money would be the duplicate "one fact, one home" refuses
 // (tests/consistency.spec.ts) — so it stays in the screen rather than in src/domain; the day it is wanted twice, it moves there
 // whole. In its own file rather than LedgerScreen.tsx so the screen file holds one component and the arithmetic can be read

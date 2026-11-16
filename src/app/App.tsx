@@ -13,7 +13,8 @@ import { BattleGalleryScreen } from '../features/gallery/BattleGalleryScreen'
 import { GatesGalleryScreen } from '../features/found/GatesGalleryScreen'
 import { CommandScreen } from '../features/command/CommandScreen'
 import { FleetsScreen } from '../features/fleets/FleetsScreen'
-import { useDeskView } from '../features/command/deskView'
+import { OfficeScreen } from '../features/command/OfficeScreen'
+import { OFFICE_TAB, openOfficeCity } from '../features/command/officeView'
 import { MapScreen } from '../features/map/MapScreen'
 import { StatsScreen } from '../features/stats/StatsScreen'
 import { LedgerScreen } from '../features/ledger/LedgerScreen'
@@ -73,7 +74,7 @@ export function App() {
             its own header and its own bottom rail, so it is INSIDE RequireAuth but OUTSIDE AppShell
             — the shell's tab bar would be a second navigation on the same glass. It opens the world
             itself (idempotent) and provides the shell clock its building faces read. Entry: the
-            desk's City face (`features/command/city/City.tsx`, the `City view` press). */}
+            Office tab's City face (`features/command/city/City.tsx`, the `City view` press). */}
         <Route
           path="/city"
           element={
@@ -90,9 +91,10 @@ export function App() {
           }
         >
           <Route path="/command" element={<CommandScreen />} />
+          <Route path="/office" element={<OfficeScreen />} />
           <Route path="/fleets" element={<FleetsScreen />} />
           {/* 2026-10-18 (docs/COMMAND_DESK.md D8, the owner: "delete port tab, and focus on command tab"): PORT
-              is gone; an old link to it opens the desk's City face, where every building it carried now is. */}
+              is gone; an old link to it opens the Office tab's City face, where every building it carried now is. */}
           <Route path="/port" element={<PortMovedToCity />} />
           <Route path="/map" element={<MapScreen />} />
           <Route path="/stats" element={<StatsScreen />} />
@@ -111,10 +113,10 @@ export function App() {
   )
 }
 
-/** An old `/port` link: the desk's City face, where PORT's buildings now are (COMMAND_DESK D8). */
+/** An old `/port` link: the Office tab's City face, where PORT's buildings now are (COMMAND_DESK D8; the Office since 2026-11-16). */
 function PortMovedToCity() {
   useEffect(() => {
-    useDeskView.getState().turnTo('city')
+    openOfficeCity()
   }, [])
-  return <Navigate to="/command" replace />
+  return <Navigate to={OFFICE_TAB} replace />
 }

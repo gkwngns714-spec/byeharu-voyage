@@ -26,7 +26,6 @@ test('Routes: a two-stop route started on the desk closes a lap by itself, and H
   await page.setViewportSize(WIDE)
   await page.goto('command')
   await ready(page)
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
   await settled(page.getByTestId('desk-trade'))
 
   const routeRow = page.getByTestId('route-row')

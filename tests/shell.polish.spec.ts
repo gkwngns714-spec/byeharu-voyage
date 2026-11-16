@@ -39,7 +39,6 @@ for (const glass of GLASSES) {
       test.setTimeout(480_000)
       await page.goto('command')
       await ready(page)
-      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
       const card = page.getByTestId('desk-trade').getByTestId('trade-board').getByTestId('trade-good').first()
       await expect(card).toBeVisible({ timeout: 120_000 })
       await card.getByTestId('trade-buy').click()

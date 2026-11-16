@@ -37,18 +37,15 @@ const nextGift = (s: LevelSkill): number => {
   return g && g.kind === 'gift' ? g.n * (s.level + 1) : 0
 }
 
-/** Every level as a tile: two to a line on a phone and in the desk's left pane. `compact` (the You page): the mark, the name, the
- *  level and the bar, without the line under them. */
+/** Every level as a tile, two to a line (the You page's levels card, 2026-11-16). */
 export function LevelTiles({
   card,
   selected,
   onSelect,
-  compact = false,
 }: {
   card: LevelSkillsCard
   selected: string | null
   onSelect: (code: string) => void
-  compact?: boolean
 }) {
   const t = useT()
   const locale = useLocale()
@@ -69,7 +66,7 @@ export function LevelTiles({
             aria-pressed={on}
             data-testid={`levels-${s.code}`}
             data-level={s.level}
-            className={`${compact ? 'min-h-11!' : ''} min-w-0 gap-1! p-2! ${on ? '' : 'bg-surface-2!'} ${s.counted ? '' : 'text-ink-faint'}`}
+            className={`min-w-0 gap-1! p-2! ${on ? '' : 'bg-surface-2!'} ${s.counted ? '' : 'text-ink-faint'}`}
           >
             <span className="flex items-center justify-between gap-2">
               <span className={s.counted ? 'text-accent' : 'text-ink-faint'}>
@@ -81,7 +78,7 @@ export function LevelTiles({
             </span>
             <span className="block break-words text-t-body">{name}</span>
             <Bar pct={levelFill(s)} label={t('you.levelOf', { name })} tone={s.counted ? 'accent' : 'neutral'} />
-            <span className={compact ? 'hidden' : 'flex flex-wrap gap-x-2 text-t-caption text-ink-faint'}>
+            <span className="flex flex-wrap gap-x-2 text-t-caption text-ink-faint">
               {!s.counted ? (
                 t('command.lvCombatDark')
               ) : s.next_at === null ? (

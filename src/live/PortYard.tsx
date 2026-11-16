@@ -31,7 +31,7 @@ import { worldLevels } from '../lib/rpc'
 import type { FleetView, LevelsView, PlanLine, Refusal, YardHull, YardInput, YardSource } from '../lib/rpc'
 import { goTo, useGoTo } from '../chart'
 import { useDeskGood } from '../store/deskGood'
-import { useDeskView } from '../features/command/deskView'
+import { openOfficeCity } from '../features/command/officeView'
 import { useRouteSeed } from '../features/map/routeSeed'
 import { properName, useLocale, useT, t as tNow } from '../lib/i18n'
 
@@ -151,7 +151,7 @@ export function PortYard({
   // S1: which parts stand unfolded (a part opens below itself), and whether a hull was laid down from this sheet
   const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set())
   const [laid, setLaid] = useState(false)
-  // the fleet's room: the same cached read the Levels face asks (world.levels, 0325)
+  // the fleet's room: the same cached read the You page's levels ask (world.levels, 0325)
   const levels = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
 
   const send = (lines: readonly PlanLine[]) => {
@@ -164,11 +164,9 @@ export function PortYard({
       if (!okay) setRefusal(useWorld.getState().refusal)
     })()
   }
-  /** The hire door that exists: this city's Inn face on the desk. */
+  /** The hire door that exists: this city's Inn, on the Office tab's City face. */
   const toInn = () => {
-    useDeskView.getState().setCityFace('inn')
-    useDeskView.getState().turnTo('city')
-    navigate('/command')
+    navigate(openOfficeCity('inn'))
   }
 
   const build = (hull: YardHull) => {
@@ -620,10 +618,8 @@ function SourceRow({
       openOnDesk(source.code, port)
       navigate('/command')
     } else if (here) {
-      // a fitting is made at this city's Workshop face
-      useDeskView.getState().setCityFace('workstation')
-      useDeskView.getState().turnTo('city')
-      navigate('/command')
+      // a fitting is made at this city's Workshop, on the Office tab's City face
+      navigate(openOfficeCity('workstation'))
     } else {
       // a fitting made elsewhere: that harbour on the map (outside the shell no tab answers the request, so the route does)
       goTo({ kind: 'port', code: port })

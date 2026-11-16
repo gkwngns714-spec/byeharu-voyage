@@ -19,7 +19,7 @@ test('every building face opens on the desk, and a buy runs from its Trade face'
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('command')
+  await page.goto('office')
   await ready(page)
   await page.getByRole('tab', { name: 'City', exact: true }).click()
   await expect(page.getByTestId('desk-city')).toBeVisible()
@@ -68,7 +68,7 @@ test('every building face opens on the desk, and a buy runs from its Trade face'
 test('the Invest face: your holdings, and the Town Hall of the city the fleet is at', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
-  await page.goto('command')
+  await page.goto('office')
   await ready(page)
   await page.getByRole('tab', { name: 'Invest', exact: true }).click()
   await expect(page.getByTestId('invest-holdings')).toBeVisible()
@@ -80,7 +80,7 @@ test('the Invest face: your holdings, and the Town Hall of the city the fleet is
 test('the Report face: spans, the total, eight section rows and the places', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
-  await page.goto('command')
+  await page.goto('office')
   await ready(page)
   await page.getByRole('tab', { name: 'Report', exact: true }).click()
   await expect(page.getByTestId('desk-report')).toBeVisible()
@@ -101,7 +101,7 @@ test('the Report face: spans, the total, eight section rows and the places', asy
 // THE BOARD STANDS ON THE GLASS (2026-11-02, the HQ-on-a-phone slice: docs/dev-log/2026-11-02-city-phone-desk.md)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// The desk's City face on a phone is a stack — the fleet strip, the four faces, the city's header and its eight buildings — over ONE board: the building's own
+// The City face (the Office tab's since 2026-11-16) on a phone is a stack — the fleet strip, the Office's three faces (the desk's four until 2026-11-16), the city's header and its eight buildings — over ONE board: the building's own
 // face, which scrolls inside its pane so the page never does. That pane was `max-h-[12rem]` (192 px) inside a Sheet that ended 187 px BELOW it (pane 408…600, Sheet
 // 32…787 at 390×844), and the pane's own controls (the supplies row, Buy · Sell · Requests, the filter: 150 px) took 150 of the 192: forty px of goods stood on the glass at 390
 // and none at 320×640. The owner: *"make it concise and simple so that it is easy to see in one eye without scrolling down"* (row 251).
@@ -117,7 +117,7 @@ test("the desk's City board stands on the glass at 390 and 320: no Sheet scroll,
   for (const size of [{ width: 390, height: 844 }, { width: 320, height: 640 }]) {
     const where = `${size.width}×${size.height}`
     await page.setViewportSize(size)
-    await page.goto('command')
+    await page.goto('office')
     await ready(page)
     await page.getByRole('tab', { name: 'City', exact: true }).click()
     await expect(page.getByTestId('desk-city')).toBeVisible()

@@ -22,7 +22,7 @@ import { reachable, ready } from './appReady.fixture'
 // The City page already carried its own no-scroll proof (tests/city.page.spec.ts) and is asserted
 // here too, without touching src/features/city/** (another slice owns those files).
 
-const ROUTES = ['command', 'fleets', 'map', 'stats', 'ledger', 'rank', 'routes', 'compendium', 'profile', 'city'] as const
+const ROUTES = ['command', 'office', 'fleets', 'map', 'stats', 'ledger', 'rank', 'routes', 'compendium', 'profile', 'city'] as const
 const SIZES = [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },
@@ -49,8 +49,12 @@ async function read(page: Page): Promise<DocReport> {
     const main = document.querySelector('main')
     const box = main?.getBoundingClientRect() ?? null
     const sheet = document.querySelector('[data-sheet], [data-testid="desk-scroll"]') as HTMLElement | null
+    // A choice strip its screen lays out as a WRAPPING LINE instead (display flex: the City face's buildings in the wide desk's
+    // left pane, each as wide as its word — src/features/command/city/City.tsx, 2026-11-14) is not a grid, so the equal-cell law
+    // is not its law. It was never on a route's first screen until the City face became the Office tab's (2026-11-16).
     const grids = [...document.querySelectorAll('[data-choice-grid]')]
       .filter(visible)
+      .filter((g) => getComputedStyle(g).display === 'grid')
       .map((g) => ({
         label: g.getAttribute('aria-label') ?? g.getAttribute('data-testid') ?? 'grid',
         cells: [...g.querySelectorAll(':scope > button')]
@@ -214,7 +218,7 @@ for (const size of SIZES) {
       gridsMeasured += assertGrids(m.grids, size, `${route} @${size.width}`)
 
       // 3b. EVERY FACE INSIDE THE TAB, AND EVERY PAGE ITS SUMMARIES OPEN.
-      if (route === 'command') pagesMeasured += await walkFaces(page, size, /desk faces/i, ['City', 'Invest', 'Report', 'Levels', 'Goods'])
+      if (route === 'office') pagesMeasured += await walkFaces(page, size, /office faces/i, ['Invest', 'Report', 'City'])
       else if (route === 'stats') pagesMeasured += await walkFaces(page, size, null, ['News', 'Markets', 'Cities', 'Merchants', 'Me', 'Overview'])
       else pagesMeasured += await walkPages(page, size)
 

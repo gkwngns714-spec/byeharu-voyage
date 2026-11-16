@@ -1,20 +1,6 @@
-import { useEffect, useMemo } from 'react'
-import { Clip, Note, Segmented, Sheet, scrollRegionClass, useWide } from '../../components/ui'
-import { WorldFailed, WorldLoading } from '../../live/WorldGate'
-import { useCommandDraft } from '../../domain/order'
-import { useWorld } from '../../live/worldStore'
-import type { FleetView } from '../../lib/rpc'
-import { useDeskGood } from '../../store/deskGood'
-import { DeskPanes, DeskStack, type DeskLayout } from './DeskFrame'
-import { DESK_FACES, useDeskView, type DeskFace } from './deskView'
-import { FleetStrip } from './FleetStrip'
-import { TradeStatus } from './buysell/TradeStatus'
+import { DeskShell } from './DeskShell'
 import { Trade } from './buysell/Trade'
-import { City } from './city/City'
-import { Invest } from './invest/Invest'
-import { Report } from './report/Report'
-import { Levels } from './levels/Levels'
-import { GoalCard } from './levels/GoalCard'
+import { GoalCard } from './GoalCard'
 import { useT } from '../../lib/i18n'
 
 // COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). TWO SHAPES, ONE STATE (§3.9): on a wide glass
@@ -27,9 +13,10 @@ import { useT } from '../../lib/i18n'
 // seeing charts of each trade goods that i click, setting up trade routes for my fleet, investing, and
 // all … stylish - modern - sophisticated yet concise simple."*
 //
-// THE SHELL: the fleet strip (which fleet — the picker, FleetPicker.tsx — and its two figures), the faces (deskView.ts — the
-// ones built: Trade · City · Invest · Report; owner row 218 replaced Markets and Trade with Buy and Sell,
-// buysell/BuySell.tsx; row 192/244 turned Profit into Report), and the face.
+// THE SHELL (DeskShell.tsx, shared with the Office tab): the fleet strip (which fleet — the picker, FleetPicker.tsx — and its
+// two figures), and the one face, Trade. ONE FACE SINCE 2026-11-16 (owner: *"in trade, there are city invest report and
+// levels, which aren't that related to trade. they should have separate tab like map you stats etc."*): City, Invest and
+// Report are the OFFICE tab's faces (features/command/OfficeScreen.tsx), Levels stand on the YOU page.
 //
 // What follows is this screen's history before the desk. The rule it records still holds: a verb that
 // happens at a place is offered only where the fleet is docked (§2.1).
@@ -65,130 +52,13 @@ import { useT } from '../../lib/i18n'
 
 export function CommandScreen() {
   const t = useT()
-  const phase = useWorld((s) => s.phase)
-  const fatal = useWorld((s) => s.fatal)
-  const snapshot = useWorld((s) => s.snapshot)
-  // 0321: an empty fleet takes no order, so Command does not offer her (the Fleets tab does).
-  const allFleets = useWorld((s) => s.fleets)
-  const fleets = useMemo(() => allFleets.filter((f) => f.ships.length > 0), [allFleets])
-  const open = useWorld((s) => s.open)
-
-  const fleetId = useCommandDraft((s) => s.fleetId)
-  const selectFleet = useCommandDraft((s) => s.selectFleet)
-  const face = useDeskView((s) => s.face)
-  const turnTo = useDeskView((s) => s.turnTo)
-  // A HAND-OVER FROM THE MAP (live/PriceTray.tsx, "Open in Command"): the city and the good are in hand; the desk
-  // turns to Buy once to show them.
-  const handed = useDeskGood((s) => s.handed)
-  const spendHand = useDeskGood((s) => s.spendHand)
-  useEffect(() => {
-    if (!handed) return
-    turnTo('trade')
-    spendHand()
-  }, [handed, turnTo, spendHand])
-
-  useEffect(() => {
-    void open()
-  }, [open])
-
-  const fleet = useMemo(() => fleets.find((f) => f.id === fleetId), [fleets, fleetId])
-  useEffect(() => {
-    if (fleet) return
-    const first = fleets.find((f) => f.status === 'DOCKED') ?? fleets[0]
-    if (first) selectFleet(first.id)
-  }, [fleet, fleets, selectFleet])
-
-  const wide = useWide()
-
-  if (phase === 'failed' && fatal) {
-    // THE WORLD'S TWO NON-READY DOORS are written once (live/WorldGate.tsx), on the page grid — not a third copy here
-    return <WorldFailed title={t('shell.tab_Trade')} refusal={fatal} />
-  }
-  if (!snapshot) {
-    return <WorldLoading title={t('shell.tab_Trade')} />
-  }
-  if (fleets.length === 0) {
-    return (
-      <Sheet title={t('shell.tab_Trade')} layout="page">
-        <Note tone="neutral">{t('command.noFleets')}</Note>
-      </Sheet>
-    )
-  }
-
-  // EVERY FACE IN THE ONE FRAME (DeskFrame.tsx; the owner, 2026-10-19: "no pop ups or no new screen, but
-  // reloading on the same page"). A face hands its parts to the layout; the desk decides the shape: the
-  // terminal's three panes on a wide glass, one under the other on a phone.
-  const layout: DeskLayout = wide ? (parts) => <DeskPanes face={face} {...parts} /> : (parts) => <DeskStack {...parts} />
-  const faceBody = (f: FleetView) =>
-    face === 'trade' ? (
-      <Trade fleet={f} layout={layout} />
-    ) : face === 'city' ? (
-      <City fleet={f} layout={layout} />
-    ) : face === 'invest' ? (
-      <Invest fleet={f} layout={layout} />
-    ) : face === 'levels' ? (
-      <Levels layout={layout} />
-    ) : (
-      <Report layout={layout} />
-    )
-
-  if (wide) {
-    return (
-      <div className="flex h-full min-h-0 flex-col" data-testid="command" data-desk="terminal">
-        {/* THE HEADER spans the glass, the same on every face: pressing a face changes the panes below
-            it, never the header or the frame. */}
-        {/* 2026-11-11 (S9): from `lg` the nav is a rail at the left and takes 96 px of this line; where the title, the fleet strip and the
-            faces no longer fit one line (1,024-1,069 px with one fleet), the faces step to a second line at the right instead of the
-            strip being cut — the strip's basis is its own content (`flex-[1_1_auto]`), so the line breaks before anything is clipped. */}
-        <header className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-2 px-3 py-3 min-[90rem]:px-6" data-testid="desk-header">
-          <div className="flex min-w-0 flex-[1_1_auto] items-center gap-6">
-            {/* THE PAGE'S CARD-TITLE VOICE (18 px; it was 14) — row 267, tests/command.design.spec.ts */}
-            <h1 className="shrink-0 text-t-card text-ink">{t('shell.tab_Trade')}</h1>
-            <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} inline />
-          </div>
-          <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label={t('command.deskFaces')} className="ml-auto shrink-0" />
-        </header>
-        {fleet && <GoalCard />}
-        {fleet && faceBody(fleet)}
-      </div>
-    )
-  }
-
   return (
-    // THE PHONE DESK IS ITS OWN ROOT, as the wide desk is (it is not a Sheet): a title line, then ONE scroll box that takes the glass the title
-    // leaves, so a face that is ONE board (the City's building face) takes what the strip, the faces and its own header leave free instead of a
-    // 12-rem cap — for EVERY face, so pressing one never moves the title (the press law). A face taller than the glass scrolls this box.
-    <div className="flex h-full min-h-0 flex-col" data-testid="command">
-      <header className="flex shrink-0 items-center px-gutter pb-1 pt-2" data-testid="desk-header">
-        <h1 className="min-w-0 text-t-figure">
-          <Clip>{t('shell.tab_Trade')}</Clip>
-        </h1>
-      </header>
-      <div className={`flex flex-col ${scrollRegionClass}`} data-testid="desk-scroll">
-        {/* WHERE SHE IS stands beside her name (2026-11-11, the trade-flow slice): in port, or under way to where and until
-            when. In the picker's own row, on every face, so turning a face moves nothing; on Trade its second line also says
-            when the board is another city's. */}
-        <FleetStrip
-          fleets={fleets}
-          onSelect={selectFleet}
-          fleet={fleet ?? null}
-          trailing={fleet ? <TradeStatus fleet={fleet} compact board={face === 'trade'} /> : undefined}
-        />
-        {/* THE FACES (deskView.ts): one row in the body, not in the title line — a 44-px control
-            there makes the bar taller, and a taller bar covers what a press lands on below it. */}
-        <Segmented<DeskFace>
-          segments={DESK_FACES}
-          value={face}
-          onChange={turnTo}
-          label={t('command.deskFaces')}
-          fill
-          className={face === 'trade' && fleet ? 'mb-1 mt-1' : 'mb-2 mt-1'}
-        />
-        {/* the goal card stands 4 px under the faces and 4 px over the board: the 8 px the faces kept, shared, so the Trade
-            face is not a pixel taller (under way it must not scroll its sheet, tests/trade.flow.spec.ts T3) */}
-        {fleet && face === 'trade' && <GoalCard />}
-        {fleet && faceBody(fleet)}
-      </div>
-    </div>
+    <DeskShell
+      testid="command"
+      title={t('shell.tab_Trade')}
+      board
+      above={<GoalCard />}
+      body={(fleet, layout) => <Trade fleet={fleet} layout={layout} />}
+    />
   )
 }

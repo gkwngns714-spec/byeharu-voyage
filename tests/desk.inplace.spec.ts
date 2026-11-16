@@ -14,15 +14,15 @@ import { ready, reachable } from './appReady.fixture'
 //     what a face opens (City's basket) stands INSIDE the right pane, not over the glass;
 //   · a good pressed on Buy opens THE trade panel (owner row 229): the right pane on a wide glass, the bottom sheet
 //     on a phone; the desk's frame does not move.
+// 2026-11-16: the faces that change are the OFFICE tab's (City · Invest · Report, moved off the Trade desk, which keeps Trade
+// alone); the frame and the laws are the same shell's (src/features/command/DeskShell.tsx).
 // Prices are the local world's; nothing here asserts a figure — only geometry and presence.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 const FACES = [
-  { name: 'Goods', id: 'desk-trade' },
   { name: 'City', id: 'desk-city' },
   { name: 'Invest', id: 'desk-invest' },
   { name: 'Report', id: 'desk-report' },
-  { name: 'Levels', id: 'desk-levels' },
 ] as const
 
 const SIZES = [
@@ -30,15 +30,16 @@ const SIZES = [
   { width: 390, height: 844 },
 ] as const
 
-async function openDesk(page: Page, request: Parameters<typeof reachable>[0], baseURL: string | undefined) {
+async function openDesk(page: Page, request: Parameters<typeof reachable>[0], baseURL: string | undefined, route: 'command' | 'office' = 'command') {
   test.setTimeout(480_000)
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('command')
+  await page.goto(route)
   await ready(page)
-  await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
+  if (route === 'command') await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
+  else await expect(page.getByTestId('office')).toBeVisible({ timeout: 120_000 })
 }
 
 const rect = (page: Page, sel: string) =>
@@ -49,7 +50,7 @@ const rect = (page: Page, sel: string) =>
     return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }
   }, sel)
 
-/** The boxes that make the frame: on a wide glass the header and the three panes; on a phone the faces strip. */
+/** The boxes that make the frame: on a wide glass the header and the three panes; on a phone the header and the Office's faces strip. */
 const frame = async (page: Page, wide: boolean) =>
   wide
     ? {
@@ -58,18 +59,18 @@ const frame = async (page: Page, wide: boolean) =>
         main: await rect(page, '[data-testid="desk-pane-chart"]'),
         side: await rect(page, '[data-testid="desk-pane-ticket"]'),
       }
-    : { faces: await rect(page, '[role="tablist"][aria-label="Desk faces"]') }
+    : { header: await rect(page, '[data-testid="desk-header"]'), faces: await rect(page, '[role="tablist"][aria-label="Office faces"]') }
 
 for (const size of SIZES) {
   const wide = size.width >= 1024
-  test.describe(`the desk's faces at ${size.width}×${size.height}`, () => {
+  test.describe(`the Office's faces at ${size.width}×${size.height}`, () => {
     test.use({ viewport: size })
 
     test('each face changes in place: the frame stays mounted, no dialog opens', async ({ page, request, baseURL }) => {
-      await openDesk(page, request, baseURL)
-      const tabs = page.getByRole('tablist', { name: 'Desk faces' })
+      await openDesk(page, request, baseURL, 'office')
+      const tabs = page.getByRole('tablist', { name: 'Office faces' })
       // A marker on the element that holds the faces: a new screen would be a new element without it.
-      const holder = wide ? '[data-testid="desk-header"]' : '[data-testid="command"]'
+      const holder = wide ? '[data-testid="desk-header"]' : '[data-testid="office"]'
       await page.evaluate((s) => document.querySelector(s)!.setAttribute('data-inplace-marker', '1'), holder)
       const before = await frame(page, wide)
       expect(Object.values(before).every((b) => b !== null), 'the desk frame is not drawn').toBe(true)
@@ -105,7 +106,7 @@ for (const size of SIZES) {
     test('a good pressed opens the trade panel in the desk: the right pane wide, the bottom sheet on a phone', async ({ page, request, baseURL }) => {
       await openDesk(page, request, baseURL)
       const face = page.getByTestId('desk-trade')
-      const before = await frame(page, wide)
+      const before = { header: await rect(page, '[data-testid="desk-header"]'), ...(wide ? await frame(page, wide) : {}) }
       await face.getByTestId('trade-buy').first().click()
       const panel = page.getByTestId('good-detail')
       await expect(panel).toBeVisible({ timeout: 30_000 })
@@ -117,7 +118,7 @@ for (const size of SIZES) {
         // owner row 229: a bottom sheet on a phone, at the bottom edge, over nothing it moves
         await expect(panel).toHaveAttribute('data-tray-mode', 'docked')
       }
-      expect(await frame(page, wide), 'the panel moved the desk frame').toEqual(before)
+      expect({ header: await rect(page, '[data-testid="desk-header"]'), ...(wide ? await frame(page, wide) : {}) }, 'the panel moved the desk frame').toEqual(before)
       await expect(page.getByTestId('command-queue')).toBeAttached()
     })
   })

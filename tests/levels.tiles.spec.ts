@@ -8,17 +8,16 @@ import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 // this game" and "with exp table, exp info, with benefits when leveling up, what activity needs done etc."
 //
 // FIXED FACTS, on a new company, phone 320 and 390 and desktop 1280, EN and KO:
-//   - the Levels page shows eleven tiles (0453: Evasion, the eleventh) in the served order, each with its name in her language, level 1 and a bar;
+//   - the You page's levels card (the desk's Levels face moved there, 2026-11-16) shows eleven tiles (0453: Evasion, the eleventh) in the served order, each with its name in her language, level 1 and a bar;
 //   - a pressed tile shows FOUR things for that level: her experience (level, experience, into this level, to go; today
 //     against the day's limit and the newest grants for a level raised by doing), what raises it with the served figures,
 //     what every level gives, and the whole experience table (twenty rows: hers marked, the next one lit with what is left);
 //   - Supplies says 2 a day at sea on a trip of 100 miles into a port, at most 300 a day; level 2 begins at 25 and gives
 //     Reputation +20; Trading says a fleet at level 3 and a captain's promotion to B at level 5;
-//   - on a phone the level opens in a tray and no tile moves; on a desktop it stands in the middle pane;
+//   - the level opens in a tray and no tile moves;
 //   - (0417) a level raised by doing lists its own benefit: what it is worth now or the level it begins at, and each step in the
 //     table with its running figure (Supplies: 1 % less at level 4, 5 % at level 20; Routes: one more route at 8, two at 16);
 //     Trading, counted from her record, lists none of those;
-//   - (0417) the You page shows the same tiles, small, under its three bars; a pressed one opens the same level in a tray;
 //   - nothing is cut and the page does not scroll sideways.
 // AND THE HOOK ON THE GLASS (390, EN): after a first voyage that made a port, Supplies holds the experience of its days at sea
 // (2 a day, a whole even number), today's figure is the same, and the newest grant is on the list.
@@ -97,8 +96,9 @@ async function openLevels(page: Page, lang: 'en' | 'ko') {
     await ready(page)
   }
   expect(await page.evaluate(() => document.documentElement.lang)).toBe(lang)
+  // the goal card on the Trade tab opens the You page, where the levels stand (the desk's Levels face moved there, 2026-11-16)
   await page.getByTestId('goal-card').click()
-  await expect(page.getByTestId('desk-levels').first()).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByTestId('you-levels').first()).toBeVisible({ timeout: 60_000 })
   await expect(page.getByTestId('level-tiles')).toBeVisible({ timeout: 60_000 })
 }
 
@@ -111,7 +111,6 @@ for (const size of SIZES) {
         test.setTimeout(420_000)
         expect(await reachable(request, baseURL ?? ''), `nothing served at ${baseURL}: run a preview (or set PLAYWRIGHT_BASE_URL)`).toBe(true)
         const words = WORDS[lang]
-        const wide = size.width >= 1024
         await openLevels(page, lang)
 
         // TEN TILES, in the served order, each with its name whole, level 1 and a bar
@@ -133,13 +132,13 @@ for (const size of SIZES) {
         await nothingCut(page, page.getByTestId('level-tiles'), 'the tiles')
         await shot(page, `levels-tiles-${size.width}-${lang}`)
 
-        // PRESS SUPPLIES: no tile moves; the level stands in a tray (phone) or the middle pane (desktop)
-        const before = await tiles.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left) + ':' + Math.round(e.getBoundingClientRect().top)))
+        // PRESS SUPPLIES: no tile moves on the page (measured against the levels card, so the press's own scroll to the tile is not a move); the level stands in a tray
+        const before = await tiles.evaluateAll((els) => els.map((e) => { const o = document.querySelector('[data-testid="you-levels"]')!.getBoundingClientRect(); const r = e.getBoundingClientRect(); return Math.round(r.left - o.left) + ':' + Math.round(r.top - o.top) }))
         await page.getByTestId('levels-supplies').click()
         const detail = page.getByTestId('level-detail')
         await expect(detail).toHaveAttribute('data-level-code', 'supplies')
-        if (!wide) await expect(page.getByTestId('level-tray')).toBeVisible()
-        expect(await tiles.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left) + ':' + Math.round(e.getBoundingClientRect().top))), 'a press moved a tile').toEqual(before)
+        await expect(page.getByTestId('level-tray')).toBeVisible()
+        expect(await tiles.evaluateAll((els) => els.map((e) => { const o = document.querySelector('[data-testid="you-levels"]')!.getBoundingClientRect(); const r = e.getBoundingClientRect(); return Math.round(r.left - o.left) + ':' + Math.round(r.top - o.top) })), 'a press moved a tile').toEqual(before)
 
         // 1. her experience
         await expect(detail.getByTestId('level-detail-level')).toContainText('1')
@@ -178,7 +177,7 @@ for (const size of SIZES) {
         await shot(page, `levels-supplies-table-${size.width}-${lang}`)
 
         // TRADING, a level counted from her record: its own rules, served
-        if (!wide) await page.getByTestId('tray-close').click()
+        await page.getByTestId('tray-close').click()
         await page.getByTestId('levels-trading').click()
         await expect(detail).toHaveAttribute('data-level-code', 'trading')
         await expect(detail.getByTestId('level-detail-activities')).toContainText(words.trade)
@@ -192,7 +191,7 @@ for (const size of SIZES) {
         await shot(page, `levels-trading-table-${size.width}-${lang}`)
 
         // ROUTES (0417): two benefits; the count of routes steps at 8 and 16, the lap's Reputation at 4
-        if (!wide) await page.getByTestId('tray-close').click()
+        await page.getByTestId('tray-close').click()
         await page.getByTestId('levels-routes').click()
         await expect(detail).toHaveAttribute('data-level-code', 'routes')
         await expect(detail.getByTestId('level-detail-perks').locator('li')).toHaveCount(2)
@@ -203,28 +202,6 @@ for (const size of SIZES) {
         await rows.nth(3).scrollIntoViewIfNeeded()
         await shot(page, `levels-routes-table-${size.width}-${lang}`)
 
-        // THE YOU PAGE (0417): the same tiles, small, under the three bars; a pressed one opens the same level in a tray
-        await page.goto('you')
-        await ready(page)
-        const all = page.getByTestId('you-all-levels')
-        await expect(all).toBeVisible({ timeout: 60_000 })
-        // 2026-11-15 owner: no repeated words — Trading, Exploration and Combat stand as bars above, so the tiles are the others (eight since 0453)
-        const small = all.getByTestId('level-tiles').locator('button')
-        await expect(small).toHaveCount(CODES.length - 3)
-        for (const [i, code] of CODES.slice(3).entries()) {
-          await expect(small.nth(i)).toHaveAttribute('data-testid', `levels-${code}`)
-          await expect(small.nth(i)).toContainText(words.names[i + 3])
-          expect((await small.nth(i).boundingBox())!.height, `${code}: a small tile is a press target`).toBeGreaterThanOrEqual(44)
-        }
-        await nothingCut(page, all, 'the You page tiles')
-        await all.scrollIntoViewIfNeeded()
-        await shot(page, `you-levels-${size.width}-${lang}`)
-        await all.getByTestId('levels-weather').click()
-        await expect(page.getByTestId('level-tray')).toBeVisible()
-        await expect(page.getByTestId('level-detail')).toHaveAttribute('data-level-code', 'weather')
-        await expect(page.getByTestId('level-detail').getByTestId('level-row')).toHaveCount(20)
-        await nothingCut(page, page.getByTestId('level-detail'), 'Weather on the You page')
-        await shot(page, `you-levels-weather-${size.width}-${lang}`)
       })
     })
   }
@@ -246,9 +223,8 @@ test.describe('Levels at 390×844, en: a voyage raises Supplies', () => {
     await expect(page.getByTestId('arrival-card')).toBeVisible({ timeout: 480_000 })
     await arrivalCard(page, 'Levels: a voyage raises Supplies')
 
-    await page.goto('command')
+    await page.goto('you')
     await ready(page)
-    await page.getByTestId('goal-card').click()
     await expect(page.getByTestId('level-tiles')).toBeVisible({ timeout: 60_000 })
     await page.getByTestId('levels-supplies').click()
     const detail = page.getByTestId('level-detail')

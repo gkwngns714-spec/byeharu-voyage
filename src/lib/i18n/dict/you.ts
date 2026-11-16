@@ -7,10 +7,6 @@ export const youDict = defineDict({
   en: {
     noCompany: 'No company yet.',
     levels: 'Levels',
-    trading: 'Trading',
-    exploration: 'Exploration',
-    combat: 'Combat',
-    noFighting: 'not yet',
     levelOf: '{name} level',
     ships: 'Ships',
     noShips: 'No ships yet.',
@@ -21,10 +17,6 @@ export const youDict = defineDict({
   ko: {
     noCompany: '아직 회사 없음.',
     levels: '레벨',
-    trading: '교역',
-    exploration: '탐험',
-    combat: '전투',
-    noFighting: '아직 없음',
     levelOf: '{name} 레벨',
     ships: '배',
     noShips: '아직 배 없음.',

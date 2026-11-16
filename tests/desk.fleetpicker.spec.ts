@@ -190,7 +190,7 @@ test.describe('several fleets', () => {
       header: await rect(page, '[data-testid="desk-header"]'),
       picker: await rect(page, '[data-testid="fleet-picker"]'),
       line: await rect(page, '[data-testid="command-line"]'),
-      faces: await rect(page, '[role="tablist"][aria-label="Desk faces"]'),
+      goal: await rect(page, '[data-testid="goal-card"], [data-testid="goal-card-hold"]'),
     }
     await picker.click()
     const tray = page.getByTestId('fleet-list')
@@ -205,7 +205,7 @@ test.describe('several fleets', () => {
         header: await rect(page, '[data-testid="desk-header"]'),
         picker: await rect(page, '[data-testid="fleet-picker"]'),
         line: await rect(page, '[data-testid="command-line"]'),
-        faces: await rect(page, '[role="tablist"][aria-label="Desk faces"]'),
+        goal: await rect(page, '[data-testid="goal-card"], [data-testid="goal-card-hold"]'),
       },
       'the tray moved the sheet',
     ).toEqual(before)

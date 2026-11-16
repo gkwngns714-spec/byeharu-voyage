@@ -1,14 +1,14 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 
-// THE GOAL CARD (remaster S6, src/features/command/levels/GoalCard.tsx): one line on the Trade screen with the next Title and the
-// progress toward it, read from the same `world.levels()` the Levels face reads. Pinned on a local build at the phone and the desk:
-//   · a fresh player sees the card, and its figures are the Levels face's own (the next title, Trading and Exploration levels);
+// THE GOAL CARD (remaster S6, src/features/command/GoalCard.tsx): one line on the Trade screen with the next Title and the
+// progress toward it, read from the same `world.levels()` the You page's levels read. Pinned on a local build at the phone and the desk:
+//   · a fresh player sees the card, and its figures are the You page's own (the next title, Trading and Exploration levels);
 //   · the card stands at the same height and place before and after the read lands (no re-flow), and nothing scrolls sideways;
-//   · pressing it lands on the Levels face.
+//   · pressing it lands on the You page, where the levels stand (since 2026-11-16).
 // 0363 (S3 of docs/SECOND_SHIP.md): while the company has ONE ship the second line is "Second ship n / of" in place of the two
 // tracks (one line for the other, no height added); a fresh player at Lisbon reads "Second ship 0 / 4". The tracks are then the
-// Levels face's alone, and come back to the card with the second ship (tests/second.ship.spec.ts plays that).
+// You page's alone, and come back to the card with the second ship (tests/second.ship.spec.ts plays that).
 
 const SIZES = [
   { width: 390, height: 844 },
@@ -27,7 +27,7 @@ for (const size of SIZES) {
   test.describe(`the goal card at ${size.width}×${size.height}`, () => {
     test.use({ viewport: size, deviceScaleFactor: 2 })
 
-    test('shows the next title with the Levels face figures, holds its height, and opens Levels', async ({ page, request, baseURL }) => {
+    test('shows the next title with the You page level figures, holds its height, and opens You', async ({ page, request, baseURL }) => {
       test.setTimeout(480_000)
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
       await page.goto('command')
@@ -45,7 +45,6 @@ for (const size of SIZES) {
       expect(loaded, 'the card moved when the read landed').toEqual(first)
 
       // the card's text, read before the press
-      const header = await box(page, '[data-testid="desk-header"]')
       const text = (await card.innerText()).replace(/\s+/g, ' ')
       // two lines since 2026-11-12: the title's name and Reputation, then (0363, a company of one ship) the second ship
       const m = /^(.+?) (?:Reputation [\d,]+ )?Second ship (\d+) \/ (\d+)$/.exec(text)
@@ -58,18 +57,13 @@ for (const size of SIZES) {
         'the card scrolls the page sideways',
       ).toBe(true)
 
-      // press it: the Levels face, and its figures are the card's
+      // press it: the You page, where the levels stand (the desk's Levels face moved there, 2026-11-16), and its figures are the card's
       await card.click()
-      await expect(page.getByTestId('desk-levels').first()).toBeVisible({ timeout: 60_000 })
+      await expect(page).toHaveURL(/\/you$/)
+      await expect(page.getByTestId('you-levels').first()).toBeVisible({ timeout: 60_000 })
       await expect(page.getByTestId('levels-trading').first()).toBeVisible()
       await expect(page.getByTestId('levels-exploration').first()).toBeVisible()
       await expect(page.getByTestId('levels-title')).toContainText(`${m![1]}`)
-      // the press did not move the desk's header; wide, the card stands in it on every face and did not move; on a phone it is the
-      // Goods face's own (the other faces keep every pixel for themselves)
-      expect(await box(page, '[data-testid="desk-header"]'), 'the press moved the header').toEqual(header)
-      const after = await box(page, '[data-testid="goal-card"]')
-      if (size.width >= 1024) expect(after, 'the press moved the card').toEqual(loaded)
-      else expect(after, 'the card stands on a face that is not Goods').toBeNull()
     })
   })
 }

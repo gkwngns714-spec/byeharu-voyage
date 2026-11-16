@@ -18,8 +18,17 @@
 import { expect, type Page } from '@playwright/test'
 import { settled, WORLD_BOOT_MS } from './appReady.fixture'
 
+/** THE OFFICE TAB'S FACE, opened the way a player opens it (2026-11-16: City, Invest and Report left the Trade desk for the
+ *  Office tab): its own cell on the nav, then the face in the Office's strip. Works from any screen with the nav. */
+export async function openOfficeFace(page: Page, face: string | RegExp): Promise<void> {
+  if (!new URL(page.url()).pathname.endsWith('/office')) await page.locator('a[href$="/office"]:visible').first().click()
+  const office = page.getByTestId('office')
+  await expect(office).toBeVisible({ timeout: WORLD_BOOT_MS })
+  await office.getByRole('tablist').first().getByRole('tab', typeof face === 'string' ? { name: face, exact: true } : { name: face }).click()
+}
+
 export async function openCityFace(page: Page): Promise<void> {
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'City', exact: true }).click()
+  await openOfficeFace(page, 'City')
   const city = page.getByTestId('desk-city')
   await expect(city).toBeVisible()
   await settled(city)
