@@ -8,7 +8,7 @@
 --   nothing here assumes who wins; what is proved is the shape, the clock, the rules each event keeps, and what the close does with it.
 --
 -- @pass TK_OPEN   the raid is run whole at its open: battles.ticks, its end (last tick + 2) within 75 s, the job due at the end, a window a round; both sides held to that end
--- @pass TK_LINE   the timeline keeps its rules: ticks in order, one ability a side per global cooldown and each on its cooldown, Fury 0..100, every hit's hull after, every run's chance within the raid's floor and cap (0450; 0453: the chase's, proof 155 holds its formula; proof 152 the rollback's), the end event its outcome
+-- @pass TK_LINE   the timeline keeps its rules: ticks in order, one ability a side per global cooldown and each on its cooldown, Fury 0..100, every hit's hull after, every run's chance within the raid's floor and cap (0450; 0453: the chase's, proof 156 holds its formula; proof 152 the rollback's), the end event its outcome
 -- @pass TK_READ   world.battle_ticks serves the timeline, the clock, the circle and both sides to a signed-in player; nothing to no house or no battle
 -- @pass TK_END    cmd.battle_end does nothing before the end; at the end it closes the raid (the timeline's result, raid_close's take, the fleets freed, her 5 minutes of peace); the read then serves the result
 -- @pass TK_JOB    a raid nobody watches is closed by the minute job at its end, from the same result
