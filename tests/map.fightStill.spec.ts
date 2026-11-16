@@ -15,7 +15,7 @@ import { RAID_PIRATE_FLEET, serveRaidTickWorld } from './fightWorld.fixture'
 //   2. A PRESS ON THE RING opens the fight's CARD (what it is, the fleets and ships, each side by name) with Watch at the
 //      top, and NOT the battle screen. Watch opens the battle screen.
 //   3. WHEN IT ENDS the ring goes, nobody is on a red ground, the raider is back in her harbour (outside where the ring
-//      was) and the cargo ship sails on.
+//      was) and the cargo ship sails on (unless the raider boarded her: the dice end the fight).
 // Run it: npm run build && npm run preview, then `npx playwright test map.fightStill.spec.ts`.
 // Screenshots go to test-results/fight-still (or FIGHT_STILL_SHOTS; FIGHT_STILL_TAG names the set).
 
@@ -149,7 +149,12 @@ for (const size of [
       const sailed = from && to ? Math.hypot(to.x - from.x, to.y - from.y) : Number.NaN
       console.log(`[${TAG} ${size.width}] after the fight the ship moved ${sailed.toFixed(1)} px in 8 s`)
       await page.screenshot({ path: path.join(SHOTS, `${TAG}-6-after-${size.width}.png`) })
-      expect(sailed, 'the ship set upon sails on when the fight ends').toBeGreaterThan(1)
+      // THE DICE SET HOW THE RAID ENDS (the fight is seeded by the battle's random id): when the raider BOARDS (`A_TOOK`, 'Attacker boarded')
+      // the cargo ship is taken and does not sail on (CI run 43778838074, 390 wide: 0.0 px, the card read 'Attacker boarded'; the runs that
+      // passed read 'Defender escaped'). Every other end leaves her hers, and she sails on.
+      const result = (await page.getByTestId('fight-sheet-end').textContent()) ?? ''
+      console.log(`[${TAG} ${size.width}] the card reads: ${result}`)
+      if (result !== 'Attacker boarded') expect(sailed, `the ship set upon sails on when the fight ends (card: ${result})`).toBeGreaterThan(1)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     })
   })
