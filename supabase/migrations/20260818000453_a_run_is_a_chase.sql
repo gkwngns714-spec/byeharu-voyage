@@ -386,23 +386,35 @@ $h$);
       raise exception '0453 self-assert FAIL: % she would run on % %% at the open, not %', r.what, v_p, r.want;
     end if;
   end loop;
-  -- every roll is the chance served for its tick, within the floor and the cap; a roll after a failed one is flee_per_try lower or at the floor
-  v_f1 := public.tick_fight(c_seed, v_ta, v_tb, v_opts);
-  for x in select (e ->> 0)::int as t, (e ->> 3)::numeric as pct
-             from jsonb_array_elements(v_f1 -> 'e') with ordinality q(e, o) where e ->> 2 = 'X' and e ->> 1 = '0' order by o loop
-    v_rolls := v_rolls + 1;
-    if x.pct < 1 or x.pct > 50
-       or x.pct is distinct from (select (c ->> 1)::numeric from jsonb_array_elements(v_f1 #> '{rc,a}') with ordinality z(c, o) where (c ->> 0)::int <= x.t order by o desc limit 1) then
-      raise exception '0453 self-assert FAIL: the roll at tick % was on % %%, not the chance served for that tick within 1..50', x.t, x.pct;
+  -- every roll is the chance served for its tick, within the floor and the cap; a roll after a failed one is flee_per_try lower or at the floor.
+  -- THE DICE ARE PINNED (rolled back): every draw of public.tick_fight is voyage.rng_raw(seed, stream, world_secret), and each world has its own
+  -- secret. On prod's the first roll of this sheet (tick 20, 15 %) draws 0.0379 and she gets away at once (the deploy of 2026-11-16 02:32 failed so);
+  -- on the chain's it draws 0.2704. Under this file's own secret the fight is the same on every world: five rolls, 15, 10, 5, 1, 1, every one caught.
+  begin
+    update public.world_config set value = to_jsonb('0453-fixed-dice-of-the-self-assert-of-a-run-is-a-chase-020000000'::text) where key = 'world_secret';
+    if not found then
+      raise exception '0453 self-assert FAIL: this world has no world_secret to pin';
     end if;
-    if v_prev is not null and x.pct <> greatest(1, v_prev - 5) then
-      raise exception '0453 self-assert FAIL: after a failed roll on % %% the next was on % %%, not 5 lower or the floor', v_prev, x.pct;
+    v_f1 := public.tick_fight(c_seed, v_ta, v_tb, v_opts);
+    for x in select (e ->> 0)::int as t, (e ->> 3)::numeric as pct
+               from jsonb_array_elements(v_f1 -> 'e') with ordinality q(e, o) where e ->> 2 = 'X' and e ->> 1 = '0' order by o loop
+      v_rolls := v_rolls + 1;
+      if x.pct < 1 or x.pct > 50
+         or x.pct is distinct from (select (c ->> 1)::numeric from jsonb_array_elements(v_f1 #> '{rc,a}') with ordinality z(c, o) where (c ->> 0)::int <= x.t order by o desc limit 1) then
+        raise exception '0453 self-assert FAIL: the roll at tick % was on % %%, not the chance served for that tick within 1..50', x.t, x.pct;
+      end if;
+      if v_prev is not null and x.pct <> greatest(1, v_prev - 5) then
+        raise exception '0453 self-assert FAIL: after a failed roll on % %% the next was on % %%, not 5 lower or the floor', v_prev, x.pct;
+      end if;
+      v_prev := x.pct;
+    end loop;
+    if v_rolls <> 5 or (select string_agg(e ->> 3, ',' order by o) from jsonb_array_elements(v_f1 -> 'e') with ordinality q(e, o) where e ->> 2 = 'X' and e ->> 1 = '0') <> '15,10,5,1,1' then
+      raise exception '0453 self-assert FAIL: under the pinned dice the ship that runs rolled % time(s) (%), not five on 15, 10, 5, 1, 1', v_rolls,
+        (select string_agg(e ->> 3, ',' order by o) from jsonb_array_elements(v_f1 -> 'e') with ordinality q(e, o) where e ->> 2 = 'X' and e ->> 1 = '0');
     end if;
-    v_prev := x.pct;
-  end loop;
-  if v_rolls < 2 then
-    raise exception '0453 self-assert FAIL: the ship that runs rolled % time(s) on the fixed sheet: nothing was compared', v_rolls;
-  end if;
+    raise exception sqlstate 'BV453';
+  exception when sqlstate 'BV453' then null;
+  end;
 
   -- ── 7. THE NEWS (0347's law) ──
   perform public.news_update('0453', 'New level, Evasion: running from a fight now takes skill, speed and handling, yours against theirs',
