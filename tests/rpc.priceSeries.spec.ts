@@ -104,9 +104,13 @@ test('every span answers from its tier, oldest first, in the shape the types cla
   // midnight between 00:00 and 02:00 UTC and split the eight rows over two days (day bucket 13, not 17).
   // The pair's RECORD starts empty (fine rows, hours and days), so the planted hours are its oldest and its day is theirs alone: the
   // world image carries the fine rows of the moment it was built, and the first read's job folded them into an
-  // hour and a day. A fine row of the image on a planted SLOT also wins the insert below (on conflict do nothing): an image
-  // built between 10:00 and 11:45 UTC of the day before left the first hour with two of its four planted rows (bid 11, not 13;
-  // main run 43778838074 at 00:43 UTC, PR #753 near 02:00). On the UTC day after an image was built those rows lie on "yesterday" too, earlier than
+  // hour and a day.
+  // THE PLANTED ROWS CARRY SLOT NUMBERS OF THEIR OWN (base slot + i), NOT drift_slot_of(at): since 0413 the slot is counted from a clock anchor and its length
+  // is drift_slot_seconds (4,500 s in the chain after the clock moved to compression 192), not 15 minutes. An instant after the anchor (a world whose
+  // 0413 snapshot is older than yesterday 10:00 UTC) puts several 15-minute rows in ONE slot, the insert (on conflict do nothing) kept the first, and the
+  // first hour held two of its four rows (bid 11, not 13: main runs 43778838074 and 43802120553, 2026-11-16 from 00:10 UTC; reproduced by moving the
+  // anchor 40,000 s before the base). The slot of a fine row is only its key and its order, which is all the fold reads.
+  // On the UTC day after an image was built those rows lie on "yesterday" too, earlier than
   // 10:00 — the 1w series then opened on the image's hour (bid 46.53, not 13) and the day was not the planted
   // one (CI run 40449328997, 04:31 UTC, image built 00:04 UTC the day before).
   await db.callAs(`with f as (delete from public.price_history where port_id = '${port}' and good_id = '${sold}' returning 1),
@@ -115,7 +119,7 @@ test('every span answers from its tier, oldest first, in the shape the types cla
                    select ((select count(*) from f) + (select count(*) from h) + (select count(*) from d))::int as result`)
   await db.callAs(`with ins as (
     insert into public.price_history (port_id, good_id, slot, at, mid, stock, ask, bid)
-    select '${port}', '${sold}', public.drift_slot_of(h), h, 10, 0, 20 + i, 10 + i
+    select '${port}', '${sold}', public.drift_slot_of((date_trunc('day', now() at time zone 'UTC') at time zone 'UTC') - interval '14 hours') + i, h, 10, 0, 20 + i, 10 + i
       from generate_series(0, 7) i cross join lateral (select (date_trunc('day', now() at time zone 'UTC') at time zone 'UTC') - interval '14 hours' + make_interval(mins => 15 * i) as h) t
     on conflict do nothing returning 1)
     select count(*)::int as result from ins`)
