@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DetailPage, Figure, Note, Row, ScrollPane, Segmented, SignedBars, Skeleton, SummaryRow } from '../../../components/ui'
+import { DetailPage, Figure, GroupHeading, Note, Row, ScrollPane, Segmented, SignedBars, Skeleton, SummaryRow } from '../../../components/ui'
 import { useServedRead } from '../../../live/useServedRead'
 import { formatDucatsDelta, formatRealDay } from '../../../lib/format'
 import { worldReport, type Report as ReportView, type ReportLine, type ReportPlace, type ReportSection } from '../../../lib/rpc'
@@ -137,7 +137,7 @@ export function Report({ layout }: { layout: DeskLayout }) {
             <Figure value={formatDucatsDelta(r.total)} tone={tone(r.total)} size="hero" />
           </span>
         </div>
-        <h3 className="mb-1 mt-3 text-t-caption font-semibold text-ink-faint">{t('desk.bySection')}</h3>
+        <GroupHeading className="mt-3">{t('desk.bySection')}</GroupHeading>
         <ScrollPane className="max-h-[13rem] lg:max-h-none" data-testid="report-sections">
           <div className="flex flex-col gap-1.5">
             {r.sections.map(section)}
@@ -149,7 +149,7 @@ export function Report({ layout }: { layout: DeskLayout }) {
     ),
     main: (
       <>
-        <h3 className="mb-1 text-t-caption font-semibold text-ink-faint">{t('desk.byPlace')}</h3>
+        <GroupHeading>{t('desk.byPlace')}</GroupHeading>
         <ScrollPane className="max-h-[10rem] lg:max-h-none" data-testid="report-places">
           {nothing ? (
             <Note tone="neutral">{t('desk.reportNothing')}</Note>

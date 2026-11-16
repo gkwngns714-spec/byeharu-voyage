@@ -23,7 +23,7 @@ export { SectionColumns, Sheet, SheetSection } from './Sheet'
 //    once clicked show new page popping up"*): a 44-px SummaryRow and the full-screen DetailPage it
 //    opens — a back press, its own bounded scroll, the tab untouched behind. SectionFold is retired.
 export { DetailPage, SummaryRow } from './Detail'
-export { SUMMARY_STACK_CLASS } from './cardStyles'
+export { FLOAT_CARD_CLASS, SUMMARY_STACK_CLASS } from './cardStyles'
 export { useBackLayer } from './useBackLayer'
 //    THE LOADING METER (owner, 2026-10-31): a screen's REAL progress as a percentage — steps in,
 //    completed steps / total out (weighted where a size is known), gone the instant it is ready.
@@ -116,6 +116,8 @@ export { ScrollPane } from './ScrollPane'
 export { ListPanel } from './ListPanel'
 //    THE HEADING OF A GROUP OF ROWS in a card list — a kind over goods, a day over entries — spanning the card's columns.
 export { ListHeading } from './ListPanel'
+//    THE HEADING OVER A GROUP INSIDE A CARD OR A FACE (Report's "By section", the levels card's "Regard").
+export { GroupHeading } from './GroupHeading'
 
 // THE PAGE (2026-11-02, owner row 267; screenLayout.ts "THE PAGE", docs/dev-log/2026-11-02-stats-design.md): MAIN | SIDE on
 // the whole glass, the side being the tray's column. `Sheet layout="page"` is its container; `StatCell look="stacked|line"`

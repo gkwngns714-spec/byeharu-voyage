@@ -434,6 +434,9 @@ for (const vp of [
     const saidClass = Number(await said.getAttribute('data-good-class-mark'))
     expect(saidClass >= 1 && saidClass <= 5).toBe(true)
     await expect(said).toHaveText(EN_WORDS[saidClass - 1])
+    // the panel is a tray over the nav (it stays open across a reload): the player closes it before pressing another tab
+    await page.getByTestId('tray-close').first().click()
+    await expect(detail).toHaveCount(0)
 
     // 2. THE REQUEST BOARD — the same face, turned (world.contracts)
     await page.goto('command')

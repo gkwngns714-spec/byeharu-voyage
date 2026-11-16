@@ -32,3 +32,8 @@ export const CARD_TITLE = 'text-t-body font-semibold text-ink md:text-t-card'
 /** Two summary rows (Detail.tsx `SummaryRow`) one over the other stand 8 px apart: each is a filled bar. Not inside a `narrow:`
  *  container, where a row has no fill. The caller that stacks them says so; two side by side (Trade's doors) do not. */
 export const SUMMARY_STACK_CLASS = '[[data-summary-row]+&]:mt-2 narrow:[[data-summary-row]+&]:mt-0'
+
+/** A NOTICE CARD FLOATING OVER THE PAGE (the arrival card, the While away card): raised a step (`surface-2`, `--shadow-float`
+ *  casting down), at most 384 px wide, fading in, taking presses inside a wrap that lets the page's own through. The wrap says
+ *  where it stands; this says how it looks — it was written out in both cards (tests/duplication.spec.ts, 2026-11-16). */
+export const FLOAT_CARD_CLASS = 'bv-fade-in pointer-events-auto w-full max-w-sm rounded-card bg-surface-2 p-4 text-ink shadow-float'

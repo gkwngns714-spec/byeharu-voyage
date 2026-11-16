@@ -187,11 +187,13 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
     })
 
     test('five choices keep their words inside their own cells', async ({ page }) => {
-      await open(page, 'command')
-      await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
+      // THE CODEX'S FIVE FACES: the game's set of five since Trade's face strip went (2026-11-16, #755: City · Invest · Report
+      // moved to the Office tab, three faces; Levels to You). The same Segmented grid the desk's five faces stood on.
+      await open(page, 'compendium')
+      await expect(page.getByTestId('codex').getByRole('tablist').first()).toBeVisible({ timeout: 120_000 })
       const faults = await page.evaluate((words) => {
         const set = [...document.querySelectorAll('[role="tablist"]')].find((g) => g.querySelectorAll('[role="tab"]').length === 5)
-        if (!set) return ['no set of five choices on Trade']
+        if (!set) return ['no set of five choices in the Codex']
         const out: string[] = []
         const tabs = [...set.querySelectorAll('[role="tab"]')] as HTMLElement[]
         const textOf = (tab: HTMLElement) => document.createTreeWalker(tab, NodeFilter.SHOW_TEXT).nextNode() as Text
