@@ -203,7 +203,10 @@ test.describe('the played flow at 1280×800', () => {
     await expect(page.getByTestId('port-inn')).toBeVisible({ timeout: 60_000 })
     expect(presses, 'the flow is three presses and a name').toBe(3)
 
-    // with two ships the card's second line is the two tracks again
+    // with two ships the card's second line is the two tracks again. The goal card is the Trade tab's (2026-11-16, #755: the
+    // hire lands on the Office's Inn, which carries no goal card): the player's press on Trade's own cell
+    await page.locator('a[href$="/command"]:visible').first().click()
+    await expect(page).toHaveURL(/\/command$/)
     const card = page.getByTestId('goal-card')
     await expect(card.getByTestId('goal-tracks')).toBeVisible({ timeout: 60_000 })
     await expect(card.getByTestId('goal-second-ship')).toHaveCount(0)

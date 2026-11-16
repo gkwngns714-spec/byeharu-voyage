@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, glassBesideRailClass } from '../components/ui'
+import { Button, FLOAT_CARD_CLASS, glassBesideRailClass } from '../components/ui'
 import { awayReport, parseSeenMark, routeCaption, routeTitle, seenMark, type AwayReport } from '../domain/route'
 import { formatDucatsDelta, formatInt } from '../lib/format'
 import { useT } from '../lib/i18n'
@@ -86,7 +86,7 @@ export function AwayCard() {
         aria-live="polite"
         data-testid="away-card"
         data-money={report.money ?? undefined}
-        className="bv-fade-in pointer-events-auto w-full max-w-sm rounded-card bg-surface-2 p-4 text-ink shadow-float"
+        className={FLOAT_CARD_CLASS}
       >
         <p className="text-t-label font-semibold">{t('feed.awayTitle')}</p>
         {report.routes.map((r) => (

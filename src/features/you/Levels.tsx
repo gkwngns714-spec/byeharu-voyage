@@ -1,5 +1,5 @@
 import { HullCountry } from '../../live/HullCountry'
-import { Bar, Card, Clip, Note, Row, Skeleton, StatCell } from '../../components/ui'
+import { Bar, Card, Clip, GroupHeading, Note, Row, Skeleton, StatCell } from '../../components/ui'
 import { regardBandWord } from '../../domain/port'
 import { formatInt } from '../../lib/format'
 import { properName, useT } from '../../lib/i18n'
@@ -108,7 +108,7 @@ function Countries({ v }: { v: Ready }) {
   const rows = v.regard
   return (
     <section data-testid="levels-regard">
-      <h3 className="mb-1 mt-3 text-t-caption font-semibold text-ink-faint">{t('command.lvRegard')}</h3>
+      <GroupHeading className="mt-3">{t('command.lvRegard')}</GroupHeading>
       {rows === null ? (
         <span className="block text-t-caption text-ink-faint">{t('command.lvRegardDark')}</span>
       ) : (

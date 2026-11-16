@@ -404,9 +404,10 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
           for (const f of rows.faults) faults.push(`Trade › Your cargo, the row's line: ${f}`)
         }
 
-        // THE DESK'S OTHER FACES (City carries the city's name over its buildings; Levels the ships and captains)
-        await open('command')
-        await faces('Desk')
+        // THE OFFICE'S FACES (2026-11-16, #755: City · Invest · Report left the Trade desk for the Office tab; City carries the
+        // city's name over its buildings). Levels went to the You page, walked below with the ships and captains.
+        await open('office')
+        await faces('Office')
 
         // THE CITY PAGE (its market chart names the good in hand) AND THE HQ's PRODUCTION
         await open('city')

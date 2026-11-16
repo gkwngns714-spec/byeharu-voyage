@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, glassBesideRailClass } from '../components/ui'
+import { Button, FLOAT_CARD_CLASS, glassBesideRailClass } from '../components/ui'
 import { formatInt, moneyFigure, moneyWord, type MoneyKind } from '../lib/format'
 import { num, str } from '../lib/json'
 import { useLocale, useT } from '../lib/i18n'
@@ -200,7 +200,7 @@ export function ArrivalCard() {
         aria-live="polite"
         data-testid="arrival-card"
         data-net={sales.length ? net : undefined}
-        className="bv-fade-in pointer-events-auto w-full max-w-sm rounded-card bg-surface-2 p-4 text-ink shadow-float"
+        className={FLOAT_CARD_CLASS}
       >
         <p className="text-t-label font-semibold">{port ? t('feed.arrivedAt', { port }) : t('feed.arrived')}</p>
         {sales.map((s) => (
