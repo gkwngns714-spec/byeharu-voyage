@@ -86,8 +86,8 @@ test('City › a good pressed lists who bought it: my buy shows as mine, Bought,
   // fell between them: the tray was counted, then gone, and the press on its More (no timeout) waited for a tray that had
   // closed until the retry block's 30 s ran out — the block never retried (the red: "Timeout 30000ms exceeded while waiting
   // on the predicate", with the press still unfinished in the trace). The desk says when it is the wide one
-  // (`data-desk="terminal"`, CommandScreen.tsx), and the phone's tray is gone with it: wait for both, then press.
-  await expect(page.locator('[data-testid="command"][data-desk="terminal"]'), 'the desk did not re-lay out for the wide glass').toBeVisible({ timeout: 60_000 })
+  // (`data-desk="terminal"`, DeskShell.tsx; the City face is the Office tab's since 2026-11-16), and the phone's tray is gone with it: wait for both, then press.
+  await expect(page.locator('[data-testid="office"][data-desk="terminal"]'), 'the desk did not re-lay out for the wide glass').toBeVisible({ timeout: 60_000 })
   await expect(tray, "the phone's tray outlived the swap to the wide desk").toHaveCount(0, { timeout: 30_000 })
   // the wide desk's ledger is a fresh mount: press when its row is live (every step inside is bounded, so a miss is retried)
   await expect(async () => {

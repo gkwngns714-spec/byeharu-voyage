@@ -314,7 +314,7 @@ test(`one rail table: the shell draws NAV_CELLS, its words and the Menu's rows, 
   const cells = await railCells(page)
   const expected = NAV_CELLS.map((c) => (c.kind === 'tab' ? { id: `nav-cell-${c.to}`, to: c.to } : { id: `nav-cell-${c.id}`, to: null }))
   expect(cells.map((c) => c.id), 'the bar is not the one tab table (navTabs.NAV_CELLS)').toEqual(expected.map((e) => e.id))
-  expect(cells.length, 'the bar draws no cells — did the shell render?').toBe(5)
+  expect(cells.length, 'the bar draws no cells — did the shell render?').toBe(NAV_CELLS.length)
 
   for (const [i, cell] of cells.entries()) {
     const want = expected[i]

@@ -132,13 +132,13 @@ for (const size of SIZES) {
         await nothingCut(page, page.getByTestId('level-tiles'), 'the tiles')
         await shot(page, `levels-tiles-${size.width}-${lang}`)
 
-        // PRESS SUPPLIES: no tile moves; the level stands in a tray
-        const before = await tiles.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left) + ':' + Math.round(e.getBoundingClientRect().top)))
+        // PRESS SUPPLIES: no tile moves on the page (measured against the levels card, so the press's own scroll to the tile is not a move); the level stands in a tray
+        const before = await tiles.evaluateAll((els) => els.map((e) => { const o = document.querySelector('[data-testid="you-levels"]')!.getBoundingClientRect(); const r = e.getBoundingClientRect(); return Math.round(r.left - o.left) + ':' + Math.round(r.top - o.top) }))
         await page.getByTestId('levels-supplies').click()
         const detail = page.getByTestId('level-detail')
         await expect(detail).toHaveAttribute('data-level-code', 'supplies')
         await expect(page.getByTestId('level-tray')).toBeVisible()
-        expect(await tiles.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left) + ':' + Math.round(e.getBoundingClientRect().top))), 'a press moved a tile').toEqual(before)
+        expect(await tiles.evaluateAll((els) => els.map((e) => { const o = document.querySelector('[data-testid="you-levels"]')!.getBoundingClientRect(); const r = e.getBoundingClientRect(); return Math.round(r.left - o.left) + ':' + Math.round(r.top - o.top) })), 'a press moved a tile').toEqual(before)
 
         // 1. her experience
         await expect(detail.getByTestId('level-detail-level')).toContainText('1')

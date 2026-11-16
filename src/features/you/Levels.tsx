@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { HullCountry } from '../../live/HullCountry'
 import { Bar, Card, Clip, Note, Row, Skeleton, StatCell } from '../../components/ui'
 import { regardBandWord } from '../../domain/port'
@@ -30,10 +29,12 @@ import { useLevels } from './useLevels'
 
 type Ready = Extract<LevelsView, { company: true }>
 
-export function YouLevels() {
+/** The levels card. The level pressed is the page's (`picked`), because its tray is a sibling of the page's split, not inside
+ *  the side column: the side is sticky (its own stacking layer), and a tray inside it stood UNDER the page's header, which took
+ *  the press meant for its close button at 1,280 (tests/levels.tiles.spec.ts). The captains' tray stands the same way. */
+export function YouLevels({ picked, onPick }: { picked: string | null; onPick: (code: string) => void }) {
   const t = useT()
   const read = useLevels()
-  const [picked, setPicked] = useState<string | null>(null)
   const v = read.view
   return (
     <Card title={t('you.levels')} data-testid="levels">
@@ -43,8 +44,7 @@ export function YouLevels() {
         <Note tone="neutral">{t('command.lvNoCompany')}</Note>
       ) : (
         <div data-testid="you-levels">
-          <LevelTiles card={v.level_skills} selected={picked} onSelect={setPicked} />
-          <LevelTray card={v.level_skills} code={picked} onClose={() => setPicked(null)} />
+          <LevelTiles card={v.level_skills} selected={picked} onSelect={onPick} />
           <Company v={v} />
           <Note tone={v.bite ? 'success' : 'neutral'} data-testid="levels-bite">
             {v.bite ? t('command.lvLit') : t('command.lvDark')}
@@ -54,6 +54,13 @@ export function YouLevels() {
       )}
     </Card>
   )
+}
+
+/** A pressed level, in the tray over the page (her experience, what raises it, what levels give, the table). */
+export function YouLevelTray({ picked, onClose }: { picked: string | null; onClose: () => void }) {
+  const v = useLevels().view
+  if (!v || !v.company) return null
+  return <LevelTray card={v.level_skills} code={picked} onClose={onClose} />
 }
 
 /** A label over a word figure (StatCell's value is a counting number). */

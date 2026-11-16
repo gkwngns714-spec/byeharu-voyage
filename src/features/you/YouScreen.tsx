@@ -8,8 +8,9 @@ import { useYourCaptains } from '../../live/useYourCaptains'
 import { tabWord } from '../../app/navTabs'
 import { useLocale, useT } from '../../lib/i18n'
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import { companyRoom, useHouseRoom } from '../../live/houseRoom'
-import { YouLevels } from './Levels'
+import { YouLevelTray, YouLevels } from './Levels'
 import { useLevels } from './useLevels'
 
 // YOU — the owner, row 181 (2026-10-20): *"Create a tab for personal info, such as my level, my
@@ -65,6 +66,8 @@ function YouBody({ title }: { title: string }) {
   // 0160: the one captains face — her grade, the traits she uses, the cabin she sits in. ONE read and ONE open captain; her rows
   // stand in the panel below and her tray beside it.
   const face = useYourCaptains()
+  // the level pressed on the levels card; its tray stands beside the captain's, outside the side column (Levels.tsx says why)
+  const [level, setLevel] = useState<string | null>(null)
 
   return (
     // THE PAGE (2026-11-05, owner row 267): MAIN the ships and the captains as two card lists, SIDE (the tray's column) the levels. The page
@@ -96,12 +99,13 @@ function YouBody({ title }: { title: string }) {
           ) : (
             <>
               <Reputation player={player} />
-              <YouLevels />
+              <YouLevels picked={level} onPick={setLevel} />
             </>
           )
         }
       />
       <CaptainTray face={face} />
+      <YouLevelTray picked={level} onClose={() => setLevel(null)} />
     </Sheet>
   )
 }

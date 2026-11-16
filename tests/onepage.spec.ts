@@ -49,8 +49,12 @@ async function read(page: Page): Promise<DocReport> {
     const main = document.querySelector('main')
     const box = main?.getBoundingClientRect() ?? null
     const sheet = document.querySelector('[data-sheet], [data-testid="desk-scroll"]') as HTMLElement | null
+    // A choice strip its screen lays out as a WRAPPING LINE instead (display flex: the City face's buildings in the wide desk's
+    // left pane, each as wide as its word — src/features/command/city/City.tsx, 2026-11-14) is not a grid, so the equal-cell law
+    // is not its law. It was never on a route's first screen until the City face became the Office tab's (2026-11-16).
     const grids = [...document.querySelectorAll('[data-choice-grid]')]
       .filter(visible)
+      .filter((g) => getComputedStyle(g).display === 'grid')
       .map((g) => ({
         label: g.getAttribute('aria-label') ?? g.getAttribute('data-testid') ?? 'grid',
         cells: [...g.querySelectorAll(':scope > button')]
