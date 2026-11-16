@@ -4778,6 +4778,9 @@ export interface BattleShipCard {
   fit?: { n: string; s: string; w?: number }[]
   /** her captains: name and combat level */
   caps?: { n: string; lv: number }[]
+  /** 0453: the Evasion level she sails with (her company's; a ship of the world: her hull's level), and what it is worth in a chase, per cent */
+  ev?: number
+  run?: number
 }
 
 /** An event: `[t, side, kind, ...]` (side 0 = a = DEFENDER side, 1 = b = ATTACKER side, -1 = neither). See section 9.3:

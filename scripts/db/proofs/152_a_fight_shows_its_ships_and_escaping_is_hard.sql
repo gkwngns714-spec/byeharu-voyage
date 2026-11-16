@@ -5,6 +5,9 @@
 --   Proof 136's scene, lit as prod is: a hunting pirate at her haunt raids a company's merchant 60 miles off through the pirates' minute job, with
 --   levels_bite on and the merchant's hull worked up to level 4. Then the engine itself (public.tick_fight) on fixed sheets, where each term of a
 --   run's chance is read alone. Rolled back with proof.mjs's transaction. Nothing here assumes who wins.
+--   0453: FROM 0453 ON THIS PROOF PROVES THE ROLLBACK'S RULE. It sets chase_enabled false in its own scene (as the round engine's proofs set
+--   tick_fight_kinds [] since 0435): BS_LEVEL, BS_HURT, BS_BOUNDS, BS_TRIES and BS_OLD are 0450's chance, which the switch gives back to the
+--   digit. The chase itself (Evasion, her sailing against theirs) is proof 155's.
 --
 -- @pass BS_SHEET   the raid's sheet carries every hull's card at its open: her level (public.ship_level), class, guns, the crew she needs and may carry, speed, handling, everything fitted, her captains
 -- @pass BS_READ    world.battle_ticks serves `ships` a and b in the timeline's order, without ids; each ship of the timeline carries her level; the timeline serves the run's chance (`rc`)
@@ -17,6 +20,8 @@
 -- @pass BS_BOUNDS  a raid's run is held within raid_flee_floor..raid_flee_max (3..45 %); any other run within 0357's fight_flee_floor..fight_evade_max, the same terms
 -- @pass BS_OLD     the rollback is the knobs: with raid_flee_floor 0.10, raid_flee_max 0.80, raid_flee_base 0.15 and the three new terms 0, every roll is 0432's chance to the digit
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+update public.world_config set value = 'false'::jsonb where key = 'chase_enabled';   -- 0453: this proof proves the rollback's rule (0450's chance); the chase is proof 155's
 
 create function pg_temp.lie_152(p_fleet uuid, p_lat numeric, p_lon numeric) returns void language sql as $f$
   update public.voyages v set status = 'ABORTED' where v.fleet_id = p_fleet and v.status = 'SAILING';

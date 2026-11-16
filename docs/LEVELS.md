@@ -50,7 +50,7 @@ benefit the page lists is applied by the server and served from the same rows th
 
 No pay-to-win: nothing here is bought with real money. No PvP: no level is raised against another player.
 
-## 4. The ten levels that are built
+## 4. The eleven levels that are built
 
 Two kinds, and the page says which:
 
@@ -127,6 +127,16 @@ of section 3.
   Trading, as it has since 0148.
 - **Gives:** Reputation; **investing wins 10 % more favour with the city's country at each of levels 4, 8, 12, 16, 20** (50 % in all).
 
+### Evasion / 회피 (granted, 0453: the first fight level built)
+- **Raises it:** running from a pirate's RAID as the side set upon: **40** for the run that got her away (`run_away`), **5** for each roll
+  of her run that failed (`run_try`). Granted once a battle in `public.raid_close` (keys `run_away:<battle>`, `run_try:<battle>`), counted
+  from the result's own windows (a window she ran in carries `flee`).
+- **Limits:** 300 a day. Nothing for an attacker's run (an ATTACK never reaches `public.raid_close`), a joiner (it may not order a run,
+  0439), a voyage day's raid, an escape without running, or a merchant.
+- **Gives:** Reputation; **her side sails 10 % better in a chase at each level from 2 to 20** (perk `run`, 190 % at level 20). The chance
+  of a run is her sailing x (1 + her `run` %) over theirs, squared, x `chase_base` 15 %, within 1 to 50 % (docs/design/evasion-skill.md;
+  docs/design/tick-combat.md section 6). A ship of the world sails with her hull's level as her Evasion level (`public.evasion_of`).
+
 **Anti-abuse, in all:** a merchant earns nothing (one probe of `players.is_npc`, then out). Every granted level has its limit a
 day, read on `public.real_day`, the game's one day. A ship and a lap pay once. A lap pays only at a profit. Past the limit
 nothing is written, so the limit also bounds the book.
@@ -138,6 +148,7 @@ old levels keep what they have.
 
 | Level | Raises it | Why it waits |
 |---|---|---|
+| *(Evasion / 회피 was built by 0453: section 4)* | | |
 | **Gunnery / 포술** | damage her guns deal in a battle she fought (`public.battle_resolve`, the fight's own result) | no company has fought a battle yet (0 `BATTLE_REPORT` rows from players on 2026-11-14), and migrations 0409 and 0412 (the pirates' homes, then their trade) re-cut the fight's and the pirates' functions now: two PRs slicing one body is the risk |
 | **Boarding / 백병전** | a boarding action won, from the same result | the same |
 | **Raiding / 약탈** | loot taken by an attack (`public.attack_close`) | the same; and it must be held to merchants and pirates only: never another player |

@@ -73,6 +73,12 @@ A "full broadside" is the old game's per-round figure: `attack / shots x fight_d
   and handling frozen at the open. Any other run: 0357's `fight_flee_base` 15 %, `fight_flee_floor` 5 %, `fight_evade_max` 30 %, no `a_flee`, the same three
   new terms. The old chance to the digit is the knobs (floor 0.10, cap 0.80, base 0.15, the three new terms 0). Away: EVADED (`fled`), or for the side
   that closed `b_fled` (BROKEN_OFF). The log shows each roll with its chance; the timeline's `rc` serves the chance at every tick it changes (the Run button).
+  **Since 0453 (owner 2026-11-16: "it has to be relative"; docs/design/evasion-skill.md): THE CHASE, behind `chase_enabled` (false: 0450's chance above,
+  to the digit).** ONE rule for every run, each tick as the fight stands:
+  `sailing(hull) = speed x (hull_speed_floor 0.6 + 0.4 x hull left / her size) x (crew_short_speed_mult 0.7 when short-handed) x (1 + chase_per_handling 0.5 x handling / 100)`;
+  her sailing is her slowest hull afloat that began the fight, theirs their fastest hull afloat; a side's skill is 1 + the best `run` % among her hulls up;
+  `chance = clamp(chase_floor 1 %, chase_base 15 % x (her sailing x her skill / (their sailing x their skill)) ^ chase_power 2 - failed attempts x flee_per_try 5 %, chase_cap 50 %)`.
+  The sighting lead, the level difference, the hurt term and `a_flee` are not in it (the old rule keeps them for the rollback).
 - **Peace:** unchanged. A ship whose battle as the side set upon has ended has `peace_after_flee_minutes` (5) of peace (`public.fleet_peace_until`):
   no pirate raids her, and (slice 2) she may not join a battle.
 - **Break off:** the side that closes breaks off at `fight_raider_break` (15 %) of its hull lost: EVADED if the side set upon was never touched, else DRIVEN_OFF.
@@ -143,7 +149,8 @@ Knobs: `tick_ms` 600, `tick_window` 20, `tick_gcd` 3, `tick_reload_base` 4, `tic
   ships: {a: [<hull>], b: [<hull>]},       -- 0450: every hull of the sheet as frozen, in the timeline's order (a, b), less her id:
                                            --   name, tier, hull, maxd, crew, attack, accuracy, reach, armour, sighting, gunner, boarder, from?,
                                            --   and her card (public.battle_hull_card; absent on a battle opened before 0450): lv, cls, guns,
-                                           --   crew_need, crew_max, speed, handling, fit [{n, s, w?}], caps [{n, lv}]
+                                           --   crew_need, crew_max, speed, handling, fit [{n, s, w?}], caps [{n, lv}]; 0453: ev (her Evasion level),
+                                           --   run (what it is worth in a chase, per cent; public.evasion_of)
   mine: <her own fleet id in it> | null,
   result: null while FIGHTING | {outcome, fled, b_fled, paid, taken, loot, crew_lost, navy} }
 { on: false } for no house, no battle, or a PROBE.

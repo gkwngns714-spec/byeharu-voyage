@@ -95,6 +95,7 @@ function ShipCard({ card, now, side }: { card: BattleShipCard | undefined; now: 
         <Stat icon="⛵" word={t('ship.speed')} value={fig(card?.speed, 1)} />
         <Stat icon="☸️" word={t('ship.handling')} value={fig(card?.handling)} />
         <Stat icon="⭐" word={t('battle.tier')} value={fig(card?.tier ?? now.ship.t)} />
+        <Stat icon="💨" word={t('command.lvEvasion')} value={fig(card?.ev)} />
       </div>
       {fitted.length > 0 && (
         <div className="break-words text-ink-muted" title={t('ship.equipment')} aria-label={`${t('ship.equipment')}: ${fitted.join(', ')}`} data-testid="battle-ship-fit">
