@@ -3,6 +3,8 @@
 -- distances as they were): the courses and the roadsteads go back, the charted cells close and their channels go. scripts/sea-grid.mjs loses
 -- the four channels, public/coast/mask.json is cut again (node scripts/build-coast-mask.mjs) and data/sea-legs.json goes back with it.
 -- (Cargo legs keep their pieces: a circuit is rebuilt by public.cargo_circuit_build when its ships are home.)
+-- A DRAFT that WRITES: it runs on a local PGlite world only while it carries the next line (the guard). To deploy it, strip that line. Owner only.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 create function pg_temp.back_0446() returns table (new_md5 text, course jsonb) language sql immutable as $b$
   select v.m, v.c::jsonb from (values
     ('2f27b01d60421a8b1641414ec78fcc3d', '[[37.887, 20.788], [37.9375, 20.6625], [36.375, 15.125], [37.375, 12.375], [37.625, 12.125], [42.7875, 10.0875], [43.625, 10.125]]'),
