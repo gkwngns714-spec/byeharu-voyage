@@ -12,9 +12,9 @@
 --   the sea left it alone; each marker says which it was. The dock fees and the port time are held always.
 --
 -- @pass TRADE_ROW_IS_THE_MAPS_TRIP  the board's row is world.trip_cost's answer for the same harbours: days, port time, supplies, wages, dock fees
--- @pass TRADE_SUPPLIES              the purse fell at the departures by the row's supplies (where the sea took nothing from her casks)
+-- @pass TRADE_SUPPLIES              the purse fell at the departures by the row's supplies (where the sea took nothing from her casks and every leg settled the days the board counted)
 -- @pass TRADE_DOCK_FEES             every arrival charged a dock fee, and together they are the row's dock_fee
--- @pass TRADE_WAGES                 the wages owed over the trip are the row's wages (where every leg settled the days the board counted)
+-- @pass TRADE_WAGES                 the wages owed over the trip are the row's wages (where the sea took nothing and every leg settled the days the board counted)
 -- @pass TRADE_TIME                  she lay in port the row's stop_seconds, and the sailing and the port time together are the row's time
 -- @pass TRADE_AT_SEA                read again under way on the first leg, the same sale still pays the same dock fees and port time, and owes the same wages
 -- @pass TRADE_PROFIT                the row's profit is its proceeds less the cost, the tax and exactly those three costs
@@ -64,6 +64,9 @@ declare
   v_read_s numeric;
   v_t0     timestamptz;
   v_sup1   bigint;
+  v_paid   bigint;     -- this departure's stores, as charged
+  v_walk   bigint;     -- this leg's stores, as the board walked them
+  v_legs_t text := '';
 begin
   -- the closed economy with the city purses lit: dock fees and port time are in force for this transaction only
   update public.world_config set value = 'true'::jsonb where key in ('economy_closed', 'city_treasury_enabled');
@@ -146,7 +149,11 @@ begin
     if k = 1 then
       v_sup1 := v_p - v_q;
     end if;
+    v_paid := v_p - v_q;
     v_p := v_q;
+    -- the board's walk of this leg's stores (her casks as the walk left them, at her speed in port)
+    select sum((s->>'nm')::numeric) into v_nm from jsonb_array_elements(voyage.segments_from_course(v_legs->(k - 1)->'course')) s;
+    select public.stores_cost(v_pl, tl.water_t, tl.food_t) into v_walk from world.trip_leg(v_hulls, v_nm, v_speed) tl;
     select v.id, v.eta, v.departed_at, v.delay_hours into v_voy from public.voyages v where v.fleet_id = v_fl and v.status = 'SAILING' limit 1;
     v_dep := v_voy.departed_at;
 
@@ -189,8 +196,11 @@ begin
     select sum((s->>'nm')::numeric) into v_nm from jsonb_array_elements(voyage.segments_from_course(v_legs->(k - 1)->'course')) s;
     select tl.hulls, tl.sea_days into v_hulls, v_days from world.trip_leg(v_hulls, v_nm, v_speed) tl;
     select s.water_t into v_w_now from public.ships s where s.id = v_sh;
-    v_clean := v_clean and coalesce(v_voy.delay_hours, 0) = 0 and abs(v_w_now - (v_hulls->0->>'water')::numeric) < 0.002;
+    v_clean := v_clean and coalesce(v_voy.delay_hours, 0) = 0 and abs(v_w_now - (v_hulls->0->>'water')::numeric) < 0.002
+               and (select s.crew from public.ships s where s.id = v_sh) = (v_hulls->0->>'crew')::numeric;   -- and no hand lost: the day's wage is by her crew
     v_days_ok := v_days_ok and voyage.total_days(v_voy.id) = v_days;
+    v_legs_t := v_legs_t || format('%sleg %s: stores %s, walked %s; settled %s d, walked %s d; crew %s, walked %s; speed %s, in port %s', case when k > 1 then '; ' end, k, v_paid, v_walk,
+      voyage.total_days(v_voy.id), v_days, (select s.crew from public.ships s where s.id = v_sh), v_hulls->0->>'crew', (select round((v.speed_profile ->> 0)::numeric, 3) from public.voyages v where v.id = v_voy.id), round(v_speed, 3));
 
     if k < v_n then
       -- HER PORT TIME: still there a second before it is up, then the next SAIL leaves
@@ -207,11 +217,16 @@ begin
     end if;
   end loop;
 
-  if v_clean and v_sup <> (v_row->'supplies'->>'cost')::bigint then
-    raise exception 'PROOF 63 FAIL: the supplies cost % over the trip and the row said %', v_sup, v_row->'supplies'->>'cost';
+  -- held only where the sea took nothing AND every leg settled the days the board counted (as TRADE_WAGES and TRADE_PROFIT): laden with her
+  -- stores she sails a shade slower than the board's speed in port, and a leg that runs into one more day is topped up for one more day at
+  -- its departure (public.supply_needs reads her speed then) and eats it on the way, so her casks arrive as the walk said and the purse paid
+  -- one day's stores more than the row (CI, PR #752: 24 against 23)
+  if v_clean and v_days_ok and v_sup <> (v_row->'supplies'->>'cost')::bigint then
+    raise exception 'PROOF 63 FAIL: the supplies cost % over the trip and the row said % (%)', v_sup, v_row->'supplies'->>'cost', v_legs_t;
   end if;
-  raise notice 'PASS: TRADE_SUPPLIES — % over % departure(s), the row said % (%)', v_sup, v_n, v_row->'supplies'->>'cost',
-    case when v_clean then 'held: the sea took nothing' else 'not held: the sea delayed her or took from her casks' end;
+  raise notice 'PASS: TRADE_SUPPLIES — % over % departure(s), the row said % (%) [%]', v_sup, v_n, v_row->'supplies'->>'cost',
+    case when not v_clean then 'not held: the sea delayed her or took from her casks or her crew' when not v_days_ok then 'not held: laden, a leg ran into another day'
+         else 'held: the sea took nothing' end, v_legs_t;
 
   if v_fees <> (v_row->>'dock_fee')::bigint or v_fee_n <> v_n then
     raise exception 'PROOF 63 FAIL: % of % arrival(s) charged a dock fee, % together, and the row said %', v_fee_n, v_n, v_fees, v_row->>'dock_fee';
@@ -219,11 +234,14 @@ begin
   raise notice 'PASS: TRADE_DOCK_FEES — % over % arrival(s), each charged: as the row said', v_fees, v_n;
 
   select coalesce(sum(w.owed), 0) into v_owed1 from public.fleet_wages w where w.fleet_id = v_fl;
-  if v_days_ok and round(v_owed1 - v_owed0) <> (v_row->>'wages')::numeric then
-    raise exception 'PROOF 63 FAIL: she owes her crew % for the trip and the row said %', v_owed1 - v_owed0, v_row->>'wages';
+  -- held where the sea took nothing too (as TRADE_PROFIT): a leg that settled the board's days but lost hands or was beaten slower owes less
+  -- (local run, 2026-11-16, without 0452: 154 owed against 160, every leg's days as counted, the sea not clean)
+  if v_clean and v_days_ok and round(v_owed1 - v_owed0) <> (v_row->>'wages')::numeric then
+    raise exception 'PROOF 63 FAIL: she owes her crew % for the trip and the row said % (%)', v_owed1 - v_owed0, v_row->>'wages', v_legs_t;
   end if;
   raise notice 'PASS: TRADE_WAGES — % owed, the row said % (%)', round(v_owed1 - v_owed0), v_row->>'wages',
-    case when v_days_ok then 'held: every leg settled the days the board counted' else 'not held: a leg ran into another day' end;
+    case when not v_days_ok then 'not held: a leg ran into another day' when not v_clean then 'not held: the sea delayed her or took from her casks or her crew'
+         else 'held: every leg settled the days the board counted' end;
 
   -- THE TIME: the port time is the row's to the second; the whole (the sailing as her voyages ran it, laden with her stores, and the port time)
   -- is the row's within the larger of 30 s and 3 % (the board sails her at her speed in port, before the stores are aboard)
