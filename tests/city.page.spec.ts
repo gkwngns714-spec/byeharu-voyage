@@ -162,7 +162,7 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
 
   // ── THE ENTRY POINT (as a player: COMMAND → City → City view) ────────────────────────────────
-  await page.goto('command')
+  await page.goto('office')
   await ready(page)
   await page.getByRole('tab', { name: 'City', exact: true }).click()
   await expect(page.getByTestId('desk-city')).toBeVisible()
@@ -519,8 +519,8 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await ready(page)
   await expect(page.getByTestId('stats')).toBeVisible()
 
-  // And the desk's City face is exactly where it was, with its door.
-  await page.goto('command')
+  // And the Office's City face is exactly where it was, with its door.
+  await page.goto('office')
   await ready(page)
   await page.getByRole('tab', { name: 'City', exact: true }).click()
   await expect(page.getByTestId('desk-city')).toBeVisible()

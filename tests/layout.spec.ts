@@ -302,9 +302,10 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
   // city chips wrap above them (owner: no sideways scrolling), and FOUR complete cards stand above the
   // 787-px fold — two rows of two. Five would need a third row: 3 × 129 px = 387 px in the 381 px left
   // below the highest card start, so five is arithmetically out of reach of this shape, not a regression.
-  // The floor was the measured four. 2026-11-11 (remaster S6): the goal card (levels/GoalCard.tsx, one 44-px control, the game's
+  // The floor was the measured four. 2026-11-11 (remaster S6): the goal card (command/GoalCard.tsx, one 44-px control, the game's
   // one stated goal) stands on this face and takes the second row, so the floor is the two that stand whole beside the card.
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
+  // The City face above is the Office tab's since 2026-11-16; Trade is its own tab.
+  await page.locator('a[href$="/command"]:visible').first().click()
   await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 60_000 })
   const buy = await page.evaluate(() => {
     const nav = document.querySelector('nav')
@@ -688,7 +689,6 @@ test(`COMMAND: the route row opens the route page, the queue below it may not mo
   await page.goto('command')
   await ready(page)
   // 2026-10-18: the route and the queue are on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Trade since 2026-10-30
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
   // the city's goods load after the press; let them land before measuring
   await settled(page.getByTestId('desk-trade'))
   const row = page.getByTestId('route-row')

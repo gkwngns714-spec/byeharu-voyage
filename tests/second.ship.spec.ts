@@ -199,7 +199,7 @@ test.describe('the played flow at 1280×800', () => {
     await expect(tray.getByTestId('yard-fleet-full')).toHaveText('Fleet full')
     await next.click()
     presses++
-    await expect(page).toHaveURL(/\/command$/)
+    await expect(page).toHaveURL(/\/office$/)
     await expect(page.getByTestId('port-inn')).toBeVisible({ timeout: 60_000 })
     expect(presses, 'the flow is three presses and a name').toBe(3)
 

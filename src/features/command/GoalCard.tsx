@@ -1,17 +1,18 @@
-import { useWide } from '../../../components/ui'
-import { properName, useT } from '../../../lib/i18n'
-import { worldLevels, type LevelsView } from '../../../lib/rpc'
-import { useServedRead } from '../../../live/useServedRead'
-import { useSecondShip } from '../../../live/useSecondShip'
-import { useWorld } from '../../../live/worldStore'
-import { formatInt } from '../../../lib/format'
-import { useDeskView } from '../deskView'
+import { useWide } from '../../components/ui'
+import { properName, useT } from '../../lib/i18n'
+import { worldLevels, type LevelsView } from '../../lib/rpc'
+import { useServedRead } from '../../live/useServedRead'
+import { useSecondShip } from '../../live/useSecondShip'
+import { useWorld } from '../../live/worldStore'
+import { formatInt } from '../../lib/format'
+import { useNavigate } from 'react-router-dom'
 
 // THE GOAL CARD (remaster S6): one line on the Trade face saying what to aim for: the next Title and how far along you are.
-// NOT a quest: it reads the SAME served read the Levels face reads (`world.levels()`, 0325, the same cached `worldLevels` read) and
+// NOT a quest: it reads the SAME served read the You page's levels read (`world.levels()`, 0325, the same cached `worldLevels` read) and
 // prints its figures: the next title (`title.next`), and the two tracks' levels. The rule "a title needs Trading and Exploration at
-// the title's level" is the Levels face's own sentence (command.lvTitleNext); this card shows it as progress and invents no other
-// threshold. What the title opens is `title.next.opens`, worded as the Levels face words it, and only while sea limits are lit. Pressing it turns to Levels.
+// the title's level" is the You page's own sentence (command.lvTitleNext); this card shows it as progress and invents no other
+// threshold. What the title opens is `title.next.opens`, worded as the You page words it, and only while sea limits are lit. Pressing it opens
+// the You page, where the levels are whole (since 2026-11-16, when Levels left the Trade desk for the You page).
 //
 // 0352: ITS SECOND LINE ALSO CARRIES HER REPUTATION (the served balance, world.player(): the store's own read, no second call). A phone's
 // top bar has no room for that figure, and this is the first screen she sees.
@@ -24,9 +25,8 @@ import { useDeskView } from '../deskView'
 //
 // THE PRESS LAW: a fixed height in every state (loading, shown, nothing to show), so nothing moves when the read lands or on a press.
 
-// A control is 44 px (tests/consistency.spec.ts), so the card is 44 px. On a phone every pixel above the goods is bought, so it stands on the
-// Goods face only (the City and Report faces would lose room: tests/layout.spec.ts K.1, desk.city.spec.ts); on a wide glass it stands under the
-// header on every face, so the panes never move between faces (the header has no room for it at 1024 px).
+// A control is 44 px (tests/consistency.spec.ts), so the card is 44 px. It stands on the Trade tab, under the fleet strip (phone) or under the
+// header (wide: the header has no room for it at 1024 px).
 // THE CARD'S LINES NEVER BREAK (2026-11-12, the owner on a phone: *"long words and sentences making new messy lines"*). It was one
 // sentence, "Mate: Trading 1/2, Exploration 1/2", in a 44-px box set a second gutter in from the page's own: at 320 px the sentence
 // took two lines and pushed Reputation out of the box. Now the title's name and Reputation share the first line and the two tracks
@@ -39,7 +39,7 @@ export function GoalCard() {
   const t = useT()
   const wide = useWide()
   const place = wide ? WIDE : PHONE
-  const turnTo = useDeskView((s) => s.turnTo)
+  const navigate = useNavigate()
   const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
   const v = read.view
   const reputation = useWorld((s) => s.player?.reputation?.balance ?? null)
@@ -50,7 +50,7 @@ export function GoalCard() {
   // While sea limits are not on (`seas_bite` false) the title opens nothing yet, so the card promises nothing.
   const opens = next && v.title.seas_bite && next.opens.length > 0 ? t('command.lvOpens', { what: next.opens.join(', ') }) : null
   return (
-    <button type="button" onClick={() => turnTo('levels')} className={`${CARD} ${place} bg-surface-2`}
+    <button type="button" onClick={() => navigate('/you')} className={`${CARD} ${place} bg-surface-2`}
       data-testid="goal-card"
       // her two track levels stand on the card whatever its second line says (the second ship's count hides the words; a test reads these)
       data-trading={v.tracks.trading.level}

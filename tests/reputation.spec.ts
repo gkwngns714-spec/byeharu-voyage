@@ -192,10 +192,11 @@ for (const size of SIZES) {
         await page.screenshot({ path: test.info().outputPath(`level-up-card-${size.width}-${lang}.png`) })
 
         // 0356: THE LEVELS PAGE prints the next level's gift beside each bar: 10 x (her level + 1), from the served gift.
+        // the goal card opens the You page, where the levels stand (the desk's Levels face moved there, 2026-11-16)
         await page.goto('command')
         await ready(page)
         await page.getByTestId('goal-card').click()
-        await expect(page.getByTestId('desk-levels').first()).toBeVisible({ timeout: 60_000 })
+        await expect(page.getByTestId('you-levels').first()).toBeVisible({ timeout: 60_000 })
         for (const track of ['trading', 'exploration'] as const) {
           const row = page.getByTestId(`levels-${track}`).first()
           const level = Number((await row.innerText()).match(/\d+/)![0])

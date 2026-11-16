@@ -295,7 +295,6 @@ async function driveRepeat(page: Page, label: string) {
 
   // THE DESK LISTS THE ROUTE, by the same harbours in the same order
   await page.locator('a[href$="/command"]:visible').first().click()
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
   await expect(page.getByTestId('route-row')).toContainText(names.join(' ⇄ '), { timeout: 60_000 })
   await page.screenshot({ path: `test-results/route-builder-${label}-repeat-saved.png` })
 }

@@ -1,5 +1,11 @@
 # CMD — orders are MADE, not typed
 
+> **TWO TABS, ONE SHELL — 2026-11-16.** The owner: *"in trade, there are city invest report and levels, which aren't that
+> related to trade. they should have separate tab like map you stats etc."* The Trade tab (`CommandScreen.tsx`, route
+> `/command`) is the Trade face alone. City (`city/`), Invest (`invest/`) and Report (`report/`) are the OFFICE tab's faces
+> (`OfficeScreen.tsx`, route `/office`, chosen in `officeView.ts`); Levels moved to the You page (`features/you/Levels.tsx`).
+> Both tabs draw the desk's one shell (`DeskShell.tsx`) and frame (`DeskFrame.tsx`), which is why they share this folder.
+
 > **THE DESK — 2026-10-18 (owner row 137, `docs/COMMAND_DESK.md`).** *"delete port tab, and focus on
 > command tab."* COMMAND is the trading desk now: five faces — Markets (`markets/`), Trade (`plans/`; was Plans until 0225),
 > City (`city/`), Invest (`invest/`), Profit (`profit/`) — under the fleet strip, chosen in `deskView.ts`.

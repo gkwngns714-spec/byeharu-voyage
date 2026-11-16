@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { openOfficeFace } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE REPORT FACE (0286, docs/COMMAND_REDESIGN.md §4–5; owner rows 192, 244) — the phone (390×844)
@@ -28,7 +29,7 @@ async function openReport(page: Page, request: Parameters<typeof reachable>[0], 
   )
   await page.goto('command')
   await ready(page)
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Report', exact: true }).click()
+  await openOfficeFace(page, 'Report')
   await expect(page.getByTestId('desk-report')).toBeVisible()
   await expect(page.getByTestId('report-spans')).toBeVisible()
 }

@@ -190,7 +190,7 @@ test('Fleets: one fleet of seven ships — the company counts 7 hulls, her page 
 
 // ── ROWS 249 / 252 / 246: EVERY CELL BOTH WAYS, FROM THE HQ ──────────────────────────────────────
 for (const size of [PHONE, LAPTOP]) {
-  test(`Tabs @${size.width}: from the HQ each cell goes and comes back; the bar is HQ · Trade · Fleets · Map · Menu (the rail adds You · Stats); the document never scrolls sideways`, async ({ page, request, baseURL }) => {
+  test(`Tabs @${size.width}: from the HQ each cell goes and comes back; the bar is HQ · Trade · Fleets · Map · Office · Menu (the rail adds You · Stats); the document never scrolls sideways`, async ({ page, request, baseURL }) => {
     test.setTimeout(600_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await page.setViewportSize(size)
@@ -199,9 +199,9 @@ for (const size of [PHONE, LAPTOP]) {
     await expect(page.getByTestId('city-rail')).toBeVisible({ timeout: 120_000 })
     const labels = (await page.getByTestId('city-rail').locator('[data-testid^="nav-label-"]').allInnerTexts()).map((s) => s.trim())
     console.log(`@${size.width} rail: ${labels.join(' · ')}`)
-    // the phone's bar keeps five; the wide rail carries You and Stats as their own cells (owner, 2026-11-14)
+    // the phone's bar keeps six; the wide rail carries You and Stats as their own cells (owner, 2026-11-14); Office is its own cell on both (2026-11-16)
     const onRail = size.width >= 1024
-    expect(labels).toEqual(onRail ? ['HQ', 'Trade', 'Fleets', 'Map', 'You', 'Stats', 'Menu'] : ['HQ', 'Trade', 'Fleets', 'Map', 'Menu'])
+    expect(labels).toEqual(onRail ? ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'You', 'Stats', 'Menu'] : ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'Menu'])
     const scrolls: Record<string, string> = {}
     const read = async (name: string) => {
       scrolls[name] = await page.evaluate(() => {
@@ -215,6 +215,7 @@ for (const size of [PHONE, LAPTOP]) {
     for (const [to, marker] of [
       ['/fleets', 'fleets'],
       ['/map', 'map-chart'],
+      ['/office', 'office'],
       ['/stats', 'stats'],
     ] as const) {
       await press(page, to)

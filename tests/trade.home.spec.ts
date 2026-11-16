@@ -18,7 +18,7 @@ for (const size of [PHONE, { width: 1280, height: 800 }]) {
     await expect(bar.getByTestId('nav-label-/command')).toHaveText('Trade')
     const onRail = size.width >= 1024
     const labels = (await bar.locator('[data-testid^="nav-label-"]').allInnerTexts()).map((s) => s.trim())
-    expect(labels).toEqual(onRail ? ['HQ', 'Trade', 'Fleets', 'Map', 'You', 'Stats', 'Menu'] : ['HQ', 'Trade', 'Fleets', 'Map', 'Menu'])
+    expect(labels).toEqual(onRail ? ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'You', 'Stats', 'Menu'] : ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'Menu'])
     await expect(page.getByTestId('trade-buy').first(), 'no buy button on the landing screen').toBeVisible({ timeout: 120_000 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'sideways scroll').toBe(true)
 

@@ -43,7 +43,7 @@ export function TownHallInfluence({
   trayMode?: TrayMode
   /** The City page's in-place Town Hall panel shows the influence WITHOUT the tax rows (owner,
    *  2026-10-31: "no need market info. tax info. influence yes"). The map's Town Hall and the
-   *  desk's Invest keep them: they never pass this. */
+   *  Office's Invest keep them: they never pass this. */
   showTax?: boolean
   /** The City page's NARROW panel (owner: "you know that this game is also for mobile right?"):
    *  the holder row keeps the flag and the name but drops the Home city / Contested word (the page

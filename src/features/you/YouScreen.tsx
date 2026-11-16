@@ -1,9 +1,6 @@
-import { Bar, Card, Clip, Facts, Figure, Icon, ListPanel, PageSplit, Row, Sheet, StatCell } from '../../components/ui'
+import { Card, Clip, Facts, Figure, Icon, ListPanel, PageSplit, Row, Sheet } from '../../components/ui'
 import { formatInt } from '../../lib/format'
-import { useState } from 'react'
-import { worldLevels, type FleetView, type LevelsView, type LevelTrack, type PlayerHouse } from '../../lib/rpc'
-import { useServedRead } from '../../live/useServedRead'
-import { LevelTiles, LevelTray } from '../../live/LevelTiles'
+import type { FleetView, PlayerHouse } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CaptainRows, CaptainTray } from '../../live/YourCaptains'
@@ -12,6 +9,8 @@ import { tabWord } from '../../app/navTabs'
 import { useLocale, useT } from '../../lib/i18n'
 import { Link } from 'react-router-dom'
 import { companyRoom, useHouseRoom } from '../../live/houseRoom'
+import { YouLevels } from './Levels'
+import { useLevels } from './useLevels'
 
 // YOU — the owner, row 181 (2026-10-20): *"Create a tab for personal info, such as my level, my
 // ships, captains, achievements, levels etc."*
@@ -22,9 +21,10 @@ import { companyRoom, useHouseRoom } from '../../live/houseRoom'
 // (src/live/YourCaptains.tsx, `world.captains`). This tab is composition, which is why it sits in
 // the Cabin: it consults, and it commands nothing (navTabs.ts says what that group is for).
 //
-//   Levels         the three tracks, as Bars. MOVED HERE FROM PROFILE, not copied: §6 put them
-//                  there because there was no personal tab, and the owner has now asked for one by
-//                  name. Two screens drawing one ladder is two answers to "what level am I".
+//   Levels         MOVED HERE FROM PROFILE, not copied: §6 put them there because there was no personal tab, and
+//                  the owner has now asked for one by name. Two screens drawing one ladder is two answers to "what
+//                  level am I". 2026-11-16: the Trade desk's Levels face moved here too, for the same reason
+//                  (Levels.tsx says how): every level as a tile, the title, seamanship, the countries' regard.
 //   Your ships     EVERY hull you own, in one list, with the fleet she sails in. FLEETS lists
 //                  FLEETS — where each one is, her stores, her hold, her hull — and a hull inside
 //                  it sits behind a fold, so "what do I own" had no page. This is that page: a
@@ -96,7 +96,7 @@ function YouBody({ title }: { title: string }) {
           ) : (
             <>
               <Reputation player={player} />
-              <Levels player={player} />
+              <YouLevels />
             </>
           )
         }
@@ -145,78 +145,20 @@ function Reputation({ player }: { player: PlayerHouse }) {
   )
 }
 
-/** THE THREE TRACKS (0069), as Bars — the hand-off this tab took from Profile. They are the screen's FIGURES: one heading line and
- *  the tracks side by side under it, standing on the glass over the list panel (a Stats face's figure block, StatsBlock.tsx, is the
- *  same shape). COMBAT IS NOT A TRACK until the server says so: 0069 serves it with `playable: false` on purpose — there is no
- *  fighting at sea in this game yet (0035) — and a bar at level 1 of an unbuilt track would make it look built. The server's flag
- *  decides: the day it flips, the third bar joins the grid with no edit here. Until then the heading line says what it waits on. */
-function Levels({ player }: { player: PlayerHouse }) {
-  const t = useT()
-  const { trading, exploration, combat } = player.levels
-  return (
-    <Card title={t('you.levels')} data-testid="levels">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
-        <Track name={t('you.trading')} track={trading} />
-        <Track name={t('you.exploration')} track={exploration} />
-        {combat.playable && <Track name={t('you.combat')} track={combat} />}
-      </div>
-      {!combat.playable && (
-        <p className="mt-4 text-t-caption text-ink-faint" data-testid="combat-waits">
-          {t('you.combat')} · {t('you.noFighting')}
-        </p>
-      )}
-      <AllLevels />
-    </Card>
-  )
-}
-
-/** 0417: EVERY LEVEL OF THE COMPANY, as small tiles under the three bars (the owner's levels raised by doing, docs/LEVELS.md): the same
- *  read the Levels page asks (`world.levels()`, the same kept answer) and the same tiles, without the line under each. A pressed tile
- *  opens that level in a tray over the page: her experience, what raises it, what its levels give and the experience table. Nothing
- *  is drawn until the read lands, and then nothing above it moves: it stands last in the card. */
-/** The level codes the Levels card draws as bars (`player.levels`), so the tiles under them skip them. */
-const BAR_TRACKS: ReadonlySet<string> = new Set(['trading', 'exploration', 'combat'])
-
-function AllLevels() {
-  const t = useT()
-  const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
-  const [picked, setPicked] = useState<string | null>(null)
-  const v = read.view
-  if (!v || !v.company) return null
-  // THE THREE TRACKS STAND AS BARS JUST ABOVE (2026-11-15, owner: no repeated words on one screen): the tiles are the other levels.
-  const card = { ...v.level_skills, skills: v.level_skills.skills.filter((s) => !BAR_TRACKS.has(s.code)) }
-  return (
-    <div className="mt-4 border-t border-edge pt-3" data-testid="you-all-levels">
-      <h3 className="mb-2 text-t-caption font-semibold text-ink-faint">{t('command.lvAll')}</h3>
-      <LevelTiles card={card} selected={picked} onSelect={setPicked} compact />
-      <LevelTray card={card} code={picked} onClose={() => setPicked(null)} />
-    </div>
-  )
-}
-
-/** The cap of the ONE level curve, `public.level_from_points` (0069:111): floored at 1, capped at
- *  20. Mirrored here for DISPLAY ONLY, the way `TIME_COMPRESSION` mirrors a served knob in
- *  src/lib/format/time.ts — the server does not serve the cap, and a bar needs an end. When
- *  `world.snapshot().config` carries it, this constant goes and the bar reads the served value. */
-const LEVEL_CAP = 20
-
-/** One level track as §6 draws it: the name and the level hugging it, the bar of the ladder under them. A countable Bar (`of`)
- *  rather than a percentage: a level is a rung, not a proportion. */
-function Track({ name, track }: { name: string; track: LevelTrack }) {
-  const t = useT()
-  return (
-    <div className="min-w-0" data-testid="level-track">
-      <StatCell look="stacked" label={name} value={track.level} format={formatInt} />
-      <Bar value={track.level} of={LEVEL_CAP} label={t('you.levelOf', { name })} className="mt-1" />
-    </div>
-  )
-}
-
 /** EVERY HULL YOU OWN, with the fleet she sails in. The served rows, flattened — a flagship says
  *  so, because she is the one hull this game promises never to lose (DESIGN §C.6). The first section of the panel's body. */
 function Ships({ fleets }: { fleets: readonly FleetView[] }) {
   const t = useT()
   const ships = fleets.flatMap((fleet) => fleet.ships.map((ship) => ({ ship, fleet })))
+  // HER LEVEL ON HER ROW (2026-11-16: the Levels face's list of hulls moved onto this one, so a hull is listed once). The served
+  // level (`world.levels().ships`, 0325), and the level it acts as while that is lower (levels not yet in force).
+  const levels = useLevels().view
+  const levelOf = new Map(levels?.company ? levels.ships.map((s) => [s.id, s] as const) : [])
+  const levelWord = (id: string): string | null => {
+    const l = levelOf.get(id)
+    if (!l) return null
+    return l.in_force < l.level ? `${t('command.lvLevel', { n: l.level })} (${t('command.lvActsAs', { n: l.in_force })})` : t('command.lvLevel', { n: l.level })
+  }
   return (
     <ListPanel
       look="card"
@@ -245,8 +187,8 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
             hairline={i < ships.length - 1}
             data-testid="you-ship"
           >
-            <Facts className="block text-t-caption text-ink-faint pair:hidden" items={[ship.class, ship.is_flagship ? t('you.flagship') : null]} />
-            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name === ship.name ? null : fleet.name, ship.class, ship.is_flagship ? t('you.flagship') : null]} />
+            <Facts className="block text-t-caption text-ink-faint pair:hidden" items={[ship.class, levelWord(ship.id), ship.is_flagship ? t('you.flagship') : null]} />
+            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name === ship.name ? null : fleet.name, ship.class, levelWord(ship.id), ship.is_flagship ? t('you.flagship') : null]} />
           </Row>
         ))
       )}

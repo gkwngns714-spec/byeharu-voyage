@@ -20,7 +20,7 @@ import { usePortMarket } from '../../../live/usePortMarket'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import type { FleetView } from '../../../lib/rpc'
 import type { DeskLayout } from '../DeskFrame'
-import { useDeskView } from '../deskView'
+import { useOfficeView } from '../officeView'
 import { useT } from '../../../lib/i18n'
 
 // CITY — every building of the city the fleet is at, on the desk (docs/COMMAND_DESK.md §2.1, §3.6, D5). The
@@ -48,8 +48,8 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
   const navigate = useNavigate()
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
-  const face = useDeskView((s) => s.cityFace)
-  const setFace = useDeskView((s) => s.setCityFace)
+  const face = useOfficeView((s) => s.cityFace)
+  const setFace = useOfficeView((s) => s.setCityFace)
 
   const where = whereabouts(fleet)
   const code = fleetPortCode(fleet)

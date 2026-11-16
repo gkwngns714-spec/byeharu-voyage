@@ -11,8 +11,8 @@ import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 //      and the economy closed. Regard itself is NOT set by the patch: it is the chain's.
 
 const WORDS = {
-  en: { levels: 'Levels', city: 'City', dark: 'Not open yet.', friendly: 'Friendly', wary: 'Wary', neutral: 'Neutral', home: 'Portugal' },
-  ko: { levels: '레벨', city: '도시', dark: '아직 안 열림', friendly: '우호', wary: '경계', neutral: '중립', home: '포르투갈' },
+  en: { city: 'City', dark: 'Not open yet.', friendly: 'Friendly', wary: 'Wary', neutral: 'Neutral', home: 'Portugal' },
+  ko: { city: '도시', dark: '아직 안 열림', friendly: '우호', wary: '경계', neutral: '중립', home: '포르투갈' },
 } as const
 const GLASSES = [{ width: 390, height: 844 }, { width: 320, height: 640 }] as const
 
@@ -44,13 +44,13 @@ for (const glass of GLASSES) {
       const w = WORDS[lang]
       const bandAndScore = new RegExp(`(${w.friendly}|${w.wary}|${w.neutral}) [-−]?[0-9]`)
 
-      test('the Levels page names every country with her band and score', async ({ page, request, baseURL }) => {
+      test('the You page levels name every country with her band and score', async ({ page, request, baseURL }) => {
         test.setTimeout(480_000)
         test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
-        await page.goto('command')
+        // the Levels face moved to the You page (2026-11-16)
+        await page.goto('you')
         await ready(page)
-        await page.getByRole('tab', { name: w.levels, exact: true }).click()
-        await expect(page.getByTestId('desk-levels').first()).toBeVisible({ timeout: 60_000 })
+        await expect(page.getByTestId('you-levels').first()).toBeVisible({ timeout: 60_000 })
         const list = page.getByTestId('levels-regard').first()
         await expect(list).toBeVisible({ timeout: 60_000 })
         await list.scrollIntoViewIfNeeded()
@@ -80,7 +80,7 @@ for (const glass of GLASSES) {
         test.setTimeout(600_000)
         test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
         await serveWorldImage(page, await pursesLit())
-        await page.goto('command')
+        await page.goto('office')
         await ready(page)
         await page.getByRole('tab', { name: w.city, exact: true }).click()
         await expect(page.getByTestId('desk-city')).toBeVisible()

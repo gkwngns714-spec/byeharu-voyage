@@ -33,8 +33,6 @@ for (const size of SIZES) {
       )
       await page.goto('command')
       await ready(page)
-      const faces = page.getByRole('tablist', { name: 'Desk faces' })
-      await faces.getByRole('tab', { name: 'Goods', exact: true }).click()
       const face = page.getByTestId('desk-trade')
       await expect(face).toBeVisible()
       // the ship stands inside the folded Orders on a phone (the one-page law); a press reveals it

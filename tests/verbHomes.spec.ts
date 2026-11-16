@@ -143,12 +143,13 @@ test('the stepped question has one home — the three building faces', () => {
 //   Trade (buy · sell · bargain · basket · requests · resupply) PortTrade · Town PortTown · Town Hall (invest,
 //   donate, the purse) CityTownHall · Craft PortWorkstation · Inn (hire, dismiss, resupply,
 //   captains) PortInn · Build PortYard · Repair PortShipyard · Skills PortAcademy · the fair QuayFair · a tow TowNote.
-test("every building face is one component in src/live, and the desk's City face composes each one", () => {
+test("every building face is one component in src/live, and the Office's City face composes each one", () => {
   const FACES = ['PortTrade', 'PortTown', 'CityTownHall', 'PortWorkstation', 'PortInn', 'PortYard',
     'PortShipyard', 'PortAcademy', 'QuayFair', 'TowNote']
+  // the City face is the Office tab's since 2026-11-16 (it was the desk's)
   const city = readFileSync(path.join(SRC, 'features', 'command', 'city', 'City.tsx'), 'utf8')
   const missing = FACES.filter((name) => !city.includes(`import { ${name} } from '../../../live/`))
-  expect(missing, `the desk's City face does not compose: ${missing.join(', ')}`).toEqual([])
+  expect(missing, `the Office's City face does not compose: ${missing.join(', ')}`).toEqual([])
   // STORE, TAKE and the forge are the HQ's Production page (owner, 2026-11-06): the desk's tab and Town row are its door.
   expect(city, 'the desk has no door to Production').toContain('productionHref(')
   expect(readFileSync(path.join(SRC, 'features', 'city', 'CityScreen.tsx'), 'utf8'), 'the HQ does not compose Production').toContain(`import { PortProduction } from '../../live/PortProduction'`)

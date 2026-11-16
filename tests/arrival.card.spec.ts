@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { openOfficeFace } from './desk.fixture'
 import { arrivalCard, LANDING_TEST_TIMEOUT_MS } from './arrivalWait.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 import { serveRaidWorld } from './raidWorld.fixture'
@@ -65,7 +66,7 @@ for (const size of SIZES) {
       await expect(card).toHaveCount(0)
 
       // the same figure the Report shows (the one sale this company has made)
-      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Report', exact: true }).click()
+      await openOfficeFace(page, 'Report')
       await expect(page.getByTestId('report-total')).toBeVisible()
       const sign = (n: number) => (n < 0 ? `−${Math.abs(n)}` : n > 0 ? `+${n}` : '0')
       const digits = (s: string) => s.replace(/[^\d−+-]/g, '').replace('-', '−')

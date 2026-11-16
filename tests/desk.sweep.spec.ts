@@ -44,11 +44,11 @@ for (const size of SIZES) {
         !(await reachable(request, baseURL ?? '')),
         `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
       )
-      // An old /port link opens the desk's City face.
+      // An old /port link opens the Office's City face.
       await page.goto('port')
       // The first tray's reads are waited on below: not across a drift-slot edge (appReady.fixture DRIFT_SLOT_MS).
       await ready(page, { quietMs: 90_000 })
-      await expect(page).toHaveURL(/\/command$/)
+      await expect(page).toHaveURL(/\/office$/)
       await expect(page.getByTestId('desk-city')).toBeVisible()
       await expect(page.getByRole('navigation').getByText('Port', { exact: true })).toHaveCount(0)
 
@@ -115,12 +115,12 @@ for (const size of SIZES) {
       await face(page, 'Inn')
       await expect(page.getByTestId('inn-crew')).toBeVisible({ timeout: 30_000 })
 
-      // Invest — the desk's face, the same Town Hall
+      // Invest — the Office's face, the same Town Hall
       await page.getByRole('tab', { name: 'Invest', exact: true }).click()
       await expect(page.getByTestId('invest-hall')).toBeVisible({ timeout: 30_000 })
 
-      // Trade — the docked city's goods as priced cards, and its Buy button in the trade panel (owner 2026-10-30)
-      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
+      // Trade — its own tab: the docked city's goods as priced cards, and its Buy button in the trade panel (owner 2026-10-30)
+      await page.locator('a[href$="/command"]:visible').first().click()
       const tradeFace = page.getByTestId('desk-trade')
       await tradeFace.getByTestId('trade-buy').first().click()
       await expect(page.getByTestId('good-detail-price')).toContainText(/\d/, { timeout: 60_000 })

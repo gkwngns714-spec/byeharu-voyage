@@ -17,7 +17,7 @@ import { reportBars } from '../../live/reportBars'
 // country filter — one tab away from the screen whose subject it is. Its read (world.stats_me's
 // leaderboard) still arrives; nothing here prints it.
 //
-// WHAT YOU MADE is world.report('week') — the same read the desk's Report face prints (one authority
+// WHAT YOU MADE is world.report('week') — the same read the Office's Report face prints (one authority
 // for "what did I earn"). Its day axis arrives zero-filled, and the bars are its days that are OVER (reportBars): today is a figure
 // (Today, above them), not a bar that stands short at the right edge (owner, 2026-11-07).
 // EVERY SECOND (0232, owner row 213): both reads are computed from the record at the moment they are

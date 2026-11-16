@@ -73,13 +73,14 @@ import { translateMaybe, type Locale } from '../lib/i18n'
 // re-measures the row on every run. 2026-10-31: still FIVE — HQ leads the bar and the COMMAND tab
 // is GONE (owner: *"it is a game you dick. and i told you to remove the command tab"*): the City is
 // the game's home and its Market building is the desk's door. The label is "HQ", the City rail's
-// own word; the bar was HQ · Fleets · Map · Stats · Menu; since 2026-11-11 it is HQ · Trade · Fleets · Map · Menu.
+// own word; the bar was HQ · Fleets · Map · Stats · Menu; since 2026-11-11 it is HQ · Trade · Fleets · Map · Menu, and since
+// 2026-11-16 HQ · Trade · Fleets · Map · Office · Menu (SIX cells again).
 //
 // ── THE RAIL HAS ROOM THE BAR HAS NOT (owner, 2026-11-14: *"make you, stats on the left side like hq, trade etc."*) ──
 // From `lg` the nav is a column down the window's left edge, and a column is not short of cells the way a 320-px row
-// is. So You and Stats stand on the RAIL as their own cells — HQ · Trade · Fleets · Map · You · Stats · Menu — and
-// are NOT in the Menu there (one place per destination on a given screen). The phone's bar is unchanged: five cells,
-// You and Stats inside the Menu (seven cells at 320 px is 45 px each, under what the labels need). It is one field on
+// is. So You and Stats stand on the RAIL as their own cells — HQ · Trade · Fleets · Map · Office · You · Stats · Menu — and
+// are NOT in the Menu there (one place per destination on a given screen). The phone's bar is unchanged: six cells,
+// You and Stats inside the Menu (eight cells at 320 px is 40 px each, under what the labels need). It is one field on
 // the tab (`rail`), read by `navCells(wide)`; there is still exactly one table.
 
 export interface NavTab {
@@ -128,6 +129,13 @@ const ALL_TABS: readonly (NavTab & {
   { to: '/command', label: 'Trade', icon: 'compass', enabled: true },
   { to: '/fleets', label: 'Fleets', icon: 'ship', enabled: true },
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
+  // OFFICE (owner, 2026-11-16: *"in trade, there are city invest report and levels, which aren't that related to trade. they
+  // should have separate tab like map you stats etc."*). The desk's City, Invest and Report faces, MOVED to their own tab
+  // (features/command/OfficeScreen.tsx); Levels went to You, where the company's levels already stood. Its OWN cell on the bar and on the rail,
+  // like Map, never a Menu member: six cells, which nav.geometry.spec measures at 320 and 390 (this file's 2026-08-25 note:
+  // six cells of 53 px at 320, clear of the reach floor). The word is "Office" / "사무소": the company's office ashore; "City"
+  // was the HQ page's own word and one of the faces.
+  { to: '/office', label: 'Office', icon: 'coin', enabled: true },
   // STATS (owner, 2026-10-20) moved INTO the Menu on 2026-11-11 (S1): the top bar is for the loop you play
   // (Trade · Fleets · Map); the world's figures are consulted, so they sit with the cabin. Every Stats
   // face stays reachable from here.
@@ -205,10 +213,10 @@ function buildCells(wide: boolean): readonly NavCell[] {
   return cells
 }
 
-/** The PHONE BAR's cells: HQ · Trade · Fleets · Map · Menu, with You and Stats inside the Menu. */
+/** The PHONE BAR's cells: HQ · Trade · Fleets · Map · Office · Menu, with You and Stats inside the Menu. */
 export const NAV_CELLS: readonly NavCell[] = buildCells(false)
 
-/** The WIDE RAIL's cells: HQ · Trade · Fleets · Map · You · Stats · Menu, the Menu without those two. */
+/** The WIDE RAIL's cells: HQ · Trade · Fleets · Map · Office · You · Stats · Menu, the Menu without those two. */
 export const NAV_RAIL_CELLS: readonly NavCell[] = buildCells(true)
 
 /** What the nav draws on this glass: the rail's cells from `lg` (`useWide()`), the bar's below it. */
@@ -254,9 +262,10 @@ export function tabWord(locale: Locale, to: string): string {
  *
  *  The one screen that holds a market payload is Command — the desk (docs/COMMAND_DESK.md): its
  *  Markets, its City's quay, its plans. PORT was the second until 2026-10-18 (D8), when its every
- *  face moved under Command's City. Derived from nothing — it is a JUDGEMENT about which screens are
- *  about prices, so it is written down once rather than re-decided in the bar. */
-export const TRADE_ROUTES: readonly string[] = ['/command']
+ *  face moved under Command's City. The OFFICE is the second since 2026-11-16: the City face, with its
+ *  quay's market, moved there from the desk, and its countdown went with it. Derived from nothing — it is a
+ *  JUDGEMENT about which screens are about prices, so it is written down once rather than re-decided in the bar. */
+export const TRADE_ROUTES: readonly string[] = ['/command', '/office']
 
 /** Is this pathname one of the price screens? Takes the router's `pathname`, basename already
  *  stripped, which is what `useLocation()` serves. */

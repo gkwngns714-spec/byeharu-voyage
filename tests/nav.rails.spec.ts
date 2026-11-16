@@ -14,7 +14,7 @@ import { ready, reachable } from './appReady.fixture'
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-const EXPECTED = ['HQ', 'Trade', 'Fleets', 'Map', 'Menu']
+const EXPECTED = ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'Menu']
 
 async function labels(page: Page, rail: string): Promise<string[]> {
   return page.getByTestId(rail).locator('[data-testid^="nav-label-"]').allInnerTexts()
@@ -32,7 +32,7 @@ async function noSideScroll(page: Page, where: string) {
   expect(s.w, `${where} scrolls sideways`).toBeLessThanOrEqual(s.cw)
 }
 
-test('HQ and Map draw the same five cells, from the one tab table', async ({ page, request, baseURL }) => {
+test('HQ and Map draw the same six cells, from the one tab table', async ({ page, request, baseURL }) => {
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
 

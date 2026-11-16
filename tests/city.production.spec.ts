@@ -21,7 +21,7 @@ import { reachable, ready } from './appReady.fixture'
 const GOOD = 'silk-cloth'
 
 async function buyOneLot(page: Page) {
-  await page.goto('command')
+  await page.goto('office')
   await ready(page)
   await page.getByRole('tab', { name: 'City', exact: true }).first().click()
   await expect(page.getByTestId('desk-city')).toBeVisible()

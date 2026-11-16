@@ -29,8 +29,8 @@ import { ready, reachable, settled } from './appReady.fixture'
 // scrolls printed.
 
 /** The phone's bar; from `lg` the rail carries You and Stats as their own cells (owner, 2026-11-14; navTabs.ts `navCells`). */
-const EXPECTED_BAR = ['HQ', 'Trade', 'Fleets', 'Map', 'Menu']
-const EXPECTED_WIDE_RAIL = ['HQ', 'Trade', 'Fleets', 'Map', 'You', 'Stats', 'Menu']
+const EXPECTED_BAR = ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'Menu']
+const EXPECTED_WIDE_RAIL = ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'You', 'Stats', 'Menu']
 const SIZES = [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },

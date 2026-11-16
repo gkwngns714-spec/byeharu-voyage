@@ -28,7 +28,7 @@ test('the City page asks town_hall once a second, in place, and stops while hidd
     ;(window as unknown as { __hallAsks: number[] }).__hallAsks = log
   })
 
-  await page.goto('command')
+  await page.goto('office')
   await ready(page)
   await page.getByRole('tab', { name: 'City', exact: true }).click()
   await page.getByTestId('desk-city-open').click()

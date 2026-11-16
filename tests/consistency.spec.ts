@@ -56,10 +56,10 @@ const SIZES = [
   { width: 1280, height: 800 },
 ] as const
 
-/** Every route this pass walks. `command` is the desk (no longer a tab, still a route); `city` is
+/** Every route this pass walks. `command` is the Trade desk; `office` its old City · Invest · Report faces (2026-11-16); `city` is
  *  the HQ page with its own rail. The City's BUILDING faces are owned by the city slice and are
  *  measured only by its own spec today (the audit's evidence is in the dev-log). */
-const ROUTES = ['command', 'fleets', 'map', 'stats', 'ledger', 'rank', 'routes', 'compendium', 'profile', 'you', 'city'] as const
+const ROUTES = ['command', 'office', 'fleets', 'map', 'stats', 'ledger', 'rank', 'routes', 'compendium', 'profile', 'you', 'city'] as const
 
 /** The tab screens that print a Sheet title, and the route each one's rail word belongs to. */
 const TITLED = [
@@ -74,7 +74,7 @@ const TITLED = [
 ] as const
 
 const STATS_FACES = ['Overview', 'News', 'Markets', 'Cities', 'Merchants', 'Navy', 'Pirates', 'Cargo', 'Ships', 'Me'] as const
-const DESK_FACES = ['Goods', 'City', 'Invest', 'Report', 'Levels'] as const
+const OFFICE_FACES = ['City', 'Invest', 'Report'] as const
 
 /** THE ONE DECLARED PLACE FOR A SUB-44 CONTROL — NOW EMPTY (consistency row 33 fixed: the Command
  *  desk City face's `City view` is the md 44-px size, and #426 removed the city faces' Back).
@@ -417,12 +417,13 @@ for (const size of SIZES) {
           pagesOpened += await walkPages(page, failures, `${size.width} stats/${face}`)
         }
       } else if (route === 'command') {
-        for (const face of DESK_FACES) {
-          if (!(await pressFace(page.getByRole('tablist', { name: 'Desk faces' }), face, `${size.width} desk/${face}`, failures))) continue
+        // ROW 37: every good card's spark is a line iff the SERVED series holds two or more points.
+        failures.push(...(await sparkAbsence(page, `${size.width} desk/Trade`)))
+      } else if (route === 'office') {
+        for (const face of OFFICE_FACES) {
+          if (!(await pressFace(page.getByRole('tablist', { name: 'Office faces' }), face, `${size.width} office/${face}`, failures))) continue
           await page.waitForTimeout(400)
-          failures.push(...violations(await snapshot(page), `${size.width} desk/${face}`))
-          // ROW 37: every good card's spark is a line iff the SERVED series holds two or more points.
-          if (face === 'Goods') failures.push(...(await sparkAbsence(page, `${size.width} desk/${face}`)))
+          failures.push(...violations(await snapshot(page), `${size.width} office/${face}`))
         }
       } else if (route === 'fleets') {
         // HER PAGE IS THE ONE DETAIL (owner, 2026-10-31): every fleet row opens it, and it obeys
@@ -657,15 +658,14 @@ test('one home per fact: the captains board is Rank’s, the desk’s cargo door
 
   // THE DESK — the cargo door carries no figure; the strip keeps the acting figure
   await screen(page, 'command')
-  if (!(await pressFace(page.getByRole('tablist', { name: 'Desk faces' }), 'Goods', 'desk/Goods', failures)))
-    return expect(failures, 'the Trade face did not open').toEqual([])
+  await page.getByTestId('cargo-open').waitFor({ timeout: 60_000 })
   const door = (await page.getByTestId('cargo-open').innerText()).trim()
   if (/\d/.test(door)) failures.push(`desk/Trade: the cargo door carries a figure ("${door}") — Fleets is the home; the door must be a door`)
   const strip = (await page.getByTestId('command-line').innerText()).trim()
   if (!/\d/.test(strip)) failures.push('desk: the strip lost the acting cargo figure')
 
   // THE HALL'S FIVE FIGURES — the City screen only
-  for (const route of ['fleets', 'map', 'stats', 'rank', 'routes', 'compendium', 'you', 'profile', 'ledger', 'command']) {
+  for (const route of ['fleets', 'map', 'stats', 'rank', 'routes', 'compendium', 'you', 'profile', 'ledger', 'command', 'office']) {
     await screen(page, route)
     for (const id of ['city-population', 'city-gold', 'city-status', 'city-relationship', 'city-employees']) {
       if ((await page.getByTestId(id).count()) !== 0) failures.push(`${route} prints the hall's ${id}`)

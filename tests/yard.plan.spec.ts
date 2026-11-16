@@ -211,7 +211,7 @@ for (const glass of GLASSES) {
       await page.screenshot({ path: info.outputPath('4-hire.png') })
       await next.click()
       presses++
-      await expect(page).toHaveURL(/\/command$/)
+      await expect(page).toHaveURL(/\/office$/)
       await expect(page.getByTestId('port-inn')).toBeVisible({ timeout: 60_000 })
       await expect(page.getByTestId('inn-crew')).toBeVisible()
       expect(presses, 'the flow is four presses and a name').toBe(4)

@@ -96,9 +96,9 @@ for (const lang of LANGS) {
       await fits(page, 'Profile')
       await shot(page, `profile-${lang}-${size.width}`)
 
-      await page.goto('command')
+      // her levels stand on the You page (the desk's Levels face moved there, 2026-11-16)
+      await page.goto('you')
       await ready(page)
-      await page.getByText(translate(lang, 'command.f_levels'), { exact: true }).first().click()
       const rows = page.getByTestId('levels-country')
       await expect(rows).toHaveCount(CROWNS.length, { timeout: 60_000 })
       const printed = (await rows.allInnerTexts()).join('\n')
@@ -108,7 +108,7 @@ for (const lang of LANGS) {
       await shot(page, `levels-${lang}-${size.width}`)
 
       // her own free port: a tax of 0 is not "half: your country"
-      await page.goto('command')
+      await page.goto('office')
       await ready(page)
       await page.getByText(translate(lang, 'command.f_invest'), { exact: true }).first().click()
       const tax = page.getByTestId('townhall-your-tax')

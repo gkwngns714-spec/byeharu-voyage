@@ -43,8 +43,10 @@ interface Screen {
 }
 
 const SCREENS: Screen[] = [
-  { name: 'Command', route: 'command', faces: [[null, 'Goods'], [null, 'City'], [null, 'Invest'], [null, 'Report'], [null, 'Levels']] },
-  { name: 'City', route: 'command', faces: [[null, 'City'], ['City buildings', '*']] },
+  { name: 'Command', route: 'command' },
+  // 2026-11-16: City, Invest and Report left the Trade desk for the Office tab; Levels stand on You
+  { name: 'Office', route: 'office', faces: [[null, 'City'], [null, 'Invest'], [null, 'Report']] },
+  { name: 'City', route: 'office', faces: [[null, 'City'], ['City buildings', '*']] },
   { name: 'Production', route: 'city?place=production' },
   { name: 'Fleets', route: 'fleets' },
   { name: 'Map › Lisbon', route: 'map', open: (page) => openCityPanel(page, 'LIS', 'Lisbon') },

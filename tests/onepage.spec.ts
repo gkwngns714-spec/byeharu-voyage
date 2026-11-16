@@ -22,7 +22,7 @@ import { reachable, ready } from './appReady.fixture'
 // The City page already carried its own no-scroll proof (tests/city.page.spec.ts) and is asserted
 // here too, without touching src/features/city/** (another slice owns those files).
 
-const ROUTES = ['command', 'fleets', 'map', 'stats', 'ledger', 'rank', 'routes', 'compendium', 'profile', 'city'] as const
+const ROUTES = ['command', 'office', 'fleets', 'map', 'stats', 'ledger', 'rank', 'routes', 'compendium', 'profile', 'city'] as const
 const SIZES = [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },
@@ -214,7 +214,7 @@ for (const size of SIZES) {
       gridsMeasured += assertGrids(m.grids, size, `${route} @${size.width}`)
 
       // 3b. EVERY FACE INSIDE THE TAB, AND EVERY PAGE ITS SUMMARIES OPEN.
-      if (route === 'command') pagesMeasured += await walkFaces(page, size, /desk faces/i, ['City', 'Invest', 'Report', 'Levels', 'Goods'])
+      if (route === 'office') pagesMeasured += await walkFaces(page, size, /office faces/i, ['Invest', 'Report', 'City'])
       else if (route === 'stats') pagesMeasured += await walkFaces(page, size, null, ['News', 'Markets', 'Cities', 'Merchants', 'Me', 'Overview'])
       else pagesMeasured += await walkPages(page, size)
 

@@ -43,9 +43,7 @@ for (const size of SIZES) {
       await pressFirstPricedCard(plans)
 
       // the desk stays on Trade, and the trade is made there
-      await expect(
-        page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }),
-      ).toHaveAttribute('aria-selected', 'true')
+      await expect(page.getByTestId('desk-trade')).toBeVisible()
       const card = page.getByTestId('good-detail')
       await expect(card).toBeVisible({ timeout: 30_000 })
       await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'sail-buy')

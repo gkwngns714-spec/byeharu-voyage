@@ -389,7 +389,6 @@ test.describe('wide glass', () => {
     await page.goto('command')
     await ready(page)
     // the route and the queue are on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Trade since 2026-10-30
-    await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
     const row = page.getByTestId('route-row')
     await expect(row).toContainText(/Not open yet|No route|Route ·/)
     await page.waitForTimeout(400)
