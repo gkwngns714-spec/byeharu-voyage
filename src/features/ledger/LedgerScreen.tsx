@@ -146,6 +146,7 @@ function LedgerBody({ title }: { title: string }) {
                       <Row
                         key={event.id}
                         data-testid="ledger-row"
+                        data-kind={event.kind}
                         mark={<IconDisc name={markOf(event.kind)} />}
                         label={headline(event, portName, nationName)}
                         value={movement(event.ducats_delta)}

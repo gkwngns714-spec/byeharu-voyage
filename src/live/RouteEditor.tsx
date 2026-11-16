@@ -6,7 +6,8 @@ import { PortField } from './PortField'
 import { usePress } from './usePress'
 import { portNameOf, useWorld } from './worldStore'
 import type { FleetView, Refusal, StandingRoute } from '../lib/rpc'
-import { draftOfRoute, emptyStop, routeName, routePayload, seedRoute, type RouteStopDraft } from './standingRouteDraft'
+import { draftOfRoute, emptyStop, seedRoute, type RouteStopDraft } from './standingRouteDraft'
+import { saveAndStartRoute } from './startRoute'
 import { RouteStopBlock, StopLineRow, StopPortRow } from './RouteStop'
 import { useT } from '../lib/i18n'
 import { seaWallOf } from '../lib/rpc'
@@ -48,8 +49,6 @@ export function RouteEditor({
   const markets = useWorld((s) => s.markets)
   const goodByCode = useWorld((s) => s.goodByCode)
   const loadMarket = useWorld((s) => s.loadMarket)
-  const saveRoute = useWorld((s) => s.saveRoute)
-  const assignRoute = useWorld((s) => s.assignRoute)
   // Start / Save is busy only while ITS press is on the wire — never on the world's beat (the
   // owner, 2026-09-30: "Start route in command ... blinks occasionally on its own").
   const press = usePress()
@@ -88,24 +87,13 @@ export function RouteEditor({
     setRefusal(null)
     setNoCourse(null)
     if (!seaNav) return
-    const payload = routePayload(stops, seaNav, portByCode)
-    if (!payload.ok) {
-      setNoCourse(payload.noCourseFrom)
-      return
-    }
-    const id = await saveRoute(savedId, routeName(stops, portByCode), payload.stops)
-    if (!id) {
-      setRefusal(useWorld.getState().refusal)
-      return
-    }
-    setSavedId(id)
-    // An edit of the route this fleet already runs takes effect at the next stop; nothing to start.
-    if (route?.fleet?.id === fleet.id) {
-      onDone(true)
-      return
-    }
-    if (await assignRoute(id, fleet.id)) onDone(true)
-    else setRefusal(useWorld.getState().refusal)
+    // THE ONE PATH from a draft to a running route (startRoute.ts), shared with the arrival card's Repeat. An edit of the
+    // route this fleet already runs takes effect at the next stop; nothing to start.
+    const done = await saveAndStartRoute(stops, fleet.id, savedId, route?.fleet?.id === fleet.id)
+    if (done.id) setSavedId(done.id)
+    if (done.ok) onDone(true)
+    else if ('noCourseFrom' in done) setNoCourse(done.noCourseFrom)
+    else setRefusal(done.refusal)
   }
 
   return (

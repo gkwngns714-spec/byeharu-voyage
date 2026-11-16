@@ -359,6 +359,12 @@ export interface LiveWorld {
 let servedSnapshot: WorldSnapshot | null = null
 const servedMarkets = new Map<string, MarketView>()
 
+/** The goods AS SERVED (their names in the server's words, before the viewer's language): what a ledger event's `good`
+ *  name is, so the one way back from such a name to a good's code (standingRouteDraft.ts `tripRoute`, slice B). */
+export function servedGoods(): readonly SnapshotGood[] {
+  return servedSnapshot?.goods ?? []
+}
+
 /** The snapshot in the viewer's language, and the lookups built once from it. */
 function snapshotLookups(served: WorldSnapshot) {
   setServedClock(served.config)   // 0413: the clock's rate, ratio and anchor, into their one authority (lib/format/time.ts)

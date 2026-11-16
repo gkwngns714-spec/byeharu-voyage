@@ -8,6 +8,7 @@ import { levelName } from '../live/levelWords'
 import type { LedgerEvent, PlayerHouse } from '../lib/rpc'
 import { portNameOf, useWorld } from '../live/worldStore'
 import { ArrivalRaids } from '../live/ArrivalRaids'
+import { ArrivalRepeat } from '../live/ArrivalRepeat'
 
 // THE ARRIVAL CARD (owner row 307, the remaster's S3): a fleet comes in, sells, and the player was told nothing. One
 // card, over whatever tab is open, says what the arrival did. It reads FACTS THE SERVER ALREADY REPORTS and adds none:
@@ -20,7 +21,9 @@ import { ArrivalRaids } from '../live/ArrivalRaids'
 // It never computes profit or a level. A sale whose profit the server did not record prints the sale's total instead
 // (also served), never a guess. Arrivals that land while a card is open MERGE into it. Next goes to the Trade desk.
 // WHAT IT DOES NOT DO: announce what happened while the page was closed (nothing served says "unseen"; the first read
-// after a load is the baseline) or a sale made by pressing Sell at the quay (the Trade panel's own toast says that).
+// after a load is the baseline; the "While away" card, AwayCard.tsx, says what the routes and the purse did meanwhile) or a
+// sale made by pressing Sell at the quay (the Trade panel's own toast says that).
+// SLICE B (2026-11-16): a profitable trip between two harbours offers "Make route" (src/live/ArrivalRepeat.tsx).
 // An overlay: fixed, never in the flow, pointer-events only on the card itself; reduced motion is index.css's rule.
 
 const SHOWN_MS = 20_000
@@ -39,6 +42,10 @@ interface Arrival {
   id: string
   /** Port CODE, or null for open water. */
   to: string | null
+  /** Port CODE she sailed from, or null for open water (or a report that does not name it). */
+  from: string | null
+  /** The fleet's NAME, as the events carry it. */
+  fleet: string | null
   sales: Sale[]
 }
 
@@ -90,6 +97,8 @@ function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: Play
     return {
       id: r.id,
       to,
+      from: str(r.payload, 'from'),
+      fleet,
       sales: fresh.filter((e) => e.kind === 'SOLD' && str(e.payload, 'fleet') === fleet && str(e.payload, 'port') === to).map(saleOf),
     }
   })
@@ -127,6 +136,7 @@ export function ArrivalCard() {
   const seen = useRef<Set<string> | null>(null)
   const open = useRef(false)   // 0356: a card is on the glass (read by the store's listener, which outlives a render)
   const [logOpen, setLogOpen] = useState(false)   // 0353: a raid's log is open on the card, and the card waits
+  const [repeatHeld, setRepeatHeld] = useState(false)   // slice B: Make route is on the wire or refused, and the card waits
 
   useEffect(() => {
     let before: PlayerHouse | null = null
@@ -160,10 +170,10 @@ export function ArrivalCard() {
   }, [])
 
   useEffect(() => {
-    if (card === null || logOpen) return
+    if (card === null || logOpen || repeatHeld) return
     const id = window.setTimeout(() => setCard(null), SHOWN_MS)
     return () => window.clearTimeout(id)
-  }, [card, logOpen])
+  }, [card, logOpen, repeatHeld])
 
   useEffect(() => {
     open.current = card !== null
@@ -174,6 +184,13 @@ export function ArrivalCard() {
   const net = sales.reduce((n, s) => n + (s.figure ?? 0), 0)
   const only = card.arrivals.length === 1 ? card.arrivals[0].to : null
   const port = only ? portNameOf(portByCode, only) : null
+  // SLICE B (2026-11-16): one trip, between two harbours, sold at a served profit, may be repeated as a route
+  // (src/live/ArrivalRepeat.tsx decides the rest, once, when the card comes up).
+  const one = card.arrivals.length === 1 ? card.arrivals[0] : null
+  const repeat =
+    one && one.to && one.from && one.fleet && sales.length > 0 && sales.every((s) => s.kind === 'profit') && net > 0
+      ? { id: one.id, trip: { fleet: one.fleet, here: one.to, there: one.from } }
+      : null
   return (
     // Over the page, clear of the bar on a phone (bottom-24) and beside the rail from `lg`, centred on the page and not the window
     // (screenLayout.ts `glassBesideRailClass`, THE SHELL).
@@ -219,6 +236,7 @@ export function ArrivalCard() {
             {t('feed.repEarned', { n: formatInt(card.reputation) })}
           </p>
         )}
+        {repeat && <ArrivalRepeat key={repeat.id} trip={repeat.trip} onHold={setRepeatHeld} />}
         <div className="mt-3 flex gap-2">
           <Button
             variant="primary"
