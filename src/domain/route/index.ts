@@ -216,3 +216,6 @@ export function skippedWords(
       return t(verb === 'BUY' ? 'domain.didNotBuy' : 'domain.didNotSell', { good, at })
   }
 }
+
+// While you were away (2026-11-16, the content plan's slice B): the difference of two readings of the routes book.
+export { AWAY_MS, awayReport, parseSeenMark, routeStuck, seenMark, type AwayReport, type AwayRoute, type SeenMark } from './away'

@@ -20,7 +20,8 @@
 import { proposeCourse, sailTarget } from '../domain/passage'
 import { portsLine } from '../domain/route'
 import type { SeaNav } from '../lib/sea'
-import type { SnapshotPort, StandingRoute, StandingRouteLine, StandingRouteStopDraft } from '../lib/rpc'
+import { str } from '../lib/json'
+import type { LedgerEvent, SnapshotGood, SnapshotPort, StandingRoute, StandingRouteLine, StandingRouteStopDraft } from '../lib/rpc'
 
 /** One stop as the editor holds it. Slice 1 SHOWS: sell everything or not, and at most one BUY. */
 export interface RouteStopDraft {
@@ -64,6 +65,68 @@ export function emptyStop(port: string): RouteStopDraft {
  *  each sells what is on board and buys nothing until the player says so in the editor. */
 export function seedRoute(ports: readonly string[]): RouteStopDraft[] {
   return ports.map(emptyStop)
+}
+
+/**
+ * THE TRIP JUST SAILED, AS A ROUTE (2026-11-16, the content plan's slice B: "Repeat as a route" on the arrival card).
+ * She came in at `here` from `there` and sold. The route is the two harbours, `here` first (a route starts only from one
+ * of its own stops with her in port, cmd.standing_route_assign), each selling everything on board, and buying what she
+ * herself bought at that harbour and sold at the other one: the goods in her own BOUGHT and SOLD events (the ledger,
+ * which History prints), matched by the fleet's name and the ports' codes those events carry. A good is bought "as many
+ * as fit" with no cap, the editor's own default. Null when the trip carried nothing she bought at `there` (a cargo from
+ * somewhere else is not a trip to repeat). A good whose name is not exactly one good's is left out (the events carry
+ * the served names, the route a code). Pure: it reads the facts handed in and decides nothing the server decides.
+ */
+export function tripRoute(
+  trip: { fleet: string; here: string; there: string },
+  events: readonly LedgerEvent[],
+  servedGoods: readonly SnapshotGood[],
+): RouteStopDraft[] | null {
+  if (trip.here === trip.there) return null
+  const codeOf = goodCodesByName(servedGoods)
+  const goods = (kind: 'BOUGHT' | 'SOLD', port: string): Set<string> => {
+    const out = new Set<string>()
+    for (const e of events) {
+      if (e.kind !== kind || str(e.payload, 'fleet') !== trip.fleet || str(e.payload, 'port') !== port) continue
+      const name = str(e.payload, 'good')
+      const code = name === null ? undefined : codeOf.get(name)
+      if (code !== undefined) out.add(code)
+    }
+    return out
+  }
+  const carried = (from: string, to: string): string[] => {
+    const sold = goods('SOLD', to)
+    return [...goods('BOUGHT', from)].filter((c) => sold.has(c)).sort()
+  }
+  const out = carried(trip.there, trip.here)
+  const back = carried(trip.here, trip.there)
+  if (out.length === 0) return null
+  return [buying(trip.here, back), buying(trip.there, out)]
+}
+
+/** A stop that sells everything and buys these goods, as many as fit and with no cap: the first in the editor's one BUY,
+ *  the rest carried as further BUY lines (which the editor shows read-only, 0093 NIT 11). */
+function buying(port: string, codes: readonly string[]): RouteStopDraft {
+  const [first = null, ...rest] = codes
+  return {
+    ...emptyStop(port),
+    buyGood: first,
+    kept: rest.map((good, i) => ({ ord: i + 1, kind: 'BUY', good, qty: null, price_limit: null, at_profit: false })),
+  }
+}
+
+/** A good's SERVED name → its code, for the names that belong to exactly one good. The goods must be the served ones
+ *  (worldStore `servedGoods`): the store's `goodByCode` carries names in the viewer's language, and a ledger event the
+ *  server's. */
+function goodCodesByName(servedGoods: readonly SnapshotGood[]): Map<string, string> {
+  const map = new Map<string, string>()
+  const twice = new Set<string>()
+  for (const g of servedGoods) {
+    if (map.has(g.name)) twice.add(g.name)
+    map.set(g.name, g.code)
+  }
+  for (const n of twice) map.delete(n)
+  return map
 }
 
 /** The editor's draft of a served route — for Edit. Reads the saved lines back, and keeps every

@@ -1,5 +1,6 @@
 import { Bar } from '../../../components/ui'
 import { boundForLabel, voyageFraction, whereLine, whereabouts } from '../../../domain/fleet'
+import { routeOfFleet, routeStateWord } from '../../../domain/route'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { useShellState } from '../../../app/shellState'
@@ -34,11 +35,18 @@ import { useTradeCity } from './tradeCity'
 //            sheet never scrolls) leaves the Trade face 22 px at 390×844, and a strip of its own is 48. With `board` (the
 //            Trade face) the second line also says whose goods the board shows when it is not her port's: "Setubal · Not
 //            docked", the line that used to appear and vanish above the cards, pushing them 30 px.
+//
+// HER ROUTE, WHERE SHE IS SHOWN (2026-11-16, the content plan's slice B): a fleet that runs a standing route says so here,
+// `On route · Next lap 18:31`, in the route's own words (domain/route `routeStateWord`, as the Route row prints them). The
+// wide strip gives it a line of its own; on a phone it is the second line in port when that line is not taken by the
+// board's city (both stand in the same fixed 40 px, so neither moves anything). At sea on a phone the passage line keeps
+// the room; the Route row below says the same.
 
 export function TradeStatus({ fleet, compact = false, board = false }: { fleet: FleetView; compact?: boolean; board?: boolean }) {
   const t = useT()
   const { nowMs } = useShellState()
   const portByCode = useWorld((s) => s.portByCode)
+  const book = useWorld((s) => s.routes)
   const { dest, city } = useTradeCity(fleet)
   const nameOf = (code: string) => portNameOf(portByCode, code)
   const w = whereabouts(fleet)
@@ -48,6 +56,13 @@ export function TradeStatus({ fleet, compact = false, board = false }: { fleet: 
     : 'mb-2 flex min-h-10 flex-col justify-center gap-1 rounded-md bg-surface-2 px-3 py-1'
   const line = compact ? 'flex flex-wrap items-baseline justify-end gap-x-1.5 text-t-caption text-ink' : 'flex flex-wrap items-baseline gap-x-2 text-t-label text-ink'
   const bar = compact ? 'absolute inset-x-0 bottom-0' : ''
+  const route = book?.enabled ? routeOfFleet(book, fleet.id) : null
+  const routeLine = (cls: string) =>
+    route ? (
+      <span className={`${cls} text-ink-muted`} data-testid="trade-status-route" data-state={route.state}>
+        {t('domain.onRoute')} · {routeStateWord(route, portByCode)}
+      </span>
+    ) : null
   if (w.kind !== 'sailing') {
     // the board shows another city's goods than her port's: say so, here, where it moves nothing
     const away = compact && board && city !== null && w.kind === 'docked' && city !== w.port ? city : null
@@ -65,10 +80,12 @@ export function TradeStatus({ fleet, compact = false, board = false }: { fleet: 
             <span className="font-semibold">{whereLine(w, nameOf)}</span>
           )}
         </span>
-        {away && (
+        {away ? (
           <span className={`${line} text-ink-muted`} data-testid="trade-status-board">
             {nameOf(away)} · {t('desk.notDocked')}
           </span>
+        ) : (
+          routeLine(line)
         )}
       </div>
     )
@@ -94,6 +111,7 @@ export function TradeStatus({ fleet, compact = false, board = false }: { fleet: 
           </span>
         )}
       </span>
+      {!compact && routeLine(line)}
       {fraction !== null && <Bar pct={fraction * 100} tone="info" label={t('fleets.howFar')} className={bar} />}
     </div>
   )

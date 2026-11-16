@@ -84,6 +84,12 @@ export const feedDict = defineDict({
     repEarned: '+{n} Reputation',
     next: 'Next',
     close: 'Close',
+    // REPEAT AS A ROUTE on the arrival card (src/live/ArrivalRepeat.tsx, the content plan's slice B)
+    makeRoute: 'Make route',
+    // WHILE YOU WERE AWAY (src/app/AwayCard.tsx)
+    awayTitle: 'While away',
+    awayLaps: { one: '{n} lap', other: '{n} laps' },
+    awayMoney: 'Money',
   },
   ko: {
     heading: '돈 기록',
@@ -161,5 +167,9 @@ export const feedDict = defineDict({
     repEarned: '평판 +{n}',
     next: '다음',
     close: '닫기',
+    makeRoute: '항로 만들기',
+    awayTitle: '비운 사이',
+    awayLaps: { one: '{n}바퀴', other: '{n}바퀴' },
+    awayMoney: '돈',
   },
 })

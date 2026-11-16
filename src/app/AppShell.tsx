@@ -4,6 +4,7 @@ import { ShellStateContext } from './shellState'
 import { ShellFrame } from './ShellFrame'
 import { RebuildNotice } from './RebuildNotice'
 import { ArrivalCard } from './ArrivalCard'
+import { AwayCard } from './AwayCard'
 import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
 import { readIntervalMs } from '../domain/readClock'
@@ -105,8 +106,12 @@ export function AppShell() {
         data-world={worldPhase}
         nav={!(worldPhase === 'ready' && houseUnfounded)}
         overlay={
-          /* THE ARRIVAL CARD: an overlay over any tab (src/app/ArrivalCard.tsx); never in the flow. */
-          <ArrivalCard />
+          /* THE ARRIVAL CARD at the glass's foot and, on a return, the WHILE AWAY card at its head (src/app/ArrivalCard.tsx,
+             AwayCard.tsx): overlays over any tab, never in the flow. */
+          <>
+            <ArrivalCard />
+            <AwayCard />
+          </>
         }
       >
         {/* A world that was demolished and rebuilt says so, once, above everything — one `Note`,
