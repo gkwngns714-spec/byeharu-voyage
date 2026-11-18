@@ -1,4 +1,4 @@
--- 0455 AFTER-CHECK (the land, L1), read-only, ONE statement. Run after the deploy, and again at +10 and +30 minutes after the owner
+-- 0455 AFTER-CHECK (the land, L1), read-only, one SELECT inside `begin transaction read only; ... commit;`. Run after the deploy, and again at +10 and +30 minutes after the owner
 -- lights land_enabled:
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/land/after-l1.sql
 -- After the deploy, wanted: head 20260818000455; land_enabled false; parties 0; mining_xp_rows 0; land_ledger 0; sea_levels: the
@@ -17,3 +17,4 @@ select jsonb_build_object(
   'sea_levels', (select jsonb_agg(jsonb_build_object('code', s.code, 'side', s.side, 'curve', s.curve, 'top', public.level_top(s.code)) order by s.ord)
                    from public.level_skills s),
   'curve_top', (select max(c.xp) from public.level_curves c)) as r;
+commit;

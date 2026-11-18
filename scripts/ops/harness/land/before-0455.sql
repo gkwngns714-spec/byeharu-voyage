@@ -1,4 +1,4 @@
--- 0455 PROD CHECK, BEFORE the deploy, read-only, ONE statement:
+-- 0455 PROD CHECK, BEFORE the deploy, read-only, one SELECT inside `begin transaction read only; ... commit;`:
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/land/before-0455.sql
 -- One row, one jsonb column `r`. It reads the catalog, a few knobs and small static tables (regions, ports, goods, sea_reaches by key):
 -- no scan of a large table, no volatile function.
@@ -40,3 +40,4 @@ select jsonb_build_object(
   'mining', exists (select 1 from public.level_skills s where s.code = 'mining'),
   'secret_ok', (select length(c.value #>> '{}') >= 64 from public.world_config c where c.key = 'world_secret'),
   'level_skills', (select count(*) from public.level_skills)) as r;
+commit;
