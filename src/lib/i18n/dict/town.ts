@@ -79,6 +79,7 @@ export const townDict = defineDict({
     max: 'Max',
     costCompletes: 'Cost · finishes the level',
     cost: 'Cost',
+    dailyPay: 'Daily pay', // 0456: what the shares add to the daily coupon, an "up to"
     crewBonuses: 'Crew bonuses',
     famous: 'Famous',
     w_docks: 'Docks',
@@ -219,6 +220,7 @@ export const townDict = defineDict({
     max: '최대',
     costCompletes: '비용 · 이 단계 완성',
     cost: '비용',
+    dailyPay: '하루 배당',
     crewBonuses: '선원 보너스',
     famous: '명선',
     w_docks: '부두',

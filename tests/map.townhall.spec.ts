@@ -233,6 +233,48 @@ test('0313: a finished work still sells: Invest stands on it, with its open lot 
   await expect(page.getByTestId('townhall-work-docks')).not.toContainText('Built')
 })
 
+// 0456 (fault found in play 2026-11-18: the tray showed a price and no return): the tray says what the shares pay a day, the
+// server's `coupon_day` as "≤ +N" (the city pays it only from its surplus and the day's profit). A press keeps every row where it
+// stood (the owner's UI law: nothing re-flows on a press) and nothing scrolls sideways, on a phone and on a desk.
+for (const size of [PHONE, { width: 1280, height: 800 }]) {
+  test(`0456: the Invest tray says what the shares pay a day, and a press moves nothing (${size.width} px)`, async ({ page, request, baseURL }) => {
+    test.setTimeout(600_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+    const lit = await donateWorld()
+    await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body: lit.body, contentType: 'application/gzip' }))
+    await page.setViewportSize(size)
+    await page.goto('map')
+    await ready(page)
+
+    await openCity(page, 'LIS', 'Lisbon')
+    await page.getByTestId('map-city-tabs').getByText('Town Hall', { exact: true }).click()
+    await page.getByTestId('townhall-invest-docks').click({ timeout: 30_000 })
+    const tray = page.getByTestId('townhall-invest-tray')
+    const cost = tray.getByTestId('townhall-invest-cost')
+    const daily = tray.getByTestId('townhall-invest-daily')
+    await expect(cost).toContainText('Cost', { timeout: 30_000 })
+    await expect(daily).toContainText('Daily pay')
+    // ten shares of the finished docks (10,486 each) are more than the new company's purse: three she can pay for. The fixture's
+    // company sails for Portugal, which holds Lisbon, so hers is the holder's coupon (1.5x).
+    const less = tray.getByRole('button', { name: 'Less' })
+    for (let i = 0; i < 7; i += 1) await less.click()
+    await expect(tray.getByTestId('stepper-figure')).toHaveValue('3')
+    await expect(daily).toContainText(/≤ \+[\d,]+/, { timeout: 30_000 })
+    const before = { cost: await cost.boundingBox(), daily: await daily.boundingBox(), first: await daily.innerText() }
+
+    await less.click()
+    // the row stands while the new count is asked, and then holds the new count's figure
+    await expect(daily).not.toHaveText(before.first, { timeout: 30_000 })
+    await expect(daily).toContainText(/≤ \+[\d,]+/, { timeout: 30_000 })
+    const after = { cost: await cost.boundingBox(), daily: await daily.boundingBox() }
+    expect(after.cost?.y).toBe(before.cost?.y)
+    expect(after.daily?.y).toBe(before.daily?.y)
+    expect(after.daily?.height).toBe(before.daily?.height)
+    const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(sideways).toBeLessThanOrEqual(0)
+  })
+}
+
 test('0278 (owner row 173): the city History tab folds the months — the current one open with the served total', async ({
   page,
   request,
