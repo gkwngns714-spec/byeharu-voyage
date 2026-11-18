@@ -45,7 +45,7 @@ declare
   v_ready  timestamptz;
   v_clean  boolean := true;
   v_hulls  jsonb;
-  v_speed  numeric;
+  v_parts  jsonb;      -- her voyage.fleet_speed_parts before she leaves: the walk asks her speed of them at each departure (0454)
   v_nm     numeric;
   v_hold   numeric;
   v_cargo  numeric;
@@ -77,7 +77,9 @@ begin
   -- HER HOLD BRIMMED WITH ONE GOOD, AND THE SALE THE BOARD PRICES THROUGH A HARBOUR BETWEEN (the nearest such; the proofs must hold a course for every leg)
   for v_good in select g.id, g.code, g.bulk from public.goods g where g.bulk > 0 and floor(v_hold / g.bulk) >= 1 order by g.code loop
     update public.ships set cargo = jsonb_build_object(v_good.code, floor(v_hold / v_good.bulk)), cargo_basis = jsonb_build_object(v_good.code, 200) where id = v_sh;   -- written straight
-    continue when public.fleet_free_hold(v_fl) >= 1;   -- a good whose bulk leaves a tun free is not a brimmed hold
+    -- a good whose bulk leaves 0.3 t free is not a brimmed hold: her hull is rolled (180 t, abaca 1.4 t a unit: 0.8 t free), and dark, 0.8 t of stores
+    -- carry 20 hands over a short first leg, so the dark SAIL below was not refused (2026-11-18, one local run in three)
+    continue when public.fleet_free_hold(v_fl) >= 0.3;
     v_board := world.good_board(v_good.id, v_fl, null, null);
     select e into v_row
       from jsonb_array_elements(v_board->'sell') e
@@ -95,7 +97,7 @@ begin
     raise exception 'PROOF 70 FAIL: lit, no good brimming her hold is priced at a harbour reached through a harbour between, with supplies to buy and a course for every leg';
   end if;
   v_cargo := public.ship_cargo_tuns(v_sh);
-  if public.fleet_free_hold(v_fl) >= 1 or v_cargo < v_hold - 1 then
+  if public.fleet_free_hold(v_fl) >= 0.3 or v_cargo < v_hold - 0.3 then
     raise exception 'PROOF 70 FAIL: the probe''s hold is not brimmed: hold %, cargo %, free %', v_hold, v_cargo, public.fleet_free_hold(v_fl);
   end if;
   v_codes := array(select jsonb_array_elements_text(v_row->'stops')) || (v_row->>'port');
@@ -133,8 +135,8 @@ begin
   raise notice 'PASS: LIT_ROW_IS_THE_TRIP — % (% t in a % t hold) to % via %: supplies %, wages %, dock fees %, port time % s: the board and world.trip_cost say the same',
     v_good.code, v_cargo, v_hold, v_row->>'port', v_row->'stops', v_row->'supplies'->>'cost', v_row->>'wages', v_row->>'dock_fee', v_row->>'stop_seconds';
 
-  v_speed := greatest(voyage.fleet_speed(v_fl), 0.1);
   v_hulls := world.trip_hulls(v_fl);
+  v_parts := voyage.fleet_speed_parts(v_fl);
   select ducats into v_p from public.players where id = v_pl;
 
   -- THE TRIP, queued whole
@@ -175,7 +177,7 @@ begin
     v_p := v_q;
     -- what the sea left in her casks: the walk's own figure for this leg, and nothing else gone
     select sum((s->>'nm')::numeric) into v_nm from jsonb_array_elements(voyage.segments_from_course(v_legs->(k - 1)->'course')) s;
-    select tl.hulls into v_hulls from world.trip_leg(v_hulls, v_nm, v_speed) tl;
+    select tl.hulls into v_hulls from world.trip_leg(v_parts, v_hulls, v_nm) tl;
     v_clean := v_clean and coalesce(v_voy.delay_hours, 0) = 0
                and abs((select s.water_t from public.ships s where s.id = v_sh) - (v_hulls->0->>'water')::numeric) < 0.002;
 
