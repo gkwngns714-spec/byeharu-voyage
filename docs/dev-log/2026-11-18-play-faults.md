@@ -108,6 +108,11 @@ unchanged.
 - `tsc -b`, eslint on the changed files, `vite build`.
 - `rpc.marketClock` 1/1, `rpc.recordEdge` 3/3.
 - `news.dotSize` 2/2 (390 and 1280), `command.bestSale` 2/2.
-- The trade browser specs: see the PR body.
+- The browser specs that trade, since the market step changes every local world and no browser spec imports `init.ts` (so CI's
+  selection will not pick them):
+  - `arrival.card`, `command.buySell`, `command.sellCargo`, `desk.plan`, `trade.flow`: 17 of 18 passed. The 18th
+    (`arrival.card:87`, the raid card) was cut off by my 590 s cap and ran again in the next batch.
+  - `arrival.card:87`, `route.inReach`, `reputation`, `market.shortTray`, `levels.tiles`, `trade.home`: 22 of 22 passed.
+  - `reputation.spec.ts` took 29.3 min under two workers. I have no earlier time to compare it with.
 
 No screen pieces moved, so `duplication`, `names.whole`, `lit.screens` and `good.class` were not needed for that reason.
