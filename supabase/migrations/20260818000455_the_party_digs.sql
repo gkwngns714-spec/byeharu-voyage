@@ -50,9 +50,9 @@
 -- SELF-ASSERT: the catalog (hunks once and reversing, metadata unmoved, no other function or knob moved); the sea's levels for every
 --   experience 0 to 9,100; dark; then a probe company at Lisbon, rolled back, world_secret pinned: the home site read at fixed
 --   instants, a Collect that books trips x packs, a second Collect at the same instant that books nothing; the far site (Sea Coal by
---   Plymouth); a merchant refused. Proof 157 holds the rest (the cap, the pick, a full Storage, the gifts).
+--   Plymouth); a merchant refused. Proof 158 holds the rest (the cap, the pick, a full Storage, the gifts).
 -- ROLLBACK: land_enabled false (the knob; nothing to undo). docs/dev-log/2026-11-18-land-l1.md.
--- VERSION: 0455 (production head 0453 on 2026-11-18; 0454 is another builder's and touches none of these bodies).
+-- VERSION: 0455 (production head 0454 on 2026-11-18, rebased onto it; 0454 re-cut the trip and speed bodies and touches none of these).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$

@@ -2,7 +2,7 @@
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/land/before-0455.sql
 -- One row, one jsonb column `r`. It reads the catalog, a few knobs and small static tables (regions, ports, goods, sea_reaches by key):
 -- no scan of a large table, no volatile function.
--- BEFORE, wanted: head 20260818000453 (or 0454 once that PR is deployed); applied false; old_hunks: every count 1; new_hunks: every
+-- BEFORE, wanted: head 20260818000454; applied false; old_hunks: every count 1; new_hunks: every
 --   count 0; constraints both true; goods 57; regions 25; lis_ply 760.2 (the far trip's passage: 950 s); harbours LIS and PLY true;
 --   secret_ok true. If an old_hunks count is not 1, a migration deployed since this file was written re-cut that line: 0455 refuses.
 -- Generated from the migration's own hunks (the same text, so the check cannot drift from the file).
