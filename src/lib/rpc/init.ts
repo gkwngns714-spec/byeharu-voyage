@@ -50,7 +50,10 @@ async function choose(): Promise<BackendKind> {
   const [db, local] = await Promise.all([import('../db'), import('./localBackend')])
   const engine = await db.startLocalDb()
   setBackend(local.createLocalBackend(engine))
+  // the drift job first (every harbour's rows to the present), then the record of them; both queued before the first read
+  void local.playMarket(engine)
   void local.warmRecord(engine)
+  setInterval(() => void local.playMarket(engine), local.MARKET_EVERY_MS)
   console.info(
     `[rpc] local: PGlite in this tab, chain ${engine.fingerprint}, ` +
       `${engine.applied.length} migration(s), ready in ${engine.bootMs} ms`,

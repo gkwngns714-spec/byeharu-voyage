@@ -15,7 +15,7 @@ import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
 import { clearBackend, createLocalBackend, setBackend, worldPriceSeries } from '../src/lib/rpc'
-import { RECORD_PLAN_SQL } from '../src/lib/rpc/localBackend'
+import { RECORD_PLAN_SQL, recordSqlAt } from '../src/lib/rpc/localBackend'
 
 /** The edge job's budget. Steered: ~0.3 s native here. Unsteered: ~9 s native — over this on any runner. */
 const EDGE_BUDGET_MS = 3_000
@@ -86,4 +86,29 @@ test('a record read right after a slot edge answers inside the budget, and recor
   const kept = await db.pg.query<{ n: number }>('select count(*)::int as n from public.price_history where slot = public.drift_slot_of(now())')
   expect(kept.rows[0].n, 'the read played the job: the present slot holds the record').toBeGreaterThan(0)
   expect(ms, `the first record read after an edge held the tab's one queue for ${ms} ms`).toBeLessThan(EDGE_BUDGET_MS)
+})
+
+// THE RECORD REACHES A SLOT BACK ACROSS AN EDGE (2026-11-18, docs/dev-log/2026-11-18-play-faults.md). tests/news.dotSize.spec.ts at 1280 went
+// red once on CI (run 43784696446): the tab booted 3 s before a slot edge and first read the record 1.5 s after it. The boot's call wrote slot N;
+// the read's call wrote slot N+1 and, under the old rule ("copy the present slot back while the previous slot is empty"), copied nothing, slot N
+// being that previous slot; and no later call ever did. The record began at the boot (two points 4.5 s apart, the trace's own chart), so every
+// chart started after anything that happened before the tab opened and its news had no dot. The tab's own clock is fixed here to that edge.
+test('across a slot edge at boot, the tab\'s record still reaches a slot back', async () => {
+  test.setTimeout(120_000)
+  await db.pg.query('begin')
+  try {
+    const edge = (await db.pg.query<{ e: string }>(`select public.clock_start('drift_slot', public.drift_slot_of(now()) + 1)::text as e`)).rows[0].e
+    const at = (s: number) => `('${edge}'::timestamptz + make_interval(secs => ${s}))`
+    // the boot (3 s before the edge), the first record read (1.5 s after), and the next read the backend lets through (RECORD_EVERY_MS on)
+    for (const s of [-3, 1.5, 31.5]) await db.pg.query(recordSqlAt(at(s)))
+    const r = await db.pg.query<{ back: number; recent: number }>(
+      `select count(*) filter (where h.at <= ${at(31.5)} - make_interval(secs => public.wc_num('drift_slot_seconds')::double precision))::int as back,
+              count(*)::int as recent
+         from public.price_history h where h.slot >= public.drift_slot_of(${at(31.5)}) - 2`,
+    )
+    expect(r.rows[0].recent, 'the boot and the read recorded the market (non-vacuous)').toBeGreaterThan(0)
+    expect(r.rows[0].back, 'the record begins at the boot: nothing in it is a slot old').toBeGreaterThan(0)
+  } finally {
+    await db.pg.query('rollback')
+  }
 })

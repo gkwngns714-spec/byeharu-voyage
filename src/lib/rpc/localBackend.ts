@@ -57,26 +57,41 @@ const RECORD_EVERY_MS = 30_000
 export const RECORD_PLAN_SQL = `set_config('join_collapse_limit', '1', true)`
 
 /** The snapshot job, as this tab plays it: the present slot (the job's own function, only when the slot
- *  holds nothing), and — until the previous slot holds something too — a copy of the present slot one
- *  slot back, so a fresh record has a line to draw ("the market as it stands"). Since 0226 the chain's
- *  own apply writes the present slot (its backfill run), so a world image built minutes ago holds one
- *  slot, and one point is not a line (tests/layout.spec.ts, the Trend row). The planner setting comes
- *  first by CASE's own evaluation order (each WHEN in turn), so the job is planned under it. */
-const RECORD_SQL = `with t as (
+ *  holds nothing), and — until the record reaches one slot's length back — a copy of the start of the
+ *  recent record one slot further back, so a fresh record has a line to draw ("the market as it stands").
+ *  Since 0226 the chain's own apply writes the present slot (its backfill run), so a world image built
+ *  minutes ago holds one slot, and one point is not a line (tests/layout.spec.ts, the Trend row). The
+ *  planner setting comes first by CASE's own evaluation order (each WHEN in turn), so the job is planned
+ *  under it.
+ *
+ *  THE SLOT EDGE (2026-11-18, docs/dev-log/2026-11-18-play-faults.md; tests/news.dotSize.spec.ts at 1280 red
+ *  once on CI). The copy used to be "the present slot, while the previous slot holds nothing". A copy never
+ *  sees the rows the same statement's snapshot writes, so the boot's call writes the present slot and the
+ *  NEXT call copies it back. A tab that booted seconds before a slot's edge wrote slot N at boot and read
+ *  in slot N+1: slot N, the new "previous slot", was not empty, so nothing was ever copied back, and the
+ *  record began at the boot (two points 4.5 s apart on CI, run 43784696446). Every chart then started
+ *  after anything that happened before the tab opened, and world.news_marks, asked from the record's
+ *  first minute, gave its news no dot. The condition is now the one the line needs, read by time: no row
+ *  of the last two slots is a slot's length old. `clock` is the SQL instant (now() in the tab; a spec
+ *  fixes it to reproduce an edge). */
+export const recordSqlAt = (clock: string) => `with t as (
     select case when ${RECORD_PLAN_SQL} is null then null
-                when not exists (select 1 from public.price_history where slot = public.drift_slot_of(now()))
-                then public.tick_price_snapshot(now()) end as r
+                when not exists (select 1 from public.price_history where slot = public.drift_slot_of(${clock}))
+                then public.tick_price_snapshot(${clock}) end as r
   ), c as (
     insert into public.price_history (port_id, good_id, slot, at, mid, stock, ask, bid)
     select h.port_id, h.good_id, h.slot - 1, h.at - make_interval(secs => public.wc_num('drift_slot_seconds')::double precision),
            h.mid, h.stock, h.ask, h.bid
       from public.price_history h
-     where h.slot = public.drift_slot_of(now())
-       and not exists (select 1 from public.price_history p where p.slot = public.drift_slot_of(now()) - 1)
+     where h.slot = (select min(r.slot) from public.price_history r where r.slot >= public.drift_slot_of(${clock}) - 1)
+       and not exists (select 1 from public.price_history p
+                        where p.slot >= public.drift_slot_of(${clock}) - 2
+                          and p.at <= ${clock} - make_interval(secs => public.wc_num('drift_slot_seconds')::double precision))
     on conflict (port_id, good_id, slot) do nothing
     returning 1
   )
   select t.r as result from t`
+const RECORD_SQL = recordSqlAt('now()')
 
 /** Play the snapshot job ONCE at boot, before the app's first read is queued. The world image is built
  *  minutes (in CI, a quarter-hour) before a tab opens it, so the present slot is usually empty and the
@@ -106,6 +121,30 @@ const STATS_READS: readonly RpcName[] = [
   'worldStatsFleet',
   'worldHistory',
 ]
+
+// AND THE MARKET (2026-11-18, docs/dev-log/2026-11-18-play-faults.md). On Supabase byeharu-voyage:drift steps every
+// harbour's market rows each minute (public.tick_market_drift_each_port: the drift, and the stock regenerated over the game
+// days passed); in this tab nothing did, so a harbour's rows moved only when its own market was read (world.market ticks
+// that one quay). Every other harbour kept the stock the world image was built with, hundreds of game days behind:
+// world.quote priced a sale at Setubal from that stale stock (cinnamon 1,116 a unit, the card "+22,416"), and the sale,
+// on rows caught up by then, paid 680 a unit (+617). The card, the plan and the sale already share world.quote; what
+// differed was the row it read. So the tab plays THE SAME STEP the job's runs add up to — public.tick_market_drift for
+// every harbour (the job splits it one harbour a transaction, which a CALL inside this tab's transaction cannot do) —
+// once at boot, before the app's first read, and then every minute, as the job does. Idempotent by slot and game day:
+// a call with nothing due changes nothing. The cloud backend does nothing of the kind, because the job does. Node specs
+// that build this backend themselves are not affected: only the app's own boot (src/lib/rpc/init.ts) runs it.
+
+/** How often this tab plays the drift job: the job's own schedule on Supabase (every minute). */
+export const MARKET_EVERY_MS = 60_000
+const MARKET_SQL = 'select public.tick_market_drift(now()) as result'
+
+/** Play the drift job once: every harbour's rows brought to the present slot and game day. */
+export function playMarket(db: Pick<LocalCaller, 'callAs'>): Promise<void> {
+  return db.callAs<unknown>(MARKET_SQL).then(
+    () => undefined,
+    (err: unknown) => console.warn('[rpc] local: the market step failed; the next minute plays it again', err),
+  )
+}
 
 // AND THE BATTLES (0364, the map's rings). On Supabase byeharu-voyage:battles fights every round that is due, each minute
 // (public.tick_battles, 0323 / 0357); in this tab nothing does, so a battle somebody else is in would never move for a
