@@ -24,7 +24,8 @@
 // delays on one short hop (rare; the message below says she is still under way) or a card that never came (a bug; the
 // message says she lies in port).
 //
-// tests/trade.flow.spec.ts (PR #600) carries its own `LANDS_WITHIN_MS = 480_000`: it should import this one after it merges.
+// tests/trade.flow.spec.ts and tests/reputation.spec.ts carried their own 480 s waits, under one voyage-day after 0413 (one calm
+// is 450 s or more); both ran out with no landing (2026-11-15, 2026-11-18) and now wait here.
 //
 // 0413 (2026-11-14, a game day is one real hour): `time_compression` is 192 and a voyage-day 450 real seconds, so
 // every real-time figure above is five times as long (a near trip 45 s; one calm 450 to 1,800 s). The wait below is

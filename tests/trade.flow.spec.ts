@@ -3,6 +3,10 @@ import { boundFor } from '../src/domain/order'
 import { MINUS, formatDaysReal, formatRealShort, formatVoyageDays, moneyFigure, moneyWord, voyageDaysToRealMs } from '../src/lib/format'
 import type { FleetView, QueuedOrder } from '../src/lib/rpc'
 import { closeDetail, openDetail, ready } from './appReady.fixture'
+// HOW LONG A NEAR TRIP MAY TAKE TO LAND: the fixture's ten voyage-days (a calm or a storm costs one or more, 450 real seconds
+// each since 0413). CI met a delay on 2026-11-12 (run 43137152187, a 300-second wait) and a 480-second wait ran out
+// on 2026-11-15.
+import { LANDING_TEST_TIMEOUT_MS, LANDS_WITHIN_MS } from './arrivalWait.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE'S FLOW, FIVE LAWS (2026-11-11, the trade-flow slice; docs/dev-log/2026-11-11-trade-flow-1.md, SUCCESS_PLAN §A)
@@ -121,15 +125,8 @@ const GLASSES = [
   { width: 1280, height: 800 },
 ] as const
 
-/** HOW LONG A NEAR TRIP MAY TAKE TO LAND. The passage itself is seconds (0.1 voyage-days at 90 real seconds a day), but the sea
- *  may delay any voyage: a calm adds 1 to 4 voyage-days and a storm 1.5 (`voyage.day_delay_hours`, DESIGN B.6), so the served
- *  arrival can stand up to 6 real minutes out from the moment she leaves. CI met one on 2026-11-12 (run 43137152187, ko-KR at
- *  390: the line read "arrives 02:28 · 5분" seventeen seconds after she sailed, and a 300-second wait ran out 31 seconds before
- *  she landed). The wait is the worst served delay and a margin, not a guess at the usual one. */
-const LANDS_WITHIN_MS = 480_000
-
 async function openTrade(page: Page) {
-  test.setTimeout(900_000)
+  test.setTimeout(LANDING_TEST_TIMEOUT_MS)
   await page.goto('command')
   await ready(page)
   await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
