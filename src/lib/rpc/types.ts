@@ -3260,6 +3260,8 @@ export interface InvestReceipt {
   level: number
   subscribed: number
   purse: number
+  /** 0456: what this buy adds to the daily coupon (`public.coupon_day_of`); an "up to": the city pays it only from its surplus and the day's profit. */
+  coupon_day: number
 }
 
 // ── 0152: a wreck is towed to a shipyard ───────────────────────────────────────────────────────

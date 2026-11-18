@@ -6,7 +6,7 @@ import { useTownHall } from './useTownHall'
 import { useWorld } from './worldStore'
 import { cmdInvest, cmdPreviewInvest, ok } from '../lib/rpc'
 import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallGift, TownHallView } from '../lib/rpc'
-import { formatDucats, formatInt, formatPct, formatRelative } from '../lib/format'
+import { formatDucats, formatDucatsDelta, formatInt, formatPct, formatRelative } from '../lib/format'
 import { useShellState } from '../app/shellState'
 import { FundsOnWay } from './FundsOnWay'
 import { FineRow, WantedRow } from './FineRow'
@@ -318,14 +318,20 @@ function InvestTray({
           data-testid="townhall-invest-stepper"
         />
       </div>
-      {estimate && (
-        <Row
-          label={t(estimate.completed ? 'town.costCompletes' : 'town.cost')}
-          value={<Figure value={formatDucats(estimate.cost)} />}
-          hairline={false}
-          data-testid="townhall-invest-cost"
-        />
-      )}
+      {/* Both rows stand while the dry run of a new count is asked ("—"), so a press never re-flows the tray. */}
+      <Row
+        label={t(estimate?.completed ? 'town.costCompletes' : 'town.cost')}
+        value={<Figure value={estimate ? formatDucats(estimate.cost) : '—'} />}
+        hairline={false}
+        data-testid="townhall-invest-cost"
+      />
+      {/* 0456: what these shares add to the daily coupon (served, `coupon_day`); the city pays it only from its surplus and the day's profit, so "up to". */}
+      <Row
+        label={t('town.dailyPay')}
+        value={<Figure value={estimate ? `≤ ${formatDucatsDelta(estimate.coupon_day)}` : '—'} tone={estimate ? 'success' : 'ink'} />}
+        hairline={false}
+        data-testid="townhall-invest-daily"
+      />
       {shown && (
         <Note tone="danger" code={shown.code} figures={shown.figures}>
           {shown.sentence}
