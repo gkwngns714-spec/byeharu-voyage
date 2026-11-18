@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Bar, Icon, Note, Tile, Tray, type TrayDetent } from '../components/ui'
+import { Bar, GroupHeading, Icon, Note, Tile, Tray, type TrayDetent } from '../components/ui'
 import { formatInt, formatRelative } from '../lib/format'
 import { translateMaybe, useLocale, useT } from '../lib/i18n'
 import type { LevelSkill, LevelSkillsCard } from '../lib/rpc'
 import { useShellState } from '../app/shellState'
-import { activityLine, everyLevelLine, levelFill, levelGives, levelMark, levelName, perksNow } from './levelWords'
+import { activityLine, everyLevelLine, giftAt, levelFill, levelGives, levelMark, levelName, perksNow } from './levelWords'
 
 // THE LEVELS, AS TILES (0411, docs/LEVELS.md; the owner, 2026-11-14: "like rs3, i want diverse skills related to this game" and
 // "with exp table, exp info, with benefits when leveling up, what activity needs done etc.").
@@ -30,14 +30,15 @@ function Mark({ code, size = 20 }: { code: string; size?: number }) {
   )
 }
 
-/** The Reputation of the next level, from the served gift a level (the `gift` benefit): gift x (level + 1). 0: none, or the top level. */
+/** The Reputation of the next level, from the served gift (the `gift` benefit) and the skill's `gift_every` (giftAt). 0: none, the top. */
 const nextGift = (s: LevelSkill): number => {
   if (s.next_at === null) return 0
   const g = s.benefits.find((b) => b.level === null && b.kind === 'gift')
-  return g && g.kind === 'gift' ? g.n * (s.level + 1) : 0
+  return g && g.kind === 'gift' ? giftAt(g.n, s.level + 1, s.gift_every ?? 1) : 0
 }
 
-/** Every level as a tile, two to a line (the You page's levels card, 2026-11-16). */
+/** Every level as a tile, two to a line (the You page's levels card, 2026-11-16). 0455: while the land is lit the card serves land
+ *  skills too, and the tiles stand in two groups, Sea and Land, each tile saying its own top in its tray. Dark, one group as before. */
 export function LevelTiles({
   card,
   selected,
@@ -48,10 +49,35 @@ export function LevelTiles({
   onSelect: (code: string) => void
 }) {
   const t = useT()
+  const sea = card.skills.filter((s) => s.side !== 'land')
+  const land = card.skills.filter((s) => s.side === 'land')
+  if (land.length === 0) return <TileGroup skills={sea} selected={selected} onSelect={onSelect} testid="level-tiles" />
+  return (
+    <>
+      <GroupHeading>{t('command.lvSea')}</GroupHeading>
+      <TileGroup skills={sea} selected={selected} onSelect={onSelect} testid="level-tiles" />
+      <GroupHeading className="mt-3">{t('command.lvLand')}</GroupHeading>
+      <TileGroup skills={land} selected={selected} onSelect={onSelect} testid="level-tiles-land" />
+    </>
+  )
+}
+
+function TileGroup({
+  skills,
+  selected,
+  onSelect,
+  testid,
+}: {
+  skills: readonly LevelSkill[]
+  selected: string | null
+  onSelect: (code: string) => void
+  testid: string
+}) {
+  const t = useT()
   const locale = useLocale()
   return (
-    <div className="grid grid-cols-2 gap-2" data-testid="level-tiles">
-      {card.skills.map((s) => {
+    <div className="grid grid-cols-2 gap-2" data-testid={testid}>
+      {skills.map((s) => {
         const name = levelName(locale, s.code, s.word)
         const gift = nextGift(s)
         const on = selected === s.code
@@ -111,10 +137,13 @@ export function LevelDetail({ card, skill, titled = true }: { card: LevelSkillsC
   const locale = useLocale()
   const { nowMs } = useShellState()
   const name = levelName(locale, skill.code, skill.word)
-  const every = skill.benefits.map((b) => everyLevelLine(locale, b, name)).filter((x): x is string => x !== null)
+  const every = skill.benefits.map((b) => everyLevelLine(locale, b, name, skill.gift_every ?? 1)).filter((x): x is string => x !== null)
   // 0417: her level's own benefits as they stand now (the served step at her level), or the level each begins at
   const now = perksNow(locale, skill.level, skill.benefits)
-  const levels = Array.from({ length: card.top }, (_, i) => i + 1)
+  // 0455: a skill's own top and table (a land skill runs to 100 on its own curve); the card's are the sea's
+  const top = skill.top ?? card.top
+  const curve = skill.curve ?? card.curve
+  const levels = Array.from({ length: top }, (_, i) => i + 1)
   return (
     <section className="min-w-0" data-testid="level-detail" data-level-code={skill.code}>
       {titled && (
@@ -151,9 +180,12 @@ export function LevelDetail({ card, skill, titled = true }: { card: LevelSkillsC
       )}
       {skill.kept === 'record' ? null : (
         <>
-          <span className="mt-1 block text-t-caption text-ink-muted" data-testid="level-detail-today">
-            {t('command.lvTodayCap', { a: formatInt(skill.today ?? 0), b: formatInt(skill.cap ?? 0) })}
-          </span>
+          {/* 0455: a land skill has no limit a day (its job's clock is its limit): no "today against the cap" line */}
+          {skill.cap !== null && (
+            <span className="mt-1 block text-t-caption text-ink-muted" data-testid="level-detail-today">
+              {t('command.lvTodayCap', { a: formatInt(skill.today ?? 0), b: formatInt(skill.cap) })}
+            </span>
+          )}
           <Heading>{t('command.lvRecent')}</Heading>
           {skill.recent === null || skill.recent.length === 0 ? (
             <span className="block text-t-caption text-ink-faint">{t('command.lvNoRecent')}</span>
@@ -223,7 +255,7 @@ export function LevelDetail({ card, skill, titled = true }: { card: LevelSkillsC
           {levels.map((l) => {
             const mine = l === skill.level
             const next = l === skill.level + 1
-            const gives = levelGives(locale, l, skill.benefits)
+            const gives = levelGives(locale, l, skill.benefits, skill.gift_every ?? 1)
             return (
               <tr
                 key={l}
@@ -238,7 +270,7 @@ export function LevelDetail({ card, skill, titled = true }: { card: LevelSkillsC
                   {next && <span className="block text-accent">{t('command.lvNext')}</span>}
                 </td>
                 <td className="py-1 text-right tabular-nums">
-                  {formatInt(card.curve[l - 1] ?? 0)}
+                  {formatInt(curve[l - 1] ?? 0)}
                   {next && skill.next_at !== null && (
                     <span className="block whitespace-nowrap text-accent" data-testid="level-row-togo">
                       {t('command.lvLeft', { n: formatInt(Math.ceil(skill.next_at - skill.points)) })}

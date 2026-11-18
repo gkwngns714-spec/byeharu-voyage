@@ -228,6 +228,9 @@ export interface SnapshotConfig {
   /** The radius the reach table and the trade scan work in. The two advice bands that used to sit
    *  beside it left with the comparison itself in 0071 — there is no cut left to agree with. */
   neighbour_radius_nm: number
+  /** 0455: THE LAND'S SWITCH (world_config land_enabled). False: the Land tab is not on the bar and every land door refuses.
+   *  Absent before 0455. */
+  land_enabled?: boolean
 }
 
 export interface VerbArg {
@@ -4415,6 +4418,14 @@ export interface LevelSkill extends LevelCut {
   activities: LevelActivity[]
   benefits: LevelBenefit[]
   recent: Array<{ activity: string; xp: number; at: string }> | null
+  /** 0455: sea (the sea game's levels) or land (a land skill, served only while the land is lit). Absent before 0455. */
+  side?: 'sea' | 'land'
+  /** 0455: this skill's top level (20 on the short curve, 100 on the long). Absent before 0455: the card's `top`. */
+  top?: number
+  /** 0455: the Reputation gift is paid every this many levels (1 at sea, 5 on land), n x level / gift_every. */
+  gift_every?: number
+  /** 0455: a long skill's own experience table, `curve[L - 1]` where level L begins; null for a short skill (the card's `curve`). */
+  curve?: number[] | null
 }
 
 /** 0411: `public.level_skills_card`. `curve[L - 1]` is the experience at which level L begins, up to `top`. */
@@ -4859,4 +4870,133 @@ export interface BattleEndReceipt {
   ok: true
   status: 'FIGHTING' | 'RESOLVED' | 'BROKEN_OFF'
   resolves_at: string
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// 0455 — THE LAND (docs/design/land-2026-11.md; `world.land(skill)` and the four land doors)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** A refusal value as the server builds it (`cmd.refusal`): the code, the sentence, and have / need when it is arithmetic. */
+export interface ServedLandRefusal {
+  code: string
+  sentence: string
+  figures?: { have: number; need: number; unit: string }
+}
+
+/** Where the party is, from `public.land_progress` at the read's instant. `turns` are turns home since the job's clock began;
+ *  `new` those not yet booked (what Collect will bring); `in_packs` what it carries now. */
+export interface LandProgress {
+  state: 'home' | 'out' | 'returning'
+  phase: 'home' | 'out' | 'march' | 'digging' | 'back' | 'in' | 'returning'
+  turns: number
+  new: number
+  in_packs: number
+  waiting: number
+  trip?: number
+  u?: number
+  trips?: number
+  next_home_at?: string | null
+  home_at?: string
+  stopped?: boolean
+  stop_at?: string
+}
+
+/** The terms a job was sent on (`public.land_terms`, frozen at Send): seconds a turn, the march, the passage each way, the packs,
+ *  experience a turn, the chance of a second unit (per cent), the trip, and once called home when it is home and what it carries. */
+export interface LandTerms {
+  action: string
+  skill: string
+  level: number
+  a: number
+  m: number
+  s: number
+  p: number
+  xp: number
+  crowd: number
+  trip: number
+  home: boolean
+  via: string | null
+  nm: number | null
+  tool: number
+  sent: number
+  home_at?: string
+  carry?: number
+}
+
+/** One job of a skill for this company, as `public.land_terms` judges it now. */
+export interface LandJob {
+  code: string
+  good: string
+  level: number
+  open: boolean
+  short: ServedLandRefusal | null
+  home: boolean
+  region: string | null
+  via: string | null
+  nm: number | null
+  s: number
+  a: number
+  m: number
+  p: number
+  xp: number
+  crowd: number
+  trip: number
+  over_cap: boolean
+  sold_at: string[]
+}
+
+export interface LandTool {
+  code: string
+  tool: string
+  speed_pct: number
+  price: number
+  owned: boolean
+}
+
+/** 0455: `world.land(skill)`, the Land tab's one read. Dark: `{enabled: false}` and nothing else. */
+export type LandView =
+  | { enabled: false }
+  | { enabled: true; company: false }
+  | {
+      enabled: true
+      company: true
+      now: string
+      purse: number
+      home: { port: string; name: string; region: string }
+      away_hours: number
+      regions: Record<string, string>
+      party: {
+        action: string | null
+        good: string | null
+        region: string | null
+        terms: LandTerms | null
+        started_at: string | null
+        progress: LandProgress
+        waiting: number
+        waiting_good: string | null
+        xp_due: number
+        tools: string[]
+      }
+      skill: LevelCut & { code: string; top: number }
+      jobs: LandJob[]
+      stored: Record<string, number>
+      tools: LandTool[]
+      site: { region: string | null; parties: Array<{ company: string; from: string; mine: boolean; phase: LandProgress['phase'] }> }
+    }
+
+/** 0455: a land door's answer. Send: the trip and when it is home; Collect: what was booked; Call home: when it is home; a tool: its price. */
+export interface LandDone {
+  ok: true
+  action?: string
+  trip?: number
+  home_at?: string
+  carry?: number
+  turns?: number
+  units?: number
+  waiting?: number
+  xp?: number
+  good?: string | null
+  tool?: string
+  price?: number
+  purse?: number
 }

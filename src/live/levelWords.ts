@@ -36,6 +36,16 @@ const MARKS: Record<string, LevelMark> = {
   investment: { icon: 'stats' },
   // a hull turning away, her wake behind her (0453)
   evasion: { paths: ['M14.5 3.5 20.5 9.5 16 14 10 8Z', 'M10.5 12.5 6 17', 'M8 10 3.5 14.5', 'M13 15 8.5 19.5'] },
+  // 0455: the land's first skill, the kit's pick (the Land tab's own mark)
+  mining: { icon: 'pick' },
+}
+
+/** THE REPUTATION A LEVEL PAYS, by the served gift (`n`, rep_level_per_level) and the skill's `gift_every` (0455): a sea level pays
+ *  n x L at every level; a land skill pays n x L / every at every `every`-th level and nothing between (public.level_grant's rule,
+ *  served as the two figures). 0 at level 1. The ONE reading the tiles, the tray's "every level" line and its table use. */
+export function giftAt(n: number, level: number, every = 1): number {
+  if (level < 2 || level % every !== 0) return 0
+  return (n * level) / every
 }
 
 export function levelMark(code: string): LevelMark {
@@ -69,9 +79,10 @@ export function activityLine(locale: Locale, a: LevelActivity): string {
 }
 
 /** A benefit of EVERY level, as a sentence (`level` null). */
-export function everyLevelLine(locale: Locale, b: LevelBenefit, name: string): string | null {
+export function everyLevelLine(locale: Locale, b: LevelBenefit, name: string, every = 1): string | null {
   if (b.level !== null) return null
-  if (b.kind === 'gift') return translate(locale, 'command.lvGiveGift', { n: formatInt(b.n) })
+  if (b.kind === 'gift')
+    return every > 1 ? translate(locale, 'command.lvGiveGiftEvery', { n: formatInt(b.n), every }) : translate(locale, 'command.lvGiveGift', { n: formatInt(b.n) })
   return translate(locale, 'command.lvGiveCaptains', { name })
 }
 
@@ -94,12 +105,12 @@ export function perksNow(locale: Locale, level: number, benefits: readonly Level
 }
 
 /** What ONE level gives, as short phrases: its Reputation gift first, then what the rules give at that level. */
-export function levelGives(locale: Locale, level: number, benefits: readonly LevelBenefit[]): string[] {
+export function levelGives(locale: Locale, level: number, benefits: readonly LevelBenefit[], every = 1): string[] {
   const out: string[] = []
   if (level < 2) return out
   for (const b of benefits) {
     if (b.level === null) {
-      if (b.kind === 'gift') out.push(translate(locale, 'command.lvGiftAt', { n: formatInt(b.n * level) }))
+      if (b.kind === 'gift' && giftAt(b.n, level, every) > 0) out.push(translate(locale, 'command.lvGiftAt', { n: formatInt(giftAt(b.n, level, every)) }))
       continue
     }
     if (b.level !== level) continue

@@ -35,6 +35,7 @@ export const ICON_NAMES = [
   'cask',
   'crew',
   'mallet',
+  'pick',
   // The seven trade-good CATEGORIES. Not a good's own mark any more — the fallback, for a good
   // that arrives from a migration before anyone has drawn it. See goodIcons.ts.
   'spice',
@@ -218,6 +219,8 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   cask: ['M7.5 4.5h9', 'M7.5 19.5h9', 'M7.5 4.5C5.5 8 5.5 16 7.5 19.5', 'M16.5 4.5c2 3.5 2 11.5 0 15', 'M4.8 9h14.4', 'M4.8 15h14.4'],
   crew: ['M8.5 4.2a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2Z', 'M2.8 19a5.7 5.7 0 0 1 11.4 0', 'M16 5.2a2.4 2.4 0 1 1 0 4.8', 'M16.6 13.6A5.7 5.7 0 0 1 21.2 19'],
   mallet: ['M13.5 3.2 20.8 10.5l-3 3-7.3-7.3 3-3Z', 'M10.8 8.9 3.4 16.3a2.2 2.2 0 0 0 3.1 3.1l7.4-7.4'],
+  // 0455: a miner's pick, the Land tab's mark (docs/design/land-2026-11.md 6.7): the head's arc and the haft
+  pick: ['M3.5 9.5C7.5 5.2 14.5 4.2 20.5 7', 'M12.4 5.6 8.5 20.5'],
 
   // ── THE SEVEN CATEGORY MARKS — now the FALLBACK, not the answer ───────────────────────────────
   // Every good in `data/goods.json` has its own mark below. These seven remain because a good can

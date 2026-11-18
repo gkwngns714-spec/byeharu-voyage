@@ -24,6 +24,7 @@ import { CompendiumScreen } from '../features/compendium/CompendiumScreen'
 import { CityScreen } from '../features/city/CityScreen'
 import { ProfileScreen } from '../features/profile/ProfileScreen'
 import { YouScreen } from '../features/you/YouScreen'
+import { LandScreen } from '../features/land/LandScreen'
 
 // THE ROUTE TABLE. One destination per tab (src/app/navTabs.ts is the tab table; these are the
 // routes it names) under the ONE persistent shell. Everything authenticated sits inside
@@ -97,6 +98,8 @@ export function App() {
               is gone; an old link to it opens the Office tab's City face, where every building it carried now is. */}
           <Route path="/port" element={<PortMovedToCity />} />
           <Route path="/map" element={<MapScreen />} />
+          {/* 0455: the Land tab. Its cell is on the bar only while the world serves land_enabled; dark, this route prints "Not open yet." */}
+          <Route path="/land" element={<LandScreen />} />
           <Route path="/stats" element={<StatsScreen />} />
           <Route path="/ledger" element={<LedgerScreen />} />
           <Route path="/rank" element={<RankScreen />} />

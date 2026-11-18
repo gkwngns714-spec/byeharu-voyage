@@ -142,6 +142,8 @@ import type {
   RoomBought,
   StarterBought,
   StarterGear,
+  LandView,
+  LandDone,
   FleetRenamed,
   FineReceipt,
   TaxSet,
@@ -974,6 +976,32 @@ export function worldStarterGear(fleetId: string | null): Promise<RpcResult<Star
 /** Buy a starter piece and fit it on a ship of the fleet (0424). The fleet must be docked at a harbour; the server judges the rest. */
 export function cmdBuyStarter(fleetId: string, shipId: string, item: string): Promise<RpcResult<StarterBought>> {
   return call<StarterBought>('cmdBuyStarter', [fleetId, shipId, item])
+}
+
+/** The Land tab's one read (0455): the party, the skill's jobs as the server judges them now, the home Storage, the tools, who is
+ *  on the land. Dark: `{enabled: false}`. */
+export function worldLand(skill: string): Promise<RpcResult<LandView>> {
+  return call<LandView>('worldLand', [skill])
+}
+
+/** Send the party on a job (0455). The server settles first and judges the level, the land's reach and whether the party is home. */
+export function cmdLandSend(action: string): Promise<RpcResult<LandDone>> {
+  return call<LandDone>('cmdLandSend', [action])
+}
+
+/** Collect what has come home (0455): goods into the home Storage, experience into the skill. */
+export function cmdLandCollect(): Promise<RpcResult<LandDone>> {
+  return call<LandDone>('cmdLandCollect', [])
+}
+
+/** Call the party home (0455): it turns back where it is with what it carries. */
+export function cmdLandHome(): Promise<RpcResult<LandDone>> {
+  return call<LandDone>('cmdLandHome', [])
+}
+
+/** Buy a tool for the party at the home city (0455). */
+export function cmdLandTool(tool: string): Promise<RpcResult<LandDone>> {
+  return call<LandDone>('cmdLandTool', [tool])
 }
 
 /** Rename a fleet of yours (0354). The name's rules are the server's: 3 to 24 letters, not one you already use. */

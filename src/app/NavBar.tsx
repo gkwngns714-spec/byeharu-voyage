@@ -1,8 +1,9 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon, NAV_TRAY_CEILING, Nav, Row, TapAway, Tray, navTrayAnchorClass, useWide, type NavItem, type TrayDetent } from '../components/ui'
-import { navCells, navWord, tabHref } from './navTabs'
+import { navCells, navWord, tabHref, type LitSwitches, type ServedSwitch } from './navTabs'
 import { useT, useLocale } from '../lib/i18n'
+import { useWorld } from '../live/worldStore'
 
 // THE ONE navigation. Extracted from AppShell so it can be RENDERED AND MEASURED on its own at a
 // phone viewport without booting the shell — a number in a comment is not a measurement, and
@@ -100,7 +101,10 @@ export function NavBar() {
 
   // THE BAR'S CELLS OR THE RAIL'S (navTabs.ts `navCells`): from `lg` You and Stats are their own cells on the rail
   // and leave the Menu; on a phone the bar keeps its five and they stay in it. One table, read for this glass.
-  const cells = navCells(useWide())
+  // 0455: a tab behind a served switch (the Land: `land_enabled`) is on the bar only while the world serves it true.
+  const landLit = useWorld((s) => s.snapshot?.config.land_enabled === true)
+  const lit = useMemo<LitSwitches>(() => new Set<ServedSwitch>(landLit ? ['land_enabled'] : []), [landLit])
+  const cells = navCells(useWide(), lit)
 
   const cell = cells.find((c) => c.kind === 'group' && c.id === openGroup)
   const openMembers = cell?.kind === 'group' ? cell : null
