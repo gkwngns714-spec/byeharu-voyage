@@ -21,8 +21,8 @@ import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 //   - the card's `+N Reputation` line is the arrival's own earnings; a level's gift stands on its level line. So the top
 //     bar is what it read at the quay + N + every level line's gift;
 //   - the Levels page prints the next level's gift beside each bar: `Next +30` (KO `다음 +30`) at Exploration level 2.
-// THE WAIT: a near trip can take several real minutes, so the card is waited for 480 s inside a 900 s test, and what the
-// page said is printed when it does not come.
+// THE WAIT is tests/arrivalWait.fixture.ts (`arrivalCard`, ten voyage-days): a calm or a storm on the near trip delays her by
+// one or more voyage-days (450 real seconds each since 0413), so no shorter wait of this spec's own may stand in front of it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 test.use({ locale: 'en-US', deviceScaleFactor: 2 })
@@ -52,19 +52,6 @@ const WORDS = {
   },
 } as const
 
-/** THE WAIT FOR HER TO COME IN: a near trip can take several real minutes when the sea delays her, so the card is waited
- *  for 480 s; when it does not come, what the page says is printed (the top bar's figure, and the page's own words). */
-async function landed(page: import('@playwright/test').Page, label: string): Promise<void> {
-  try {
-    await expect(page.getByTestId('arrival-card')).toBeVisible({ timeout: 480_000 })
-  } catch (err) {
-    const bar = await page.getByTestId('reputation').getAttribute('data-value').catch(() => null)
-    const said = await page.locator('body').innerText().catch(() => '')
-    console.log(`${label}: NO ARRIVAL CARD in 480 s. Reputation ${bar}; ${page.url()}; the page says ${JSON.stringify(said.replace(/\s+/g, ' ').slice(0, 700))}`)
-    throw err
-  }
-}
-
 /** 0356: what the crossings from level 1 to `level` give in all: 10 x (2 + ... + level). */
 const giftsTo = (level: number) => 10 * ((level * (level + 1)) / 2 - 1)
 
@@ -78,8 +65,6 @@ for (const size of SIZES) {
         test.setTimeout(LANDING_TEST_TIMEOUT_MS)
         expect(await reachable(request, baseURL ?? ''), `nothing served at ${baseURL}: run a preview (or set PLAYWRIGHT_BASE_URL)`).toBe(true)
         const words = WORDS[lang]
-        // THE SEA MAY DELAY A NEAR TRIP BY MINUTES: at least 900 s for the whole test (never less than a longer one already set).
-        test.setTimeout(Math.max(test.info().timeout, 900_000))
         await page.goto('command')
         await ready(page)
 
@@ -137,7 +122,6 @@ for (const size of SIZES) {
         if (wide) await expect(bar).toHaveText(new RegExp(`^${quay}\\s*${words.name}$`))
         await insideGlass()
         await expect(page.getByTestId('arrival-card')).toHaveCount(0)
-        await landed(page, `reputation ${size.width} ${lang}`)
 
         // she comes in and sells: one line on the card
         const card = await arrivalCard(page, `Reputation at ${size.width}×${size.height}, ${lang}`)
