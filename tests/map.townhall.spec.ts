@@ -179,6 +179,16 @@ test('0144: lit, a company docked at Lisbon donates, and its influence there is 
   await expect(page.getByTestId('townhall-your-tax')).toContainText('half')
   // 0146: lit, the Town Hall says when the daily count next runs
   await expect(page.getByTestId('townhall-next-count')).toContainText('Next count')
+  // 2026-11-18: the pinned tab bar stands on an OPAQUE ground — rows scrolling under it (Mayor, Your tax) showed through its tabs
+  const barAlpha = await page.getByTestId('map-city-tabs').getByRole('tablist').evaluate((el) => {
+    for (let n: Element | null = el; n; n = n.parentElement) {
+      if (getComputedStyle(n).position !== 'sticky') continue
+      const m = getComputedStyle(n).backgroundColor.match(/[\d.]+/g) ?? []
+      return m.length > 3 ? Number(m[3]) : 1
+    }
+    return 0
+  })
+  expect(barAlpha).toBe(1)
   await page.getByTestId('townhall-donate').click()
   await expect(page.getByTestId('townhall-donate-points')).toBeVisible({ timeout: 30_000 })
   await page.getByTestId('townhall-donate-send').click()

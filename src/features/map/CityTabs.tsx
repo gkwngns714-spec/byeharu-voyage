@@ -69,7 +69,12 @@ export function CityTabs({ portCode, harbour }: { portCode: string; harbour: Rea
     <div data-testid="map-city-tabs">
       {/* 0152: a wreck of yours lying here, and its tow — whichever tab is up (src/live/TowNote.tsx). */}
       <TowNote docked={docked} />
-      <Segmented label={t('map.city')} segments={CITY_TABS.map((c) => ({ id: c.id, label: t(`map.${c.label}` as TKey) }))} value={tab} onChange={turnTo} fill columns={3} className="sticky top-0 z-10 mb-1" />
+      {/* THE PINNED BAR STANDS ON THE TRAY'S OWN GROUND (2026-11-18): the Segmented is 60 % clear (`bg-bg/60`), so a bare sticky one
+          let the rows scrolling under it (Your tax, Influence) show through its tabs at 1,280. The sticky box is the Tray's `bg-surface`,
+          the gap under it is its padding, so nothing passes between the bar and the content. */}
+      <div className="sticky top-0 z-10 bg-surface pb-1">
+        <Segmented label={t('map.city')} segments={CITY_TABS.map((c) => ({ id: c.id, label: t(`map.${c.label}` as TKey) }))} value={tab} onChange={turnTo} fill columns={3} />
+      </div>
       <div role="tabpanel" data-testid={`map-city-${tab}`}>
         {tab === 'port' && harbour}
         {tab === 'market' && port && <CityMarket port={port} reader={acting} />}
