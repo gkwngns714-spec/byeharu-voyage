@@ -103,6 +103,15 @@ interface NavGroup {
   icon: IconName
 }
 
+/** A SWITCH THE SERVER SERVES (`world.snapshot().config`). A tab that names one is on the bar only while the world serves it true:
+ *  DARK-FIRST by the world's own switch, not by a constant here (0455, the Land: `land_enabled`, the owner's to light). The rest of
+ *  this table is unchanged by it, so a dark world draws exactly the cells it drew before. */
+export type ServedSwitch = 'land_enabled'
+
+/** The switches a world serves true, as the bar reads them. None: every switched tab is off the bar. */
+export type LitSwitches = ReadonlySet<ServedSwitch>
+const NONE_LIT: LitSwitches = new Set()
+
 const GROUPS: Record<NavGroupId, NavGroup> = {
   cabin: { label: 'Menu', icon: 'chevron' },
 }
@@ -113,6 +122,8 @@ const ALL_TABS: readonly (NavTab & {
   /** ITS OWN CELL ON THE WIDE RAIL, in this order among the rail's promoted cells (after the ungrouped tabs, before
    *  the group). On the phone's bar it stays a member of its `group`. Only a grouped tab may carry it. */
   rail?: number
+  /** On the bar only while the server serves this switch true (ServedSwitch). */
+  served?: ServedSwitch
 })[] = [
   // HQ (owner, 2026-10-31: *"i press hq, then command, then hq disappears"*). The City page is the
   // game's home and sits OUTSIDE the shell, so without a cell here the desk's screens had no way
@@ -129,6 +140,11 @@ const ALL_TABS: readonly (NavTab & {
   { to: '/command', label: 'Trade', icon: 'compass', enabled: true },
   { to: '/fleets', label: 'Fleets', icon: 'ship', enabled: true },
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
+  // LAND (owner, 2026-11-16: *"sending expeditions to land site (mountains), for minerals like rs3"*; docs/design/land-2026-11.md 6.7).
+  // The party ashore and its skills: its OWN cell, like Map, after the sea's loop. SHIPPED DARK (0455): on the bar only while the
+  // world serves `land_enabled` true, so until the owner lights it the bar is the six cells nav.geometry.spec measures. Lit, the
+  // phone's bar is seven cells: 320 / 7 = 45.7 px, over the 44-px reach floor (tests/land.party.spec.ts measures it).
+  { to: '/land', label: 'Land', icon: 'pick', enabled: true, served: 'land_enabled' },
   // OFFICE (owner, 2026-11-16: *"in trade, there are city invest report and levels, which aren't that related to trade. they
   // should have separate tab like map you stats etc."*). The desk's City, Invest and Report faces, MOVED to their own tab
   // (features/command/OfficeScreen.tsx); Levels went to You, where the company's levels already stood. Its OWN cell on the bar and on the rail,
@@ -188,11 +204,12 @@ export type NavCell =
  *
  *  `wide` is the rail (from `lg`): a tab marked `rail` leaves its group and stands as its own cell, in `rail` order,
  *  just before the first group — so the group (the Menu) keeps the rail's foot. */
-function buildCells(wide: boolean): readonly NavCell[] {
+function buildCells(wide: boolean, lit: LitSwitches): readonly NavCell[] {
   const cells: NavCell[] = []
   const members = new Map<NavGroupId, NavTab[]>()
-  const promoted = wide ? ENABLED.filter((t) => t.rail !== undefined).sort((a, b) => (a.rail ?? 0) - (b.rail ?? 0)) : []
-  for (const t of ENABLED) {
+  const shown = ENABLED.filter((t) => t.served === undefined || lit.has(t.served))
+  const promoted = wide ? shown.filter((t) => t.rail !== undefined).sort((a, b) => (a.rail ?? 0) - (b.rail ?? 0)) : []
+  for (const t of shown) {
     if (promoted.includes(t)) continue
     const tab: NavTab = { to: t.to, label: t.label, icon: t.icon }
     if (!t.group) {
@@ -214,14 +231,16 @@ function buildCells(wide: boolean): readonly NavCell[] {
 }
 
 /** The PHONE BAR's cells: HQ · Trade · Fleets · Map · Office · Menu, with You and Stats inside the Menu. */
-export const NAV_CELLS: readonly NavCell[] = buildCells(false)
+export const NAV_CELLS: readonly NavCell[] = buildCells(false, NONE_LIT)
 
 /** The WIDE RAIL's cells: HQ · Trade · Fleets · Map · Office · You · Stats · Menu, the Menu without those two. */
-export const NAV_RAIL_CELLS: readonly NavCell[] = buildCells(true)
+export const NAV_RAIL_CELLS: readonly NavCell[] = buildCells(true, NONE_LIT)
 
-/** What the nav draws on this glass: the rail's cells from `lg` (`useWide()`), the bar's below it. */
-export function navCells(wide: boolean): readonly NavCell[] {
-  return wide ? NAV_RAIL_CELLS : NAV_CELLS
+/** What the nav draws on this glass: the rail's cells from `lg` (`useWide()`), the bar's below it; a switched tab (`served`) only
+ *  while the world serves its switch true. With nothing lit these are NAV_CELLS / NAV_RAIL_CELLS themselves. */
+export function navCells(wide: boolean, lit: LitSwitches = NONE_LIT): readonly NavCell[] {
+  if (lit.size === 0) return wide ? NAV_RAIL_CELLS : NAV_CELLS
+  return buildCells(wide, lit)
 }
 
 /** The landing destination: the TRADE desk (owner remaster, 2026-11-11, S1) — a player lands where the

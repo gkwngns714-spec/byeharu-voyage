@@ -1,0 +1,122 @@
+import { test, expect, type Page } from '@playwright/test'
+import { ready, reachable } from './appReady.fixture'
+import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
+
+// THE LAND TAB (migration 0455, docs/design/land-2026-11.md 6.7 and 8 L1), in a local world, headless.
+//   DARK (the shipped image): no Land cell on the bar; a typed /land says "Not open yet." and nothing else.
+//   LIT (a copy of the image with land_enabled true, the owner's switch, by worldImage.fixture's one seam), at 390 px and 1,280 px:
+//     * the bar has its Land cell; at 320 and 390 every cell of the phone's bar is a real tap target (over 44 px) and no label is cut;
+//     * Mining lists all 57 minerals; Iron is the home land's, Sea Coal is far and names its land and its trip, Platinum is grey with
+//       "Mining 1 / 96" (have / need);
+//     * pressing a row opens the Send tray OVER the page: the job list does not move; Send sends the party: the Party face says where
+//       it is, and a second Send is refused in its place (E_LAND_OUT);
+//     * nothing scrolls sideways.
+
+const landLit = () =>
+  patchedWorldImage('land-lit', async (pg) => {
+    await pg.exec(`update public.world_config set value = 'true'::jsonb where key = 'land_enabled'`)
+  })
+
+const GLASSES = [
+  { width: 390, height: 844 },
+  { width: 1280, height: 900 },
+] as const
+
+async function noSideways(page: Page, where: string) {
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    `${where}: the page scrolls sideways`,
+  ).toBe(true)
+}
+
+test.describe('the land, dark as shipped', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+  test('no Land cell; /land says it is not open', async ({ page, request, baseURL }) => {
+    test.setTimeout(480_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+    await page.goto('land')
+    await ready(page)
+    await expect(page.getByTestId('land-dark')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('nav-bar').getByTestId('nav-cell-/land')).toHaveCount(0)
+    await expect(page.getByTestId('land-jobs')).toHaveCount(0)
+  })
+})
+
+for (const glass of GLASSES) {
+  test.describe(`the land, lit, ${glass.width}px`, () => {
+    test.use({ viewport: glass })
+
+    test('Mining lists the catalogue, a press moves nothing, Send sends the party', async ({ page, request, baseURL }) => {
+      test.setTimeout(600_000)
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      await serveWorldImage(page, await landLit())
+      await page.goto('land')
+      await ready(page)
+      await expect(page.getByTestId('land-party')).toBeVisible({ timeout: 90_000 })
+      if (glass.width < 1024) await expect(page.getByTestId('nav-bar').getByTestId('nav-cell-/land')).toBeVisible()
+      await noSideways(page, 'the Party face')
+
+      // the Mining face
+      await page.getByRole('tab', { name: /Mining/ }).click()
+      const jobs = page.getByTestId('land-job')
+      await expect(jobs).toHaveCount(57, { timeout: 30_000 })
+      const iron = page.locator('[data-testid="land-job"][data-job="iron"]')
+      const coal = page.locator('[data-testid="land-job"][data-job="coal"]')
+      const platinum = page.locator('[data-testid="land-job"][data-job="platinum"]')
+      await expect(iron.getByTestId('land-job-land')).toContainText('Home land')
+      await expect(coal.getByTestId('land-job-land')).toContainText('Far')
+      await expect(coal.getByTestId('land-job-land')).toContainText('British Isles')
+      await expect(platinum).toHaveAttribute('data-open', 'false')
+      await expect(platinum.getByTestId('land-job-level')).toHaveText('Mining 1 / 96')
+      await noSideways(page, 'the Mining face')
+
+      // a press opens the tray over the page: the list does not move
+      const before = await coal.boundingBox()
+      await coal.click()
+      const tray = page.getByTestId('land-send-tray')
+      await expect(tray.getByTestId('land-send-passage')).toBeVisible()
+      const after = await coal.boundingBox()
+      expect(after?.y, 'pressing a job moved the list').toBe(before?.y)
+      expect(after?.x).toBe(before?.x)
+      await noSideways(page, 'the Send tray')
+
+      // Send sends the party on the far trip; the Party face says it is on passage
+      await tray.getByTestId('land-send').click()
+      await expect(tray.getByTestId('land-send-passage')).toHaveCount(0, { timeout: 30_000 })
+      await page.getByRole('tab', { name: /Party/ }).click()
+      await expect(page.getByTestId('land-phase')).toHaveAttribute('data-phase', /out|march/, { timeout: 30_000 })
+      await expect(page.getByTestId('land-far-line')).toContainText('British Isles')
+
+      // a second Send is refused, in its place
+      await page.getByRole('tab', { name: /Mining/ }).click()
+      await iron.click()
+      await page.getByTestId('land-send-tray').getByTestId('land-send').click()
+      await expect(page.getByTestId('land-send-tray').getByTestId('land-send-short')).toBeVisible({ timeout: 30_000 })
+      await noSideways(page, 'a refused Send')
+    })
+  })
+}
+
+test.describe('the bar, lit, on a phone', () => {
+  for (const width of [320, 390]) {
+    test(`seven cells at ${width} px, each a real tap target, no label cut`, async ({ browser, request, baseURL }) => {
+      test.setTimeout(480_000)
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      const page = await browser.newPage({ viewport: { width, height: 700 } })
+      await serveWorldImage(page, await landLit())
+      await page.goto('land')
+      await ready(page)
+      await expect(page.getByTestId('land-party')).toBeVisible({ timeout: 90_000 })
+      const cells = page.locator('[data-testid="nav-bar"] > a, [data-testid="nav-bar"] > button')
+      await expect(cells).toHaveCount(7)
+      for (const c of await cells.all()) {
+        const box = await c.boundingBox()
+        expect(box?.width ?? 0, 'a cell under the 44-px reach floor').toBeGreaterThanOrEqual(44)
+        const cut = await c.evaluate((el) => [...el.querySelectorAll('span')].some((s) => s.scrollWidth > s.clientWidth + 1))
+        expect(cut, 'a nav label is cut').toBe(false)
+      }
+      await noSideways(page, `the bar at ${width}`)
+      await page.close()
+    })
+  }
+})

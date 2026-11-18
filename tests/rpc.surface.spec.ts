@@ -1769,6 +1769,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // cmd.buy_starter(fleet, ship, item), a quay verb like the basket's: client-direct, no orders row, a fleet that is not
       // yours refused. Landed WITH the face that reads them (live/PortGear.tsx).
       'worldStarterGear', 'cmdBuyStarter',
+      // Pin moved deliberately 2026-11-18 with migration 0455 (the owner: "sending expeditions to land site (mountains), for minerals
+      // like rs3"): THE LAND, world.land(skill) - a READ, no player id - and its four doors cmd.land_send(action), cmd.land_collect(),
+      // cmd.land_home(), cmd.land_tool(tool), none taking a player id. Dark (land_enabled false) the read is {enabled: false} and
+      // every door refuses E_NOT_IN_USE. Landed WITH the face that reads them (features/land).
+      'worldLand', 'cmdLandSend', 'cmdLandCollect', 'cmdLandHome', 'cmdLandTool',
       // Pin moved deliberately 2026-10-26 with migration 0224 (owner row 200, "updated every second"): the Stats
       // tab's one LIVE read — the counters every writer keeps, asked each second while the tab is open. A READ.
       'worldStatsNow',
