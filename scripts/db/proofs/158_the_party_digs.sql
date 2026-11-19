@@ -38,6 +38,10 @@ declare
 begin
   update public.world_config set value = to_jsonb('0455-fixed-dice-of-proof-158-the-party-digs-00000000000000000000000000'::text) where key = 'world_secret';
   update public.world_config set value = 'true'::jsonb where key in ('level_skills_on', 'reputation_on');
+  -- 0457 re-timed the jobs by the market guard (proof 160 proves those rows). This proof proves the sum's mechanics on the design's
+  -- hand-worked figures, pinned here inside its own rolled-back transaction: Iron 45 s and 4 experience, Sea Coal 40 s and 3.
+  update public.land_actions set seconds = 45, xp = 4 where code = 'iron';
+  update public.land_actions set seconds = 40, xp = 3 where code = 'coal';
   v_pl := public.new_house('00000000-0455-4000-8000-0000000158c1', 'Casa Mina 158', 'PRT', 'LIS', 'Mina 158', 'carlat', 'Mina 158', null, false);
   v_pl2 := public.new_house('00000000-0455-4000-8000-0000000158c2', 'Casa Vizinha 158', 'PRT', 'LIS', 'Vizinha 158', 'carlat', 'Vizinha 158', null, false);
   select p.id into v_npc from public.players p where p.is_npc order by p.id limit 1;
