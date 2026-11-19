@@ -138,12 +138,27 @@ const STATS_READS: readonly RpcName[] = [
 export const MARKET_EVERY_MS = 60_000
 const MARKET_SQL = 'select public.tick_market_drift(now()) as result'
 
+// A SLOT AHEAD OF THE CLOCK (2026-11-19; the "seen, not fixed" of docs/dev-log/2026-11-18-play-faults.md). The world image holds 54,432
+// market rows (224 harbours x 243 goods) whose drift_slot is 2,986,699, with the present slot near 1,994,000. Migration 0053 (frozen)
+// ends with `select public.tick_market_drift(now())` at the chain's own apply, when drift_slot_seconds was still 600: it stamped
+// floor(epoch / 600). The knob went to 900 and, with 0413's anchor, to 4,500 s; a stored slot is in the units of its day, so those rows
+// stand 1.5 times as far on as the clock. `tick_market_drift` steps only `drift_slot < present`, so their drift never moves in a tab.
+// Production reads 0 such rows (06:2x UTC 2026-11-18), so the job there has nothing to repair; the image's chain has. Each such row
+// is put at the slot of its own `updated_at` read in today's counter (what the job would have left it at: the image's other 62,160
+// stamped rows, written in the same minute under the 900 s knob, read 1,991,133 and are caught up by the step below), then stepped as
+// any other. A write in the job, once per row, never a clamp on a read.
+const RESTAMP_SQL = `update public.port_goods set drift_slot = public.drift_slot_of(updated_at)
+   where drift_slot > (select public.drift_slot_of(now()))`
+
 /** Play the drift job once: every harbour's rows brought to the present slot and game day. */
 export function playMarket(db: Pick<LocalCaller, 'callAs'>): Promise<void> {
-  return db.callAs<unknown>(MARKET_SQL).then(
-    () => undefined,
-    (err: unknown) => console.warn('[rpc] local: the market step failed; the next minute plays it again', err),
-  )
+  return db
+    .callAs<unknown>(RESTAMP_SQL)
+    .then(() => db.callAs<unknown>(MARKET_SQL))
+    .then(
+      () => undefined,
+      (err: unknown) => console.warn('[rpc] local: the market step failed; the next minute plays it again', err),
+    )
 }
 
 // AND THE BATTLES (0364, the map's rings). On Supabase byeharu-voyage:battles fights every round that is due, each minute
