@@ -5,21 +5,101 @@
 --   doors both true; new_hunks every count 1; land_enabled false; land_yield_pct 100; parties 0.
 begin transaction read only;
 with hn(ord, fn, new) as (values
-  (1, 'public.land_terms(uuid,text)', E'  v_p := public.land_packs_of(v_party.mules);   -- 0458: the packs by the party\'s mules (land_pack_base with none)\n'),
-  (2, 'public.land_terms(uuid,text)', E'    \'short\', v_short,\n    -- 0458: the rare finds of the land the party would work: those of the job whose good lies on that land, in their order\n    \'finds\', (select coalesce(jsonb_agg(jsonb_build_object(\'code\', g.code, \'one_in\', d.one_in) order by d.ord), \'[]\'::jsonb)\n                from public.land_drops d join public.goods g on g.id = d.good_id\n               where d.action = j.code and (v_pass ->> \'region\') = any(g.origin_regions)));'),
-  (3, 'public.land_progress(uuid,timestamp with time zone)', E'  v_trips := floor(v_e / v_trip);\n  -- 0458: Repeat off (terms.last): once its last trip is home the party is home, and the first press after ends the job\n  if t ? \'last\' and v_trips >= (t ->> \'last\')::int then\n    return jsonb_build_object(\'state\', \'out\', \'phase\', \'home\', \'done\', true,\n      \'turns\', (t ->> \'last\')::int * v_p, \'new\', greatest(0, (t ->> \'last\')::int * v_p - lp.booked), \'trips\', (t ->> \'last\')::int,\n      \'in_packs\', 0, \'u\', 0, \'trip\', v_trip, \'next_home_at\', null, \'stopped\', false, \'waiting\', lp.waiting);\n  end if;\n'),
-  (4, 'public.land_settle(uuid,timestamp with time zone)', E'  v_end   boolean := false;\n  -- 0458: rare finds\n  v_found jsonb := \'{}\'::jsonb;\n  v_f     record;\n  v_g     public.goods%rowtype;\n  v_n     int;\nbegin\n'),
-  (5, 'public.land_settle(uuid,timestamp with time zone)', E'  -- 0458: rare finds that waited for room: as much as fits now\n  for v_f in select e.key as code, e.value::int as qty from jsonb_each_text(lp.found_waiting) e order by e.key loop\n    select * into v_g from public.goods where code = v_f.code;\n    v_fit := floor(greatest(public.storage_cap(lp.port_id) - public.storage_used(lp.player_id, lp.port_id), 0) / v_g.bulk);\n    v_n := least(v_f.qty, v_fit)::int;\n    if v_n > 0 then\n      perform public.storage_put(lp.player_id, lp.port_id, v_g.id, v_n, 0);\n      lp.found_waiting := case when v_n = v_f.qty then lp.found_waiting - v_f.code\n                               else jsonb_set(lp.found_waiting, array[v_f.code], to_jsonb(v_f.qty - v_n)) end;\n    end if;\n  end loop;\n  if lp.action is not null then\n    v_pr := public.land_progress(lp.id, p_at);\n'),
-  (6, 'public.land_settle(uuid,timestamp with time zone)', E'      -- 0458: RARE FINDS, one die a turn (voyage.rng by party, turn and Send): the turn finds the first of the frozen finds whose share\n      -- of [0, 1) holds the roll, each 1 / one_in wide; the same turns give the same finds however they are booked\n      for v_f in\n        select fx.code, count(*)::int as qty\n          from generate_series(lp.booked + 1, lp.booked + v_new) n\n          cross join lateral (select voyage.rng(lp.id, n, \'find:\' || (lp.terms ->> \'sent\')) as r) z\n          join (select e ->> \'code\' as code,\n                       coalesce(sum(1.0 / (e ->> \'one_in\')::numeric) over (order by o rows between unbounded preceding and 1 preceding), 0) as lo,\n                       sum(1.0 / (e ->> \'one_in\')::numeric) over (order by o) as hi\n                  from jsonb_array_elements(coalesce(lp.terms -> \'finds\', \'[]\'::jsonb)) with ordinality f(e, o)) fx\n            on z.r >= fx.lo and z.r < fx.hi\n         group by fx.code order by fx.code\n      loop\n        select * into v_g from public.goods where code = v_f.code;\n        v_fit := floor(greatest(public.storage_cap(lp.port_id) - public.storage_used(lp.player_id, lp.port_id), 0) / v_g.bulk);\n        v_n := least(v_f.qty, greatest(v_fit, 0))::int;\n        if v_n > 0 then\n          perform public.storage_put(lp.player_id, lp.port_id, v_g.id, v_n, 0);\n        end if;\n        if v_f.qty > v_n then\n          lp.found_waiting := jsonb_set(lp.found_waiting, array[v_f.code], to_jsonb(coalesce((lp.found_waiting ->> v_f.code)::int, 0) + v_f.qty - v_n));\n          v_end := true;\n        end if;\n        v_found := v_found || jsonb_build_object(v_f.code, v_f.qty);\n      end loop;\n      lp.booked := lp.booked + v_new;\n'),
-  (7, 'public.land_settle(uuid,timestamp with time zone)', E'    if (v_pr ->> \'state\' = \'returning\' and v_pr ->> \'phase\' = \'home\') or coalesce((v_pr ->> \'done\')::boolean, false) then   -- 0458: or Repeat\'s last trip home\n'),
-  (8, 'public.land_settle(uuid,timestamp with time zone)', E'waiting = lp.waiting, waiting_good = lp.waiting_good,\n         found_waiting = lp.found_waiting   -- 0458\n'),
-  (9, 'public.land_settle(uuid,timestamp with time zone)', E'\'ended\', v_end,\n                            \'found\', v_found, \'found_waiting\', lp.found_waiting);   -- 0458: the rare finds this press booked or kept'),
-  (10, 'public.land_send_for(uuid,text,timestamp with time zone)', E'  if lp.waiting > 0 or lp.found_waiting <> \'{}\'::jsonb then   -- 0458: a rare find waiting is a haul waiting\n'),
-  (11, 'public.land_send_for(uuid,text,timestamp with time zone)', E'\'over_cap\') || jsonb_build_object(\'sent\', floor(extract(epoch from p_at) * 1000)::bigint)\n                 || case when lp.repeat_on then \'{}\'::jsonb else \'{"last": 1}\'::jsonb end   -- 0458: Repeat off: one trip\n'),
-  (12, 'public.land_door(text,text)', E'      when \'tool\'    then public.land_tool_for(v_player, p_arg)\n      -- 0458: a mule; Repeat on or off\n      when \'pack\'    then public.land_pack_for(v_player)\n      when \'repeat\'  then public.land_repeat_for(v_player, p_arg::boolean, now()) end;'),
-  (13, 'world.land(text)', E'      \'tools\', coalesce(to_jsonb(v_party.tools), \'[]\'::jsonb),\n      -- 0458: the mules, Repeat, and rare finds waiting for room\n      \'mules\', coalesce(v_party.mules, 0), \'repeat\', coalesce(v_party.repeat_on, true), \'found_waiting\', coalesce(v_party.found_waiting, \'{}\'::jsonb)),\n    -- 0458: what a trip carries now, and the next mule (null: it has them all)\n    \'packs\', jsonb_build_object(\'now\', public.land_packs_of(coalesce(v_party.mules, 0)),\n                                \'next\', public.wc(\'land_packs\') -> coalesce(v_party.mules, 0)),\n'),
-  (14, 'world.land(text)', E'               \'over_cap\', (t.v ->> \'over_cap\')::boolean,\n               \'finds\', coalesce(t.v -> \'finds\', \'[]\'::jsonb),   -- 0458\n'),
-  (15, 'public.client_rpc_entry_points()', E'      (\'cmd\',         \'land_tool\',             \'text\'),\n      -- 0458: a mule; Repeat on or off\n      (\'cmd\',         \'land_pack\',             \'\'),\n      (\'cmd\',         \'land_repeat\',           \'boolean\'),\n')
+  (1, 'public.land_terms(uuid,text)', $h$  v_p := public.land_packs_of(v_party.mules);   -- 0458: the packs by the party's mules (land_pack_base with none)
+$h$),
+  (2, 'public.land_terms(uuid,text)', $h$    'short', v_short,
+    -- 0458: the rare finds of the land the party would work: those of the job whose good lies on that land, in their order
+    'finds', (select coalesce(jsonb_agg(jsonb_build_object('code', g.code, 'one_in', d.one_in) order by d.ord), '[]'::jsonb)
+                from public.land_drops d join public.goods g on g.id = d.good_id
+               where d.action = j.code and (v_pass ->> 'region') = any(g.origin_regions)));$h$),
+  (3, 'public.land_progress(uuid,timestamp with time zone)', $h$  v_trips := floor(v_e / v_trip);
+  -- 0458: Repeat off (terms.last): once its last trip is home the party is home, and the first press after ends the job
+  if t ? 'last' and v_trips >= (t ->> 'last')::int then
+    return jsonb_build_object('state', 'out', 'phase', 'home', 'done', true,
+      'turns', (t ->> 'last')::int * v_p, 'new', greatest(0, (t ->> 'last')::int * v_p - lp.booked), 'trips', (t ->> 'last')::int,
+      'in_packs', 0, 'u', 0, 'trip', v_trip, 'next_home_at', null, 'stopped', false, 'waiting', lp.waiting);
+  end if;
+$h$),
+  (4, 'public.land_settle(uuid,timestamp with time zone)', $h$  v_end   boolean := false;
+  -- 0458: rare finds
+  v_found jsonb := '{}'::jsonb;
+  v_f     record;
+  v_g     public.goods%rowtype;
+  v_n     int;
+begin
+$h$),
+  (5, 'public.land_settle(uuid,timestamp with time zone)', $h$  -- 0458: rare finds that waited for room: as much as fits now
+  for v_f in select e.key as code, e.value::int as qty from jsonb_each_text(lp.found_waiting) e order by e.key loop
+    select * into v_g from public.goods where code = v_f.code;
+    v_fit := floor(greatest(public.storage_cap(lp.port_id) - public.storage_used(lp.player_id, lp.port_id), 0) / v_g.bulk);
+    v_n := least(v_f.qty, v_fit)::int;
+    if v_n > 0 then
+      perform public.storage_put(lp.player_id, lp.port_id, v_g.id, v_n, 0);
+      lp.found_waiting := case when v_n = v_f.qty then lp.found_waiting - v_f.code
+                               else jsonb_set(lp.found_waiting, array[v_f.code], to_jsonb(v_f.qty - v_n)) end;
+    end if;
+  end loop;
+  if lp.action is not null then
+    v_pr := public.land_progress(lp.id, p_at);
+$h$),
+  (6, 'public.land_settle(uuid,timestamp with time zone)', $h$      -- 0458: RARE FINDS, one die a turn (voyage.rng by party, turn and Send): the turn finds the first of the frozen finds whose share
+      -- of [0, 1) holds the roll, each 1 / one_in wide; the same turns give the same finds however they are booked
+      for v_f in
+        select fx.code, count(*)::int as qty
+          from generate_series(lp.booked + 1, lp.booked + v_new) n
+          cross join lateral (select voyage.rng(lp.id, n, 'find:' || (lp.terms ->> 'sent')) as r) z
+          join (select e ->> 'code' as code,
+                       coalesce(sum(1.0 / (e ->> 'one_in')::numeric) over (order by o rows between unbounded preceding and 1 preceding), 0) as lo,
+                       sum(1.0 / (e ->> 'one_in')::numeric) over (order by o) as hi
+                  from jsonb_array_elements(coalesce(lp.terms -> 'finds', '[]'::jsonb)) with ordinality f(e, o)) fx
+            on z.r >= fx.lo and z.r < fx.hi
+         group by fx.code order by fx.code
+      loop
+        select * into v_g from public.goods where code = v_f.code;
+        v_fit := floor(greatest(public.storage_cap(lp.port_id) - public.storage_used(lp.player_id, lp.port_id), 0) / v_g.bulk);
+        v_n := least(v_f.qty, greatest(v_fit, 0))::int;
+        if v_n > 0 then
+          perform public.storage_put(lp.player_id, lp.port_id, v_g.id, v_n, 0);
+        end if;
+        if v_f.qty > v_n then
+          lp.found_waiting := jsonb_set(lp.found_waiting, array[v_f.code], to_jsonb(coalesce((lp.found_waiting ->> v_f.code)::int, 0) + v_f.qty - v_n));
+          v_end := true;
+        end if;
+        v_found := v_found || jsonb_build_object(v_f.code, v_f.qty);
+      end loop;
+      lp.booked := lp.booked + v_new;
+$h$),
+  (7, 'public.land_settle(uuid,timestamp with time zone)', $h$    if (v_pr ->> 'state' = 'returning' and v_pr ->> 'phase' = 'home') or coalesce((v_pr ->> 'done')::boolean, false) then   -- 0458: or Repeat's last trip home
+$h$),
+  (8, 'public.land_settle(uuid,timestamp with time zone)', $h$waiting = lp.waiting, waiting_good = lp.waiting_good,
+         found_waiting = lp.found_waiting   -- 0458
+$h$),
+  (9, 'public.land_settle(uuid,timestamp with time zone)', $h$'ended', v_end,
+                            'found', v_found, 'found_waiting', lp.found_waiting);   -- 0458: the rare finds this press booked or kept$h$),
+  (10, 'public.land_send_for(uuid,text,timestamp with time zone)', $h$  if lp.waiting > 0 or lp.found_waiting <> '{}'::jsonb then   -- 0458: a rare find waiting is a haul waiting
+$h$),
+  (11, 'public.land_send_for(uuid,text,timestamp with time zone)', $h$'over_cap') || jsonb_build_object('sent', floor(extract(epoch from p_at) * 1000)::bigint)
+                 || case when lp.repeat_on then '{}'::jsonb else '{"last": 1}'::jsonb end   -- 0458: Repeat off: one trip
+$h$),
+  (12, 'public.land_door(text,text)', $h$      when 'tool'    then public.land_tool_for(v_player, p_arg)
+      -- 0458: a mule; Repeat on or off
+      when 'pack'    then public.land_pack_for(v_player)
+      when 'repeat'  then public.land_repeat_for(v_player, p_arg::boolean, now()) end;$h$),
+  (13, 'world.land(text)', $h$      'tools', coalesce(to_jsonb(v_party.tools), '[]'::jsonb),
+      -- 0458: the mules, Repeat, and rare finds waiting for room
+      'mules', coalesce(v_party.mules, 0), 'repeat', coalesce(v_party.repeat_on, true), 'found_waiting', coalesce(v_party.found_waiting, '{}'::jsonb)),
+    -- 0458: what a trip carries now, and the next mule (null: it has them all)
+    'packs', jsonb_build_object('now', public.land_packs_of(coalesce(v_party.mules, 0)),
+                                'next', public.wc('land_packs') -> coalesce(v_party.mules, 0)),
+$h$),
+  (14, 'world.land(text)', $h$               'over_cap', (t.v ->> 'over_cap')::boolean,
+               'finds', coalesce(t.v -> 'finds', '[]'::jsonb),   -- 0458
+$h$),
+  (15, 'public.client_rpc_entry_points()', $h$      ('cmd',         'land_tool',             'text'),
+      -- 0458: a mule; Repeat on or off
+      ('cmd',         'land_pack',             ''),
+      ('cmd',         'land_repeat',           'boolean'),
+$h$)
 )
 select jsonb_build_object(
   'head', (select max(version) from supabase_migrations.schema_migrations),
