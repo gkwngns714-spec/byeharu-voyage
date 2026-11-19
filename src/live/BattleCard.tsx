@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { cmdBattleStance, worldBattle } from '../lib/rpc'
 import type { BattleRead, BattleStanceWord, Refusal } from '../lib/rpc'
 import { BattleView } from './BattleView'
@@ -32,6 +32,8 @@ export function BattleCard({ fleetId, className = '' }: { fleetId: string; class
   const [tick, setTick] = useState(() => Date.now())
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   const busy = useRef(false)
+  // a press that came while the card was busy (a nudge or a read out): kept, and sent the moment the card is free. A press is never dropped.
+  const pending = useRef<BattleStanceWord | null>(null)
   const nudged = useRef<{ at: string; ms: number } | null>(null)
   const closed = useRef<string | null>(null)
 
@@ -67,19 +69,34 @@ export function BattleCard({ fleetId, className = '' }: { fleetId: string; class
 
   const serverNow = now && read?.now ? Date.parse(read.now) + Math.max(0, tick - now.at) : tick
 
-  const send = (to: string, word: BattleStanceWord, pressed: boolean) => {
-    if (busy.current) return
-    busy.current = true
-    if (pressed) setRefusal(null)
-    void (async () => {
-      const r = await cmdBattleStance(to, word)
-      // a press she made is answered in words; a nudge that finds the battle over is not a refusal to show
-      if (!r.ok && pressed) setRefusal(r.refusal)
-      const again = await worldBattle(fleetId)
-      if (again.ok) setGot({ fleet: fleetId, value: again.value, at: Date.now() })
-      busy.current = false
-    })()
-  }
+  // ONE way to send a stance, a press or a round's nudge. A press that comes while the card is busy (a nudge or a read out) is kept and sent the moment the card is free.
+  // Seen on main's Acceptance 2026-11-18: her press of Flee came while a round's nudge was out, was dropped, and every nudge after it sent the old stance again.
+  const send = useCallback(
+    (to: string, word: BattleStanceWord, pressed: boolean) => {
+      if (busy.current) {
+        if (pressed) pending.current = word
+        return
+      }
+      busy.current = true
+      if (pressed) setRefusal(null)
+      void (async () => {
+        try {
+          const r = await cmdBattleStance(to, word)
+          // a press she made is answered in words; a nudge that finds the battle over is not a refusal to show
+          if (!r.ok && pressed) setRefusal(r.refusal)
+          const again = await worldBattle(fleetId)
+          if (again.ok) setGot({ fleet: fleetId, value: again.value, at: Date.now() })
+        } finally {
+          // whatever the door answered, the card is free to ask again: a nudge must never leave it deaf
+          busy.current = false
+          const kept = pending.current
+          pending.current = null
+          if (kept) send(to, kept, true)
+        }
+      })()
+    },
+    [fleetId],
+  )
 
   // a round fell due while she watched: her own stance again, so the door fights it now.
   // ASKED AGAIN EVERY SECOND WHILE IT IS DUE (`tick`), not only when "due" first turns true: seen in a browser on 2026-11-13, a nudge that found the card busy (the last
@@ -90,18 +107,8 @@ export function BattleCard({ fleetId, className = '' }: { fleetId: string; class
     if (!due || !battle || !stance || nextAt === null || busy.current) return
     if (nudged.current !== null && nudged.current.at === nextAt && tick - nudged.current.ms < RENUDGE_MS) return
     nudged.current = { at: nextAt, ms: tick }
-    busy.current = true
-    void (async () => {
-      try {
-        await cmdBattleStance(battle, stance)
-        const again = await worldBattle(fleetId)
-        if (again.ok) setGot({ fleet: fleetId, value: again.value, at: Date.now() })
-      } finally {
-        // whatever the door answered, the card is free to ask again: a nudge must never leave it deaf
-        busy.current = false
-      }
-    })()
-  }, [due, battle, stance, nextAt, fleetId, tick])
+    send(battle, stance, false)
+  }, [due, battle, stance, nextAt, send, tick])
 
   // opened: the world's read of her fleet is asked once for this battle, so the navy's clock (her fleet's `navy_at`) is on the card from its first round and does not wait for the shell's beat
   const opened = useRef<string | null>(null)
