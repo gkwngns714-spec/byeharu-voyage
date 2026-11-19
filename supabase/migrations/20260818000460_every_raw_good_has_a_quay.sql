@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 -- 0460 — EVERY RAW GOOD HAS A QUAY
 --        The world grows to what data/*.json holds today: 254 harbours, 629 goods,
---        1455 port offers — landed as a DELTA on whatever world this
+--        1448 port offers — landed as a DELTA on whatever world this
 --        database holds, and pinned to the data by set equality at the foot of this file.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
@@ -18,13 +18,13 @@
 --
 -- ── WHAT LANDS HERE (measured against the applied baseline, not remembered) ────────────────────
 --   +0    harbour ports
---   ~36   harbour rows updated (dev_* follow the roster)
+--   ~33   harbour rows updated (dev_* follow the roster)
 --   +0    goods; ~0 changed (name, band, geography — codes never change)
 --   (sea legs: RETIRED with 0049 — a new or moved port needs scripts/build-sea-migration.mjs
 --    to cut a NEW raster/reaches migration AFTER this growth, or the new harbour has no roadstead
 --    and no sailed distances; self-assert (g) names the harbours awaiting it and proof 08 refuses
 --    a finished chain that never seeded them)
---   +43/-0 port offers, then port_goods re-derived for EVERY (harbour, good) pair
+--   +36/-0 port offers, then the market rows of the goods whose offers moved re-derived (section 5b names them)
 --   (each NEW pair asking world.demand_for() for its city's appetite, 0066)
 --   the 0 new harbour(s) furnished by public.furnish_harbours(), 0089's one rule
 --   the five affinity_* knobs reconciled to the chain's tuned values (0005 was edited in place
@@ -63,7 +63,7 @@ update public.world_config set value = '0.93'::jsonb where key = 'affinity_produ
 update public.world_config set value = '9500'::jsonb where key = 'affinity_reach_nm' and value <> '9500'::jsonb;
 update public.world_config set value = '0.76'::jsonb where key = 'affinity_span' and value <> '0.76'::jsonb;
 
--- ── 3b. 36 existing harbours whose derived columns moved (dev_* follow the roster).
+-- ── 3b. 33 existing harbours whose derived columns moved (dev_* follow the roster).
 --        crew_pool is NOT here: the running game owns it. ───────────────────────────────────────
 update public.ports p
    set name = v.name, country = v.country, nation_id = n.id, lat = v.lat, lon = v.lon,
@@ -75,28 +75,25 @@ update public.ports p
     ('ALG', 'Algiers', 'Algeria', 'OTT', 36.78, 3.06, 'MED', 'MAG', 'islamic', 3, 4, 1, false, 6, 15, 7, 240),
     ('ARI', 'Arica', 'Chile', 'ESP', -18.48, -70.32, 'STH', 'PAC', 'latin', 3, 4, 1, false, 6, 15, 7, 240),
     ('ARK', 'Arkhangelsk', 'Russia', 'RUS', 64.54, 40.54, 'WHI', 'SCA', 'nordic', 3, 2, 1, false, 6, 15, 7, 240),
-    ('AYU', 'Ayutthaya', 'Thailand', 'AYU', 14.36, 100.58, 'GND', 'SOU', 'malay', 3, 2, 1, false, 6, 15, 7, 240),
     ('BAN', 'Banda Aceh', 'Indonesia', null, 5.55, 95.32, 'STR', 'SOU', 'malay', 3, 4, 1, false, 6, 14, 7, 240),
-    ('BND', 'Banda Neira', 'Indonesia', null, -4.51, 129.9, 'BAN', 'SOU', 'malay', 3, 4, 1, false, 6, 14, 7, 240),
+    ('BND', 'Banda Neira', 'Indonesia', null, -4.51, 129.9, 'BAN', 'SOU', 'malay', 3, 4, 1, false, 6, 13, 7, 240),
     ('BNT', 'Banten', 'Indonesia', 'BAN', -6.04, 106.16, 'JAV', 'SOU', 'malay', 3, 4, 1, false, 8, 15, 7, 240),
     ('BSR', 'Basra', 'Iraq', 'OTT', 30.52, 47.81, 'PER', 'ARA', 'islamic', 3, 2, 1, false, 6, 14, 7, 240),
     ('BEI', 'Beirut', 'Lebanon', 'OTT', 33.89, 35.51, 'MED', 'LEV', 'islamic', 3, 4, 1, false, 8, 15, 7, 240),
-    ('BIL', 'Bilbao', 'Spain', 'ESP', 43.26, -2.93, 'BAY', 'IBE', 'latin', 3, 4, 1, false, 6, 14, 7, 240),
+    ('BIL', 'Bilbao', 'Spain', 'ESP', 43.26, -2.93, 'BAY', 'IBE', 'latin', 3, 4, 1, false, 6, 13, 7, 240),
     ('BOS', 'Boston', 'United States', null, 42.36, -71.06, 'NOR', 'NOR', 'anglo', 3, 4, 1, false, 9, 13, 7, 240),
     ('CPT', 'Cape Town', 'South Africa', null, -33.93, 18.42, 'SOU', 'EAS', 'guinean', 3, 4, 1, false, 6, 14, 7, 240),
     ('CHE', 'Chennai', 'India', null, 13.08, 80.28, 'BYF', 'EST', 'indic', 3, 4, 1, false, 6, 15, 7, 240),
     ('COL', 'Colombo', 'Sri Lanka', 'PRT', 6.93, 79.86, 'LAC', 'EST', 'indic', 3, 4, 1, false, 6, 15, 7, 240),
     ('DUB', 'Dublin', 'Ireland', 'ENG', 53.35, -6.26, 'IRI', 'BRI', 'anglo', 3, 4, 1, false, 8, 15, 7, 240),
-    ('IZM', 'Izmir', 'Turkey', 'OTT', 38.41, 27.14, 'AEG', 'AEG', 'islamic', 3, 4, 1, false, 9, 15, 7, 240),
     ('LAR', 'La Rochelle', 'France', 'FRA', 46.16, -1.15, 'BAY', 'FRA', 'latin', 3, 4, 1, false, 6, 15, 7, 240),
     ('LPA', 'Las Palmas', 'Spain', 'ESP', 28.13, -15.43, 'NOR', 'ATL', 'latin', 3, 4, 1, false, 6, 14, 7, 240),
     ('LUA', 'Luanda', 'Angola', 'PRT', -8.84, 13.23, 'SOU', 'WST', 'guinean', 3, 4, 1, false, 9, 15, 7, 240),
     ('MLG', 'Malaga', 'Spain', 'ESP', 36.72, -4.42, 'MED', 'IBE', 'latin', 3, 4, 1, false, 6, 15, 7, 240),
     ('MOM', 'Mombasa', 'Kenya', null, -4.05, 39.67, 'IND', 'EAS', 'swahili', 3, 4, 1, false, 9, 15, 7, 240),
     ('ISL', 'Island of Mozambique', 'Mozambique', 'PRT', -15.04, 40.73, 'MOZ', 'EAS', 'swahili', 3, 4, 1, false, 8, 15, 7, 240),
-    ('PAL', 'Palermo', 'Italy', 'ESP', 38.12, 13.36, 'MED', 'WES', 'latin', 3, 4, 1, false, 6, 15, 7, 240),
     ('PAN', 'Panama City', 'Panama', 'ESP', 8.97, -79.53, 'NRT', 'PAC', 'latin', 3, 4, 1, false, 9, 13, 7, 240),
-    ('OPO', 'Porto', 'Portugal', 'PRT', 41.15, -8.61, 'NOR', 'IBE', 'latin', 3, 4, 1, false, 6, 15, 7, 240),
+    ('OPO', 'Porto', 'Portugal', 'PRT', 41.15, -8.61, 'NOR', 'IBE', 'latin', 3, 4, 1, false, 6, 13, 7, 240),
     ('PRT', 'Portobelo', 'Panama', 'ESP', 9.55, -79.65, 'CAR', 'CAR', 'latin', 3, 4, 1, false, 6, 14, 7, 240),
     ('PTH', 'Portsmouth', 'United Kingdom', 'ENG', 50.81, -1.09, 'ENG', 'BRI', 'anglo', 3, 4, 1, false, 6, 13, 7, 240),
     ('QUA', 'Quanzhou', 'China', 'MNG', 24.91, 118.59, 'TAI', 'CHI', 'sinic', 3, 4, 1, false, 9, 15, 7, 240),
@@ -121,40 +118,33 @@ update public.ports p
        (v.name, v.country, n.id, v.lat, v.lon, s.id, r.id, v.culture,
         v.size_tier, v.max_draft, v.yard_tier, v.academy, v.dev_i, v.dev_c, v.dev_m);
 
--- ── 4b. 43 offers added ──────────────────────────────────────────────────────────────────
+-- ── 4b. 36 offers added ──────────────────────────────────────────────────────────────────
 insert into public.port_specialties (port_id, good_id)
 select p.id, g.id from (values
   ('ALG', 'rose'),
   ('ARI', 'agave'),
   ('ARI', 'cacao-bean'),
   ('ARK', 'pear'),
-  ('AYU', 'quartz'),
   ('BAN', 'shrimp'),
   ('BND', 'milk'),
-  ('BND', 'sand'),
   ('BNT', 'nipa'),
   ('BSR', 'coffee-bean'),
   ('BEI', 'sesame'),
   ('BIL', 'fresh-water'),
-  ('BIL', 'lime'),
   ('BOS', 'witch-hazel-bark'),
   ('CPT', 'pandanus'),
   ('CPT', 'shea-nut'),
   ('CHE', 'betel-leaf'),
   ('COL', 'bamboo'),
   ('DUB', 'apple'),
-  ('IZM', 'stone'),
   ('LAR', 'cabbage'),
   ('LPA', 'grapes'),
   ('LUA', 'raffia'),
   ('MLG', 'cattle'),
   ('MOM', 'palm-leaf'),
   ('ISL', 'palm-sap'),
-  ('PAL', 'feldspar'),
   ('PAN', 'bark'),
-  ('OPO', 'clay'),
   ('OPO', 'eggs'),
-  ('OPO', 'gypsum'),
   ('PRT', 'cassava-root'),
   ('PTH', 'plum'),
   ('QUA', 'lychee'),
@@ -172,10 +162,12 @@ select p.id, g.id from (values
   join public.goods g on g.code = v.good_code
 on conflict do nothing;
 
--- ── 5b. THE MARKET THIS FILE WAS CUT AGAINST (0460) ─────────────────────────────────────────────
--- Section 6 re-derives every row whose affinity or depth is not the rule's (stock := the new max). It
--- was measured on the baseline's market; on any other it refuses before writing a row. The digest is
--- each row's affinity, base max (the max where no multiple was ever applied, 0252) and production.
+-- ── 5b. THE MARKET THIS FILE WAS CUT AGAINST, AND WHAT IT MAY TOUCH (0460) ─────────────────────
+-- Section 6 re-derives only the rows of the goods whose offers this file moves:
+--   36 good(s): agave, apple, bamboo, bark, betel-leaf, cabbage, cacao-bean, cassava-root, cattle, coffee-bean, eel, eggs, fresh-water, goose-feathers, grapes, honeybush-leaf, lychee, milk, mint, nipa, palm-fruit, palm-leaf, palm-sap, pandanus, pear, plum, raffia, ramie, rose, sesame, shea-nut, shrimp, soybean, sugar-cane, tea-leaf, witch-hazel-bark
+-- It was measured on the baseline's market; on any other it refuses before writing a row (the digest
+-- is each row's affinity, base max (the max where no multiple was ever applied, 0252) and production).
+-- Every row outside the scope is pinned here and asserted unmoved at the foot of section 6.
 do $mkt$
 declare
   v_h text;
@@ -190,26 +182,30 @@ begin
     raise exception '0460 refuses: the market is not the one this file was cut against (digest %, expected 0c17a5f4f96b6f1c3f9c22428291a3ef)', v_h;
   end if;
 end $mkt$;
+create temporary table untouched_0460 on commit drop as
+select (select md5(coalesce(string_agg(pg.port_id::text || '|' || pg.good_id::text || '|' || pg.affinity::text || '|'
+         || coalesce(pg.base_target, pg.stock_target)::text || '|' || pg.production_rate::text || '|'
+         || coalesce(pg.haul_nm::text, '-') || '|' || coalesce(pg.haul::text, '-') || '|' || pg.demand::text,
+         ';' order by pg.port_id, pg.good_id), ''))
+    from public.port_goods pg
+   where not (pg.good_id in (select g.id from public.goods g where g.code = any(array['agave', 'apple', 'bamboo', 'bark', 'betel-leaf', 'cabbage', 'cacao-bean', 'cassava-root', 'cattle', 'coffee-bean', 'eel', 'eggs', 'fresh-water', 'goose-feathers', 'grapes', 'honeybush-leaf', 'lychee', 'milk', 'mint', 'nipa', 'palm-fruit', 'palm-leaf', 'palm-sap', 'pandanus', 'pear', 'plum', 'raffia', 'ramie', 'rose', 'sesame', 'shea-nut', 'shrimp', 'soybean', 'sugar-cane', 'tea-leaf', 'witch-hazel-bark']::text[]))
+       or pg.port_id in (select p.id from public.ports p where p.code = any(array[]::text[])))) as h;
 
 
--- ── 6. THE MARKET FOLLOWS THE WORLD: port_goods re-derived for every (harbour, good) pair ─────
+-- ── 6. THE MARKET FOLLOWS THE WORLD: the scoped rows re-derived ───────────────────────────────
 --
 -- The same arithmetic as 0005's seed — the one formula world.affinity_at(), the same knobs-once +
--- distance-matrix shape — extended to the grown world. Three kinds of row come out of it:
+-- distance-matrix shape — over the scope of 5b only. Three kinds of row come out of it:
 --   * a MISSING pair (new good anywhere, any good at a new harbour): INSERTED, stock = target
---   * an EXISTING pair whose affinity moved (a source appeared/vanished nearby, or the knobs
---     changed): affinity/stock_target/production_rate re-derived, stock := the new target — a
---     retuned geometry with a stale stock displacement would price as a random shortage
---   * an EXISTING pair whose affinity is unchanged: NOT TOUCHED (stock/drift belong to the game)
---     — unless its max stock or production is not the rule's (0303: depth x the good's stock scale):
---     then it is re-derived like a moved pair (0460: 0280 seeded its 64 goods at a tenth of the rule)
+--   * an EXISTING pair of a scoped good whose affinity moved (a source appeared/vanished nearby):
+--     affinity re-derived, and its max and production follow the new affinity ON THE ROW'S OWN
+--     FOOTING (its ratio to the rule before, kept: a growth follows the geography, it never re-stocks;
+--     0460: 0280's goods stay at their tenth), stock := the new max — a retuned geometry with a stale
+--     stock displacement would price as a random shortage
+--   * any other pair: NOT TOUCHED (stock/drift belong to the game)
 --
--- THREE SHORT STATEMENTS, NOT ONE UPSERT (2026-10-25, 0217). The single INSERT … ON CONFLICT this
--- generator used to emit priced every pair of the world — world.demand_for() and three depth calls
--- on all ~139,000 rows, only for the conflict to throw ~132,000 of them away — and measured 72.6 s on
--- native PostgreSQL 16 as one statement; 0215's push lost its connection on a statement of that
--- length. Now the affinity is derived once into a temp table (the arithmetic is unchanged), and the
--- insert and the update each price only the rows they write.
+-- THREE SHORT STATEMENTS, NOT ONE UPSERT (2026-10-25, 0217). The affinity is derived once into a temp
+-- table, and the insert and the update each price only the rows they write.
 create temporary table derived_0460 on commit drop as
 with knob as (
   select public.wc_num('affinity_producer') as producer,
@@ -233,19 +229,26 @@ nearest as (
    group by d.port_id, ps.good_id
 ),
 scale as (select g.id as good_id, public.good_stock_scale(g.id) as sc from public.goods g)
+select b.*, round(b.tgt * b.ratio, 2) as new_base, round(b.rate * b.ratio, 2) as new_rate
+  from (
 select a.*,
        (case when a.sc < 1
           then greatest(public.wc_num('stock_floor_units'), round((world.market_depth_at(a.size_tier, a.affinity, public.wc_num('market_depth'))).stock_target * a.sc, 2))
           else (world.market_depth_at(a.size_tier, a.affinity, public.wc_num('market_depth'))).stock_target end) as tgt,
        round((world.market_depth_at(a.size_tier, a.affinity, public.wc_num('market_depth'))).production_rate * least(1, (case when a.sc < 1
           then greatest(public.wc_num('stock_floor_units'), round((world.market_depth_at(a.size_tier, a.affinity, public.wc_num('market_depth'))).stock_target * a.sc, 2))
-          else (world.market_depth_at(a.size_tier, a.affinity, public.wc_num('market_depth'))).stock_target end) / (world.market_depth_at(a.size_tier, a.affinity, public.wc_num('market_depth'))).stock_target), 2) as rate
+          else (world.market_depth_at(a.size_tier, a.affinity, public.wc_num('market_depth'))).stock_target end) / (world.market_depth_at(a.size_tier, a.affinity, public.wc_num('market_depth'))).stock_target), 2) as rate,
+       coalesce(a.old_base / nullif((case when a.sc < 1
+          then greatest(public.wc_num('stock_floor_units'), round((world.market_depth_at(a.size_tier, a.old_aff, public.wc_num('market_depth'))).stock_target * a.sc, 2))
+          else (world.market_depth_at(a.size_tier, a.old_aff, public.wc_num('market_depth'))).stock_target end), 0), 1) as ratio
   from (
 select p.id as port_id, g.id as good_id, p.size_tier,
        world.affinity_at(
          exists (select 1 from public.port_specialties s
                   where s.port_id = p.id and s.good_id = g.id),
          n.nm, k.producer, k.home, k.span, k.reach_nm, k.curve) as affinity,
+       pg0.affinity as old_aff,
+       coalesce(pg0.base_target, pg0.stock_target) as old_base,
        sc.sc,
        pm.mult
   from public.ports p
@@ -254,7 +257,9 @@ select p.id as port_id, g.id as good_id, p.size_tier,
   cross join knob k
   join scale sc on sc.good_id = g.id
   left join nearest n on n.port_id = p.id and n.good_id = g.id
- where p.kind = 'HARBOUR') a;
+  left join public.port_goods pg0 on pg0.port_id = p.id and pg0.good_id = g.id
+ where p.kind = 'HARBOUR'
+   and (pg0.port_id is null or g.code = any(array['agave', 'apple', 'bamboo', 'bark', 'betel-leaf', 'cabbage', 'cacao-bean', 'cassava-root', 'cattle', 'coffee-bean', 'eel', 'eggs', 'fresh-water', 'goose-feathers', 'grapes', 'honeybush-leaf', 'lychee', 'milk', 'mint', 'nipa', 'palm-fruit', 'palm-leaf', 'palm-sap', 'pandanus', 'pear', 'plum', 'raffia', 'ramie', 'rose', 'sesame', 'shea-nut', 'shrimp', 'soybean', 'sugar-cane', 'tea-leaf', 'witch-hazel-bark']::text[]) or p.code = any(array[]::text[]))) a) b;
 
 -- the MISSING pairs: inserted at their target stock, each asking world.demand_for() for its city's
 -- appetite (0066); an existing pair keeps its demand (the region and the category did not move)
@@ -267,44 +272,77 @@ select d.port_id,
        d.rate,
        world.demand_for(d.port_id, d.good_id)
   from derived_0460 d
- where not exists (select 1 from public.port_goods pg where pg.port_id = d.port_id and pg.good_id = d.good_id);
+ where d.old_aff is null;
 
--- the EXISTING pairs whose affinity moved (or whose depth is not the rule): re-derived, stock := the new target
--- 0252: where a max-stock multiple has been applied (base_target set), the rule is the BASE and the
+-- the EXISTING scoped pairs whose affinity moved: re-derived on their own footing, stock := the new max
+-- 0252: where a max-stock multiple has been applied (base_target set), the footing is on the BASE and the
 -- max is the base x the harbour's multiple (public.depth_target, public.depth_mult), as the regen keeps it
 update public.port_goods pg
    set affinity        = d.affinity,
-       base_target     = case when pg.base_target is null then null else d.tgt end,
-       stock_target    = case when pg.base_target is null then d.tgt else public.depth_target(d.tgt, d.tgt, d.mult) end,
-       stock           = case when pg.base_target is null then d.tgt else public.depth_target(d.tgt, d.tgt, d.mult) end,
-       production_rate = d.rate,
+       base_target     = case when pg.base_target is null then null else d.new_base end,
+       stock_target    = case when pg.base_target is null then d.new_base else public.depth_target(d.new_base, d.new_base, d.mult) end,
+       stock           = case when pg.base_target is null then d.new_base else public.depth_target(d.new_base, d.new_base, d.mult) end,
+       production_rate = d.new_rate,
        updated_at      = now()
   from derived_0460 d
  where pg.port_id = d.port_id and pg.good_id = d.good_id
-   and (pg.affinity is distinct from d.affinity
-        or coalesce(pg.base_target, pg.stock_target) is distinct from d.tgt
-        or pg.production_rate is distinct from d.rate);
+   and d.old_aff is not null
+   and pg.affinity is distinct from d.affinity;
 
 -- 0173: a row's haul (how far its good is carried, from the nearest roster that offers it) is derived
 -- from the roster: world.haul_rows() is the one authority, read once. A new offer moves the hauls of
--- its good at every harbour (0460: this generator had not learnt it; world-guard's 'hauls' check).
-create temporary table haul_0460 on commit drop as select h.port_id, h.good_id, h.haul_nm, h.haul from world.haul_rows() h;
+-- its good at every harbour, so the scoped rows take it (0460: this generator had not learnt it).
+create temporary table haul_0460 on commit drop as
+  select h.port_id, h.good_id, h.haul_nm, h.haul from world.haul_rows() h
+   where (h.good_id in (select g.id from public.goods g where g.code = any(array['agave', 'apple', 'bamboo', 'bark', 'betel-leaf', 'cabbage', 'cacao-bean', 'cassava-root', 'cattle', 'coffee-bean', 'eel', 'eggs', 'fresh-water', 'goose-feathers', 'grapes', 'honeybush-leaf', 'lychee', 'milk', 'mint', 'nipa', 'palm-fruit', 'palm-leaf', 'palm-sap', 'pandanus', 'pear', 'plum', 'raffia', 'ramie', 'rose', 'sesame', 'shea-nut', 'shrimp', 'soybean', 'sugar-cane', 'tea-leaf', 'witch-hazel-bark']::text[]))
+       or h.port_id in (select p.id from public.ports p where p.code = any(array[]::text[])));
 update public.port_goods pg
    set haul_nm = h.haul_nm, haul = h.haul
   from haul_0460 h
  where pg.port_id = h.port_id and pg.good_id = h.good_id
    and (pg.haul_nm, pg.haul) is distinct from (h.haul_nm, h.haul);
-do $haul$
+
+-- THE SCOPE HELD: every scoped row is the derivation's; every other row is unmoved (its static columns
+-- by the digest pinned in 5b, the whole row by xmin: this transaction wrote none of them).
+do $scope$
 declare
   v_n int;
 begin
-  select count(*) into v_n from public.port_goods pg
-    left join haul_0460 h on h.port_id = pg.port_id and h.good_id = pg.good_id
-   where h.port_id is null or (pg.haul_nm, pg.haul) is distinct from (h.haul_nm, h.haul);
+  select count(*) into v_n
+    from derived_0460 d
+    join public.port_goods pg on pg.port_id = d.port_id and pg.good_id = d.good_id
+   where pg.affinity is distinct from d.affinity
+      or coalesce(pg.base_target, pg.stock_target) is distinct from (case when d.old_aff is null then d.tgt else d.new_base end)
+      or pg.production_rate is distinct from (case when d.old_aff is null then d.rate else d.new_rate end);
   if v_n <> 0 then
-    raise exception '0460 self-assert FAIL: % market row(s) carry a haul world.haul_rows() does not give', v_n;
+    raise exception '0460 self-assert FAIL: % scoped market row(s) are not the derivation (affinity, footing, production)', v_n;
   end if;
-end $haul$;
+  select count(*) into v_n
+    from public.port_goods pg
+    left join haul_0460 h on h.port_id = pg.port_id and h.good_id = pg.good_id
+   where (pg.good_id in (select g.id from public.goods g where g.code = any(array['agave', 'apple', 'bamboo', 'bark', 'betel-leaf', 'cabbage', 'cacao-bean', 'cassava-root', 'cattle', 'coffee-bean', 'eel', 'eggs', 'fresh-water', 'goose-feathers', 'grapes', 'honeybush-leaf', 'lychee', 'milk', 'mint', 'nipa', 'palm-fruit', 'palm-leaf', 'palm-sap', 'pandanus', 'pear', 'plum', 'raffia', 'ramie', 'rose', 'sesame', 'shea-nut', 'shrimp', 'soybean', 'sugar-cane', 'tea-leaf', 'witch-hazel-bark']::text[]))
+       or pg.port_id in (select p.id from public.ports p where p.code = any(array[]::text[])))
+     and (h.port_id is null or (pg.haul_nm, pg.haul) is distinct from (h.haul_nm, h.haul));
+  if v_n <> 0 then
+    raise exception '0460 self-assert FAIL: % scoped market row(s) carry a haul world.haul_rows() does not give', v_n;
+  end if;
+  if (select md5(coalesce(string_agg(pg.port_id::text || '|' || pg.good_id::text || '|' || pg.affinity::text || '|'
+         || coalesce(pg.base_target, pg.stock_target)::text || '|' || pg.production_rate::text || '|'
+         || coalesce(pg.haul_nm::text, '-') || '|' || coalesce(pg.haul::text, '-') || '|' || pg.demand::text,
+         ';' order by pg.port_id, pg.good_id), ''))
+    from public.port_goods pg
+   where not (pg.good_id in (select g.id from public.goods g where g.code = any(array['agave', 'apple', 'bamboo', 'bark', 'betel-leaf', 'cabbage', 'cacao-bean', 'cassava-root', 'cattle', 'coffee-bean', 'eel', 'eggs', 'fresh-water', 'goose-feathers', 'grapes', 'honeybush-leaf', 'lychee', 'milk', 'mint', 'nipa', 'palm-fruit', 'palm-leaf', 'palm-sap', 'pandanus', 'pear', 'plum', 'raffia', 'ramie', 'rose', 'sesame', 'shea-nut', 'shrimp', 'soybean', 'sugar-cane', 'tea-leaf', 'witch-hazel-bark']::text[]))
+       or pg.port_id in (select p.id from public.ports p where p.code = any(array[]::text[])))) is distinct from (select u.h from untouched_0460 u) then
+    raise exception '0460 self-assert FAIL: a market row outside the scope moved (affinity, base max, production, haul or demand)';
+  end if;
+  select count(*) into v_n from public.port_goods pg
+   where not (pg.good_id in (select g.id from public.goods g where g.code = any(array['agave', 'apple', 'bamboo', 'bark', 'betel-leaf', 'cabbage', 'cacao-bean', 'cassava-root', 'cattle', 'coffee-bean', 'eel', 'eggs', 'fresh-water', 'goose-feathers', 'grapes', 'honeybush-leaf', 'lychee', 'milk', 'mint', 'nipa', 'palm-fruit', 'palm-leaf', 'palm-sap', 'pandanus', 'pear', 'plum', 'raffia', 'ramie', 'rose', 'sesame', 'shea-nut', 'shrimp', 'soybean', 'sugar-cane', 'tea-leaf', 'witch-hazel-bark']::text[]))
+       or pg.port_id in (select p.id from public.ports p where p.code = any(array[]::text[])))
+     and pg.xmin = pg_current_xact_id()::xid;
+  if v_n <> 0 then
+    raise exception '0460 self-assert FAIL: % market row(s) outside the scope were written by this file', v_n;
+  end if;
+end $scope$;
 
 -- ── 7. A NEW HARBOUR IS FURNISHED BY 0089's ONE RULE ─────────────────────────────────────────
 -- public.furnish_harbours() inserts, for every harbour, each building row public.harbour_buildings
@@ -340,9 +378,9 @@ insert into want_ports_0460 values
   ('ARK', 'Arkhangelsk', 'Russia', 'RUS', 64.54, 40.54, 'WHI', 'SCA', 'nordic', 3, 2, 1, false, 6, 15, 7),
   ('AST', 'Astoria', 'United States', null, 46.19, -123.83, 'NRT', 'PAC', 'latin', 2, 3, 0, false, 4, 9, 4),
   ('AUK', 'Auckland', 'New Zealand', null, -36.85, 174.76, 'STH', 'OCE', 'oceanic', 2, 3, 0, false, 4, 9, 4),
-  ('AYU', 'Ayutthaya', 'Thailand', 'AYU', 14.36, 100.58, 'GND', 'SOU', 'malay', 3, 2, 1, false, 6, 15, 7),
+  ('AYU', 'Ayutthaya', 'Thailand', 'AYU', 14.36, 100.58, 'GND', 'SOU', 'malay', 3, 2, 1, false, 6, 14, 7),
   ('BAN', 'Banda Aceh', 'Indonesia', null, 5.55, 95.32, 'STR', 'SOU', 'malay', 3, 4, 1, false, 6, 14, 7),
-  ('BND', 'Banda Neira', 'Indonesia', null, -4.51, 129.9, 'BAN', 'SOU', 'malay', 3, 4, 1, false, 6, 14, 7),
+  ('BND', 'Banda Neira', 'Indonesia', null, -4.51, 129.9, 'BAN', 'SOU', 'malay', 3, 4, 1, false, 6, 13, 7),
   ('BAS', 'Bandar Abbas', 'Iran', 'PER', 27.19, 56.28, 'PER', 'ARA', 'islamic', 3, 4, 1, false, 6, 14, 7),
   ('BNT', 'Banten', 'Indonesia', 'BAN', -6.04, 106.16, 'JAV', 'SOU', 'malay', 3, 4, 1, false, 8, 15, 7),
   ('BAR', 'Barcelona', 'Spain', 'ESP', 41.38, 2.18, 'MED', 'IBE', 'latin', 5, 5, 3, true, 10, 20, 11),
@@ -351,7 +389,7 @@ insert into want_ports_0460 values
   ('BEI', 'Beirut', 'Lebanon', 'OTT', 33.89, 35.51, 'MED', 'LEV', 'islamic', 3, 4, 1, false, 8, 15, 7),
   ('BEL', 'Belem', 'Brazil', 'PRT', -1.46, -48.5, 'SOU', 'STH', 'latin', 2, 2, 0, false, 4, 9, 4),
   ('BER', 'Bergen', 'Norway', 'DNK', 60.39, 5.32, 'NRW', 'SCA', 'nordic', 3, 4, 1, false, 8, 13, 7),
-  ('BIL', 'Bilbao', 'Spain', 'ESP', 43.26, -2.93, 'BAY', 'IBE', 'latin', 3, 4, 1, false, 6, 14, 7),
+  ('BIL', 'Bilbao', 'Spain', 'ESP', 43.26, -2.93, 'BAY', 'IBE', 'latin', 3, 4, 1, false, 6, 13, 7),
   ('BOR', 'Bordeaux', 'France', 'FRA', 44.84, -0.58, 'BAY', 'FRA', 'latin', 5, 2, 3, true, 12, 20, 11),
   ('BOS', 'Boston', 'United States', null, 42.36, -71.06, 'NOR', 'NOR', 'anglo', 3, 4, 1, false, 9, 13, 7),
   ('BRI', 'Bridgetown', 'Barbados', null, 13.1, -59.62, 'CAR', 'CAR', 'latin', 2, 3, 0, false, 4, 9, 4),
@@ -418,7 +456,7 @@ insert into want_ports_0460 values
   ('HUA', 'Huatulco', 'Mexico', 'ESP', 15.76, -96.12, 'NRT', 'PAC', 'latin', 2, 3, 0, false, 4, 9, 4),
   ('INC', 'Incheon', 'South Korea', 'JOS', 37.46, 126.65, 'YEL', 'KOR', 'korean', 3, 4, 1, false, 8, 14, 7),
   ('IST', 'Istanbul', 'Turkey', 'OTT', 41.01, 28.96, 'SEA', 'AEG', 'islamic', 5, 5, 3, true, 12, 20, 11),
-  ('IZM', 'Izmir', 'Turkey', 'OTT', 38.41, 27.14, 'AEG', 'AEG', 'islamic', 3, 4, 1, false, 9, 15, 7),
+  ('IZM', 'Izmir', 'Turkey', 'OTT', 38.41, 27.14, 'AEG', 'AEG', 'islamic', 3, 4, 1, false, 9, 14, 7),
   ('JAF', 'Jaffna', 'Sri Lanka', null, 9.66, 80.02, 'BYF', 'EST', 'indic', 2, 3, 0, false, 4, 9, 4),
   ('JAK', 'Jakarta', 'Indonesia', 'BAN', -6.18, 106.83, 'JAV', 'SOU', 'malay', 5, 5, 3, true, 12, 20, 11),
   ('JAM', 'Jamestown', 'United States', null, 37.21, -76.78, 'NOR', 'NOR', 'anglo', 3, 4, 1, false, 6, 12, 7),
@@ -485,7 +523,7 @@ insert into want_ports_0460 values
   ('OSA', 'Osaka', 'Japan', 'JPN', 34.69, 135.5, 'SET', 'JAP', 'japanese', 5, 5, 3, true, 10, 20, 11),
   ('OUI', 'Ouidah', 'Benin', null, 6.37, 2.08, 'GUL', 'WST', 'guinean', 2, 3, 0, false, 4, 9, 4),
   ('PAI', 'Paita', 'Peru', 'ESP', -5.09, -81.11, 'STH', 'PAC', 'latin', 2, 3, 0, false, 4, 9, 4),
-  ('PAL', 'Palermo', 'Italy', 'ESP', 38.12, 13.36, 'MED', 'WES', 'latin', 3, 4, 1, false, 6, 15, 7),
+  ('PAL', 'Palermo', 'Italy', 'ESP', 38.12, 13.36, 'MED', 'WES', 'latin', 3, 4, 1, false, 6, 14, 7),
   ('PLM', 'Palma de Mallorca', 'Spain', 'ESP', 39.57, 2.65, 'MED', 'WES', 'latin', 2, 3, 0, false, 6, 9, 4),
   ('PAN', 'Panama City', 'Panama', 'ESP', 8.97, -79.53, 'NRT', 'PAC', 'latin', 3, 4, 1, false, 9, 13, 7),
   ('PAR', 'Paramaribo', 'Suriname', null, 5.87, -55.17, 'NOR', 'STH', 'latin', 2, 3, 0, false, 4, 9, 4),
@@ -496,7 +534,7 @@ insert into want_ports_0460 values
   ('PLO', 'Port Louis', 'Mauritius', null, -20.16, 57.5, 'IND', 'EAS', 'guinean', 2, 3, 0, false, 4, 9, 4),
   ('POR', 'Port Royal', 'Jamaica', null, 17.94, -76.84, 'CAR', 'CAR', 'latin', 2, 3, 0, false, 4, 9, 4),
   ('PTL', 'Portland', 'United States', null, 43.66, -70.26, 'NOR', 'NOR', 'anglo', 2, 3, 0, false, 4, 9, 4),
-  ('OPO', 'Porto', 'Portugal', 'PRT', 41.15, -8.61, 'NOR', 'IBE', 'latin', 3, 4, 1, false, 6, 15, 7),
+  ('OPO', 'Porto', 'Portugal', 'PRT', 41.15, -8.61, 'NOR', 'IBE', 'latin', 3, 4, 1, false, 6, 13, 7),
   ('PRT', 'Portobelo', 'Panama', 'ESP', 9.55, -79.65, 'CAR', 'CAR', 'latin', 3, 4, 1, false, 6, 14, 7),
   ('PTH', 'Portsmouth', 'United Kingdom', 'ENG', 50.81, -1.09, 'ENG', 'BRI', 'anglo', 3, 4, 1, false, 6, 13, 7),
   ('PUL', 'Pulicat', 'India', null, 13.42, 80.32, 'BYF', 'EST', 'indic', 2, 3, 0, false, 7, 9, 4),
@@ -1323,7 +1361,6 @@ insert into want_offers_0460 values
   ('AYU', 'galangal'),
   ('AYU', 'gamboge'),
   ('AYU', 'sappanwood'),
-  ('AYU', 'quartz'),
   ('BAN', 'benzoin'),
   ('BAN', 'camphor'),
   ('BAN', 'coconut-arrack'),
@@ -1337,7 +1374,6 @@ insert into want_offers_0460 values
   ('BND', 'paradise-plumes'),
   ('BND', 'sago'),
   ('BND', 'milk'),
-  ('BND', 'sand'),
   ('BAS', 'arabian-horses'),
   ('BAS', 'asafoetida'),
   ('BAS', 'astrolabes'),
@@ -1398,7 +1434,6 @@ insert into want_offers_0460 values
   ('BIL', 'port-wine'),
   ('BIL', 'sardines'),
   ('BIL', 'fresh-water'),
-  ('BIL', 'lime'),
   ('BOR', 'antwerp-presses'),
   ('BOR', 'arquebus'),
   ('BOR', 'brandy'),
@@ -1789,7 +1824,6 @@ insert into want_offers_0460 values
   ('IZM', 'hazelnuts'),
   ('IZM', 'madder'),
   ('IZM', 'mastic'),
-  ('IZM', 'stone'),
   ('JAF', 'chank-shells'),
   ('JAF', 'dhaka-muslin'),
   ('JAF', 'golconda-diamonds'),
@@ -2195,7 +2229,6 @@ insert into want_offers_0460 values
   ('PAL', 'olives'),
   ('PAL', 'salted-tuna'),
   ('PAL', 'tuna'),
-  ('PAL', 'feldspar'),
   ('PLM', 'anchovies'),
   ('PLM', 'armour'),
   ('PLM', 'cheese'),
@@ -2244,9 +2277,7 @@ insert into want_offers_0460 values
   ('OPO', 'hake'),
   ('OPO', 'merino-sheep'),
   ('OPO', 'merino-wool'),
-  ('OPO', 'clay'),
   ('OPO', 'eggs'),
-  ('OPO', 'gypsum'),
   ('PRT', 'allspice'),
   ('PRT', 'black-coral'),
   ('PRT', 'cassava-bread'),
@@ -2699,8 +2730,8 @@ begin
       v_harbours - pre.harbours, v_harbours, v_goods - pre.goods, v_goods;
   end if;
   select count(*) into v_n from public.port_specialties;
-  if v_n - pre.offers <> 43 then
-    raise exception '0460 self-assert FAIL: offers moved by % (expected +43-0 = 43)', v_n - pre.offers;
+  if v_n - pre.offers <> 36 then
+    raise exception '0460 self-assert FAIL: offers moved by % (expected +36-0 = 36)', v_n - pre.offers;
   end if;
 
   ---------------------------------------------------------------------------------------------
@@ -2880,19 +2911,23 @@ begin
   --     ... and every good is produced somewhere and buyable at a producer (0062 (d)).
   --     Since 0280 a MADE good (tier 1-3) that a recipe makes (public.goods_recipes) is produced by
   --     the recipe: it needs no quay. A RAW good (tier 0) has no recipe, so it must have one (0460).
+  --     A raw good the land gathers (public.land_actions, 0455) is produced by the land: it needs no
+  --     quay either (0460: Clay, Sand, Stone and the other Mining goods are the land's).
   select count(*) into v_n from public.goods g
    where cardinality(g.origin_regions) = 0
       or (not exists (select 1 from public.port_specialties s join public.ports p on p.id = s.port_id
                        join public.regions r on r.id = p.region_id
                       where s.good_id = g.id and r.code = any(g.origin_regions))
-          and (g.tier = 0 or not exists (select 1 from public.goods_recipes gr where gr.product_id = g.id)));
+          and (g.tier = 0 or not exists (select 1 from public.goods_recipes gr where gr.product_id = g.id))
+          and not exists (select 1 from public.land_actions la where la.good_id = g.id and la.kind = 'gather'));
   if v_n <> 0 then
     select string_agg(g.code, ', ' order by g.code) into v_list from public.goods g
      where cardinality(g.origin_regions) = 0
         or (not exists (select 1 from public.port_specialties s join public.ports p on p.id = s.port_id
                          join public.regions r on r.id = p.region_id
                         where s.good_id = g.id and r.code = any(g.origin_regions))
-            and (g.tier = 0 or not exists (select 1 from public.goods_recipes gr where gr.product_id = g.id)));
+            and (g.tier = 0 or not exists (select 1 from public.goods_recipes gr where gr.product_id = g.id))
+            and not exists (select 1 from public.land_actions la where la.good_id = g.id and la.kind = 'gather'));
     raise exception '0460 self-assert FAIL: % good(s) have no origin or are buyable at no producer (0062): %', v_n, v_list;
   end if;
   --     0065's law: no good sits in four cities.
@@ -2940,63 +2975,15 @@ begin
   end if;
 
   ---------------------------------------------------------------------------------------------
-  -- (h) THE MARKET COVERS THE WORLD AND RESTATES THE FORMULA. One row per (harbour, good);
-  --     every affinity equals the one formula recomputed from today's specialties and knobs;
-  --     stock_target and production_rate restate 0005's seed arithmetic on every row.
+  -- (h) THE MARKET COVERS THE WORLD. One row per (harbour, good).
   ---------------------------------------------------------------------------------------------
   select count(*) into v_n from public.port_goods;
   if v_n <> v_harbours * v_goods then
     raise exception '0460 self-assert FAIL: % port_goods rows for % harbours × % goods (expected %)',
       v_n, v_harbours, v_goods, v_harbours * v_goods;
   end if;
-  with knob as (
-    select public.wc_num('affinity_producer') as producer,
-           public.wc_num('affinity_home')     as home,
-           public.wc_num('affinity_span')     as span,
-           public.wc_num('affinity_reach_nm') as reach_nm,
-           public.wc_num('affinity_curve')    as curve
-  ),
-  source_distance as (
-    select p.id as port_id, src.id as src_id,
-           voyage.gc_distance_nm(p.lat, p.lon, src.lat, src.lon) as nm
-      from public.ports p
-      cross join (select distinct port_id from public.port_specialties) s
-      join public.ports src on src.id = s.port_id
-     where p.kind = 'HARBOUR'
-  ),
-  nearest as (
-    select d.port_id, ps.good_id, min(d.nm) as nm
-      from source_distance d
-      join public.port_specialties ps on ps.port_id = d.src_id
-     group by d.port_id, ps.good_id
-  )
-  select count(*) into v_n
-    from public.port_goods pg
-    join public.ports p on p.id = pg.port_id
-    left join nearest n on n.port_id = pg.port_id and n.good_id = pg.good_id
-    cross join knob k
-   where pg.affinity is distinct from world.affinity_at(
-           exists (select 1 from public.port_specialties s
-                    where s.port_id = pg.port_id and s.good_id = pg.good_id),
-           n.nm, k.producer, k.home, k.span, k.reach_nm, k.curve);
-  if v_n <> 0 then
-    raise exception '0460 self-assert FAIL: % port_goods row(s) hold an affinity the formula does not derive from today''s world', v_n;
-  end if;
-  with scale as (select g.id as good_id, public.good_stock_scale(g.id) as sc from public.goods g)
-  select count(*) into v_n
-    from public.port_goods pg
-    join public.ports p on p.id = pg.port_id
-    join scale s on s.good_id = pg.good_id
-   where coalesce(pg.base_target, pg.stock_target) is distinct from (case when s.sc < 1
-          then greatest(public.wc_num('stock_floor_units'), round((world.market_depth_at(p.size_tier, pg.affinity, public.wc_num('market_depth'))).stock_target * s.sc, 2))
-          else (world.market_depth_at(p.size_tier, pg.affinity, public.wc_num('market_depth'))).stock_target end)
-      or pg.production_rate is distinct from
-         round((world.market_depth_at(p.size_tier, pg.affinity, public.wc_num('market_depth'))).production_rate * least(1, (case when s.sc < 1
-          then greatest(public.wc_num('stock_floor_units'), round((world.market_depth_at(p.size_tier, pg.affinity, public.wc_num('market_depth'))).stock_target * s.sc, 2))
-          else (world.market_depth_at(p.size_tier, pg.affinity, public.wc_num('market_depth'))).stock_target end) / (world.market_depth_at(p.size_tier, pg.affinity, public.wc_num('market_depth'))).stock_target), 2);
-  if v_n <> 0 then
-    raise exception '0460 self-assert FAIL: % port_goods row(s) break 0005''s stock_target/production_rate arithmetic (x 0303''s stock scale)', v_n;
-  end if;
+  --     (0460) the affinity, footing and haul of the rows this file moves are asserted in section 6,
+  --     and every other row unmoved: a growth no longer pins rows it does not move to today's rule.
   --     0066: every market row of a harbour this file inserted carries the demand the one
   --     derivation answers (the default 1.000 would be a city with no appetite among 25 that have).
   select count(*) into v_n

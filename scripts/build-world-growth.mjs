@@ -126,6 +126,7 @@ const hasStockScale = (await db.query(
 // 0252: once a harbour's max-stock multiple has been applied, a row keeps the rule's max in base_target and
 // stock_target = base x the harbour's multiple (public.depth_target). Production has 'depth_by_investment' lit
 // (2026-11-19: every row has a base), the local chain does not; the rule is read on coalesce(base, max).
+const hasLand = (await db.query(`select to_regclass('public.land_actions') is not null as ok`)).rows[0].ok   // 0455
 const hasHaul = (await db.query(`select to_regprocedure('world.haul_rows()') is not null as ok`)).rows[0].ok   // 0173
 const hasDepthBase = await hasColumn('port_goods', 'base_target') && (await db.query(
   `select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'depth_target'`,
@@ -310,7 +311,7 @@ w(`-- ════════════════════════�
 --    to cut a NEW raster/reaches migration AFTER this growth, or the new harbour has no roadstead
 --    and no sailed distances; self-assert (g) names the harbours awaiting it and proof 08 refuses
 --    a finished chain that never seeded them)
---   +${specAdd.length}/-${specDel.length} port offers, then port_goods re-derived for EVERY (harbour, good) pair${hasDemand ? `
+--   +${specAdd.length}/-${specDel.length} port offers, then the market rows of the goods whose offers moved re-derived (section 5b names them)${hasDemand ? `
 --   (each NEW pair asking world.demand_for() for its city's appetite, 0066)` : ''}${hasFurnish ? `
 --   the ${newPorts.length} new harbour(s) furnished by public.furnish_harbours(), 0089's one rule` : ''}
 --   the five affinity_* knobs reconciled to the chain's tuned values (0005 was edited in place
@@ -453,14 +454,34 @@ on conflict do nothing;
 
 // (5. legs) RETIRED with migration 0049 — see the header note.
 
-// 5b. 0460: the market this file was cut against. Section 6 re-derives every row whose affinity or
-// depth is not the rule's, and stock := the new max on each: on a world whose market is not the
-// baseline's, that would touch rows nobody measured. So the file refuses unless the market's static
-// columns are the baseline's, byte for byte (the base max where a multiple has been applied, 0252).
-w(`-- ── 5b. THE MARKET THIS FILE WAS CUT AGAINST (0460) ─────────────────────────────────────────────
--- Section 6 re-derives every row whose affinity or depth is not the rule's (stock := the new max). It
--- was measured on the baseline's market; on any other it refuses before writing a row. The digest is
--- each row's affinity, ${hasDepthBase ? 'base max (the max where no multiple was ever applied, 0252)' : 'max'} and production.
+// 5b. 0460: THE MARKET'S SCOPE. A growth re-derives only the market rows its delta moves: the rows of
+// the goods whose offers moved (a new or withdrawn offer moves that good's affinity and haul at every
+// harbour) and the pairs of a new harbour. Every other row is left byte for byte as it is: a growth
+// is not a re-stock (owner, 2026-11-19, PR #771). Until 0460 the generator re-derived every row of
+// the world and pinned all of them to today's rule, so a growth also rewrote any row an earlier
+// migration had left off that rule (0280's 64 goods at a tenth of the depth, rows 0338 / 0414 seeded
+// by hand). Those rows are not this generator's to move; a re-stock is its own decision.
+const scopeGoods = [...new Set([...specAdd, ...specDel].map(([, g]) => g).concat(newGoods.map((g) => g.code)))].sort()
+const scopeGoodsSql = `array[${scopeGoods.map(q).join(', ')}]::text[]`
+const scopePortsSql = `array[${newPorts.map((p) => q(p.code)).join(', ')}]::text[]`
+const inScope = (t) => `(${t}.good_id in (select g.id from public.goods g where g.code = any(${scopeGoodsSql}))
+       or ${t}.port_id in (select p.id from public.ports p where p.code = any(${scopePortsSql})))`
+// What a row outside the scope may never lose: its affinity, base max (the max where no multiple was
+// ever applied, 0252), production, haul, demand. Stock and the day's max are the game's and move under
+// a live migration, so the whole row is held by xmin instead (this transaction writes no such row).
+const UNTOUCHED_SQL = `select md5(coalesce(string_agg(pg.port_id::text || '|' || pg.good_id::text || '|' || pg.affinity::text || '|'
+         || ${hasDepthBase ? 'coalesce(pg.base_target, pg.stock_target)' : 'pg.stock_target'}::text || '|' || pg.production_rate::text${hasHaul ? ` || '|'
+         || coalesce(pg.haul_nm::text, '-') || '|' || coalesce(pg.haul::text, '-')` : ''}${hasDemand ? ` || '|' || pg.demand::text` : ''},
+         ';' order by pg.port_id, pg.good_id), ''))
+    from public.port_goods pg
+   where not ${inScope('pg')}`
+
+w(`-- ── 5b. THE MARKET THIS FILE WAS CUT AGAINST, AND WHAT IT MAY TOUCH (0460) ─────────────────────
+-- Section 6 re-derives only the rows of the goods whose offers this file moves${newPorts.length ? ', and the new harbours\' pairs' : ''}:
+--   ${scopeGoods.length} good(s): ${scopeGoods.join(', ') || '(none)'}
+-- It was measured on the baseline's market; on any other it refuses before writing a row (the digest
+-- is each row's affinity, ${hasDepthBase ? 'base max (the max where no multiple was ever applied, 0252)' : 'max'} and production).
+-- Every row outside the scope is pinned here and asserted unmoved at the foot of section 6.
 do $mkt$
 declare
   v_h text;
@@ -470,28 +491,26 @@ begin
     raise exception '${shortNo} refuses: the market is not the one this file was cut against (digest %, expected ${marketDigest})', v_h;
   end if;
 end $mkt$;
+create temporary table untouched_${shortNo} on commit drop as
+select (${UNTOUCHED_SQL}) as h;
 
 `)
 
 // 6. port_goods re-derivation
-w(`-- ── 6. THE MARKET FOLLOWS THE WORLD: port_goods re-derived for every (harbour, good) pair ─────
+w(`-- ── 6. THE MARKET FOLLOWS THE WORLD: the scoped rows re-derived ───────────────────────────────
 --
 -- The same arithmetic as 0005's seed — the one formula world.affinity_at(), the same knobs-once +
--- distance-matrix shape — extended to the grown world. Three kinds of row come out of it:
+-- distance-matrix shape — over the scope of 5b only. Three kinds of row come out of it:
 --   * a MISSING pair (new good anywhere, any good at a new harbour): INSERTED, stock = target
---   * an EXISTING pair whose affinity moved (a source appeared/vanished nearby, or the knobs
---     changed): affinity/stock_target/production_rate re-derived, stock := the new target — a
---     retuned geometry with a stale stock displacement would price as a random shortage
---   * an EXISTING pair whose affinity is unchanged: NOT TOUCHED (stock/drift belong to the game)${hasStockScale ? `
---     — unless its max stock or production is not the rule's (0303: depth x the good's stock scale):
---     then it is re-derived like a moved pair (0460: 0280 seeded its 64 goods at a tenth of the rule)` : ''}
+--   * an EXISTING pair of a scoped good whose affinity moved (a source appeared/vanished nearby):
+--     affinity re-derived, and its max and production follow the new affinity ON THE ROW'S OWN
+--     FOOTING (its ratio to the rule before, kept: a growth follows the geography, it never re-stocks;
+--     0460: 0280's goods stay at their tenth), stock := the new max — a retuned geometry with a stale
+--     stock displacement would price as a random shortage
+--   * any other pair: NOT TOUCHED (stock/drift belong to the game)
 --
--- THREE SHORT STATEMENTS, NOT ONE UPSERT (2026-10-25, 0217). The single INSERT … ON CONFLICT this
--- generator used to emit priced every pair of the world — world.demand_for() and three depth calls
--- on all ~139,000 rows, only for the conflict to throw ~132,000 of them away — and measured 72.6 s on
--- native PostgreSQL 16 as one statement; 0215's push lost its connection on a statement of that
--- length. Now the affinity is derived once into a temp table (the arithmetic is unchanged), and the
--- insert and the update each price only the rows they write.
+-- THREE SHORT STATEMENTS, NOT ONE UPSERT (2026-10-25, 0217). The affinity is derived once into a temp
+-- table, and the insert and the update each price only the rows they write.
 create temporary table derived_${shortNo} on commit drop as
 with knob as (
   select public.wc_num('affinity_producer') as producer,
@@ -515,15 +534,20 @@ nearest as (
    group by d.port_id, ps.good_id
 )${hasStockScale ? `,
 scale as (select g.id as good_id, public.good_stock_scale(g.id) as sc from public.goods g)` : ''}
+select b.*, round(b.tgt * b.ratio, 2) as new_base, round(b.rate * b.ratio, 2) as new_rate
+  from (
 select a.*,
        ${depthTarget('a.size_tier', 'a.affinity', 'a.sc')} as tgt,
-       ${depthProduction('a.size_tier', 'a.affinity', 'a.sc')} as rate
+       ${depthProduction('a.size_tier', 'a.affinity', 'a.sc')} as rate,
+       coalesce(a.old_base / nullif(${depthTarget('a.size_tier', 'a.old_aff', 'a.sc')}, 0), 1) as ratio
   from (
 select p.id as port_id, g.id as good_id, p.size_tier,
        world.affinity_at(
          exists (select 1 from public.port_specialties s
                   where s.port_id = p.id and s.good_id = g.id),
          n.nm, k.producer, k.home, k.span, k.reach_nm, k.curve) as affinity,
+       pg0.affinity as old_aff,
+       ${hasDepthBase ? 'coalesce(pg0.base_target, pg0.stock_target)' : 'pg0.stock_target'} as old_base,
        ${hasStockScale ? 'sc.sc' : '1::numeric as sc'},
        ${hasDepthBase ? 'pm.mult' : 'null::numeric as mult'}
   from public.ports p${hasDepthBase ? `
@@ -532,7 +556,9 @@ select p.id as port_id, g.id as good_id, p.size_tier,
   cross join knob k${hasStockScale ? `
   join scale sc on sc.good_id = g.id` : ''}
   left join nearest n on n.port_id = p.id and n.good_id = g.id
- where p.kind = 'HARBOUR') a;
+  left join public.port_goods pg0 on pg0.port_id = p.id and pg0.good_id = g.id
+ where p.kind = 'HARBOUR'
+   and (pg0.port_id is null or g.code = any(${scopeGoodsSql}) or p.code = any(${scopePortsSql}))) a) b;
 
 -- the MISSING pairs: inserted at their target stock${hasDemand ? `, each asking world.demand_for() for its city's
 -- appetite (0066); an existing pair keeps its demand (the region and the category did not move)` : ''}
@@ -545,47 +571,71 @@ select d.port_id,
        d.rate${hasDemand ? `,
        world.demand_for(d.port_id, d.good_id)` : ''}
   from derived_${shortNo} d
- where not exists (select 1 from public.port_goods pg where pg.port_id = d.port_id and pg.good_id = d.good_id);
+ where d.old_aff is null;
 
--- the EXISTING pairs whose affinity moved${hasStockScale ? ' (or whose depth is not the rule)' : ''}: re-derived, stock := the new target${hasDepthBase ? `
--- 0252: where a max-stock multiple has been applied (base_target set), the rule is the BASE and the
+-- the EXISTING scoped pairs whose affinity moved: re-derived on their own footing, stock := the new max${hasDepthBase ? `
+-- 0252: where a max-stock multiple has been applied (base_target set), the footing is on the BASE and the
 -- max is the base x the harbour's multiple (public.depth_target, public.depth_mult), as the regen keeps it` : ''}
 update public.port_goods pg
    set affinity        = d.affinity,${hasDepthBase ? `
-       base_target     = case when pg.base_target is null then null else d.tgt end,
-       stock_target    = case when pg.base_target is null then d.tgt else public.depth_target(d.tgt, d.tgt, d.mult) end,
-       stock           = case when pg.base_target is null then d.tgt else public.depth_target(d.tgt, d.tgt, d.mult) end,` : `
-       stock_target    = d.tgt,
-       stock           = d.tgt,`}
-       production_rate = d.rate,
+       base_target     = case when pg.base_target is null then null else d.new_base end,
+       stock_target    = case when pg.base_target is null then d.new_base else public.depth_target(d.new_base, d.new_base, d.mult) end,
+       stock           = case when pg.base_target is null then d.new_base else public.depth_target(d.new_base, d.new_base, d.mult) end,` : `
+       stock_target    = d.new_base,
+       stock           = d.new_base,`}
+       production_rate = d.new_rate,
        updated_at      = now()
   from derived_${shortNo} d
  where pg.port_id = d.port_id and pg.good_id = d.good_id
-   and (pg.affinity is distinct from d.affinity${hasStockScale ? `
-        or ${hasDepthBase ? 'coalesce(pg.base_target, pg.stock_target)' : 'pg.stock_target'} is distinct from d.tgt
-        or pg.production_rate is distinct from d.rate` : ''});
+   and d.old_aff is not null
+   and pg.affinity is distinct from d.affinity;
 ${hasHaul ? `
 -- 0173: a row's haul (how far its good is carried, from the nearest roster that offers it) is derived
 -- from the roster: world.haul_rows() is the one authority, read once. A new offer moves the hauls of
--- its good at every harbour (0460: this generator had not learnt it; world-guard's 'hauls' check).
-create temporary table haul_${shortNo} on commit drop as select h.port_id, h.good_id, h.haul_nm, h.haul from world.haul_rows() h;
+-- its good at every harbour, so the scoped rows take it (0460: this generator had not learnt it).
+create temporary table haul_${shortNo} on commit drop as
+  select h.port_id, h.good_id, h.haul_nm, h.haul from world.haul_rows() h
+   where ${inScope('h')};
 update public.port_goods pg
    set haul_nm = h.haul_nm, haul = h.haul
   from haul_${shortNo} h
  where pg.port_id = h.port_id and pg.good_id = h.good_id
    and (pg.haul_nm, pg.haul) is distinct from (h.haul_nm, h.haul);
-do $haul$
+` : ''}
+-- THE SCOPE HELD: every scoped row is the derivation's; every other row is unmoved (its static columns
+-- by the digest pinned in 5b, the whole row by xmin: this transaction wrote none of them).
+do $scope$
 declare
   v_n int;
 begin
-  select count(*) into v_n from public.port_goods pg
-    left join haul_${shortNo} h on h.port_id = pg.port_id and h.good_id = pg.good_id
-   where h.port_id is null or (pg.haul_nm, pg.haul) is distinct from (h.haul_nm, h.haul);
+  select count(*) into v_n
+    from derived_${shortNo} d
+    join public.port_goods pg on pg.port_id = d.port_id and pg.good_id = d.good_id
+   where pg.affinity is distinct from d.affinity
+      or ${hasDepthBase ? 'coalesce(pg.base_target, pg.stock_target)' : 'pg.stock_target'} is distinct from (case when d.old_aff is null then d.tgt else d.new_base end)
+      or pg.production_rate is distinct from (case when d.old_aff is null then d.rate else d.new_rate end);
   if v_n <> 0 then
-    raise exception '${shortNo} self-assert FAIL: % market row(s) carry a haul world.haul_rows() does not give', v_n;
+    raise exception '${shortNo} self-assert FAIL: % scoped market row(s) are not the derivation (affinity, footing, production)', v_n;
+  end if;${hasHaul ? `
+  select count(*) into v_n
+    from public.port_goods pg
+    left join haul_${shortNo} h on h.port_id = pg.port_id and h.good_id = pg.good_id
+   where ${inScope('pg')}
+     and (h.port_id is null or (pg.haul_nm, pg.haul) is distinct from (h.haul_nm, h.haul));
+  if v_n <> 0 then
+    raise exception '${shortNo} self-assert FAIL: % scoped market row(s) carry a haul world.haul_rows() does not give', v_n;
+  end if;` : ''}
+  if (${UNTOUCHED_SQL}) is distinct from (select u.h from untouched_${shortNo} u) then
+    raise exception '${shortNo} self-assert FAIL: a market row outside the scope moved (affinity, base max, production, haul or demand)';
   end if;
-end $haul$;
-` : ''}`)
+  select count(*) into v_n from public.port_goods pg
+   where not ${inScope('pg')}
+     and pg.xmin = pg_current_xact_id()::xid;
+  if v_n <> 0 then
+    raise exception '${shortNo} self-assert FAIL: % market row(s) outside the scope were written by this file', v_n;
+  end if;
+end $scope$;
+`)
 
 // 7. the derived rows that follow a harbour
 if (hasFurnish) {
@@ -841,20 +891,24 @@ ${hasOrigin ? `  --     0062's law: every offer is NATIVE (the port's region is 
   end if;
   --     ... and every good is produced somewhere and buyable at a producer (0062 (d)).${hasTier ? `
   --     Since 0280 a MADE good (tier 1-3) that a recipe makes (public.goods_recipes) is produced by
-  --     the recipe: it needs no quay. A RAW good (tier 0) has no recipe, so it must have one (0460).` : ''}
+  --     the recipe: it needs no quay. A RAW good (tier 0) has no recipe, so it must have one (0460).` : ''}${hasLand ? `
+  --     A raw good the land gathers (public.land_actions, 0455) is produced by the land: it needs no
+  --     quay either (0460: Clay, Sand, Stone and the other Mining goods are the land's).` : ''}
   select count(*) into v_n from public.goods g
    where cardinality(g.origin_regions) = 0
       or (not exists (select 1 from public.port_specialties s join public.ports p on p.id = s.port_id
                        join public.regions r on r.id = p.region_id
                       where s.good_id = g.id and r.code = any(g.origin_regions))${hasTier ? `
-          and (g.tier = 0 or not exists (select 1 from public.goods_recipes gr where gr.product_id = g.id))` : ''});
+          and (g.tier = 0 or not exists (select 1 from public.goods_recipes gr where gr.product_id = g.id))` : ''}${hasLand ? `
+          and not exists (select 1 from public.land_actions la where la.good_id = g.id and la.kind = 'gather')` : ''});
   if v_n <> 0 then
     select string_agg(g.code, ', ' order by g.code) into v_list from public.goods g
      where cardinality(g.origin_regions) = 0
         or (not exists (select 1 from public.port_specialties s join public.ports p on p.id = s.port_id
                          join public.regions r on r.id = p.region_id
                         where s.good_id = g.id and r.code = any(g.origin_regions))${hasTier ? `
-            and (g.tier = 0 or not exists (select 1 from public.goods_recipes gr where gr.product_id = g.id))` : ''});
+            and (g.tier = 0 or not exists (select 1 from public.goods_recipes gr where gr.product_id = g.id))` : ''}${hasLand ? `
+            and not exists (select 1 from public.land_actions la where la.good_id = g.id and la.kind = 'gather')` : ''});
     raise exception '${shortNo} self-assert FAIL: % good(s) have no origin or are buyable at no producer (0062): %', v_n, v_list;
   end if;
   --     0065's law: no good sits in four cities.
@@ -902,59 +956,15 @@ ${hasOrigin ? `  --     0062's law: every offer is NATIVE (the port's region is 
   end if;
 
   ---------------------------------------------------------------------------------------------
-  -- (h) THE MARKET COVERS THE WORLD AND RESTATES THE FORMULA. One row per (harbour, good);
-  --     every affinity equals the one formula recomputed from today's specialties and knobs;
-  --     stock_target and production_rate restate 0005's seed arithmetic on every row.
+  -- (h) THE MARKET COVERS THE WORLD. One row per (harbour, good).
   ---------------------------------------------------------------------------------------------
   select count(*) into v_n from public.port_goods;
   if v_n <> v_harbours * v_goods then
     raise exception '${shortNo} self-assert FAIL: % port_goods rows for % harbours × % goods (expected %)',
       v_n, v_harbours, v_goods, v_harbours * v_goods;
   end if;
-  with knob as (
-    select public.wc_num('affinity_producer') as producer,
-           public.wc_num('affinity_home')     as home,
-           public.wc_num('affinity_span')     as span,
-           public.wc_num('affinity_reach_nm') as reach_nm,
-           public.wc_num('affinity_curve')    as curve
-  ),
-  source_distance as (
-    select p.id as port_id, src.id as src_id,
-           voyage.gc_distance_nm(p.lat, p.lon, src.lat, src.lon) as nm
-      from public.ports p
-      cross join (select distinct port_id from public.port_specialties) s
-      join public.ports src on src.id = s.port_id
-     where p.kind = 'HARBOUR'
-  ),
-  nearest as (
-    select d.port_id, ps.good_id, min(d.nm) as nm
-      from source_distance d
-      join public.port_specialties ps on ps.port_id = d.src_id
-     group by d.port_id, ps.good_id
-  )
-  select count(*) into v_n
-    from public.port_goods pg
-    join public.ports p on p.id = pg.port_id
-    left join nearest n on n.port_id = pg.port_id and n.good_id = pg.good_id
-    cross join knob k
-   where pg.affinity is distinct from world.affinity_at(
-           exists (select 1 from public.port_specialties s
-                    where s.port_id = pg.port_id and s.good_id = pg.good_id),
-           n.nm, k.producer, k.home, k.span, k.reach_nm, k.curve);
-  if v_n <> 0 then
-    raise exception '${shortNo} self-assert FAIL: % port_goods row(s) hold an affinity the formula does not derive from today''s world', v_n;
-  end if;
-  ${hasStockScale ? `with scale as (select g.id as good_id, public.good_stock_scale(g.id) as sc from public.goods g)
-  ` : ''}select count(*) into v_n
-    from public.port_goods pg
-    join public.ports p on p.id = pg.port_id${hasStockScale ? `
-    join scale s on s.good_id = pg.good_id` : ''}
-   where ${hasDepthBase ? 'coalesce(pg.base_target, pg.stock_target)' : 'pg.stock_target'} is distinct from ${depthTarget('p.size_tier', 'pg.affinity', 's.sc')}
-      or pg.production_rate is distinct from
-         ${depthProduction('p.size_tier', 'pg.affinity', 's.sc')};
-  if v_n <> 0 then
-    raise exception '${shortNo} self-assert FAIL: % port_goods row(s) break 0005''s stock_target/production_rate arithmetic${hasStockScale ? " (x 0303''s stock scale)" : ''}', v_n;
-  end if;
+  --     (0460) the affinity, footing and haul of the rows this file moves are asserted in section 6,
+  --     and every other row unmoved: a growth no longer pins rows it does not move to today's rule.
 ${hasDemand ? `  --     0066: every market row of a harbour this file inserted carries the demand the one
   --     derivation answers (the default 1.000 would be a city with no appetite among 25 that have).
   select count(*) into v_n
