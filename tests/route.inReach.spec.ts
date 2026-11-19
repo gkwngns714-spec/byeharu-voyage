@@ -2,9 +2,9 @@ import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { arrivalCard, LANDING_TEST_TIMEOUT_MS } from './arrivalWait.fixture'
 import { serveRoutesOn } from './routesOn.fixture'
-import { awayReport, AWAY_MS, parseSeenMark, seenMark, type SeenMark } from '../src/domain/route'
+import { awayLand, awayReport, AWAY_MS, parseSeenMark, seenMark, type SeenMark } from '../src/domain/route'
 import { tripRoute } from '../src/live/standingRouteDraft'
-import type { LedgerEvent, SnapshotGood, StandingRoute, StandingRouteBook } from '../src/lib/rpc'
+import type { LandView, LedgerEvent, SnapshotGood, StandingRoute, StandingRouteBook } from '../src/lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A ROUTE IN REACH, AND A REPORT ON RETURN (2026-11-16, the content plan's slice B; docs/design/content-plan-2026-11.md
@@ -81,6 +81,24 @@ test.describe('fixed facts', () => {
     expect(awayReport(then, later, 10_000, book(route('A', 4, 2_000), route('B', 1, -50, 'paused', 'losing')))?.routes.map((x) => x.id)).toEqual(['B'])
     // a company with no routes whose purse did not move (a brand-new player) has nothing to report
     expect(awayReport(seenMark(0, 8_000, null), AWAY_MS * 10, 8_000, null)).toBeNull()
+  })
+
+  test('awayLand (0458): the party line is what is home and not collected, and the level; dark or nothing home is no line', () => {
+    const lit = (n: number, waiting: number) =>
+      ({
+        enabled: true,
+        company: true,
+        party: { good: 'iron', waiting_good: null, waiting, progress: { new: n } },
+        skill: { code: 'mining', level: 31 },
+      }) as unknown as LandView
+    expect(awayLand(lit(80, 6))).toEqual({ good: 'iron', n: 86, skill: 'mining', level: 31 })
+    expect(awayLand(lit(0, 0))).toBeNull()
+    expect(awayLand({ enabled: false })).toBeNull()
+    expect(awayLand(null)).toBeNull()
+    // the land alone is something to say; with nothing else, no card
+    const then = seenMark(0, 8_000, null)
+    expect(awayReport(then, AWAY_MS, 8_000, null, awayLand(lit(80, 6)))?.land?.n).toBe(86)
+    expect(awayReport(then, AWAY_MS, 8_000, null, awayLand(lit(0, 0)))).toBeNull()
   })
 })
 

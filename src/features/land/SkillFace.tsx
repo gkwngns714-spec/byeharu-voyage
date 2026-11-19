@@ -84,6 +84,7 @@ function SendTray({ job, v, onSent }: { job: LandJob; v: Lit; onSent: () => void
   const locale = useLocale()
   const refresh = useWorld((s) => s.refresh)
   const ports = useWorld((s) => s.portByCode)
+  const goods = useWorld((s) => s.goodByCode)
   const [busy, setBusy] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   const send = () => {
@@ -120,6 +121,21 @@ function SendTray({ job, v, onSent }: { job: LandJob; v: Lit; onSent: () => void
         }
       />
       <Row label={t('land.exp')} value={<span className="tabular-nums">{t('land.perTrip', { n: formatInt(job.xp * job.p) })}</span>} />
+      {/* 0458: the rare finds of the land this job is worked on: none where no gem lies */}
+      {job.finds.length > 0 && (
+        <Row
+          label={t('land.finds')}
+          value={
+            <span className="break-words text-t-label" data-testid="land-send-finds">
+              {job.finds.map((f) => properName('good', f.code, goods[f.code]?.name ?? f.code)).join(', ')}
+            </span>
+          }
+        >
+          <span className="block text-t-caption text-ink-faint">
+            {[...new Set(job.finds.map((f) => f.one_in))].map((n) => t('land.oneIn', { n: formatInt(n) })).join(' · ')}
+          </span>
+        </Row>
+      )}
       {job.crowd > 0 && <Row label={t('land.company')} value={t('land.plusPct', { n: formatInt(job.crowd) })} />}
       {job.sold_at.length > 0 && (
         <Row label={t('land.soldAt')} value={<span className="break-words text-t-label">{job.sold_at.map((c) => (c ? portNameOf(ports, c) : '')).join(', ')}</span>} hairline={false} />

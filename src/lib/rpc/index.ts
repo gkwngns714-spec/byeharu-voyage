@@ -1004,6 +1004,16 @@ export function cmdLandTool(tool: string): Promise<RpcResult<LandDone>> {
   return call<LandDone>('cmdLandTool', [tool])
 }
 
+/** Buy the party's next mule at the home city (0458): more packs a trip from the next Send. */
+export function cmdLandPack(): Promise<RpcResult<LandDone>> {
+  return call<LandDone>('cmdLandPack', [])
+}
+
+/** Repeat on or off (0458): on, the party goes out again by itself; off, the trip under way is its last. */
+export function cmdLandRepeat(on: boolean): Promise<RpcResult<LandDone>> {
+  return call<LandDone>('cmdLandRepeat', [on])
+}
+
 /** Rename a fleet of yours (0354). The name's rules are the server's: 3 to 24 letters, not one you already use. */
 export function cmdRenameFleet(fleetId: string, name: string): Promise<RpcResult<FleetRenamed>> {
   return call<FleetRenamed>('cmdRenameFleet', [fleetId, name])

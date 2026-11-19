@@ -218,4 +218,4 @@ export function skippedWords(
 }
 
 // While you were away (2026-11-16, the content plan's slice B): the difference of two readings of the routes book.
-export { AWAY_MS, awayReport, parseSeenMark, routeStuck, seenMark, type AwayReport, type AwayRoute, type SeenMark } from './away'
+export { AWAY_MS, awayLand, awayReport, parseSeenMark, routeStuck, seenMark, type AwayLand, type AwayReport, type AwayRoute, type SeenMark } from './away'

@@ -24,8 +24,10 @@
 //
 // USAGE
 //   node scripts/build-land-migration.mjs          prints the VALUES block the newest land migration carries between its marker lines
+//   node scripts/build-land-migration.mjs --drops  prints the rare finds' VALUES block 0458 carries between its "drops" marker lines
 // tests/land.data.spec.ts holds that block equal to this file's output, so the rows cannot drift from the rule. 0455 carried the
-// first cut (no market guard); 0457 carries the rows with the guard and is the block the spec reads.
+// first cut (no market guard); 0457 carries the rows with the guard and is the block the spec reads; 0458 carries the finds, and
+// its knob land_packs is MULES (L1c, at the foot of this file: mules, Repeat and finds, each judged by the same guard).
 // The second caller is the next skill (Fishing, Smithing): a new entry in LADDERS, its rows printed the same way, into its own
 // migration. A make job (L2) reads its inputs from public.goods_recipes, never from here.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -117,6 +119,77 @@ export function valuesBlock() {
     .join('\n')
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// L1c (migration 0458): MULES, REPEAT AND RARE FINDS, INSIDE THE SAME GUARD
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// Each of these can raise what a party brings home an hour, so each is judged here by the guard above, at the same fastest pace:
+//   REPEAT   the party goes out again by itself, trip after trip, with no idle time between: that is the pace fastestHour and
+//            fastestHourPacked already count (trips back to back). Repeat off only adds idle time.
+//   MULES    more packs a trip: p turns in a trip of 2 (s + m) + p x turn. A passage s and a march m only slow a party, so an hour
+//            is at most p x 3600 / (2 m + p x turn) x the crowd's second unit (fastestHourPacked), which is UNDER fastestHour for
+//            every p and m > 0: fastestHour is its bound as the packs grow. So the guard on the turn holds for any number of mules;
+//            a mule saves walking (most on a far trip, where the passage is long) and never lifts an hour over the hundredth.
+//   FINDS    a rare find is a second good G, rolled once a turn, one in `one_in` (FIND_ONE_IN, Melvor's gem on 1 action in 100). It
+//            lands in G's market, so it is held to G's own guard: at the fastest pace of the job it comes from, finds of G an hour
+//            (3600 / the turn / one_in; the crowd's second unit is the job's good, never a find) are at most a hundredth of G's
+//            least middling target (data/land-guard.generated.json). one_in is raised until that holds.
+//            WHICH finds: the gems of the skill's own ladder (data/goods.json category `gems`): every gem but the job's own good
+//            whose land is one of the job's lands. At the press only those whose land is the land the party works roll
+//            (public.land_terms, by public.goods.origin_regions): a good is found only where it lies, as it is dug only there.
+
+/** The mules (design 6.2): the packs a trip carries after the 1st, 2nd, 3rd and 4th mule, and each mule's price to the home city. */
+export const MULES = [
+  { packs: 10, price: 3000 },
+  { packs: 15, price: 8000 },
+  { packs: 20, price: 20000 },
+  { packs: 30, price: 50000 },
+]
+
+/** Units one party-hour can bring at the fastest pace with `packs` a trip and a march of `march` s each way, trips back to back. */
+export const fastestHourPacked = (seconds, packs, march) =>
+  ((packs * 3600) / (2 * march + packs * fastestTurn(seconds))) * (1 + FASTEST.crowdMaxPct / 100)
+
+/** A rare find, by default: one turn in this many. */
+export const FIND_ONE_IN = 100
+
+/** One in how many turns a find of a good whose guard target is `findTarget` may come, off a job of `jobSeconds`: the guard. */
+export function findOneIn(jobSeconds, findTarget) {
+  let n = FIND_ONE_IN
+  while (3600 / fastestTurn(jobSeconds) / n > findTarget / 100) n += 1
+  return n
+}
+
+/** Finds of a good an hour at the fastest pace, off a job of `jobSeconds`, at one in `oneIn`. */
+export const fastestFindsHour = (jobSeconds, oneIn) => 3600 / fastestTurn(jobSeconds) / oneIn
+
+/** THE FINDS: one row a job a gem that can be found on its land. */
+export function dropRows() {
+  const goods = JSON.parse(readFileSync(path.join(ROOT, 'data', 'goods.json'), 'utf8')).goods
+  const byId = new Map(goods.map((g) => [g.id, g]))
+  const guard = JSON.parse(readFileSync(path.join(ROOT, 'data', 'land-guard.generated.json'), 'utf8')).goods
+  const jobs = landRows()
+  const rows = []
+  for (const [skill, ladder] of Object.entries(LADDERS)) {
+    const gems = ladder.goods.map(([, c]) => c).filter((c) => byId.get(c).category === 'gems')
+    for (const j of jobs.filter((r) => r.skill === skill)) {
+      const lands = byId.get(j.code).origin
+      let ord = 0
+      for (const gem of gems) {
+        if (gem === j.code || !byId.get(gem).origin.some((r) => lands.includes(r))) continue
+        rows.push({ action: j.code, good: gem, one_in: findOneIn(j.seconds, guard[gem].target), ord: ++ord })
+      }
+    }
+  }
+  return rows
+}
+
+/** The finds' VALUES block, one row a line, exactly as migration 0458 carries it. */
+export function dropsBlock() {
+  return dropRows()
+    .map((r, i, all) => `      ('${r.action}', '${r.good}', ${r.one_in}, ${r.ord})${i === all.length - 1 ? '' : ','}`)
+    .join('\n')
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  process.stdout.write(valuesBlock() + '\n')
+  process.stdout.write((process.argv.includes('--drops') ? dropsBlock() : valuesBlock()) + '\n')
 }
