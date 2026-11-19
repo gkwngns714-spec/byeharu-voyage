@@ -16,6 +16,9 @@ export interface LandRow {
 export const LADDERS: Record<string, { ground: string; tool: string; goods: Array<[number, string]> }>
 export function payAt(level: number): number
 export function worthAt(level: number): number
-export function jobFigures(level: number, base: number): { seconds: number; xp: number }
+export const FASTEST: { top: number; levelSpeedPct: number; toolPct: number; crowdMaxPct: number; yieldPct: number }
+export function fastestTurn(seconds: number): number
+export function fastestHour(seconds: number): number
+export function jobFigures(level: number, base: number, target?: number): { seconds: number; xp: number }
 export function landRows(): LandRow[]
 export function valuesBlock(): string

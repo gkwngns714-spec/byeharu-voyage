@@ -1,0 +1,347 @@
+{
+  "_what": "docs/design/land-2026-11.md 5.8 rule 2: for each land good, the least middling-harbour stock_target over the regions it comes from. Written by scripts/db/measure-land-guard.mjs; read by scripts/build-land-migration.mjs.",
+  "goods": {
+    "coal": {
+      "target": 1730,
+      "region": "BRI",
+      "harbours": 8,
+      "regions": 1
+    },
+    "iron": {
+      "target": 790,
+      "region": "SCA",
+      "harbours": 10,
+      "regions": 8
+    },
+    "clay": {
+      "target": 30,
+      "region": "JAP",
+      "harbours": 12,
+      "regions": 25
+    },
+    "stone": {
+      "target": 30,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 20
+    },
+    "sand": {
+      "target": 30,
+      "region": "ADR",
+      "harbours": 7,
+      "regions": 25
+    },
+    "copper": {
+      "target": 300,
+      "region": "JAP",
+      "harbours": 12,
+      "regions": 8
+    },
+    "salt": {
+      "target": 490,
+      "region": "WIA",
+      "harbours": 13,
+      "regions": 21
+    },
+    "tin": {
+      "target": 1045,
+      "region": "EST",
+      "harbours": 10,
+      "regions": 3
+    },
+    "lead": {
+      "target": 1525,
+      "region": "BAL",
+      "harbours": 10,
+      "regions": 2
+    },
+    "lime": {
+      "target": 30,
+      "region": "KOR",
+      "harbours": 8,
+      "regions": 25
+    },
+    "gypsum": {
+      "target": 30,
+      "region": "CHI",
+      "harbours": 8,
+      "regions": 6
+    },
+    "sulphur": {
+      "target": 1020,
+      "region": "SCA",
+      "harbours": 10,
+      "regions": 3
+    },
+    "alum": {
+      "target": 1135,
+      "region": "ADR",
+      "harbours": 7,
+      "regions": 3
+    },
+    "saltpetre": {
+      "target": 1150,
+      "region": "EST",
+      "harbours": 10,
+      "regions": 2
+    },
+    "zinc-spelter": {
+      "target": 1100,
+      "region": "EST",
+      "harbours": 10,
+      "regions": 1
+    },
+    "ochre": {
+      "target": 1145,
+      "region": "WST",
+      "harbours": 12,
+      "regions": 1
+    },
+    "feldspar": {
+      "target": 34,
+      "region": "KOR",
+      "harbours": 8,
+      "regions": 9
+    },
+    "quartz": {
+      "target": 41.5,
+      "region": "IBE",
+      "harbours": 11,
+      "regions": 10
+    },
+    "silver": {
+      "target": 45,
+      "region": "ADR",
+      "harbours": 7,
+      "regions": 6
+    },
+    "marble": {
+      "target": 1140,
+      "region": "AEG",
+      "harbours": 9,
+      "regions": 3
+    },
+    "antimony": {
+      "target": 1750,
+      "region": "CHI",
+      "harbours": 8,
+      "regions": 1
+    },
+    "cobalt": {
+      "target": 1480,
+      "region": "ARA",
+      "harbours": 10,
+      "regions": 1
+    },
+    "quicksilver": {
+      "target": 385,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 3
+    },
+    "cinnabar": {
+      "target": 2010,
+      "region": "IBE",
+      "harbours": 11,
+      "regions": 1
+    },
+    "alum-shale": {
+      "target": 1340,
+      "region": "AEG",
+      "harbours": 9,
+      "regions": 1
+    },
+    "swedish-iron": {
+      "target": 985,
+      "region": "SCA",
+      "harbours": 10,
+      "regions": 1
+    },
+    "osmund-iron": {
+      "target": 1010,
+      "region": "SCA",
+      "harbours": 10,
+      "regions": 1
+    },
+    "bar-iron": {
+      "target": 1760,
+      "region": "BAL",
+      "harbours": 10,
+      "regions": 1
+    },
+    "japan-copper": {
+      "target": 1675,
+      "region": "JAP",
+      "harbours": 12,
+      "regions": 1
+    },
+    "chilean-copper": {
+      "target": 805,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 1
+    },
+    "tin-ingots": {
+      "target": 1725,
+      "region": "BRI",
+      "harbours": 8,
+      "regions": 1
+    },
+    "gold": {
+      "target": 73.5,
+      "region": "CHI",
+      "harbours": 8,
+      "regions": 7
+    },
+    "gold-dust": {
+      "target": 138,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 2
+    },
+    "amber": {
+      "target": 1700,
+      "region": "BAL",
+      "harbours": 10,
+      "regions": 1
+    },
+    "baltic-amber": {
+      "target": 1760,
+      "region": "BAL",
+      "harbours": 10,
+      "regions": 1
+    },
+    "lodestone": {
+      "target": 1685,
+      "region": "CHI",
+      "harbours": 8,
+      "regions": 1
+    },
+    "potosi-silver": {
+      "target": 138,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 2
+    },
+    "zacatecas-silver": {
+      "target": 154.5,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 1
+    },
+    "turquoise": {
+      "target": 1465,
+      "region": "ARA",
+      "harbours": 10,
+      "regions": 1
+    },
+    "carnelian": {
+      "target": 1340,
+      "region": "WIA",
+      "harbours": 13,
+      "regions": 1
+    },
+    "malachite": {
+      "target": 201,
+      "region": "EAS",
+      "harbours": 11,
+      "regions": 1
+    },
+    "onyx": {
+      "target": 174,
+      "region": "MAG",
+      "harbours": 10,
+      "regions": 1
+    },
+    "lapis-lazuli": {
+      "target": 222,
+      "region": "ARA",
+      "harbours": 10,
+      "regions": 1
+    },
+    "opals": {
+      "target": 113.25,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 1
+    },
+    "peridot": {
+      "target": 219.75,
+      "region": "ARA",
+      "harbours": 10,
+      "regions": 1
+    },
+    "jade": {
+      "target": 252,
+      "region": "CHI",
+      "harbours": 8,
+      "regions": 1
+    },
+    "nephrite": {
+      "target": 171,
+      "region": "KOR",
+      "harbours": 8,
+      "regions": 1
+    },
+    "pounamu": {
+      "target": 670,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 1
+    },
+    "emeralds": {
+      "target": 201,
+      "region": "CAR",
+      "harbours": 10,
+      "regions": 1
+    },
+    "emerald-muzo": {
+      "target": 201,
+      "region": "STH",
+      "harbours": 7,
+      "regions": 1
+    },
+    "rubies": {
+      "target": 165,
+      "region": "EST",
+      "harbours": 10,
+      "regions": 1
+    },
+    "burma-rubies": {
+      "target": 246.75,
+      "region": "SOU",
+      "harbours": 17,
+      "regions": 1
+    },
+    "ceylon-sapphires": {
+      "target": 204.75,
+      "region": "SOU",
+      "harbours": 17,
+      "regions": 1
+    },
+    "diamonds": {
+      "target": 150.75,
+      "region": "SOU",
+      "harbours": 17,
+      "regions": 2
+    },
+    "golconda-diamonds": {
+      "target": 172.5,
+      "region": "EST",
+      "harbours": 10,
+      "regions": 1
+    },
+    "platinum": {
+      "target": 138,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 2
+    },
+    "andacollo-gold": {
+      "target": 120.75,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 1
+    }
+  }
+}
