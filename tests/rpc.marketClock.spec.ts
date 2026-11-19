@@ -11,6 +11,8 @@
 // src/lib/rpc/init.ts runs at boot and every minute)
 //   * no market row is behind the present game day, and none behind the present drift slot that can step;
 //   * the row a quote reads is the row a trade reads: catching one harbour up as world.market does changes no quote there;
+//   * no market row stands AHEAD of the present slot (the image holds 54,432 stamped under the 600 s knob of migration 0053; the step would
+//     never move them, because it steps only rows behind);
 //   * a second step in the same slot changes nothing.
 // Nothing here asserts a price.
 
@@ -33,9 +35,10 @@ test.afterAll(async () => {
 
 const behind = async () =>
   (
-    await db.pg.query<{ day: number; slot: number }>(
+    await db.pg.query<{ day: number; slot: number; ahead: number }>(
       `select count(*) filter (where pg.last_regen_day < world.game_day())::int as day,
-              count(*) filter (where pg.drift_slot < public.drift_slot_of(now()))::int as slot
+              count(*) filter (where pg.drift_slot < public.drift_slot_of(now()))::int as slot,
+              count(*) filter (where pg.drift_slot > public.drift_slot_of(now()))::int as ahead
          from public.port_goods pg`,
     )
   ).rows[0]
@@ -43,11 +46,12 @@ const behind = async () =>
 test('the tab\'s market step brings every harbour to the present, and a quote then reads the row a trade reads', async () => {
   test.setTimeout(300_000)
   const before = await behind()
-  console.log(`MARKET rows behind before the step: ${before.day} by game day, ${before.slot} by slot`)
+  console.log(`MARKET rows before the step: ${before.day} behind by game day, ${before.slot} behind by slot, ${before.ahead} ahead of the slot`)
   await playMarket(db)
   const after = await behind()
   expect(after.day, 'a market row is still behind the game day').toBe(0)
   expect(after.slot, 'a market row is still behind the drift slot').toBe(0)
+  expect(after.ahead, 'a market row still stands ahead of the drift slot, where the job never steps it').toBe(0)
 
   // every harbour that sells a good she can quote: the quote now, then that harbour caught up as world.market catches it, then the quote
   // again. One statement each side (one snapshot); the harbours are the ones the shipped world's market rows name.
@@ -68,5 +72,5 @@ test('the tab\'s market step brings every harbour to the present, and a quote th
 
   // the step is idempotent within a slot
   await playMarket(db)
-  expect(await behind()).toEqual({ day: 0, slot: 0 })
+  expect(await behind()).toEqual({ day: 0, slot: 0, ahead: 0 })
 })
