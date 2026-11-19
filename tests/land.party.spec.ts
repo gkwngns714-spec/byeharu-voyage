@@ -94,6 +94,45 @@ for (const glass of GLASSES) {
       await expect(page.getByTestId('land-send-tray').getByTestId('land-send-short')).toBeVisible({ timeout: 30_000 })
       await noSideways(page, 'a refused Send')
     })
+
+    // 0458 (L1c): Repeat and the mules on the Party face, the rare finds in the Send tray
+    test('Repeat and a mule: a press moves nothing; a far job names its finds', async ({ page, request, baseURL }) => {
+      test.setTimeout(600_000)
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      await serveWorldImage(page, await landLit())
+      await page.goto('land')
+      await ready(page)
+      await expect(page.getByTestId('land-party')).toBeVisible({ timeout: 90_000 })
+      const here = page.getByTestId('land-here')
+      const repeat = page.getByTestId('land-repeat')
+      await expect(repeat).toHaveAttribute('data-on', 'true')
+      // each control is brought into view BEFORE it is measured, so the press itself scrolls nothing: what moves, re-flowed
+      await repeat.scrollIntoViewIfNeeded()
+      const hereAt = (await here.boundingBox())?.y
+      const repeatAt = (await repeat.boundingBox())?.y
+
+      // Repeat off: the server says off, nothing moved
+      await repeat.getByRole('tab', { name: 'Off' }).click()
+      await expect(repeat).toHaveAttribute('data-on', 'false', { timeout: 30_000 })
+      expect((await repeat.boundingBox())?.y, 'Repeat moved itself').toBe(repeatAt)
+      expect((await here.boundingBox())?.y, 'Repeat moved the page').toBe(hereAt)
+
+      // a mule: 6 packs to 10, the next is 15; nothing moved
+      await expect(page.getByTestId('land-packs-now')).toHaveText('Packs 6 → 10')
+      await page.getByTestId('land-mule-buy').scrollIntoViewIfNeeded()
+      const hereBefore = (await here.boundingBox())?.y
+      await page.getByTestId('land-mule-buy').click()
+      await expect(page.getByTestId('land-packs-now')).toHaveText('Packs 10 → 15', { timeout: 30_000 })
+      expect((await here.boundingBox())?.y, 'a mule moved the page').toBe(hereBefore)
+      await noSideways(page, 'Repeat and the mules')
+
+      // Amber lies in the Baltic alone: its tray names the find of that land (Baltic Amber), and the packs are the mule's
+      await page.getByRole('tab', { name: /Mining/ }).click()
+      await page.locator('[data-testid="land-job"][data-job="amber"]').click()
+      const tray = page.getByTestId('land-send-tray')
+      await expect(tray.getByTestId('land-send-finds')).toContainText('Amber')
+      await noSideways(page, 'a tray with finds')
+    })
   })
 }
 

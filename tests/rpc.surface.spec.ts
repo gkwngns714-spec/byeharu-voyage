@@ -1774,6 +1774,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // cmd.land_home(), cmd.land_tool(tool), none taking a player id. Dark (land_enabled false) the read is {enabled: false} and
       // every door refuses E_NOT_IN_USE. Landed WITH the face that reads them (features/land).
       'worldLand', 'cmdLandSend', 'cmdLandCollect', 'cmdLandHome', 'cmdLandTool',
+      // Pin moved deliberately 2026-11-19 with migration 0458 (land slice L1c): cmd.land_pack() buys the party's next mule and
+      // cmd.land_repeat(on) turns Repeat on or off; neither takes a player id; dark both refuse E_NOT_IN_USE. Landed WITH the Party face.
+      'cmdLandPack', 'cmdLandRepeat',
       // Pin moved deliberately 2026-10-26 with migration 0224 (owner row 200, "updated every second"): the Stats
       // tab's one LIVE read — the counters every writer keeps, asked each second while the tab is open. A READ.
       'worldStatsNow',

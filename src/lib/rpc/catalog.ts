@@ -459,6 +459,9 @@ const TABLE = {
   cmdLandCollect: { schema: 'cmd', fn: 'land_collect', mutates: true, args: [] },
   cmdLandHome: { schema: 'cmd', fn: 'land_home', mutates: true, args: [] },
   cmdLandTool: { schema: 'cmd', fn: 'land_tool', mutates: true, args: [{ name: 'p_tool', type: 'text' }] },
+  // 0458 (land slice L1c): the party's next mule; Repeat on or off.
+  cmdLandPack: { schema: 'cmd', fn: 'land_pack', mutates: true, args: [] },
+  cmdLandRepeat: { schema: 'cmd', fn: 'land_repeat', mutates: true, args: [{ name: 'p_on', type: 'boolean' }] },
   // 0367 (docs/ARMADA.md): an armada, two to six fleets as one: the read, and the doors to form, disband and send one, and the send's dry run.
   worldArmadas: { schema: 'world', fn: 'armadas', args: [] },
   cmdArmadaForm: { schema: 'cmd', fn: 'armada_form', mutates: true, args: [{ name: 'p_fleets', type: 'jsonb' }, { name: 'p_name', type: 'text' }] },

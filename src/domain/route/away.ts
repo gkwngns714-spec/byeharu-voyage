@@ -14,8 +14,12 @@
 //                 many closed. A route the mark does not know (made on another device) counts all its laps.
 //   WRONG SHAPE   a figure made here that is not a difference of two served figures; a lap counted by its time
 //                 (the device clock and the server's are not one clock).
+//   THE LAND      (0458, docs/design/land-2026-11.md 6.7: "the While away card gains one line from the same read") one
+//                 line, "Party: 86 Iron · Mining 31": what the party has brought home and is not yet collected, as
+//                 `world.land` serves it (the turns home and not booked, and what waited for room), and the skill's level.
+//                 Not a difference: the land keeps its own count until Collect, so the served figure is already "since".
 
-import type { StandingRoute, StandingRouteBook } from '../../lib/rpc'
+import type { LandView, StandingRoute, StandingRouteBook } from '../../lib/rpc'
 
 /** Away means the game was not seen on this device for at least this long (the content plan: "ten minutes or more"). */
 export const AWAY_MS = 10 * 60_000
@@ -41,10 +45,20 @@ export interface AwayRoute {
   route: StandingRoute
 }
 
+/** 0458: the land's line: what the party has home and not collected (units of `good`), and the skill's level. */
+export interface AwayLand {
+  good: string | null
+  n: number
+  skill: string
+  level: number
+}
+
 export interface AwayReport {
   /** When she was last here (the mark's time, this device's clock). */
   since: number
   routes: AwayRoute[]
+  /** 0458: the land's line; null when the land is dark or the party has nothing home. */
+  land: AwayLand | null
   /** The purse now less the purse then; null when either is unknown or it did not move. */
   money: number | null
 }
@@ -73,11 +87,26 @@ export function routeStuck(route: StandingRoute): boolean {
   return route.state === 'stopped' || route.state === 'blocked' || (route.state === 'paused' && route.paused_reason !== 'player')
 }
 
+/** 0458: the land's line from the Land tab's own read, or null (dark, no company, nothing home to collect). */
+export function awayLand(view: LandView | null): AwayLand | null {
+  if (!view || !view.enabled || !view.company) return null
+  const p = view.party
+  const n = p.progress.new + p.waiting
+  if (n <= 0) return null
+  return { good: p.good ?? p.waiting_good, n, skill: view.skill.code, level: view.skill.level }
+}
+
 /**
  * What happened since `then`, or null when nothing did (no lap closed, no route needs her, the purse did not move) —
  * so a player with nothing to report never sees the card. Not away (`now - then.at < AWAY_MS`) is null too.
  */
-export function awayReport(then: SeenMark, now: number, ducats: number | null, book: StandingRouteBook | null): AwayReport | null {
+export function awayReport(
+  then: SeenMark,
+  now: number,
+  ducats: number | null,
+  book: StandingRouteBook | null,
+  land: AwayLand | null = null,
+): AwayReport | null {
   if (now - then.at < AWAY_MS) return null
   const routes: AwayRoute[] = []
   for (const r of book?.routes ?? []) {
@@ -89,6 +118,6 @@ export function awayReport(then: SeenMark, now: number, ducats: number | null, b
     routes.push({ id: r.id, name: r.name, stops: r.stops.map((s) => s.port), laps, net: laps > 0 ? total.net - was.net : 0, stuck, route: r })
   }
   const money = ducats !== null && then.ducats !== null && ducats !== then.ducats ? ducats - then.ducats : null
-  if (routes.length === 0 && money === null) return null
-  return { since: then.at, routes, money }
+  if (routes.length === 0 && money === null && land === null) return null
+  return { since: then.at, routes, money, land }
 }

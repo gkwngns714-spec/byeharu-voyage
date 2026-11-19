@@ -4901,6 +4901,8 @@ export interface LandProgress {
   home_at?: string
   stopped?: boolean
   stop_at?: string
+  /** 0458: Repeat off, its last trip is home: the party is home and the next press ends the job. */
+  done?: boolean
 }
 
 /** The terms a job was sent on (`public.land_terms`, frozen at Send): seconds a turn, the march, the passage each way, the packs,
@@ -4923,6 +4925,16 @@ export interface LandTerms {
   sent: number
   home_at?: string
   carry?: number
+  /** 0458: the rare finds frozen at Send (those of the land worked). */
+  finds?: LandFind[]
+  /** 0458: Repeat off: the trip after which the party comes home. */
+  last?: number
+}
+
+/** 0458: a rare find of a job: the good, one turn in how many. */
+export interface LandFind {
+  code: string
+  one_in: number
 }
 
 /** One job of a skill for this company, as `public.land_terms` judges it now. */
@@ -4945,6 +4957,8 @@ export interface LandJob {
   trip: number
   over_cap: boolean
   sold_at: string[]
+  /** 0458: the rare finds of the land this job would be worked on (none where no gem lies). */
+  finds: LandFind[]
 }
 
 export interface LandTool {
@@ -4978,7 +4992,13 @@ export type LandView =
         waiting_good: string | null
         xp_due: number
         tools: string[]
+        /** 0458: mules bought, Repeat, and rare finds waiting for room (good code -> units). */
+        mules: number
+        repeat: boolean
+        found_waiting: Record<string, number>
       }
+      /** 0458: what a trip carries now, and the next mule (null: it has them all). */
+      packs: { now: number; next: { packs: number; price: number } | null }
       skill: LevelCut & { code: string; top: number }
       jobs: LandJob[]
       stored: Record<string, number>
@@ -5001,4 +5021,10 @@ export interface LandDone {
   tool?: string
   price?: number
   purse?: number
+  /** 0458: Collect: the rare finds booked or kept by this press (good code -> units); a mule: mules and packs; Repeat. */
+  found?: Record<string, number>
+  found_waiting?: Record<string, number>
+  mules?: number
+  packs?: number
+  repeat?: boolean
 }

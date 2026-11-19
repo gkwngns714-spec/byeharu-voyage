@@ -1,16 +1,18 @@
 import { useState } from 'react'
-import { Bar, Button, Card, Countdown, Figure, Note, PageSplit, Row } from '../../components/ui'
+import { Bar, Button, Card, Countdown, Figure, Note, PageSplit, Row, Segmented } from '../../components/ui'
 import { formatDucats, formatInt } from '../../lib/format'
 import { properName, useLocale, useT } from '../../lib/i18n'
-import { cmdLandCollect, cmdLandHome, cmdLandTool, type LandView, type Refusal } from '../../lib/rpc'
+import { cmdLandCollect, cmdLandHome, cmdLandPack, cmdLandRepeat, cmdLandTool, type LandDone, type LandView, type Refusal } from '../../lib/rpc'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
-import { phaseWord, regionWord, siteWord } from './landWords'
+import { foundWord, phaseWord, regionWord, siteWord } from './landWords'
 
 type Lit = Extract<LandView, { company: true }>
 
 // THE PARTY FACE (docs/design/land-2026-11.md 6.7): where the party is and what it is doing, what has come home and Collect, Call
 // home; beside it the home Storage of the skill's goods, the tools, and who else is on that land. Every figure is `world.land`'s.
+// 0458: Repeat (On / Off, the party goes again by itself), the mules (the next one bought from the Tools card), and the rare finds:
+// what a Collect found is said in the slot that is always there under the buttons, so nothing below it moves.
 
 /** A good's name in the reader's language: the catalogue's (the snapshot's English, names/goods.ts in Korean), else the code. */
 function useGoodName(): (code: string | null) => string {
@@ -25,20 +27,30 @@ export function PartyFace({ v }: { v: Lit }) {
   const goodName = useGoodName()
   const refresh = useWorld((s) => s.refresh)
   const ports = useWorld((s) => s.portByCode)
-  const [busy, setBusy] = useState<'collect' | 'home' | 'tool' | null>(null)
+  const [busy, setBusy] = useState<'collect' | 'home' | 'tool' | 'pack' | 'repeat' | null>(null)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
+  // what the last Collect found (0458), said in the refusal's slot
+  const [found, setFound] = useState<Record<string, number> | null>(null)
   const p = v.party
   const pr = p.progress
   const terms = p.terms
   const out = p.action !== null && terms !== null
 
-  const press = (which: 'collect' | 'home' | 'tool', act: () => Promise<{ ok: boolean; refusal?: Refusal }>) => {
+  const press = (
+    which: 'collect' | 'home' | 'tool' | 'pack' | 'repeat',
+    act: () => Promise<{ ok: true; value: LandDone } | { ok: false; refusal: Refusal }>,
+  ) => {
     if (busy) return
     setBusy(which)
     setRefusal(null)
+    setFound(null)
     void (async () => {
       const r = await act()
-      if (r.ok) await refresh()
+      if (r.ok) {
+        const got = r.value.found
+        if (got && Object.keys(got).length > 0) setFound(got)
+        await refresh()
+      }
       else if (r.refusal) setRefusal(r.refusal)
       setBusy(null)
     })()
@@ -77,9 +89,31 @@ export function PartyFace({ v }: { v: Lit }) {
         value={
           <span className="tabular-nums" data-testid="land-to-book">
             {formatInt(pr.new + p.waiting)} {pr.new + p.waiting > 0 ? goodName(p.good ?? p.waiting_good) : ''}
+            {Object.keys(p.found_waiting).length > 0 ? ` · ${foundWord(p.found_waiting, goodName)}` : ''}
           </span>
         }
+      />
+      {/* 0458: Repeat, the party goes out again by itself (on) or comes home after the trip under way (off) */}
+      <Row
+        label={t('land.repeat')}
+        end
         hairline={false}
+        value={
+          <span data-testid="land-repeat" data-on={p.repeat ? 'true' : 'false'}>
+            <Segmented<'on' | 'off'>
+              segments={[
+                { id: 'on', label: t('land.on') },
+                { id: 'off', label: t('land.off') },
+              ]}
+              value={p.repeat ? 'on' : 'off'}
+              onChange={(next) => {
+                if ((next === 'on') !== p.repeat) press('repeat', () => cmdLandRepeat(next === 'on'))
+              }}
+              label={t('land.repeat')}
+              columns={2}
+            />
+          </span>
+        }
       />
       <div className="mt-3 grid grid-cols-2 gap-2">
         <Button
@@ -103,11 +137,15 @@ export function PartyFace({ v }: { v: Lit }) {
       </div>
       {/* the refusal's place is always there, so a refusal never moves what is under it */}
       <div className="mt-2 min-h-6" data-testid="land-refusal-slot">
-        {refusal && (
+        {refusal ? (
           <Note tone="danger" code={refusal.code} figures={refusal.figures}>
             {refusal.sentence}
           </Note>
-        )}
+        ) : found ? (
+          <Note tone="success" data-testid="land-found">
+            {t('land.found', { list: foundWord(found, goodName) })}
+          </Note>
+        ) : null}
       </div>
       {out && terms && !terms.home && (
         <p className="mt-1 break-words text-t-caption text-ink-faint" data-testid="land-far-line">
@@ -131,12 +169,12 @@ export function PartyFace({ v }: { v: Lit }) {
         <p className="mt-1 text-t-caption text-ink-faint">{`${v.home.name} · ${t('land.awayHours', { n: v.away_hours })}`}</p>
       </Card>
       <Card title={t('land.tools')} data-testid="land-tools">
-        {v.tools.map((tool, i) => (
+        {v.tools.map((tool) => (
           <Row
             key={tool.code}
             label={t('land.faster', { n: tool.speed_pct })}
             end
-            hairline={i < v.tools.length - 1}
+            hairline
             value={
               tool.owned ? (
                 <span className="text-t-label text-success">{t('land.owned')}</span>
@@ -155,6 +193,35 @@ export function PartyFace({ v }: { v: Lit }) {
             }
           />
         ))}
+        {/* 0458: the mules: what a trip carries now, and the next mule for coin (the last bought, "Full") */}
+        <Row
+          label={t('land.mules')}
+          end
+          hairline={false}
+          data-testid="land-mules"
+          value={
+            v.packs.next ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                busy={busy === 'pack'}
+                disabled={busy !== null}
+                onClick={() => press('pack', () => cmdLandPack())}
+                data-testid="land-mule-buy"
+              >
+                {`${t('land.buy')} ${formatDucats(v.packs.next.price)}`}
+              </Button>
+            ) : (
+              <span className="text-t-label text-success">{t('land.full')}</span>
+            )
+          }
+        >
+          <span className="block text-t-caption tabular-nums text-ink-faint" data-testid="land-packs-now">
+            {v.packs.next
+              ? t('land.packsTo', { a: formatInt(v.packs.now), b: formatInt(v.packs.next.packs) })
+              : t('land.packsN', { n: formatInt(v.packs.now) })}
+          </span>
+        </Row>
         <p className="mt-1 text-t-caption text-ink-faint">
           <Figure value={formatDucats(v.purse)} />
         </p>

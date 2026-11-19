@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, FLOAT_CARD_CLASS, glassBesideRailClass } from '../components/ui'
-import { awayReport, parseSeenMark, routeCaption, routeTitle, seenMark, type AwayReport } from '../domain/route'
+import { AWAY_MS, awayLand, awayReport, parseSeenMark, routeCaption, routeTitle, seenMark, type AwayReport } from '../domain/route'
 import { formatDucatsDelta, formatInt } from '../lib/format'
-import { useT } from '../lib/i18n'
+import { properName, useLocale, useT } from '../lib/i18n'
+import { worldLand } from '../lib/rpc'
+import { levelName } from '../live/levelWords'
 import { useWorld } from '../live/worldStore'
 
 // WHILE YOU WERE AWAY (2026-11-16, the content plan's slice B; docs/design/content-plan-2026-11.md §5.3 no. 2). The route
@@ -16,6 +18,9 @@ import { useWorld } from '../live/worldStore'
 // and with History's lap lines however many closed), a route that needs her (stopped, blocked, paused by the game), and
 // the purse's move. Nothing to say, no card. A device that has no mark (a new player, a new browser) keeps one and says
 // nothing: there is no "since" to tell.
+//
+// THE LAND (0458): while the world serves the land lit, a return that is away also asks the Land tab's own read once
+// (`world.land`) and the report gains one line, "Party: 86 Iron · Mining 31" (domain/route `awayLand`). Dark, nothing is asked.
 //
 // An overlay at the TOP of the glass (the arrival card stands at its foot, so the two never cover each other): fixed,
 // out of the flow, nothing under it moves; it stays until Close (a report she came back to waits for her).
@@ -40,7 +45,9 @@ function writeMark(key: string, s: ReturnType<typeof useWorld.getState>) {
 
 export function AwayCard() {
   const t = useT()
+  const locale = useLocale()
   const portByCode = useWorld((s) => s.portByCode)
+  const goodByCode = useWorld((s) => s.goodByCode)
   const [report, setReport] = useState<AwayReport | null>(null)
   // whether this visit (a load, or a return to view) has been compared against the mark yet
   const compared = useRef(false)
@@ -54,8 +61,18 @@ export function AwayCard() {
       if (!compared.current) {
         compared.current = true
         const then = readMark(key)
-        const found = then ? awayReport(then, Date.now(), s.ducats, s.routes) : null
-        if (found) setReport(found)
+        const now = Date.now()
+        const { ducats, routes } = s
+        if (then && now - then.at >= AWAY_MS && s.snapshot?.config.land_enabled === true) {
+          // the land is lit: its line comes from the Land tab's read, asked once for this return
+          void worldLand('mining').then((r) => {
+            const found = awayReport(then, now, ducats, routes, r.ok ? awayLand(r.value) : null)
+            if (found) setReport(found)
+          })
+        } else {
+          const found = then ? awayReport(then, now, ducats, routes) : null
+          if (found) setReport(found)
+        }
       }
       writeMark(key, s)
     }
@@ -110,6 +127,14 @@ export function AwayCard() {
             </p>
           </div>
         ))}
+        {report.land && (
+          <p className="mt-1 flex justify-between gap-3 text-t-body" data-testid="away-land" data-n={report.land.n}>
+            <span>{t('land.party')}</span>
+            <span className="min-w-0 break-words text-right font-semibold tabular-nums">
+              {`${formatInt(report.land.n)} ${report.land.good ? properName('good', report.land.good, goodByCode[report.land.good]?.name ?? report.land.good) : ''} · ${levelName(locale, report.land.skill)} ${formatInt(report.land.level)}`}
+            </span>
+          </p>
+        )}
         {report.money !== null && (
           <p className="mt-1 flex justify-between gap-3 text-t-body" data-testid="away-money">
             <span>{t('feed.awayMoney')}</span>
