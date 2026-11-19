@@ -110,6 +110,7 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
                 </Button>
               ) : undefined
             }
+            end
             data-testid={`townhall-work-${w.kind}`}
           >
             {!built && w.share_price !== null && (
