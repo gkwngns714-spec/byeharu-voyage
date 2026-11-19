@@ -47,6 +47,9 @@ begin
   perform public.commission_ship(v_pl, v_fl, 'barca', 'Prova', true, true);
   select s.id into v_sh from public.ships s where s.fleet_id = v_fl limit 1;
   update public.ships set crew = greatest(crew, 20), water_t = 0, food_t = 0, cargo = '{}'::jsonb where id = v_sh;
+  -- no dice: each hull as her class is drawn (commission_ship rolls a new hull's stats), and whole
+  update public.ships s set roll_speed = 1, roll_hold = 1, roll_stores = 1, roll_hull = 1, roll_crew = 1, roll_handling = 1 where s.fleet_id = v_fl;
+  update public.ships s set durability = (select b.durability from public.ship_base(s.id) b) where s.fleet_id = v_fl;
   perform cmd.assume_identity(c_auth);
   v_port := voyage.fleet_speed(v_fl);
 
@@ -127,6 +130,9 @@ begin
   perform public.commission_ship(v_pl, v_fl, 'caravelao', 'Prova II', false, true);
   update public.ships s set crew = greatest(s.crew, c.crew_required), water_t = 0, food_t = 0, cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb
     from public.ship_classes c where c.id = s.class_id and s.fleet_id = v_fl;
+  -- no dice: each hull as her class is drawn (commission_ship rolls a new hull's stats), and whole
+  update public.ships s set roll_speed = 1, roll_hold = 1, roll_stores = 1, roll_hull = 1, roll_crew = 1, roll_handling = 1 where s.fleet_id = v_fl;
+  update public.ships s set durability = (select b.durability from public.ship_base(s.id) b) where s.fleet_id = v_fl;
   perform cmd.assume_identity(c_auth);
 
   -- THE BUY CITY: a harbour near Lisbon, straight from it, with a course; THE GOOD: the heaviest it sells for which Trade prices a sale on from
@@ -253,16 +259,17 @@ begin
   v_fl := public.form_fleet(v_pl, 'Prova', v_lis);
   perform public.commission_ship(v_pl, v_fl, 'barca', 'Prova', true, true);
   select s.id into v_sh from public.ships s where s.fleet_id = v_fl limit 1;
-  -- her cargo: a good Lisbon buys dear (among the five dearest buyers, so Trade prices the sale there in full); her casks: a day and a half each, enough
-  -- for the short way in, under the days a top-up would buy it to (npc_leg_days; a day and a half: at one day she ends the way on short rations)
+  -- her cargo: the first good (by code) Lisbon has a market for and its culture buys; for this transaction Trade prices every sale she can sail to
+  -- in full (good_board_quoted_near, 5 on the live board: the harbour she lies off is ranked last of the near ones), so the sale at Lisbon is
+  -- priced whatever the market's draw. Her casks: a day and a half each, enough for the short way in, under the days a top-up would buy it to
+  -- (npc_leg_days; a day and a half: at one day she ends the way on short rations)
+  update public.world_config set value = '1000'::jsonb where key = 'good_board_quoted_near';
   select g.id, g.code into v_good from public.goods g
    where not public.culture_refuses((select p.culture from public.ports p where p.id = v_lis), g.culture_mask)
-     and (select count(*) from world.good_mids(g.id) m join public.ports p on p.id = m.port_id
-           where p.kind = 'HARBOUR' and not public.culture_refuses(p.culture, g.culture_mask)
-             and m.mid > (select m0.mid from world.good_mids(g.id) m0 where m0.port_id = v_lis)) < 5
+     and exists (select 1 from public.port_goods pg where pg.port_id = v_lis and pg.good_id = g.id)
    order by g.code limit 1;
   if v_good.id is null then
-    raise exception 'PROOF 162 FAIL: no good Lisbon buys among its five dearest buyers';
+    raise exception 'PROOF 162 FAIL: Lisbon has a market for no good its culture buys';
   end if;
   update public.ships set crew = greatest(crew, 20) where id = v_sh;
   select s.crew into v_crew from public.ships s where s.id = v_sh;
@@ -271,6 +278,9 @@ begin
   -- AT ANCHOR off Lisbon: west of its roadstead, in open water
   select sr.roadstead_lat, sr.roadstead_lon - 0.4 into v_lat, v_lon from public.sea_reaches sr where sr.code = 'LIS';
   update public.fleets f set status = 'ANCHORED', port_id = null, lat = v_lat, lon = v_lon, busy_until = null, ready_at = null, version = f.version + 1 where f.id = v_fl;
+  -- no dice: each hull as her class is drawn (commission_ship rolls a new hull's stats), and whole
+  update public.ships s set roll_speed = 1, roll_hold = 1, roll_stores = 1, roll_hull = 1, roll_crew = 1, roll_handling = 1 where s.fleet_id = v_fl;
+  update public.ships s set durability = (select b.durability from public.ship_base(s.id) b) where s.fleet_id = v_fl;
   perform cmd.assume_identity(c_auth);
 
   v_board := world.good_board(v_good.id, v_fl, null, null);
