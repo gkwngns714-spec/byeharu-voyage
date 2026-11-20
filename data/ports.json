@@ -175,7 +175,8 @@
         "figs",
         "harissa",
         "maghreb-brass",
-        "wool-raw"
+        "wool-raw",
+        "rose"
       ],
       "notes": "Ottoman regency from 1516 and the leading Barbary corsair base in the western Mediterranean.",
       "source": {
@@ -376,7 +377,9 @@
         "coca-leaf",
         "chuno",
         "pisco",
-        "alpaca-wool"
+        "alpaca-wool",
+        "agave",
+        "cacao-bean"
       ],
       "notes": "The port of Potosí from 1545: the silver came down by llama train to Arica and went north to Callao and the Panama fairs.",
       "source": {
@@ -406,7 +409,8 @@
         "isinglass",
         "potash",
         "russia-leather",
-        "walrus-ivory"
+        "walrus-ivory",
+        "pear"
       ],
       "notes": "Founded 1584 on the Dvina; Russia’s only sea outlet to the west, opened by Chancellor’s 1553 voyage.",
       "source": {
@@ -519,7 +523,8 @@
         "coconut-arrack",
         "fish-sauce",
         "gutta-percha",
-        "ikat"
+        "ikat",
+        "shrimp"
       ],
       "notes": "Sultanate at Sumatra’s northern tip, at its height under Iskandar Muda, 1607-1636, and a rival to Portuguese Malacca.",
       "source": {
@@ -546,7 +551,8 @@
         "mace",
         "nutmeg",
         "paradise-plumes",
-        "sago"
+        "sago",
+        "milk"
       ],
       "notes": "The Banda islands were the world’s only source of nutmeg and mace; Coen’s conquest of 1621 destroyed their society.",
       "source": {
@@ -606,7 +612,8 @@
         "nipa-mats",
         "palm-sugar",
         "patchouli",
-        "sappan-java"
+        "sappan-java",
+        "nipa"
       ],
       "notes": "West Java pepper sultanate where the first Dutch fleet arrived in 1596 and the English opened a factory in 1603.",
       "source": {
@@ -693,7 +700,8 @@
         "gallnuts",
         "horses",
         "peridot",
-        "persian-berries"
+        "persian-berries",
+        "coffee-bean"
       ],
       "notes": "Shatt al-Arab river port and the Ottoman head of navigation linking the Gulf to Baghdad and Aleppo.",
       "source": {
@@ -723,7 +731,8 @@
         "pistachios",
         "rosewater",
         "sesame-oil",
-        "soap"
+        "soap",
+        "sesame"
       ],
       "notes": "Outlet for Mount Lebanon raw silk, promoted by the Druze emir Fakhr al-Din II in the early 1600s.",
       "source": {
@@ -804,7 +813,8 @@
         "merino-sheep",
         "merino-wool",
         "port-wine",
-        "sardines"
+        "sardines",
+        "fresh-water"
       ],
       "notes": "Outlet for Biscayan iron and Castilian wool; its Consulado governed trade with Flanders and England.",
       "source": {
@@ -865,7 +875,8 @@
         "furs",
         "naval-timber",
         "salted-beef",
-        "timber"
+        "timber",
+        "witch-hazel-bark"
       ],
       "notes": "Founded 1630 by the Massachusetts Bay Company; its cod and shipbuilding drove the early New England economy.",
       "source": {
@@ -1237,7 +1248,9 @@
         "honeybush",
         "kanga-cloth",
         "malachite",
-        "myrrh-somali"
+        "myrrh-somali",
+        "pandanus",
+        "shea-nut"
       ],
       "notes": "Table Bay refreshment station founded by Jan van Riebeeck for the VOC in 1652.",
       "source": {
@@ -1354,7 +1367,8 @@
         "golconda-diamonds",
         "red-sanders",
         "saltpetre",
-        "turmeric"
+        "turmeric",
+        "betel-leaf"
       ],
       "notes": "Fort St George was begun in 1640 on land granted to the English, the nucleus of Madras.",
       "source": {
@@ -1463,7 +1477,8 @@
         "elephants",
         "palm-leaf-manuscripts",
         "peacocks",
-        "turmeric-dye"
+        "turmeric-dye",
+        "bamboo"
       ],
       "notes": "Portuguese fort from 1518 guarding the cinnamon lands; taken by the Dutch after a siege in 1656.",
       "source": {
@@ -1740,7 +1755,8 @@
         "mackerel",
         "nautical-clocks",
         "oakum",
-        "oats"
+        "oats",
+        "apple"
       ],
       "notes": "Viking-founded Liffey port and seat of English administration in Ireland.",
       "source": {
@@ -3201,7 +3217,8 @@
         "perry",
         "pike-heads",
         "rhenish-wine",
-        "ships-nails"
+        "ships-nails",
+        "cabbage"
       ],
       "notes": "Huguenot merchant stronghold and the main French base for the Canadian fur trade until its 1628 siege.",
       "source": {
@@ -3256,7 +3273,8 @@
         "indigo",
         "orchil",
         "sugar",
-        "wine"
+        "wine",
+        "grapes"
       ],
       "notes": "Founded 1478; standard first watering stop for Spanish fleets bound for the Americas.",
       "source": {
@@ -3460,7 +3478,8 @@
         "plantains",
         "raffia-cloth",
         "shea-butter",
-        "yams"
+        "yams",
+        "raffia"
       ],
       "notes": "Founded 1576 as Portugal’s Angolan capital; held by the Dutch from 1641 until Brazilian forces retook it in 1648.",
       "source": {
@@ -3645,7 +3664,8 @@
         "azulejos",
         "bacalhau",
         "cinnabar",
-        "figs"
+        "figs",
+        "cattle"
       ],
       "notes": "Chief Mediterranean outlet of Andalusia, exporting sweet wine and dried fruit across Europe.",
       "source": {
@@ -4090,7 +4110,8 @@
         "rhino-horn",
         "shields",
         "sorghum",
-        "teff"
+        "teff",
+        "palm-leaf"
       ],
       "notes": "Swahili city-state where Portugal built Fort Jesus in 1593 to command the coast.",
       "source": {
@@ -4146,7 +4167,8 @@
         "ebony",
         "henna",
         "mangrove-poles",
-        "zanzibar-doors"
+        "zanzibar-doors",
+        "palm-sap"
       ],
       "notes": "Portuguese capital of East Africa and the standard wintering station on the Carreira da India.",
       "source": {
@@ -4698,7 +4720,8 @@
         "gold",
         "hides",
         "pearls",
-        "silver"
+        "silver",
+        "bark"
       ],
       "notes": "Founded 1519 as the Pacific end of the isthmus crossing; Morgan destroyed the old city in 1671.",
       "source": {
@@ -4939,7 +4962,8 @@
         "dyers-broom",
         "hake",
         "merino-sheep",
-        "merino-wool"
+        "merino-wool",
+        "eggs"
       ],
       "notes": "Douro river port whose shipyards at Vila Nova de Gaia built vessels for the India voyages.",
       "source": {
@@ -4968,7 +4992,8 @@
         "cassava-bread",
         "cigars",
         "cochineal",
-        "sarsaparilla"
+        "sarsaparilla",
+        "cassava-root"
       ],
       "notes": "Caribbean end of the isthmus mule road; its trade fairs handled the Peruvian silver from 1597.",
       "source": {
@@ -4995,7 +5020,8 @@
         "cider",
         "copper-sheet",
         "cordage",
-        "culverin"
+        "culverin",
+        "plum"
       ],
       "notes": "Site of the first known dry dock in England, built for Henry VII in 1495.",
       "source": {
@@ -5078,7 +5104,8 @@
         "rhubarb",
         "rice-paper",
         "rice-vinegar",
-        "scroll-paintings"
+        "scroll-paintings",
+        "lychee"
       ],
       "notes": "The Zayton praised by Marco Polo; its harbour silted and Ming sea bans pushed trade to neighbouring ports.",
       "source": {
@@ -5246,7 +5273,8 @@
         "brazilwood",
         "cachaca",
         "cassava",
-        "whale-oil"
+        "whale-oil",
+        "palm-fruit"
       ],
       "notes": "Founded 1565 in Guanabara Bay after the expulsion of the French colony of France Antarctique.",
       "source": {
@@ -5275,7 +5303,8 @@
         "holland-linen",
         "lead-white",
         "perry",
-        "stoneware"
+        "stoneware",
+        "goose-feathers"
       ],
       "notes": "Maas river port and one of the six VOC chambers established in 1602.",
       "source": {
@@ -5385,7 +5414,8 @@
         "sake",
         "sutra-scrolls",
         "sword-blades",
-        "ukiyo-e"
+        "ukiyo-e",
+        "ramie"
       ],
       "notes": "Self-governing merchant city and gun-founding centre, absorbed under Oda and Toyotomi rule after 1568.",
       "source": {
@@ -5608,7 +5638,8 @@
         "lignum-vitae",
         "maize",
         "peru-balsam",
-        "tallow"
+        "tallow",
+        "sugar-cane"
       ],
       "notes": "Founded 1496, the oldest continuously inhabited European city in the Americas and seat of the first audiencia.",
       "source": {
@@ -6105,7 +6136,8 @@
         "baijiu",
         "block-printed-books",
         "shantung-silk",
-        "songbirds"
+        "songbirds",
+        "mint"
       ],
       "notes": "The VOC built Fort Zeelandia here in 1624; Zheng Chenggong expelled the Dutch in 1662.",
       "source": {
@@ -6886,7 +6918,8 @@
         "copper-cash",
         "dragon-bone",
         "fire-lance",
-        "lychees"
+        "lychees",
+        "eel"
       ],
       "notes": "Fujian island harbour and the base from which Zheng Chenggong ran his maritime empire in the 1650s.",
       "source": {
@@ -6914,7 +6947,9 @@
         "gochujang",
         "goryeo-celadon",
         "hemp-cloth",
-        "seaweed"
+        "seaweed",
+        "soybean",
+        "tea-leaf"
       ],
       "notes": "Headquarters of Yi Sun-sin’s Left Jeolla naval command, from which the turtle ships sailed in 1592.",
       "source": {
@@ -6970,7 +7005,8 @@
         "cotton-cloth",
         "gold",
         "ivory",
-        "rhino-horn"
+        "rhino-horn",
+        "honeybush-leaf"
       ],
       "notes": "Swahili island town on the monsoon route; Omani control from 1698 made it the region’s chief entrepot.",
       "source": {
