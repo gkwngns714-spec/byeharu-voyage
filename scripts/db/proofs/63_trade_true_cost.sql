@@ -244,7 +244,8 @@ begin
     case when not v_clean then 'not held: the sea delayed her or took from her casks or her crew' else 'held: every leg settled the days the board counted' end;
 
   -- THE TIME: the port time is the row's to the second; the whole (the sailing as her voyages ran it, laden with her stores, and the port time)
-  -- is the row's within the larger of 30 s and 3 % (the board sails her at her speed in port, before the stores are aboard)
+  -- is the row's within the larger of 30 s and 3 % (since 0459 the board times each leg at her speed as she leaves on it, as the SAIL does; it
+  -- measures the legs on the sailed-distance table, the SAIL its own course: proof 162 holds the time to the rounding)
   if v_port_s <> (v_row->>'stop_seconds')::numeric
      or (v_delay = 0 and abs(v_sail_s + v_port_s - v_read_s) > greatest(30, v_read_s * 0.03)) then
     raise exception 'PROOF 63 FAIL: she sailed % s and lay in port % s; the row said % s in port and % s in all', round(v_sail_s), v_port_s, v_row->>'stop_seconds', round(v_read_s);

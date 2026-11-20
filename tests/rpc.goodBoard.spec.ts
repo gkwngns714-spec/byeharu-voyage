@@ -146,15 +146,24 @@ test('world.good_board: where it is sold, and every harbour that buys it, best n
   }
 })
 
-test('0361: a priced row she can sail to is world.trip_cost\'s trip through the same harbours, and its profit takes the trip\'s costs off', async () => {
+test('a good on board is priced from what it cost', async () => {
+  await db.callAs(`select cmd.do_buy($1::uuid, jsonb_build_object('good', $2::text, 'qty', 10)) as result`, [fleet, good])
   const b = await board()
+  expect(b.qty.basis).toBe('on_board')
+  expect(b.qty.units).toBe(10)
+  const basis = await db.callAs<number>('select public.fleet_cargo_basis($1::uuid, $2::text) as result', [fleet, code])
+  for (const r of b.sell.filter((x) => x.quoted)) expect(r.cost).toBe(Math.round(basis * 10))
+})
+
+test('0361: a priced row of her cargo she can sail to is world.trip_cost\'s trip through the same harbours, and its profit takes the trip\'s costs off', async () => {
+  // her cargo is aboard (the test before: ten units bought at Lisbon), so what she carries weighs her down on every leg, as it does in trip_cost.
+  // A good still to be BOUGHT on the way is not trip_cost's trip (nothing in its legs buys): that walk is proof 162's (QUOTE_BUY_WEIGHT)
+  const b = await board()
+  expect(b.qty.basis).toBe('on_board')
   const rows = b.sell.filter((r) => r.quoted && r.sailable && r.port !== 'LIS' && r.net !== null)
   expect(rows.length, 'no priced row she can sail to: nothing is compared').toBeGreaterThan(0)
-  // to the buy city first, when it is not where she lies
-  const src = b.buy.find((r) => r.port === b.qty.bought_at)!
-  const lead = src.here ? [] : [...(src.stops ?? []), src.port]
   for (const r of rows) {
-    const codes = [...lead, ...(r.port === src.port ? [] : [...(r.stops ?? []), r.port])]
+    const codes = [...(r.stops ?? []), r.port]
     const legs = codes.map((to, i) => ({ from: i === 0 ? 'LIS' : codes[i - 1], to }))
     const trip = await db.callAs<{ sail_days: number; stop_seconds: number; days: number; supplies: number; wages: number; dock_fee: number; total: number }>(
       'select world.trip_cost($1::uuid, $2::jsonb) as result',
@@ -172,15 +181,6 @@ test('0361: a priced row she can sail to is world.trip_cost\'s trip through the 
     expect(r.profit, `${r.port}: profit`).toBe(r.net! - trip.supplies - trip.dock_fee)
     expect(r.profit).toBe(r.proceeds! - r.cost! - r.profit_tax! - trip.total)
   }
-})
-
-test('a good on board is priced from what it cost', async () => {
-  await db.callAs(`select cmd.do_buy($1::uuid, jsonb_build_object('good', $2::text, 'qty', 10)) as result`, [fleet, good])
-  const b = await board()
-  expect(b.qty.basis).toBe('on_board')
-  expect(b.qty.units).toBe(10)
-  const basis = await db.callAs<number>('select public.fleet_cargo_basis($1::uuid, $2::text) as result', [fleet, code])
-  for (const r of b.sell.filter((x) => x.quoted)) expect(r.cost).toBe(Math.round(basis * 10))
 })
 
 test('world.watchlist: every good once, its cheapest seller, and the cargo on board', async () => {
