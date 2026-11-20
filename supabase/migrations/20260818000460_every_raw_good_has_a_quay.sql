@@ -350,6 +350,9 @@ end $scope$;
 -- with no new harbour it writes 0 rows; the rows it writes here are exactly the new harbours'.
 select public.furnish_harbours() as buildings_furnished;
 
+-- ── 7. THE NEWS (0347's law) ─────────────────────────────────────────────────────────────────
+select public.news_update('0460', 'Raw goods on the quays', '부두에서 파는 원자재');
+
 -- ── SELF-ASSERT ────────────────────────────────────────────────────────────────────────────────
 -- The migration's whole claim: after it, THE DATABASE'S WORLD EQUALS data/*.json — by set
 -- equality over identities AND values, never by counts alone. The literals below are generated

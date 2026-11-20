@@ -647,6 +647,14 @@ select public.furnish_harbours() as buildings_furnished;
 `)
 }
 
+// 7b. THE NEWS (0347's law, tests/news.lint.spec.ts): a growth that players can see posts its one UPDATE row.
+// 0460 places 36 raw goods on quays; the row says so in plain short words. Idempotent by its number.
+const NEWS_EN = 'Raw goods on the quays'
+const NEWS_KO = '부두에서 파는 원자재'
+w(`-- ── 7. THE NEWS (0347's law) ─────────────────────────────────────────────────────────────────
+select public.news_update('${shortNo}', '${NEWS_EN}', '${NEWS_KO}');
+`)
+
 // 8. self-assert
 const wantPortCodes = want.ports.map((p) => p.code)
 const wantGoodCodes = want.goods.map((g) => g.code)
