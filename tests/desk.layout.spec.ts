@@ -77,5 +77,26 @@ for (const size of SIZES) {
       expect(await tops(page, '[data-testid="trade-good"]'), 'closing the panel moved the cards').toEqual(before)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     })
+
+    // A CARD'S HEIGHT IS THE DATA'S (a best sale's city or its hours run a second line: 165, 174, 190 px seen), so the test above
+    // passes or fails by which sale the world happens to show. This one plants its own tall card: 30 px more above the buttons.
+    // The phone's pane holds one whole row, measured, so the row's Buy still stands inside it and a press moves nothing
+    // (run 44507902138: the pane was a fixed 168 px, the card 190, the press scrolled the cards 6 px).
+    test('a tall card: its Buy stands inside the pane, and a press still moves no card', async ({ page, request, baseURL }) => {
+      await openDesk(page, request, baseURL)
+      await page.addStyleTag({ content: '[data-testid="trade-good"] { padding-top: 30px !important }' })
+      await page.waitForTimeout(800)
+      const before = await tops(page, '[data-testid="trade-good"]')
+      const pane = await page.evaluate(() => {
+        const p = document.querySelector('[data-testid="trade-board"] [data-scroll-pane]')!.getBoundingClientRect()
+        const b = document.querySelector('[data-testid="trade-buy"]')!.getBoundingClientRect()
+        return { paneBottom: p.bottom, buyBottom: b.bottom }
+      })
+      expect(pane.buyBottom, 'the first row Buy stands under the pane edge').toBeLessThanOrEqual(pane.paneBottom)
+      await page.getByTestId('trade-buy').nth(1).click()
+      await expect(page.getByTestId('good-detail')).toBeVisible()
+      await page.waitForTimeout(300)
+      expect(await tops(page, '[data-testid="trade-good"]'), 'a press moved the cards').toEqual(before)
+    })
   })
 }
