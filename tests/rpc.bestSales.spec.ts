@@ -291,7 +291,7 @@ test('the pieces are server-only, and world.board_sell no longer prices a harbou
   const acl = await db.pg.query<{ fn: string; may: boolean; anon: boolean; volatile: string }>(
     `select f as fn, has_function_privilege('authenticated', f, 'execute') as may, has_function_privilege('anon', f, 'execute') as anon,
             (select p.provolatile::text from pg_proc p where p.oid = f::regprocedure) as volatile
-       from unnest(array['world.best_sales(uuid,uuid)', 'world.board_sell(uuid,uuid,jsonb)', 'world.board_legs(uuid,jsonb)', 'world.good_mids(uuid)',
+       from unnest(array['world.best_sales(uuid,uuid)', 'world.board_sell(uuid,uuid,jsonb)', 'world.board_legs(uuid,jsonb)', 'world.board_trips(uuid,jsonb,jsonb)', 'world.good_mids(uuid)',
                          'world.board_origin(uuid)', 'world.board_passages(uuid,uuid,uuid,numeric)', 'world.board_amount(uuid,uuid,numeric)']) f`,
   )
   for (const r of acl.rows) {
@@ -306,7 +306,9 @@ test('the pieces are server-only, and world.board_sell no longer prices a harbou
   expect(src.rows[0].sell).not.toContain('mid_price(')
   expect(src.rows[0].sell).not.toContain('supply_needs(')
   expect(src.rows[0].sell).toContain('world.good_mids(p_good)')
-  expect(src.rows[0].sell).toContain('world.board_legs(p_fleet, p_ctx)')
+  // 0459: the legs are walked with the buy aboard (board_legs' context carries it), and a priced row bought for another count is walked again by world.board_trips
+  expect(src.rows[0].sell).toContain('world.board_legs(p_fleet, p_ctx ||')
+  expect(src.rows[0].sell).toContain('world.board_trips(p_fleet, p_ctx ||')
   expect(src.rows[0].best).toContain('world.board_legs(p_fleet, v_ctx)')
   // the soft budget 0348 set is still there: a slow call fails soft, never raises
   expect(src.rows[0].best).toContain(`interval '2.5 seconds'`)
