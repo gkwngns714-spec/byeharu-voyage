@@ -131,7 +131,7 @@ export function AwayCard() {
           <p className="mt-1 flex justify-between gap-3 text-t-body" data-testid="away-land" data-n={report.land.n}>
             <span>{t('land.party')}</span>
             <span className="min-w-0 break-words text-right font-semibold tabular-nums">
-              {`${formatInt(report.land.n)} ${report.land.good ? properName('good', report.land.good, goodByCode[report.land.good]?.name ?? report.land.good) : ''} · ${levelName(locale, report.land.skill)} ${formatInt(report.land.level)}`}
+              {`${formatInt(report.land.n)} ${report.land.good ? properName('good', report.land.good, goodByCode[report.land.good]?.name ?? report.land.good) : ''} · ${levelName(locale, report.land.skill)}${report.land.level === null ? '' : ` ${formatInt(report.land.level)}`}`}
             </span>
           </p>
         )}

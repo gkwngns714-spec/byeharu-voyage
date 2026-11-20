@@ -25,6 +25,7 @@
 // USAGE
 //   node scripts/build-land-migration.mjs          prints the VALUES block the newest land migration carries between its marker lines
 //   node scripts/build-land-migration.mjs --drops  prints the rare finds' VALUES block 0458 carries between its "drops" marker lines
+//   node scripts/build-land-migration.mjs --smith  prints the smith's VALUES block 0461 carries between its "smith" marker lines (L2)
 // tests/land.data.spec.ts holds that block equal to this file's output, so the rows cannot drift from the rule. 0455 carried the
 // first cut (no market guard); 0457 carries the rows with the guard and is the block the spec reads; 0458 carries the finds, and
 // its knob land_packs is MULES (L1c, at the foot of this file: mules, Repeat and finds, each judged by the same guard).
@@ -63,6 +64,25 @@ export const LADDERS = {
   },
 }
 
+/**
+ * 0461 (L2, THE SMITH; design 6.3 "Smithing: the catalogue's 21 metal recipes"): the MAKE jobs, by the level each asks. A make job's
+ * good is its PRODUCT, a good of the catalogue with a recipe; what it uses is public.goods_recipes' (the Forge's one recipe table),
+ * never written here. Made at home (no ground, no march, no passage); its market guard is held against the product's least
+ * middling-harbour target over EVERY region (a home can be in any), at FASTEST_MAKE. The design's three picks (Iron, Steel, Wootz)
+ * are NOT here: a pick better than the plain one would break Mining's guard (FASTEST.toolPct 3) unless Mining's rows are re-timed,
+ * which is live play and the owner's (docs/dev-log/2026-11-20-land-l2.md).
+ */
+export const MAKERS = {
+  smithing: {
+    goods: [
+      [1, 'iron-bars'], [5, 'ships-nails'], [10, 'steel-billets'], [15, 'sword-blades'], [22, 'pike-heads'], [26, 'armour'],
+      [30, 'brass-ingots'], [33, 'copper-cash'], [36, 'pewter'], [40, 'wootz-steel'], [43, 'copper-sheet'], [46, 'talwar'],
+      [50, 'brassware'], [54, 'smallwares'], [58, 'kris'], [62, 'benin-bronzes'], [66, 'katana'], [70, 'milanese-armour'],
+      [74, 'maghreb-brass'], [80, 'toledo-blades'], [88, 'damascus-blades'],
+    ],
+  },
+}
+
 /** 4.4: experience a minute of work, by the level a job asks (1-9, 10-19, ... 90-100). */
 const PAY = [5, 6, 8, 10, 12, 16, 20, 24, 32, 40]
 export const payAt = (level) => PAY[Math.min(9, Math.floor(level / 10))]
@@ -78,18 +98,25 @@ export const worthAt = (level) => 4800 + ((15000 - 4800) * (level - 1)) / 99
  */
 export const FASTEST = { top: 100, levelSpeedPct: 0.2, toolPct: 3, crowdMaxPct: 10, yieldPct: 100 }
 
+/**
+ * 0461 (L2): the fastest pace of a MAKE job (the smith): its skill at 100, land_level_speed_pct 0.2 a level above 1, no tool (no tool
+ * speeds a make job: land_actions.tool is null, and L2 makes no tool), no second unit for company (public.land_terms gives a make job
+ * crowd 0), land_yield_pct 100. 0461's self-assert reads the live knobs and fails if a make job is faster.
+ */
+export const FASTEST_MAKE = { top: 100, levelSpeedPct: 0.2, toolPct: 0, crowdMaxPct: 0, yieldPct: 100 }
+
 /** A turn at the fastest pace, rounded as public.land_terms rounds it. */
-export const fastestTurn = (seconds) =>
-  Math.max(1, Math.round(seconds * (100 / FASTEST.yieldPct) * (1 - (FASTEST.levelSpeedPct / 100) * (FASTEST.top - 1)) * (1 - FASTEST.toolPct / 100)))
+export const fastestTurn = (seconds, pace = FASTEST) =>
+  Math.max(1, Math.round(seconds * (100 / pace.yieldPct) * (1 - (pace.levelSpeedPct / 100) * (pace.top - 1)) * (1 - pace.toolPct / 100)))
 
 /** Units one party-hour can bring at the fastest pace. */
-export const fastestHour = (seconds) => (3600 / fastestTurn(seconds)) * (1 + FASTEST.crowdMaxPct / 100)
+export const fastestHour = (seconds, pace = FASTEST) => (3600 / fastestTurn(seconds, pace)) * (1 + pace.crowdMaxPct / 100)
 
 /** One job's seconds and experience, by the rule: the worth's time, the 40-s floor, and the market guard against `target`. */
-export function jobFigures(level, base, target) {
+export function jobFigures(level, base, target, pace = FASTEST) {
   const raw = (3600 * base) / worthAt(level)
   let seconds = Math.max(40, Math.round(raw / 5) * 5)
-  if (target !== undefined) while (fastestHour(seconds) > target / 100) seconds += 5
+  if (target !== undefined) while (fastestHour(seconds, pace) > target / 100) seconds += 5
   const xp = Math.max(1, Math.round((seconds / 60) * payAt(level)))
   return { seconds, xp }
 }
@@ -190,6 +217,39 @@ export function dropsBlock() {
     .join('\n')
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// L2 (migration 0461): THE SMITH'S ROWS, BY THE SAME RULE
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// A make job's seconds are jobFigures' (the worth's time of its product, the 40-s floor, the market guard) at FASTEST_MAKE against
+// the product's least middling target of all 25 regions; its experience the seconds times the pay a minute of its level, as a
+// gather job's. Its rows are 0461's block between its "smith" marker lines (tests/land.data.spec.ts).
+
+/** THE SMITH'S JOBS: one row a product. */
+export function smithRows() {
+  const goods = JSON.parse(readFileSync(path.join(ROOT, 'data', 'goods.json'), 'utf8')).goods
+  const byId = new Map(goods.map((g) => [g.id, g]))
+  const guard = JSON.parse(readFileSync(path.join(ROOT, 'data', 'land-guard.generated.json'), 'utf8')).goods
+  const rows = []
+  for (const [skill, ladder] of Object.entries(MAKERS)) {
+    ladder.goods.forEach(([level, code], i) => {
+      const g = byId.get(code)
+      if (!g) throw new Error(`build-land-migration: no good "${code}" in data/goods.json`)
+      if (!guard[code]) throw new Error(`build-land-migration: no guard figure for "${code}" (run scripts/db/measure-land-guard.mjs)`)
+      const base = (g.baseValue[0] + g.baseValue[1]) / 2
+      const { seconds, xp } = jobFigures(level, base, guard[code].target, FASTEST_MAKE)
+      rows.push({ code, skill, kind: 'make', level, seconds, xp, ord: i + 1 })
+    })
+  }
+  return rows
+}
+
+/** The smith's VALUES block, one row a line, exactly as migration 0461 carries it. */
+export function smithBlock() {
+  return smithRows()
+    .map((r, i, all) => `      ('${r.code}', '${r.skill}', '${r.kind}', ${r.level}, ${r.seconds}, ${r.xp}, ${r.ord})${i === all.length - 1 ? '' : ','}`)
+    .join('\n')
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  process.stdout.write((process.argv.includes('--drops') ? dropsBlock() : valuesBlock()) + '\n')
+  process.stdout.write((process.argv.includes('--drops') ? dropsBlock() : process.argv.includes('--smith') ? smithBlock() : valuesBlock()) + '\n')
 }

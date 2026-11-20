@@ -21,14 +21,20 @@ export function siteWord(locale: Locale, region: string | null, ground: string, 
   )
 }
 
-/** Where the party is, in one or two words. */
-export function phaseWord(locale: Locale, phase: LandProgress['phase']): string {
-  return translateMaybe(locale, 'land', `phase_${phase}`) ?? phase
+/** Where the party is, in one or two words. 0461: a make job's work turn is "Making", not "Digging". */
+export function phaseWord(locale: Locale, phase: LandProgress['phase'], make = false): string {
+  const key = make && phase === 'digging' ? 'making' : phase
+  return translateMaybe(locale, 'land', `phase_${key}`) ?? phase
 }
 
 /** A span the server served in seconds, in the game's real-time words ("4.7 min", "1 h 39 min"). */
 export function spanWord(seconds: number): string {
   return formatRealDuration(seconds * 1000)
+}
+
+/** 0461: what one unit of a make job uses, as the server served it (public.goods_recipes): "2 Iron · 1 Sea Coal". */
+export function inputsWord(inputs: ReadonlyArray<{ code: string; qty: number }>, goodName: (code: string) => string): string {
+  return inputs.map((i) => `${formatInt(i.qty)} ${goodName(i.code)}`).join(' · ')
 }
 
 /** 0458: rare finds as the server counted them (good code -> units), in one line: "1 Amber, 2 Jade". */

@@ -77,6 +77,8 @@ export const commandDict = defineDict({
     lvEvasion: 'Evasion',
     // 0455: the land's first skill (docs/design/land-2026-11.md); a land skill's gift is every fifth level
     lvMining: 'Mining',
+    // 0461: the land's first making skill (land slice L2, behind land_smith_enabled)
+    lvSmithing: 'Smithing',
     lvGiveGiftEvery: 'Reputation +{n} × level ÷ {every}, every {every} levels',
     lvSea: 'Sea',
     lvLand: 'Land',
@@ -142,6 +144,7 @@ export const commandDict = defineDict({
     lvAct_share: 'Invest in a city',
     lvAct_run_away: 'Escape a pirate raid by running',
     lvAct_dig: 'Dig at a mine',
+    lvAct_smith: 'Work at the forge',
     lvAct_run_try: 'A run that fails',
     lvSeamanship: 'Seamanship',
     lvLevel: 'Level {n}',
@@ -236,6 +239,7 @@ export const commandDict = defineDict({
     lvInvestment: '투자',
     lvEvasion: '회피',
     lvMining: '채광',
+    lvSmithing: '대장일',
     lvGiveGiftEvery: '{every}레벨마다 평판 +{n} × 레벨 ÷ {every}',
     lvSea: '바다',
     lvLand: '육지',
@@ -300,6 +304,7 @@ export const commandDict = defineDict({
     lvAct_share: '도시에 투자',
     lvAct_run_away: '도주로 해적 습격 탈출',
     lvAct_dig: '광산에서 채굴',
+    lvAct_smith: '대장간에서 일',
     lvAct_run_try: '실패한 도주',
     lvSeamanship: '항해술',
     lvLevel: '레벨 {n}',

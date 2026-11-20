@@ -66,6 +66,13 @@ export const landDict = defineDict({
     finds: 'Finds',
     oneIn: '1 in {n} a turn',
     found: 'Found {list}',
+    // 0461: the smith (a make job, at home, from the home Storage)
+    phase_making: 'Making',
+    uses: 'Uses',
+    canMake: 'Can make',
+    made: 'Made',
+    allTime: 'Total',
+    back: 'Back {list}',
   },
   ko: {
     party: '원정대',
@@ -127,5 +134,11 @@ export const landDict = defineDict({
     finds: '발견물',
     oneIn: '{n}회에 1번',
     found: '발견 {list}',
+    phase_making: '제작 중',
+    uses: '재료',
+    canMake: '제작 가능',
+    made: '제작',
+    allTime: '전체',
+    back: '반환 {list}',
   },
 })

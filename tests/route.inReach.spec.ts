@@ -99,6 +99,14 @@ test.describe('fixed facts', () => {
     const then = seenMark(0, 8_000, null)
     expect(awayReport(then, AWAY_MS, 8_000, null, awayLand(lit(80, 6)))?.land?.n).toBe(86)
     expect(awayReport(then, AWAY_MS, 8_000, null, awayLand(lit(0, 0)))).toBeNull()
+    // 0461: a smith's job read through Mining's view is Smithing's line, with no level (Mining's is not its)
+    const smith = {
+      enabled: true,
+      company: true,
+      party: { good: 'iron-bars', waiting_good: null, waiting: 0, progress: { new: 2 }, terms: { skill: 'smithing' } },
+      skill: { code: 'mining', level: 31 },
+    } as unknown as LandView
+    expect(awayLand(smith)).toEqual({ good: 'iron-bars', n: 2, skill: 'smithing', level: null })
   })
 })
 
