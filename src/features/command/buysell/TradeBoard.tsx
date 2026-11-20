@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { Hint, Note, ScrollPane, Skeleton, TileChoice, TileGrid } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { TradeCard } from '../../../live/TradeCard'
@@ -105,6 +105,24 @@ export function CityChips({ home, city, onCity }: { home: string | null; city: s
 const CARDS_GRID =
   'grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))] xl:grid-cols-[repeat(4,minmax(min-content,1fr))] xl:gap-1.5 min-[100rem]:gap-2 min-[100rem]:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]'
 
+/** The height of the cards' first row, measured: the first card is as tall as its row (the four lines are the grid's own subgrid).
+ *  Null until the first layout. Re-read whenever the grid or its first card is resized, and when another good leads the list. */
+function useFirstRowBound(grid: RefObject<HTMLElement | null>, lead: string | null): number | null {
+  const [height, setHeight] = useState<number | null>(null)
+  useEffect(() => {
+    const box = grid.current
+    const first = box?.firstElementChild
+    if (!box || !first) return
+    const read = () => setHeight(Math.ceil(first.getBoundingClientRect().height))
+    const observer = new ResizeObserver(read)
+    observer.observe(box)
+    observer.observe(first)
+    read()
+    return () => observer.disconnect()
+  }, [grid, lead])
+  return height
+}
+
 export function TradeBoard({
   strip,
   city,
@@ -136,6 +154,8 @@ export function TradeBoard({
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const portId = city ? (portByCode[city]?.id ?? null) : null
+  const gridRef = useRef<HTMLDivElement>(null)
+  const firstRow = useFirstRowBound(gridRef, rows[0]?.code ?? null)
 
   return (
     <div data-testid="trade-board" data-city={city ?? ''} data-docked={docked ? 'true' : 'false'}>
@@ -173,11 +193,13 @@ export function TradeBoard({
             // THE CARDS ARE THE ONE LONG LIST ON THIS FACE: at a busy quay they run past the
             // glass, so they scroll inside their own bounded pane (the page above stays put).
             // From lg the desk's centre pane is already the scroller — no second bound there.
-            // THE BOUND HOLDS ONE WHOLE ROW OF CARDS (10.5 rem = 168 px; a card is 165-166 px since its best sale's city
-            // is printed whole). At 9 rem (sized for the 151-px card) the row's Buy and Sell buttons stood 13 px under the
-            // pane's edge, so a press on one first scrolled the cards 13 px (tests/desk.layout.spec.ts, "a press … moved the cards").
-            <ScrollPane className="max-h-[10.5rem] lg:max-h-none">
-              <div className={CARDS_GRID}>
+            // THE BOUND HOLDS ONE WHOLE ROW OF CARDS, MEASURED (`useFirstRowBound`): a card's height is the data's, not a constant
+            // (a best sale's city or its hours that run a second line make the whole row taller: 165, 174, 190 px seen). At a
+            // fixed 10.5 rem the row's Buy and Sell stood under the pane's edge and a press on one first scrolled the cards
+            // (tests/desk.layout.spec.ts, "a press … moved the cards": run 44507902138, 6 px). 10.5 rem is only the bound before
+            // the first measure.
+            <ScrollPane className="max-h-[var(--first-row,10.5rem)] lg:max-h-none" style={{ '--first-row': firstRow ? `${firstRow}px` : undefined } as CSSProperties}>
+              <div ref={gridRef} className={CARDS_GRID}>
                 {rows.map((r) => (
                   <TradeCard
                     key={r.code}
