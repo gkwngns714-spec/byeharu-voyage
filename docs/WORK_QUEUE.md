@@ -4,6 +4,13 @@
 
 This block is the current state. The hand-off blocks further down (2026-11-13 and older) are history.
 
+**UPDATE 2026-11-20 (PC 디폴리스): PROD HEAD IS 0460; the next migration is 0461 (next proof 164).** Where the hand-off below says an older head, read this.
+- **0459 LIVE + MERGED (#769, `quote-faults`, proof 162):** a trip is quoted as it is sailed. Its FIRST push failed on prod and rolled back: prod's default privilege gives `service_role` execute on a new `public` function (PGlite has none), so `public.stow_takes` did not match `world.trip_leg`'s grants, and the assert's own message read a field it never selected. Fixed: the server-only revokes name `service_role`; proven with that default planted in a scratch run. After-check `quote-faults/after.sql`: head 0459, 4 new stable server-only, re-cut in place. **Lesson: a server-only function made in `public` revokes `service_role` too; a builder proves its grants assert with prod's default privilege planted.**
+- **0460 LIVE + MERGED (#771, `quay-goods`, proof 163):** 36 raw goods have a quay; news row "Raw goods on the quays / 부두에서 파는 원자재". Before: `market_digest` as wanted, knobs as 0460. After: head 0460, offers 1448, offers_0460 36, raw_no_source 0, raw_on_no_quay 7 (the land's), `untouched_digest` f57b05d51461720aacf8e06900a81b09 before and after, water rows unmoved. The "425.8x" in proof 160 is its negative control (0455's old sand job), not a breach: the guard reads 1.000 at its tightest. Both harness files had a doubled header that broke them (a stray line outside the comment); repaired on main.
+- **Main's Acceptance RED on ab590299 (#770):** `desk.layout.spec.ts:62` at 390 (opening a good moved the cards) and `small.screens.spec.ts:241` at 1280 (centre pane 648 px in 634). A builder is on branch `main-reds` (`~/dev/wt-main-reds`).
+- **The lit land, read 2026-11-20:** `land_enabled` true, 0 parties, 0 xp rows: nobody has sent a party yet.
+- Next: main green, then L2 the smith (0461).
+
 ## HAND-OFF 2026-11-19 (PC 디폴리스, shut down by the owner; he continues on another PC): START HERE
 
 **State:** prod head `20260818000458` (next free migration 0461; 0459 and 0460 are taken by the open PRs below; next proof 164). **THE LAND IS LIT:** the owner said "light it"; `land_enabled` true on prod since 2026-11-19 09:32 UTC (one `update public.world_config`). `land_yield_pct` untouched at 100. No builder is running; nothing is half-deployed. Main is at ab590299.

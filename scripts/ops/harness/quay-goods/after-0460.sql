@@ -5,13 +5,6 @@
 --   raw_no_source 0; offers 1448; offers_0460 36; market_rows 159766 (0460 adds no market row); base_target_set as before;
 --   untouched_digest EXACTLY as before-0460 read it (no row of any other good moved); water: rows 254, bil_base 402, lis_base 554
 --   (Bilbao is Fresh Water's producer and Lisbon's nearest source did not move: both rows unmoved).
-begin transaction read only; ... commit;`:
---   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/quay-goods/after-0460.sql
--- One row, one jsonb column `r`. Plain columns of small tables and port_goods (one scan); no function but the catalog's.
--- Wanted: head 20260818000460; knobs exactly as before-0460 read them; affinity_knobs_as_0460 true; raw_on_no_quay 0; offers 1455;
---   offers_0460 43; market_rows unchanged (159766: 0460 adds no market row); base_target_set as before;
---   water: rows 254, bil_base 4020, lis_base 5540 (the rule: 0005 x market_depth 10); bil_target / lis_target = base x the
---   harbour's multiple (about 10 x what before-0460 read). market_digest: a new value (the re-derived rows moved).
 begin transaction read only;
 with pairs(port, good) as (values ('ARI', 'agave'), ('DUB', 'apple'), ('COL', 'bamboo'), ('PAN', 'bark'), ('CHE', 'betel-leaf'), ('LAR', 'cabbage'), ('ARI', 'cacao-bean'), ('PRT', 'cassava-root'), ('MLG', 'cattle'), ('BSR', 'coffee-bean'), ('XIA', 'eel'), ('OPO', 'eggs'), ('BIL', 'fresh-water'), ('ROT', 'goose-feathers'), ('LPA', 'grapes'), ('ZAN', 'honeybush-leaf'), ('QUA', 'lychee'), ('BND', 'milk'), ('TAI', 'mint'), ('BNT', 'nipa'), ('RIO', 'palm-fruit'), ('MOM', 'palm-leaf'), ('ISL', 'palm-sap'), ('CPT', 'pandanus'), ('ARK', 'pear'), ('PTH', 'plum'), ('LUA', 'raffia'), ('SAK', 'ramie'), ('ALG', 'rose'), ('BEI', 'sesame'), ('CPT', 'shea-nut'), ('BAN', 'shrimp'), ('YEO', 'soybean'), ('SGO', 'sugar-cane'), ('YEO', 'tea-leaf'), ('BOS', 'witch-hazel-bark')),
 k as (select c.key, c.value from public.world_config c

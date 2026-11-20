@@ -7,14 +7,6 @@
 --   offers 1412; offers_0460 0; market_rows 159766; base_target_set 159766 on prod (depth_by_investment true there; 0 in the
 --   local chain); water: rows 254, bil_base 402, lis_base 554 (0280's footing); bil_target / lis_target = base x the harbour's
 --   multiple (read 2026-11-19: 528.39 / 544.97). Note untouched_digest: after-0460 must read the same value.
-begin transaction read only; ... commit;`:
---   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/quay-goods/before-0460.sql
--- One row, one jsonb column `r`. Plain columns of small tables and port_goods (one scan); no function but the catalog's.
--- Wanted: head 20260818000458 or 0459; affinity_knobs_as_0460 true (else 0460's knob lines would MOVE a knob: do not deploy);
---   market_digest 0c17a5f4f96b6f1c3f9c22428291a3ef (else 0460 refuses at its section 5b: nothing is written, but do not push it);
---   raw_on_no_quay 43; offers 1412; offers_0460 0; market_rows 159766; base_target_set 159766 on prod (depth_by_investment
---   true there; 0 in the local chain); water: rows 254, bil_base 402, lis_base 554 (0280's seed, a tenth of the rule);
---   bil_target / lis_target = base x the harbour's multiple (read 2026-11-19: 528.39 / 544.97).
 begin transaction read only;
 with pairs(port, good) as (values ('ARI', 'agave'), ('DUB', 'apple'), ('COL', 'bamboo'), ('PAN', 'bark'), ('CHE', 'betel-leaf'), ('LAR', 'cabbage'), ('ARI', 'cacao-bean'), ('PRT', 'cassava-root'), ('MLG', 'cattle'), ('BSR', 'coffee-bean'), ('XIA', 'eel'), ('OPO', 'eggs'), ('BIL', 'fresh-water'), ('ROT', 'goose-feathers'), ('LPA', 'grapes'), ('ZAN', 'honeybush-leaf'), ('QUA', 'lychee'), ('BND', 'milk'), ('TAI', 'mint'), ('BNT', 'nipa'), ('RIO', 'palm-fruit'), ('MOM', 'palm-leaf'), ('ISL', 'palm-sap'), ('CPT', 'pandanus'), ('ARK', 'pear'), ('PTH', 'plum'), ('LUA', 'raffia'), ('SAK', 'ramie'), ('ALG', 'rose'), ('BEI', 'sesame'), ('CPT', 'shea-nut'), ('BAN', 'shrimp'), ('YEO', 'soybean'), ('SGO', 'sugar-cane'), ('YEO', 'tea-leaf'), ('BOS', 'witch-hazel-bark')),
 k as (select c.key, c.value from public.world_config c
