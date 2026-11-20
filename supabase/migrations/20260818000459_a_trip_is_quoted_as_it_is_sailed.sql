@@ -870,11 +870,11 @@ $h$);
     raise exception '0459 self-assert FAIL: the hunks are not the 33 of the 8 re-cut bodies';
   end if;
 
-  -- ── 6. GRANTS: server only ──
-  revoke all on function public.stow_takes(jsonb, numeric, numeric) from public, anon, authenticated;
-  revoke all on function world.trip_stow(jsonb, numeric, numeric) from public, anon, authenticated;
-  revoke all on function world.board_trips(uuid, jsonb, jsonb) from public, anon, authenticated;
-  revoke all on function world.trip_leg(jsonb, jsonb, numeric, boolean, numeric) from public, anon, authenticated;
+  -- ── 6. GRANTS: server only (postgres alone, as world.trip_leg stands on prod; the platform grants service_role execute on a new public function by default, so it is named) ──
+  revoke all on function public.stow_takes(jsonb, numeric, numeric) from public, anon, authenticated, service_role;
+  revoke all on function world.trip_stow(jsonb, numeric, numeric) from public, anon, authenticated, service_role;
+  revoke all on function world.board_trips(uuid, jsonb, jsonb) from public, anon, authenticated, service_role;
+  revoke all on function world.trip_leg(jsonb, jsonb, numeric, boolean, numeric) from public, anon, authenticated, service_role;
 
   -- ── 7. THE SELF-ASSERT: the catalog ──
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')) || ':' || coalesce(p.proacl::text, ''), ',' order by p.oid::regprocedure::text))
@@ -883,7 +883,7 @@ $h$);
          and p.oid <> all (array(select f::regprocedure::oid from unnest(c_recut || c_new || array[c_leg]) f))) <> v_fn_before then
     raise exception '0459 self-assert FAIL: another function moved';
   end if;
-  for x in select f.fn, f.meta,
+  for x in select f.fn, f.meta, f.now,
                   (select coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text
                      from pg_proc p where p.oid = f.now::regprocedure) as now_meta
              from (select p.fn, p.meta, p.fn as now from pre_0459 p
