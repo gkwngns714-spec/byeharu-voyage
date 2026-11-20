@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { KO_PORTS } from '../src/lib/i18n/names/ports'
 import { reachable, ready } from './appReady.fixture'
 import { phoneLaws, readGlass } from './unfold.fixture'
 
@@ -62,6 +63,23 @@ const READ = () => {
   }
 }
 
+/** THE WIDE CASE, PLANTED (not left to which sale the world shows): the four cards of the first line carry the four cities with the
+ *  longest single word of the language shown (a word is never broken, so a column is never narrower than it). Four columns of
+ *  them are wider than the centre pane at 1,280 px, so the board must stand fewer cards to a line, not scroll sideways. */
+async function plantLongCities(page: Page, ko: boolean) {
+  const names = (ko ? Object.values(KO_PORTS) : Object.keys(KO_PORTS))
+    .sort((a, b) => Math.max(...b.split(' ').map((w) => w.length)) - Math.max(...a.split(' ').map((w) => w.length)))
+    .slice(0, 4)
+  await expect(page.locator('[data-testid="trade-good"] [data-testid="best-sale-city-name"]')).not.toHaveCount(0, { timeout: 60_000 })
+  const planted = await page.evaluate((list) => {
+    const slots = [...document.querySelectorAll('[data-testid="trade-good"]')].slice(0, 4).map((c) => c.querySelector('[data-testid="best-sale-city-name"]'))
+    slots.forEach((e, i) => { if (e) e.textContent = list[i] })
+    return slots.filter(Boolean).length
+  }, names)
+  expect(planted, 'the first line of cards has no best sale to plant a city in').toBe(4)
+  await page.waitForTimeout(300)
+}
+
 for (const locale of ['en-US', 'ko-KR'] as const) {
   test.describe(`the Command desk is a card page — ${locale}`, () => {
     test.use({ locale })
@@ -73,6 +91,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         await open(page, glass)
         const where = `${locale} desk @${glass.width}×${glass.height}`
         const failures: string[] = []
+        if (glass.width >= 1024) await plantLongCities(page, locale === 'ko-KR')
         const d = await page.evaluate(READ)
 
         // (a) THE PANES ARE CARDS
