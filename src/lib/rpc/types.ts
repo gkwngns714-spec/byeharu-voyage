@@ -4927,8 +4927,17 @@ export interface LandTerms {
   carry?: number
   /** 0458: the rare finds frozen at Send (those of the land worked). */
   finds?: LandFind[]
-  /** 0458: Repeat off: the trip after which the party comes home. */
+  /** 0458: Repeat off: the trip after which the party comes home. 0461: a make job: the units it was sent for. */
   last?: number
+  /** 0461: a make job: what it took a unit (good code -> qty and the cost it was taken at), and the cost a made unit is booked at. */
+  take?: Record<string, { qty: number; basis: number | null }>
+  basis?: number | null
+}
+
+/** 0461: a make job as `public.land_terms` judges it now: what one unit uses (have: in the home Storage) and how many it can make. */
+export interface LandMake {
+  can: number
+  inputs: Array<{ code: string; qty: number; have: number }>
 }
 
 /** 0458: a rare find of a job: the good, one turn in how many. */
@@ -4959,6 +4968,9 @@ export interface LandJob {
   sold_at: string[]
   /** 0458: the rare finds of the land this job would be worked on (none where no gem lies). */
   finds: LandFind[]
+  /** 0461: gather (on the land) or make (at home, from the home Storage); a make job's inputs and how many it can make. */
+  kind: 'gather' | 'make'
+  make: LandMake | null
 }
 
 export interface LandTool {
@@ -4976,6 +4988,8 @@ export type LandView =
   | {
       enabled: true
       company: true
+      /** 0461: the land skills open now (each behind land_enabled and its own switch): the Land tab's faces. */
+      skills: string[]
       now: string
       purse: number
       home: { port: string; name: string; region: string }
@@ -5024,6 +5038,8 @@ export interface LandDone {
   /** 0458: Collect: the rare finds booked or kept by this press (good code -> units); a mule: mules and packs; Repeat. */
   found?: Record<string, number>
   found_waiting?: Record<string, number>
+  /** 0461: a make job that ended gave back the inputs of the units it did not make (good code -> units). */
+  given_back?: Record<string, number>
   mules?: number
   packs?: number
   repeat?: boolean

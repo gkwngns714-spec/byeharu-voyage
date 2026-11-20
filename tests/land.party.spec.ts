@@ -17,6 +17,12 @@ const landLit = () =>
     await pg.exec(`update public.world_config set value = 'true'::jsonb where key = 'land_enabled'`)
   })
 
+// 0461 (L2, the smith): the land lit AND Smithing's own switch lit (land_smith_enabled, the owner's), by the same one seam
+const smithLit = () =>
+  patchedWorldImage('smith-lit', async (pg) => {
+    await pg.exec(`update public.world_config set value = 'true'::jsonb where key in ('land_enabled', 'land_smith_enabled')`)
+  })
+
 const GLASSES = [
   { width: 390, height: 844 },
   { width: 1280, height: 900 },
@@ -55,6 +61,9 @@ for (const glass of GLASSES) {
       await expect(page.getByTestId('land-party')).toBeVisible({ timeout: 90_000 })
       if (glass.width < 1024) await expect(page.getByTestId('nav-bar').getByTestId('nav-cell-/land')).toBeVisible()
       await noSideways(page, 'the Party face')
+
+      // 0461: Smithing is behind its own switch, dark here: no Smithing face
+      await expect(page.getByRole('tab', { name: /Smithing/ })).toHaveCount(0)
 
       // the Mining face
       await page.getByRole('tab', { name: /Mining/ }).click()
@@ -132,6 +141,45 @@ for (const glass of GLASSES) {
       const tray = page.getByTestId('land-send-tray')
       await expect(tray.getByTestId('land-send-finds')).toContainText('Amber')
       await noSideways(page, 'a tray with finds')
+    })
+  })
+}
+
+// 0461 (L2): Smithing lit: its face lists the catalogue's 21 metal recipes, each with what one unit uses; a press opens the tray over
+// the page and moves nothing; with nothing in Storage the tray says what each input holds against what it needs, and Send waits
+for (const glass of GLASSES) {
+  test.describe(`the smith, lit, ${glass.width}px`, () => {
+    test.use({ viewport: glass })
+    test('Smithing lists its recipes, a press moves nothing, nothing scrolls sideways', async ({ page, request, baseURL }) => {
+      test.setTimeout(600_000)
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      await serveWorldImage(page, await smithLit())
+      await page.goto('land')
+      await ready(page)
+      await expect(page.getByTestId('land-party')).toBeVisible({ timeout: 90_000 })
+      const strip = page.getByRole('tab', { name: /Party/ })
+      const stripAt = (await strip.boundingBox())?.y
+      await page.getByRole('tab', { name: /Smithing/ }).click()
+      const jobs = page.getByTestId('land-job')
+      await expect(jobs).toHaveCount(21, { timeout: 30_000 })
+      expect((await strip.boundingBox())?.y, 'the strip moved on a press').toBe(stripAt)
+      const bars = page.locator('[data-testid="land-job"][data-job="iron-bars"]')
+      await expect(bars.getByTestId('land-job-land')).toContainText('Uses')
+      await expect(bars.getByTestId('land-job-land')).toContainText('Iron')
+      await expect(page.locator('[data-testid="land-job"][data-job="steel-billets"]').getByTestId('land-job-level')).toHaveText('Smithing 1 / 10')
+      await noSideways(page, 'the Smithing face')
+
+      const before = await bars.boundingBox()
+      await bars.click()
+      const tray = page.getByTestId('land-send-tray')
+      await expect(tray.getByTestId('land-send-can')).toHaveText('0')
+      await expect(tray.getByTestId('land-send-input').first()).toContainText('0 /')
+      await expect(tray.getByTestId('land-send')).toBeDisabled()
+      await expect(tray.getByTestId('land-send-short')).toBeVisible()
+      const after = await bars.boundingBox()
+      expect(after?.y, 'pressing a recipe moved the list').toBe(before?.y)
+      expect(after?.x).toBe(before?.x)
+      await noSideways(page, 'the Send tray of a recipe')
     })
   })
 }

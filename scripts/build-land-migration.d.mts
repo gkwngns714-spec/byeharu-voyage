@@ -16,10 +16,11 @@ export interface LandRow {
 export const LADDERS: Record<string, { ground: string; tool: string; goods: Array<[number, string]> }>
 export function payAt(level: number): number
 export function worthAt(level: number): number
-export const FASTEST: { top: number; levelSpeedPct: number; toolPct: number; crowdMaxPct: number; yieldPct: number }
-export function fastestTurn(seconds: number): number
-export function fastestHour(seconds: number): number
-export function jobFigures(level: number, base: number, target?: number): { seconds: number; xp: number }
+export interface Pace { top: number; levelSpeedPct: number; toolPct: number; crowdMaxPct: number; yieldPct: number }
+export const FASTEST: Pace
+export function fastestTurn(seconds: number, pace?: Pace): number
+export function fastestHour(seconds: number, pace?: Pace): number
+export function jobFigures(level: number, base: number, target?: number, pace?: Pace): { seconds: number; xp: number }
 export function landRows(): LandRow[]
 export function valuesBlock(): string
 
@@ -37,3 +38,18 @@ export function findOneIn(jobSeconds: number, findTarget: number): number
 export function fastestFindsHour(jobSeconds: number, oneIn: number): number
 export function dropRows(): DropRow[]
 export function dropsBlock(): string
+
+// 0461 (L2): the smith's make jobs, by the same rule at the fastest make pace
+export interface SmithRow {
+  code: string
+  skill: string
+  kind: 'make'
+  level: number
+  seconds: number
+  xp: number
+  ord: number
+}
+export const FASTEST_MAKE: Pace
+export const MAKERS: Record<string, { goods: Array<[number, string]> }>
+export function smithRows(): SmithRow[]
+export function smithBlock(): string

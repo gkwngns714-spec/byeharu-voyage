@@ -342,6 +342,132 @@
       "region": "PAC",
       "harbours": 18,
       "regions": 1
+    },
+    "iron-bars": {
+      "target": 18,
+      "region": "ADR",
+      "harbours": 7,
+      "regions": 25
+    },
+    "ships-nails": {
+      "target": 105,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 25
+    },
+    "steel-billets": {
+      "target": 105,
+      "region": "CAR",
+      "harbours": 10,
+      "regions": 25
+    },
+    "sword-blades": {
+      "target": 61.5,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 25
+    },
+    "pike-heads": {
+      "target": 105,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 25
+    },
+    "armour": {
+      "target": 105,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 25
+    },
+    "brass-ingots": {
+      "target": 180,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 25
+    },
+    "copper-cash": {
+      "target": 180,
+      "region": "ATL",
+      "harbours": 7,
+      "regions": 25
+    },
+    "pewter": {
+      "target": 180,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 25
+    },
+    "wootz-steel": {
+      "target": 105,
+      "region": "CAR",
+      "harbours": 10,
+      "regions": 25
+    },
+    "copper-sheet": {
+      "target": 180,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 25
+    },
+    "talwar": {
+      "target": 45,
+      "region": "CAR",
+      "harbours": 10,
+      "regions": 25
+    },
+    "brassware": {
+      "target": 105,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 25
+    },
+    "smallwares": {
+      "target": 105,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 25
+    },
+    "kris": {
+      "target": 45,
+      "region": "ADR",
+      "harbours": 7,
+      "regions": 25
+    },
+    "benin-bronzes": {
+      "target": 180,
+      "region": "CHI",
+      "harbours": 8,
+      "regions": 25
+    },
+    "katana": {
+      "target": 45,
+      "region": "ATL",
+      "harbours": 7,
+      "regions": 25
+    },
+    "milanese-armour": {
+      "target": 45,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 25
+    },
+    "maghreb-brass": {
+      "target": 105,
+      "region": "KOR",
+      "harbours": 8,
+      "regions": 25
+    },
+    "toledo-blades": {
+      "target": 45,
+      "region": "CHI",
+      "harbours": 8,
+      "regions": 25
+    },
+    "damascus-blades": {
+      "target": 45,
+      "region": "CAR",
+      "harbours": 10,
+      "regions": 25
     }
   }
 }

@@ -50,7 +50,8 @@ export interface AwayLand {
   good: string | null
   n: number
   skill: string
-  level: number
+  /** 0461: null when the job is another skill's than the one read (its level is not in this read). */
+  level: number | null
 }
 
 export interface AwayReport {
@@ -93,7 +94,9 @@ export function awayLand(view: LandView | null): AwayLand | null {
   const p = view.party
   const n = p.progress.new + p.waiting
   if (n <= 0) return null
-  return { good: p.good ?? p.waiting_good, n, skill: view.skill.code, level: view.skill.level }
+  // 0461: the skill whose job it is (a smith's, read through Mining's view, is Smithing's); its level only when it is the skill read
+  const skill = p.terms?.skill ?? view.skill.code
+  return { good: p.good ?? p.waiting_good, n, skill, level: skill === view.skill.code ? view.skill.level : null }
 }
 
 /**

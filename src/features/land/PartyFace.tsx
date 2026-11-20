@@ -13,6 +13,8 @@ type Lit = Extract<LandView, { company: true }>
 // home; beside it the home Storage of the skill's goods, the tools, and who else is on that land. Every figure is `world.land`'s.
 // 0458: Repeat (On / Off, the party goes again by itself), the mules (the next one bought from the Tools card), and the rare finds:
 // what a Collect found is said in the slot that is always there under the buttons, so nothing below it moves.
+// 0461: a MAKE job (the smith) works at home: the card says the home city, "Making", and how many of the units it was sent for are
+// made; what a Collect gave back of a make's inputs is said in the same slot.
 
 /** A good's name in the reader's language: the catalogue's (the snapshot's English, names/goods.ts in Korean), else the code. */
 function useGoodName(): (code: string | null) => string {
@@ -31,6 +33,8 @@ export function PartyFace({ v }: { v: Lit }) {
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   // what the last Collect found (0458), said in the refusal's slot
   const [found, setFound] = useState<Record<string, number> | null>(null)
+  // 0461: what the last Collect gave back of a make job's inputs
+  const [back, setBack] = useState<Record<string, number> | null>(null)
   const p = v.party
   const pr = p.progress
   const terms = p.terms
@@ -44,11 +48,14 @@ export function PartyFace({ v }: { v: Lit }) {
     setBusy(which)
     setRefusal(null)
     setFound(null)
+    setBack(null)
     void (async () => {
       const r = await act()
       if (r.ok) {
         const got = r.value.found
         if (got && Object.keys(got).length > 0) setFound(got)
+        const gave = r.value.given_back
+        if (gave && Object.keys(gave).length > 0) setBack(gave)
         await refresh()
       }
       else if (r.refusal) setRefusal(r.refusal)
@@ -59,20 +66,25 @@ export function PartyFace({ v }: { v: Lit }) {
   // where it stands in this trip, as a fill of the served figures (`u` of `trip`); called home or at home, none
   const fill = out && pr.state === 'out' && pr.u !== undefined && pr.trip ? (pr.u / pr.trip) * 100 : out ? 100 : 0
   const homeAt = pr.state === 'returning' ? pr.home_at : pr.next_home_at
-  const site = siteWord(locale, p.region ?? v.home.region, 'mines', v.regions)
+  const make = !!terms?.take   // 0461: a make job, at home
+  const site = make ? v.home.name : siteWord(locale, p.region ?? v.home.region, 'mines', v.regions)
 
   const main = (
     <Card title={`${t('land.party')} · ${site}`} data-testid="land-party">
       <Row
-        label={<span data-testid="land-phase" data-phase={pr.phase}>{pr.stopped ? t('land.stopped') : phaseWord(locale, pr.phase)}</span>}
+        label={<span data-testid="land-phase" data-phase={pr.phase}>{pr.stopped ? t('land.stopped') : phaseWord(locale, pr.phase, make)}</span>}
         value={out ? <span className="text-t-body text-ink">{goodName(p.good)}</span> : undefined}
         hairline={false}
       >
         <Bar pct={fill} label={t('land.trip')} tone="accent" className="mt-1" />
       </Row>
       <Row
-        label={t('land.packs')}
-        value={<span className="tabular-nums" data-testid="land-packs">{terms ? `${formatInt(pr.in_packs)} / ${formatInt(terms.p)}` : '0'}</span>}
+        label={make ? t('land.made') : t('land.packs')}
+        value={
+          <span className="tabular-nums" data-testid="land-packs">
+            {terms ? (make ? `${formatInt(pr.turns)} / ${formatInt(terms.last ?? 0)}` : `${formatInt(pr.in_packs)} / ${formatInt(terms.p)}`) : '0'}
+          </span>
+        }
       />
       <Row
         label={t('land.homeIn')}
@@ -144,6 +156,10 @@ export function PartyFace({ v }: { v: Lit }) {
         ) : found ? (
           <Note tone="success" data-testid="land-found">
             {t('land.found', { list: foundWord(found, goodName) })}
+          </Note>
+        ) : back ? (
+          <Note tone="neutral" data-testid="land-back">
+            {t('land.back', { list: foundWord(back, goodName) })}
           </Note>
         ) : null}
       </div>
