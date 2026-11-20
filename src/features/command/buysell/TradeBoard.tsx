@@ -128,25 +128,30 @@ function useFirstRowBound(grid: RefObject<HTMLElement | null>, lead: string | nu
  *  widest card's words, and two long city names in two columns together are wider than the pane (a Korean 산루카르데바라메다 is
  *  117 px: 133-px columns, four of them in a 502-px pane). The grid then stands one card fewer to a line, down to two, and the
  *  line the card leaves wraps to the next: no name is cut or broken. Set on the grid as `--cols`, before paint, from what the
- *  pane measures; it is re-read when the cards, their sales or the pane change. */
-function useFitColumns(pane: RefObject<HTMLElement | null>, grid: RefObject<HTMLElement | null>, key: unknown) {
+ *  pane measures; it is re-read when the pane is resized or any word in the cards changes. */
+function useFitColumns(pane: RefObject<HTMLElement | null>, grid: RefObject<HTMLElement | null>, cards: number) {
   useLayoutEffect(() => {
     const box = pane.current
-    const cards = grid.current
-    if (!box || !cards) return
+    const cardBox = grid.current
+    if (!box || !cardBox) return
     const fit = () => {
       for (let cols = 4; cols >= 2; cols--) {
-        cards.style.setProperty('--cols', String(cols))
+        cardBox.style.setProperty('--cols', String(cols))
         if (box.scrollWidth <= box.clientWidth + 1) break
       }
     }
     fit()
-    const observer = new ResizeObserver(fit)
-    observer.observe(box)
-    // a card that gets wider (a longer name) is what shows a pane too narrow: the pane itself does not change size
-    for (const card of cards.children) observer.observe(card)
-    return () => observer.disconnect()
-  }, [pane, grid, key])
+    // the pane changes size, or a word in a card changes (a name is what makes a column wide)
+    const resized = new ResizeObserver(fit)
+    resized.observe(box)
+    const worded = new MutationObserver(fit)
+    worded.observe(cardBox, { subtree: true, childList: true, characterData: true })
+    return () => {
+      resized.disconnect()
+      worded.disconnect()
+    }
+    // (the pane stands only once the quay has goods: the effect runs again when their number changes)
+  }, [pane, grid, cards])
 }
 
 export function TradeBoard({
@@ -183,7 +188,7 @@ export function TradeBoard({
   const gridRef = useRef<HTMLDivElement>(null)
   const paneRef = useRef<HTMLDivElement>(null)
   const firstRow = useFirstRowBound(gridRef, rows[0]?.code ?? null)
-  useFitColumns(paneRef, gridRef, sales ?? rows)
+  useFitColumns(paneRef, gridRef, rows.length)
 
   return (
     <div data-testid="trade-board" data-city={city ?? ''} data-docked={docked ? 'true' : 'false'}>
