@@ -1506,6 +1506,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // down: a complete server mechanic with no client at all is a door nobody opens.
       'worldWorkstation',
       'worldYardSources',
+      // Pin moved deliberately 2026-11-22 with migration 0465 (content plan slice C, "the yard takes an order"): world.hull_quote(port,
+      // class) - a READ, no player id: the price and the wait of an order, {on: false} dark - and its two doors cmd.order_hull(port,
+      // class) and cmd.launch_hull(fleet, name), neither taking a player id. Dark the order door refuses E_NOT_IN_USE. Landed WITH the
+      // Yard's Order and Launch (live/PortYard.tsx).
+      'worldHullQuote', 'cmdOrderHull', 'cmdLaunchHull',
       // 0070 — world.warehouse(p_port, p_fleet). A READ, no player id: what is ashore comes from
       // current_player_id(), so naming another house's port tells you the shed's SIZE and nothing
       // about what is in it. Lands with the face that reads it.
