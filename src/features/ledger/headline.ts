@@ -65,8 +65,18 @@ import { levelName } from '../../live/levelWords'
 // This file MOVED out of LedgerScreen.tsx on 2026-09-09 (docs/UI_DIRECTION.md §5: a screen file is
 // ≤ 250 lines and contains one exported component; sub-views are files). Not one sentence changed.
 
-export function headline(event: LedgerEvent, portName: (code: string) => string, nationName?: (code: string) => string): string {
+/** `goodName`: a payload's `good` (the served name) in the viewer's language (worldStore `goodWordOf`); absent, as served. */
+export function headline(
+  event: LedgerEvent,
+  portName: (code: string) => string,
+  nationName?: (code: string) => string,
+  goodName: (served: string) => string = (g) => g,
+): string {
   const p = event.payload
+  const goodOf = (q: Record<string, unknown>) => {
+    const g = str(q, 'good')
+    return g === null ? t('history.cargo') : goodName(g)
+  }
   // A country an event names by its CODE alone (REGARD_CHANGED, WANTED: 0319, 0334) is said by its name, never "ESP" (seen in a browser, 2026-11-13: "ESP wants you").
   const countryName = (q: Record<string, unknown>, key: 'to' | 'from' | 'nation') => countryOf(q, key, nationName)
   // The fallback for a payload that IS about a fleet and has lost the key. Not read by the
@@ -82,14 +92,14 @@ export function headline(event: LedgerEvent, portName: (code: string) => string,
     }
     case 'BOUGHT': {
       const qty = num(p, 'qty')
-      const good = str(p, 'good') ?? t('history.cargo')
+      const good = goodOf(p)
       const price = num(p, 'avg_price')
       const atPrice = price === null ? '' : t('history.atPrice', { price: formatUnitPrice(price) })
       return t('history.bought', { fleet, qty: some(qty), good, at: atPrice })
     }
     case 'SOLD': {
       const qty = num(p, 'qty')
-      const good = str(p, 'good') ?? t('history.cargo')
+      const good = goodOf(p)
       const price = num(p, 'avg_price')
       const atPrice = price === null ? '' : t('history.atPrice', { price: formatUnitPrice(price) })
       return t('history.sold', { fleet, qty: some(qty), good, at: atPrice })
@@ -247,7 +257,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string,
     // the request paid over it, from the payload's own `premium` — never re-derived here.
     case 'FULFILLED': {
       const qty = num(p, 'qty')
-      const good = str(p, 'good') ?? t('history.cargo')
+      const good = goodOf(p)
       const port = str(p, 'port')
       const premium = num(p, 'premium')
       return t('history.fulfilled', {

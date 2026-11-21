@@ -240,7 +240,7 @@ test('the Overview keeps its four holders, its charts, its stacked bar and its w
   await expect(page.getByTestId('stats-money').locator('[role="img"]').first()).toBeVisible()
   expect(await page.getByTestId('stats-chart-tap').count()).toBeGreaterThanOrEqual(3)
   const flows = page.getByTestId('stats-new-money')
-  for (const word of [/Printed/, /Burned/, /Moved/, /Trades/]) await expect(flows).toContainText(word)
+  for (const word of [/New money/, /Money gone/, /Moved/, /Trades/]) await expect(flows).toContainText(word)
   await expect(flows.locator('[role="img"]').first()).toBeVisible()
   const watch = page.getByTestId('stats-watch')
   await expect(watch).toContainText(/New money/)

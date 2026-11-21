@@ -85,7 +85,7 @@ export function formatDucatsDelta(n: number): string {
  *  0208 (goods ÷ 5, 2026-10-19): the figure follows `priceDigits`, as every other price does — a
  *  unit at 2.40 no longer prints as "2", which hid a 20 % move. */
 export function formatUnitPrice(n: number): string {
-  return `${formatPriceFigure(n)}${NBSP}${COIN} each`
+  return t('format.each', { price: `${formatPriceFigure(n)}${NBSP}${COIN}` })
 }
 
 /** A PRICE AT ANY SCALE (the COMMAND DESK, 2026-10-18): the game's prices run from about 1 to about

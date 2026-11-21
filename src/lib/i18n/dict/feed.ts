@@ -82,7 +82,6 @@ export const feedDict = defineDict({
     levelUp: '{track} level {n}',
     levelUpRep: '{track} level {n} · +{rep} Reputation',
     repEarned: '+{n} Reputation',
-    next: 'Next',
     close: 'Close',
     // REPEAT AS A ROUTE on the arrival card (src/live/ArrivalRepeat.tsx, the content plan's slice B)
     makeRoute: 'Make route',
@@ -165,7 +164,6 @@ export const feedDict = defineDict({
     levelUp: '{track} {n}레벨',
     levelUpRep: '{track} {n}레벨 · 평판 +{rep}',
     repEarned: '평판 +{n}',
-    next: '다음',
     close: '닫기',
     makeRoute: '항로 만들기',
     awayTitle: '비운 사이',

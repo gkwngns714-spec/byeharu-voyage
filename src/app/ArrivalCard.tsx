@@ -6,9 +6,10 @@ import { num, str } from '../lib/json'
 import { useLocale, useT } from '../lib/i18n'
 import { levelName } from '../live/levelWords'
 import type { LedgerEvent, PlayerHouse } from '../lib/rpc'
-import { portNameOf, useWorld } from '../live/worldStore'
+import { goodWordOf, portNameOf, useWorld } from '../live/worldStore'
 import { ArrivalRaids } from '../live/ArrivalRaids'
 import { ArrivalRepeat } from '../live/ArrivalRepeat'
+import { HOME_TAB, tabWord } from './navTabs'
 
 // THE ARRIVAL CARD (owner row 307, the remaster's S3): a fleet comes in, sells, and the player was told nothing. One
 // card, over whatever tab is open, says what the arrival did. It reads FACTS THE SERVER ALREADY REPORTS and adds none:
@@ -19,7 +20,8 @@ import { ArrivalRepeat } from '../live/ArrivalRepeat'
 //     since the last card (a level crossed at the quay has no card of its own);
 //   - "New port" is the served `ports_reached` going up on that same read.
 // It never computes profit or a level. A sale whose profit the server did not record prints the sale's total instead
-// (also served), never a guess. Arrivals that land while a card is open MERGE into it. Next goes to the Trade desk.
+// (also served), never a guess. Arrivals that land while a card is open MERGE into it. Its first press goes to the Trade desk
+// and is named by that tab's own word ("Trade"; it said "Next", which read as Close in the 2026-11-22 play-test).
 // WHAT IT DOES NOT DO: announce what happened while the page was closed (nothing served says "unseen"; the first read
 // after a load is the baseline; the "While away" card, AwayCard.tsx, says what the routes and the purse did meanwhile) or a
 // sale made by pressing Sell at the quay (the Trade panel's own toast says that).
@@ -205,7 +207,7 @@ export function ArrivalCard() {
         <p className="text-t-label font-semibold">{port ? t('feed.arrivedAt', { port }) : t('feed.arrived')}</p>
         {sales.map((s) => (
           <p key={s.id} className="mt-1 flex justify-between gap-3 text-t-body" data-testid="arrival-sale">
-            <span className="min-w-0 break-words">{t('feed.arrSold', { n: s.qty === null ? '' : formatInt(s.qty), good: s.good })}</span>
+            <span className="min-w-0 break-words">{t('feed.arrSold', { n: s.qty === null ? '' : formatInt(s.qty), good: goodWordOf(s.good) })}</span>
             {/* THE FIGURE HAS ITS WORD (2026-11-11, the trade-flow slice): "−1,182" stood bare. It is the sale's served profit
                 ("Profit" / "Loss": the sale's money less what the goods cost, before the voyage's wages), or its total. */}
             {s.figure !== null && (
@@ -245,10 +247,10 @@ export function ArrivalCard() {
             data-testid="arrival-next"
             onClick={() => {
               setCard(null)
-              navigate('/command')
+              navigate(HOME_TAB)
             }}
           >
-            {t('feed.next')}
+            {tabWord(locale, HOME_TAB)}
           </Button>
           <Button variant="secondary" size="sm" className="flex-1" data-testid="arrival-close" onClick={() => setCard(null)}>
             {t('feed.close')}

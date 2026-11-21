@@ -260,9 +260,12 @@ function SaleBlock({
         data-seconds={sale.seconds ?? undefined}
         data-far={sale.far?.port}
       >
-        {/* 0433: the full load is beyond her purse: her purse against what it needs; the sale named is the most she can pay for */}
+        {/* 0433: the full load is beyond her purse: her purse against what it needs; the sale named is the most she can pay for.
+            NOT RED (2026-11-22 play-test): a sale she can pay for still stands, so this is a fact, not a refusal; while she sails
+            with her coin in cargo it stood red on every card and read as an error. The refusal (no sale she can pay for) is the
+            red line above. */}
         {money(sale) !== null ? (
-          <span className="shrink-0 font-medium text-danger" data-testid="best-sale-money">
+          <span className="shrink-0 font-medium text-ink-muted" data-testid="best-sale-money">
             {t('desk.moneyHaveNeed', money(sale)!)}
           </span>
         ) : (

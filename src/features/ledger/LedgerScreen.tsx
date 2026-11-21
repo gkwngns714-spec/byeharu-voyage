@@ -19,7 +19,7 @@ import {
   type TrayDetent,
 } from '../../components/ui'
 import { MINUS, formatClock, formatDate, formatDucatsDelta, formatInt } from '../../lib/format'
-import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
+import { goodWordOf, nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { headline, payloadFights, payloadLines } from './headline'
@@ -106,7 +106,7 @@ function LedgerBody({ title }: { title: string }) {
   }))
   const biggestRows: RankRow[] = biggest.map(({ event, move }) => ({
     id: event.id,
-    label: headline(event, portName, nationName),
+    label: headline(event, portName, nationName, goodWordOf),
     value: move,
     tone: move > 0 ? 'success' : 'danger',
   }))
@@ -148,7 +148,7 @@ function LedgerBody({ title }: { title: string }) {
                         data-testid="ledger-row"
                         data-kind={event.kind}
                         mark={<IconDisc name={markOf(event.kind)} />}
-                        label={headline(event, portName, nationName)}
+                        label={headline(event, portName, nationName, goodWordOf)}
                         value={movement(event.ducats_delta)}
                         chevron={report.length > 0}
                         onClick={report.length > 0 ? () => show(event) : undefined}
@@ -192,7 +192,7 @@ function LedgerBody({ title }: { title: string }) {
       />
 
       {open !== null && (
-        <Tray detent={detent} onDetentChange={setDetent} title={headline(open, portName, nationName)} data-testid="ledger-report">
+        <Tray detent={detent} onDetentChange={setDetent} title={headline(open, portName, nationName, goodWordOf)} data-testid="ledger-report">
           <div className="space-y-3 pb-2">
             {payloadLines(open.payload).map((line, i) => {
               const fight = fights.find((f) => f.line === i)

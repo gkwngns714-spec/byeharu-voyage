@@ -1,6 +1,6 @@
 import { formatFixed, formatInt, formatMiles, formatPct, formatPctChange } from '../../../lib/format'
 import type { PriceWhy } from '../../../lib/rpc'
-import { t as tw, wordTable } from '../../../lib/i18n'
+import { properName, t as tw, wordTable } from '../../../lib/i18n'
 
 // WHY THIS PRICE, AS LINES (docs/PRICE_FACTORS.md §5; migration 0185): world.price_why's served terms named
 // and ranked by their served multipliers. Pure, so the face (WhyThisPrice.tsx) and the spec share it.
@@ -58,7 +58,10 @@ function effectOf(mult: number): string {
 
 /** The served terms as lines, largest effect first. The taste prints as its two halves (the region's
  *  appetite for the kind of good, the faith's for the good). Pure: the spec and the face share it. */
-export function whyLines(why: PriceWhy): WhyLine[] {
+/** `regionCode`: the region of the port priced (its served CODE, `SnapshotPort.region`), so the taste line names the region in
+ *  the reader's language (names/realms.ts; 2026-11-22 play-test: "Iberia의 취향"). Absent: the served English name. */
+export function whyLines(why: PriceWhy, regionCode?: string | null): WhyLine[] {
+  const region = why.region && regionCode ? properName('region', regionCode, why.region) : why.region
   const out: WhyLine[] = []
   const add = (key: string, label: string, mult: number | undefined) => {
     if (mult === undefined || !Number.isFinite(mult) || mult <= 0 || Math.abs(mult - 1) < QUIET) return
@@ -73,7 +76,7 @@ export function whyLines(why: PriceWhy): WhyLine[] {
         add('affinity', tw(t.mult < 1 ? 'markets.madeHere' : 'markets.scarce'), t.mult)
         break
       case 'taste':
-        add('taste-region', why.region ? tw('markets.tasteIn', { region: why.region }) : tw('markets.localTaste'), t.region)
+        add('taste-region', region ? tw('markets.tasteIn', { region }) : tw('markets.localTaste'), t.region)
         add('taste-faith', why.faith ? tw('markets.faithDemand', { faith: why.faith.name }) : tw('markets.faith'), t.faith)
         break
       case 'stock':
