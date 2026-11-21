@@ -480,6 +480,58 @@ export interface BuildingYardView {
   /** This city's building-yard tier, or null where it lays down nothing. */
   tier: number | null
   hulls: YardHull[]
+  /** 0465 — the yard takes an order: served ONLY while yard_order_enabled is lit (absent dark, so no Order is offered). */
+  order?: YardOrderCard
+}
+
+/** 0465 — an order a company keeps at a yard (public.hull_orders), as world.building_yard serves it. */
+export interface YardOrder {
+  id: string
+  /** `ship_classes.code` and the class's served name. */
+  class: string
+  name: string
+  price: number
+  ordered_at: string
+  ready_at: string
+  /** Whether ready_at has passed, at the read's instant (the screen counts down to ready_at itself). */
+  ready: boolean
+}
+
+/** 0465 — world.building_yard's `order` key (public.hull_order_card). */
+export interface YardOrderCard {
+  on: true
+  fee_pct: number
+  /** Your open order at THIS yard, or null (one a yard). */
+  open: YardOrder | null
+  /** Your open orders at other yards. */
+  elsewhere: { port: string; port_name: string; class: string; name: string; ready_at: string; ready: boolean }[]
+}
+
+/** 0465 — world.hull_quote(port, class): what an order costs this company here and the wait; `{on: false}` dark. `price` null where
+ *  no harbour sells a good she takes (`short` names them). */
+export type HullQuote =
+  | { on: false }
+  | { on: true; class: string; labour?: number; materials?: number; fee?: number; price: number | null; minutes?: number; short?: string | null }
+
+/** 0465 — cmd.order_hull's answer. */
+export interface HullOrdered {
+  ok: true
+  order: string
+  class: string
+  name: string
+  price: number
+  minutes: number
+  ready_at: string
+  purse: number
+}
+
+/** 0465 — cmd.launch_hull's answer. */
+export interface HullLaunched {
+  ok: true
+  ship: string
+  name: string
+  class: string
+  fleet: string
 }
 
 // ── world.yard_sources(port, class) — where each material of a hull is had nearest (0349) ────────

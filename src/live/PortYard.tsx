@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -27,8 +27,8 @@ import { useWorld } from './worldStore'
 import { planStops, yardPlan, type PlanGood, type PlanPart } from './yardPlan'
 import { fleetCargoByCode, fleetCrew } from '../domain/fleet/derive'
 import { formatDucats, formatInt, formatMiles, formatRealShort, formatTons, voyageDaysToRealMs } from '../lib/format'
-import { worldLevels } from '../lib/rpc'
-import type { FleetView, LevelsView, PlanLine, Refusal, YardHull, YardInput, YardSource } from '../lib/rpc'
+import { cmdLaunchHull, cmdOrderHull, worldHullQuote, worldLevels } from '../lib/rpc'
+import type { FleetView, HullQuote, LevelsView, PlanLine, Refusal, YardHull, YardInput, YardSource } from '../lib/rpc'
 import { goTo, useGoTo } from '../chart'
 import { useDeskGood } from '../store/deskGood'
 import { openOfficeCity } from '../features/command/officeView'
@@ -102,6 +102,13 @@ import { properName, useLocale, useT, t as tNow } from '../lib/i18n'
 // while something is still to fetch by sea) hands the sellers of what is short, nearest first and then this quay
 // again, to the Map's route builder as a draft (features/map/routeSeed.ts). Nothing is sent by the press.
 //
+// ── THE YARD TAKES AN ORDER (0465, content plan slice C) ─────────────────────────────────────────────────────────
+// While the server serves the yard's `order` key (yard_order_enabled lit; absent dark, so nothing here shows), a hull this yard
+// builds for you carries a second press under the one button: "Order · price", the whole price paid now (labour, every good at
+// the nearest seller's ask, and the fee: world.hull_quote, the one reading) with the wait beside the totals. The order then stands
+// at the top of the yard with its countdown; once ready, a name and "Launch" put her into the fleet lying here (cmd.launch_hull).
+// Your orders at other yards stand under it. The materials route is untouched and stays the cheaper, instant way.
+//
 // ── WHAT THIS FILE DOES NOT KNOW ───────────────────────────────────────────────────────────────
 // Whether a hull can be built here. All of that is `cmd.do_build`'s and arrives answered.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -153,6 +160,60 @@ export function PortYard({
   const [laid, setLaid] = useState(false)
   // the fleet's room: the same cached read the You page's levels ask (world.levels, 0325)
   const levels = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
+  // 0465: the yard's order (absent dark), the quote of the hull in hand, and the order's countdown
+  const order = view?.order
+  const refresh = useWorld((s) => s.refresh)
+  const quoteClass = order?.on && open && !order.open ? open.class : null
+  const quote = useServedRead<HullQuote>(
+    quoteClass === null ? null : `${portId}:${quoteClass}`,
+    () => worldHullQuote(portId, quoteClass as string),
+    { name: 'worldHullQuote' },
+  )
+  const [ordering, setOrdering] = useState(false)
+  const [launchName, setLaunchName] = useState('')
+  const [launchRefusal, setLaunchRefusal] = useState<Refusal | null>(null)
+  const [launched, setLaunched] = useState<string | null>(null)
+  const [clock, setClock] = useState(() => Date.now())
+  const waiting = order?.open && !order.open.ready ? order.open.ready_at : null
+  useEffect(() => {
+    if (waiting === null) return
+    const id = setInterval(() => setClock(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [waiting])
+
+  const placeOrder = (hull: YardHull) => {
+    if (ordering) return
+    setOrdering(true)
+    setRefusal(null)
+    setLaunched(null)
+    void (async () => {
+      const r = await cmdOrderHull(portId, hull.class)
+      if (r.ok) {
+        await refresh()
+        setOpen(null)
+      } else {
+        setRefusal(r.refusal)
+      }
+      setOrdering(false)
+    })()
+  }
+  const launch = () => {
+    const wanted = launchName.trim()
+    if (!fleet || ordering || wanted.length < 3) return
+    setOrdering(true)
+    setLaunchRefusal(null)
+    void (async () => {
+      const r = await cmdLaunchHull(fleet.id, wanted)
+      if (r.ok) {
+        setLaunched(r.value.name)
+        setLaunchName('')
+        await refresh()
+      } else {
+        setLaunchRefusal(r.refusal)
+      }
+      setOrdering(false)
+    })()
+  }
 
   const send = (lines: readonly PlanLine[]) => {
     if (!fleet || sending || lines.length === 0) return
@@ -263,8 +324,67 @@ export function PortYard({
     else navigate('/map')
   }
 
+  // 0465: the order at this yard is ready once its time has passed (the read's `ready`, or the clock since)
+  const openOrder = order?.open ?? null
+  const orderReady = openOrder !== null && (openOrder.ready || clock >= Date.parse(openOrder.ready_at))
+  const untilReady = (at: string) => t('yard.readyIn', { t: formatRealShort(Math.max(0, Date.parse(at) - clock)) })
+  const offerOrder = hull !== null && order?.on === true && openOrder === null && hull.buildable
+  const quoted = quote.view?.on ? quote.view : null
+
   return (
     <div data-testid="port-yard">
+      {launched && (
+        <Note tone="accent" data-testid="yard-launched" className="mb-3">
+          {t('yard.launched', { name: launched })}
+        </Note>
+      )}
+      {openOrder && (
+        <div className="mb-3" data-testid="yard-order-open" data-ready={orderReady} data-class={openOrder.class}>
+          <Row
+            label={`${t('yard.onOrder')} · ${hullName(openOrder.name)}`}
+            value={<Figure value={orderReady ? t('yard.readyNow') : untilReady(openOrder.ready_at)} />}
+            hairline={!orderReady}
+            data-testid="yard-order-row"
+          />
+          {orderReady && fleet && (
+            <>
+              <Field
+                icon={null}
+                value={launchName}
+                maxLength={24}
+                placeholder={t('yard.shipName')}
+                onChange={(e) => setLaunchName(e.target.value)}
+                aria-label={t('yard.shipName')}
+                data-testid="yard-launch-name"
+              />
+              <Button
+                variant="primary"
+                className="mt-2 w-full"
+                busy={ordering}
+                busyLabel={t('yard.launching')}
+                disabled={launchName.trim().length < 3}
+                onClick={launch}
+                data-testid="yard-launch"
+              >
+                {t('yard.launch')}
+              </Button>
+            </>
+          )}
+          {launchRefusal && (
+            <Note tone="danger" code={launchRefusal.code} figures={launchRefusal.figures} className="mt-2">
+              {launchRefusal.sentence}
+            </Note>
+          )}
+        </div>
+      )}
+      {order?.elsewhere.map((e) => (
+        <Row
+          key={e.port}
+          label={`${t('yard.onOrder')} · ${hullName(e.name)} · ${properName('port', e.port_name, e.port_name)}`}
+          value={<Figure value={e.ready || clock >= Date.parse(e.ready_at) ? t('yard.readyNow') : untilReady(e.ready_at)} />}
+          data-testid={`yard-order-elsewhere-${e.port}`}
+        />
+      ))}
       {built && (
         <Note tone="accent" data-testid="yard-built" className="mb-3">
           {built.grade === 'fine' ? t('yard.builtFine', { name: built.name }) : t('yard.builtPoor', { name: built.name })}
@@ -339,6 +459,21 @@ export function PortYard({
                           ? t('yard.fleetFull')
                           : t('yard.layDown')}
                 </Button>
+                {/* 0465: the order, under the one button: the whole price now and a real wait (served only while the yard takes orders) */}
+                {offerOrder && (
+                  <Button
+                    variant="secondary"
+                    className="mt-2 w-full"
+                    busy={ordering}
+                    busyLabel={t('yard.ordering')}
+                    disabled={!quoted || typeof quoted.price !== 'number' || sending}
+                    onClick={() => placeOrder(hull)}
+                    data-testid="yard-order"
+                    data-price={quoted && typeof quoted.price === 'number' ? quoted.price : undefined}
+                  >
+                    {quoted && typeof quoted.price === 'number' ? t('yard.orderN', { price: formatDucats(quoted.price) }) : t('yard.order')}
+                  </Button>
+                )}
               </>
             ) : undefined
           }
@@ -400,6 +535,14 @@ export function PortYard({
             data-testid="yard-weight"
             data-fits={plan.weight === null || !fleet ? undefined : plan.weight <= fleet.free_hold}
           />
+          {/* 0465: an order's wait, beside the totals */}
+          {offerOrder && (
+            <Row
+              label={t('yard.wait')}
+              value={<Figure value={quoted && typeof quoted.minutes === 'number' ? formatRealShort(quoted.minutes * 60_000) : '…'} />}
+              data-testid="yard-order-wait"
+            />
+          )}
           {/* S3: one press from the totals to the trip that fetches what is short. It stands above the lines, with the
               totals, so a part unfolding does not move it; it goes when nothing is left to fetch by sea. */}
           {trip.length > 0 && (
