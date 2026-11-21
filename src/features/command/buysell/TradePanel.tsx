@@ -9,7 +9,7 @@ import { usePriceSeries } from '../../../live/usePriceSeries'
 import { useTrade } from '../../../live/useTrade'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { useShellState } from '../../../app/shellState'
-import { formatCountdown, formatDaysReal, formatInt, formatPriceDelta, formatPriceFigure, formatRealShort, instantMs, moneyFigure, moneyWord } from '../../../lib/format'
+import { formatCountdown, formatDaysReal, formatInt, formatPriceDelta, formatPriceFigure, instantMs, moneyFigure, moneyWord } from '../../../lib/format'
 import type { BoardSellRow, FleetView, MarketGood, PriceSeries } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
 import { WhyThisPrice } from '../markets/WhyThisPrice'
@@ -43,9 +43,10 @@ import { seaWallOf } from '../../../lib/rpc'
 // `sellAt` — in this same panel, with the sale's wages, dues and profit (the served sell row, as Sail & sell shows them).
 // A good whose best sale does not pay (`noGain`, world.best_sales) says so above the units, before Max is pressed.
 //
-// 0351 (SUCCESS_PLAN T5): the card names the sale that pays best per day within her purse; the trip's tray carries the
-// OTHER served sale of the good as one quiet row under the units — "Far  City +profit · time" (the dearest she can
-// pay for), and on that trip "Near" back. Pressed, it is the same trip to that city, at that sale's served units.
+// 0351 (SUCCESS_PLAN T5): the card names the sale that pays best per day within her purse.
+// 2026-11-22 (P1, A CHOICE OF WHERE TO SELL; saleChoice.ts): the trip's tray offers the best three places to sell under the
+// city line — "City  time  +profit" each, the open one lit (the card's sale, the default). Pressed, the same trip to that city
+// at the same units. It replaced 0351's one quiet "Far"/"Near" row.
 //
 // The button stands in the same place, the same size, the same colour in all four cases; only its word changes.
 // A phone: a bottom sheet (Tray, docked). A wide glass: the desk's right pane. EVERY FIGURE IS SERVED.
@@ -67,15 +68,10 @@ export interface PanelGood {
   price: number
 }
 
-/** 0351: the good's other served sale (world.best_sales' `far`, or its answer when the far trip is open). */
-export interface OtherSale {
-  kind: 'far' | 'near'
-  /** Port CODE. */
-  port: string
-  profit: number | null
-  /** The real seconds to that sale. */
-  seconds: number | null
-  onPress: () => void
+/** P1: the places a Buy & sell trip may sell at (saleChoice.ts: rows of the trip's own board), and the press that picks one. */
+interface SaleChoice {
+  choices?: BoardSellRow[] | null
+  onChoose?: (port: string) => void
 }
 
 export function TradePanel({
@@ -87,12 +83,13 @@ export function TradePanel({
   docked,
   sellAt = null,
   noGain = false,
-  otherSale = null,
+  choices = null,
+  onChoose,
   trip,
   mode,
   onClose,
   onDone,
-}: {
+}: SaleChoice & {
   side: 'buy' | 'sell'
   fleet: FleetView
   /** The city in hand (port CODE), the good and the side's price there. */
@@ -106,8 +103,6 @@ export function TradePanel({
   sellAt?: string | null
   /** 0348: Buy only — no city she can sail to pays more than this costs (world.best_sales' `pays`). */
   noGain?: boolean
-  /** 0351: Buy & sell only — the good's other served sale, a quiet row under the units. */
-  otherSale?: OtherSale | null
   /** The trip's board (BuySell.tsx reads it once; the map draws its legs). Only read when not docked. */
   trip: Trip
   mode: TrayMode
@@ -128,7 +123,8 @@ export function TradePanel({
       good={good}
       sellAt={side === 'buy' ? sellAt : null}
       noGain={noGain}
-      otherSale={side === 'buy' && sellAt !== null ? otherSale : null}
+      choices={side === 'buy' && sellAt !== null ? choices : null}
+      onChoose={onChoose}
       trip={trip}
       mode={mode}
       onClose={onClose}
@@ -148,14 +144,15 @@ function Frame({
   onClose,
   warn = false,
   sellAt = null,
-  otherSale = null,
+  choices = null,
+  onChoose,
   units,
   total,
   extra,
   profit,
   button,
   after,
-}: {
+}: SaleChoice & {
   side: 'buy' | 'sell'
   fleet: FleetView
   portId: string
@@ -167,8 +164,6 @@ function Frame({
   warn?: boolean
   /** 0348: Buy & sell — the city the buy is sold at. */
   sellAt?: string | null
-  /** 0351: Buy & sell — the good's other served sale, a quiet pressable row under the units. */
-  otherSale?: OtherSale | null
   /** The units row: the stepper, or why there is none. */
   units: ReactNode
   /** The money the units come to, signed (−paid / +got), or null while unknown. */
@@ -235,6 +230,9 @@ function Frame({
         </span>
         <GoodKind category={good.category} rarity={good.rarity} goodClass={good.class} />
       </div>
+      {/* P1: WHERE TO SELL — the best three, FIRST under the city line: a half-raised sheet at 390 x 844 shows them before
+          the press (under the units they stood below the fold). The open one lit; pressed, the same trip to that city. */}
+      {choices && sellAt !== null && onChoose && <SellChoices choices={choices} sellAt={sellAt} onChoose={onChoose} />}
       <Row
         label={t(side === 'buy' ? 'desk.buy' : 'desk.sell')}
         value={
@@ -254,28 +252,6 @@ function Frame({
       )}
       {/* the units first, where a half-raised sheet shows them; the chart they are read against under them */}
       {units}
-      {/* 0351: the other served sale — quiet (muted, one row), under the units; pressed, the same trip to that city */}
-      {otherSale && (
-        <Row
-          label={t(otherSale.kind === 'far' ? 'desk.farSale' : 'desk.nearSale')}
-          tone="muted"
-          chevron
-          // under 375 px the city, the profit and the time are wider than the row leaves beside the word: the word kept one
-          // letter a line ("F / a / r"). There the row is a wrapping line and the figure stands under its word (Row.tsx).
-          wholeName
-          onClick={otherSale.onPress}
-          value={
-            <span className="text-t-caption tabular-nums" data-testid="trade-other-sale-figure">
-              <PortFlag code={otherSale.port} /> {portNameOf(portByCode, otherSale.port)}
-              {otherSale.profit !== null && ` ${formatPriceDelta(otherSale.profit)}`}
-              {otherSale.seconds !== null && ` · ${formatRealShort(otherSale.seconds * 1000)}`}
-            </span>
-          }
-          data-testid="trade-other-sale"
-          data-kind={otherSale.kind}
-          data-port={otherSale.port}
-        />
-      )}
       <Chart name={good.name} trend={trend} portId={portId} goodId={good.good_id} />
       {extra}
       <WhyThisPrice why={why.view ?? null} loading={why.loading} />
@@ -450,12 +426,13 @@ function SailAct({
   good,
   sellAt,
   noGain,
-  otherSale,
+  choices,
+  onChoose,
   trip,
   mode,
   onClose,
   onDone,
-}: {
+}: SaleChoice & {
   side: 'buy' | 'sell'
   fleet: FleetView
   portId: string
@@ -464,7 +441,6 @@ function SailAct({
   /** 0348: Buy & sell — the city the buy is sold at; null for Sail & buy / Sail & sell. */
   sellAt: string | null
   noGain: boolean
-  otherSale: OtherSale | null
   trip: Trip
   mode: TrayMode
   onClose: () => void
@@ -523,7 +499,8 @@ function SailAct({
       onClose={onClose}
       warn={side === 'buy' && noGain}
       sellAt={sellAt}
-      otherSale={otherSale}
+      choices={choices}
+      onChoose={onChoose}
       total={mine ? total : null}
       profit={sells ? profit : undefined}
       units={
@@ -636,5 +613,52 @@ function ReadyIn({ at: readyAt }: { at: string }) {
     <Hint className="mt-2" data-testid="trade-ready-in">
       {t('domain.readyIn', { t: formatCountdown(at - nowMs) })}
     </Hint>
+  )
+}
+
+/** THE PLACES TO SELL (P1, 2026-11-22): one pressable line each — the city, the trip's time, the served profit — the open
+ *  one lit. The rows are the trip's own board's (saleChoice.ts); nothing is priced here. */
+function SellChoices({ choices, sellAt, onChoose }: { choices: BoardSellRow[]; sellAt: string; onChoose: (port: string) => void }) {
+  const t = useT()
+  const portByCode = useWorld((s) => s.portByCode)
+  return (
+    <div className="pt-2 pb-1" role="radiogroup" aria-label={t('desk.sellWhere')} data-testid="trade-sale-choices">
+      <p className="pb-1 text-t-caption text-ink-muted">{t('desk.sellWhere')}</p>
+      <ul className="flex flex-col gap-1">
+        {choices.map((r) => {
+          const on = r.port === sellAt
+          return (
+            <li key={r.port}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => onChoose(r.port)}
+                className={[
+                  // ONE WRAPPING LINE, as a cargo place (CargoBest.tsx): the city whole, its figures at the right
+                  'flex min-h-11 w-full flex-wrap items-center gap-x-3 rounded px-2 py-1.5 text-left transition active:scale-[0.99]',
+                  on ? 'bg-accent-soft ring-1 ring-accent' : 'bg-surface-2',
+                ].join(' ')}
+                data-testid="trade-sale-choice"
+                data-port={r.port}
+                data-on={on}
+              >
+                <span className="flex-1 basis-36 text-t-caption text-ink" data-testid="trade-sale-choice-name">
+                  <PortFlag code={r.port} /> {portNameOf(portByCode, r.port)}
+                </span>
+                <span className="ml-auto flex shrink-0 items-baseline gap-x-3">
+                  <span className="text-t-caption tabular-nums text-ink-muted" data-testid="trade-sale-choice-time">
+                    {r.days == null ? '—' : formatDaysReal(r.days)}
+                  </span>
+                  <span className="text-t-caption font-semibold tabular-nums text-success" data-testid="trade-sale-choice-profit">
+                    {r.profit == null ? '—' : formatPriceDelta(r.profit)}
+                  </span>
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }

@@ -374,7 +374,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         const act = page.getByTestId('trade-act')
         // a best sale pressed is a trip: bought here, sold at its city. The first one her purse can pay for.
         // Since 0351 the card's own sale is the NEAR one she can pay for (one leg), and its dearer, farther sale is the tray's
-        // quiet second row ("Far"). The far one is the trip this law is about, so it is the one sent: the first good whose far
+        // places to sell (P1). The far one is the trip this law is about, so it is the one sent: the first good whose far
         // sale makes a trip she can sail.
         const sales = face.locator('[data-testid="best-sale"][data-state="sale"][data-far]')
         await expect(sales.first(), `${where}: no card serves a far sale`).toBeVisible({ timeout: 180_000 })
@@ -384,8 +384,9 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
           const far = (await sales.nth(i).getAttribute('data-far'))!
           await sales.nth(i).click()
           await expect(act).toHaveAttribute('data-act', 'buy-sell')
-          const other = panel.locator('[data-testid="trade-other-sale"][data-kind="far"]')
-          // the far row lands with the trip's board; a good with no far row is not this law's
+          // P1 (2026-11-22): the far sale is one of the tray's places to sell
+          const other = panel.locator(`[data-testid="trade-sale-choice"][data-port="${far}"]`)
+          // the place lands with the trip's board; a good whose far sale is not offered is not this law's
           if (!(await other.waitFor({ timeout: 15_000 }).then(() => true, () => false))) continue
           await other.click()
           await expect(panel).toHaveAttribute('data-sell-at', far)
