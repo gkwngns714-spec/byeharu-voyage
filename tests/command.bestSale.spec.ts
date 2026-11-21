@@ -103,6 +103,11 @@ for (const size of SIZES) {
       expect(new Set(ports).size, 'the places are different cities').toBe(n)
       const times = await panel.getByTestId('trade-sale-choice-time').allTextContents()
       expect(new Set(times).size, 'the places differ in time (near and quick against far and rich)').toBeGreaterThan(1)
+      // quickest first: the lines stand by the trip's time (the served days, the first figure of each time)
+      const days = times.map((x) => Number(x.replace(/,/g, '').match(/[\d.]+/)?.[0]))
+      expect(days, 'the places stand quickest first').toEqual([...days].sort((x, y) => x - y))
+      const profits = await panel.getByTestId('trade-sale-choice-profit').allTextContents()
+      console.log(`sell choice @${size.width}: ${ports.map((p, i) => `${p} ${times[i]} ${profits[i]}`).join(' | ')} (default ${port})`)
       // the server's far sale, when it is on the list; else the first other place
       const other = ports.includes(far) ? panel.locator(`[data-testid="trade-sale-choice"][data-port="${far}"]`) : panel.locator('[data-testid="trade-sale-choice"][data-on="false"]').first()
       const to = (await other.getAttribute('data-port'))!

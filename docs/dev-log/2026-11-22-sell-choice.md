@@ -11,8 +11,8 @@ city and "Buy & sell" bought, sailed there and sold. The player never chose wher
   sheet's profit is that row's to the coin.
 - It replaces 0351's one quiet "Far" / "Near" row (dict keys `farSale`, `nearSale` removed; `sellWhere`: "Sell at" /
   "팔 곳" added).
-- `saleChoice.ts` picks the rows: the open sale, the server's best, the server's far sale, the richest row and the quickest
-  row that pays, then the next richest, to three; only rows that pay, are sailable and whose stores fit beside the units.
+- `saleChoice.ts` picks the rows (lead review, follow-up commit): the card's sale, the QUICKEST row that pays, the RICHEST row,
+  then the next best by profit per day (ranking only, never printed), to three; only rows that pay, are sailable and whose stores fit.
   Shown nearest first, so quick-and-near reads above far-and-rich.
 
 ## Why no server change
@@ -39,3 +39,9 @@ at 390, `test-results/sell-choice-390.png`). The units stepper is one swipe up.
   another pressed → `data-sell-at` and the tray's profit equal the row's, back again): 2/2 pass, 33 s, against
   `vite preview --port 4797`.
 - `tests/trade.flow.spec.ts -g T3` (the far sale now reached through `trade-sale-choice[data-port=far]`): 5/5 pass, 1.1 min.
+
+## Follow-up (lead review)
+
+The first rule gave Darwin / Jeju / Fukuoka from Lisbon, all about 6h20m. Now quickest-that-pays and richest are lines 2 and 3.
+Re-run at 390: Porto 0.4 days +1,088 (default) | Santos 12.0 days +11,143 | Buenos Aires 14.5 days +14,658; at 1280:
+Setubal 0.2 days +1,304 | Cadiz 0.9 days +3,197 | Tokyo 54.6 days +32,369. The spec asserts the lines stand quickest first.

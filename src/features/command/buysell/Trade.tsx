@@ -182,7 +182,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   // own board (served, at the units the sheet holds); the card's sale is the default. A place pressed is the same trip
   // to that city AT THE SAME UNITS — the units its row was priced for, so the sheet's profit is the row's to the coin.
   const choices = useMemo(
-    () => (tripNow ? saleChoices(trip.board, tripNow.buyAt, tripNow.sellAt, pickedSale?.port ?? null, pickedSale?.far?.port ?? null) : null),
+    () => (tripNow ? saleChoices(trip.board, tripNow.buyAt, tripNow.sellAt, pickedSale?.port ?? null) : null),
     [tripNow, trip.board, pickedSale],
   )
   const chooseSale = (port: string) => {
