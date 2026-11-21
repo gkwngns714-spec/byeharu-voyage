@@ -23,6 +23,9 @@ export default defineConfig({
     // system preference. Playwright's own default is to emulate a LIGHT system; this pins the
     // browser's own furniture (scrollbars, form controls) to the scheme the game declares.
     colorScheme: 'dark',
+    // THE FIRST-RUN WELCOME HAS BEEN SEEN (src/app/WelcomeCard.tsx, 2026-11-22): every spec's fresh company would otherwise meet
+    // the card over the Trade desk. tests/welcome.card.spec.ts starts without the mark.
+    storageState: { cookies: [], origins: [{ origin: new URL(BASE).origin, localStorage: [{ name: 'bv:welcome-seen', value: '1' }] }] },
     screenshot: 'on',
     trace: 'on',
     video: 'retain-on-failure',

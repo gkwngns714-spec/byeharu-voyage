@@ -5,9 +5,10 @@ import { ready, reachable } from './appReady.fixture'
 // progress toward it, read from the same `world.levels()` the You page's levels read. Pinned on a local build at the phone and the desk:
 //   · a fresh player sees the card, and its figures are the You page's own (the next title, Trading and Exploration levels);
 //   · the card stands at the same height and place before and after the read lands (no re-flow), and nothing scrolls sideways;
-//   · pressing it lands on the You page, where the levels stand (since 2026-11-16).
+//   · pressing it opens the step that is next (2026-11-22): with the second ship's count on it, the build yard (Office > City);
+//     the You page, where the levels stand, is read for the card's figures.
 // 0363 (S3 of docs/SECOND_SHIP.md): while the company has ONE ship the second line is "Second ship n / of" in place of the two
-// tracks (one line for the other, no height added); a fresh player at Lisbon reads "Second ship 0 / 4". The tracks are then the
+// tracks (one line for the other, no height added); a fresh player at Lisbon reads "Second ship · materials 0 / 4". The tracks are then the
 // You page's alone, and come back to the card with the second ship (tests/second.ship.spec.ts plays that).
 
 const SIZES = [
@@ -27,7 +28,7 @@ for (const size of SIZES) {
   test.describe(`the goal card at ${size.width}×${size.height}`, () => {
     test.use({ viewport: size, deviceScaleFactor: 2 })
 
-    test('shows the next title with the You page level figures, holds its height, and opens You', async ({ page, request, baseURL }) => {
+    test('shows the next title with the You page level figures, holds its height, and opens the yard', async ({ page, request, baseURL }) => {
       test.setTimeout(480_000)
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
       await page.goto('command')
@@ -47,7 +48,7 @@ for (const size of SIZES) {
       // the card's text, read before the press
       const text = (await card.innerText()).replace(/\s+/g, ' ')
       // two lines since 2026-11-12: the title's name and Reputation, then (0363, a company of one ship) the second ship
-      const m = /^(.+?) (?:Reputation [\d,]+ )?Second ship (\d+) \/ (\d+)$/.exec(text)
+      const m = /^Next: (.+?) (?:Reputation [\d,]+ )?Second ship · materials (\d+) \/ (\d+)$/.exec(text)
       expect(m, `the card says: ${text}`).not.toBeNull()
       expect([m![2], m![3]], 'a fresh company at Lisbon has none of the Barca\'s four lines stored').toEqual(['0', '4'])
       await expect(page.getByTestId('goal-tracks')).toHaveCount(0)
@@ -57,9 +58,14 @@ for (const size of SIZES) {
         'the card scrolls the page sideways',
       ).toBe(true)
 
-      // press it: the You page, where the levels stand (the desk's Levels face moved there, 2026-11-16), and its figures are the card's
+      // press it: the next step, the build yard where the four materials are stored (2026-11-22)
+      await expect(card).toHaveAttribute('data-next', 'yard')
       await card.click()
-      await expect(page).toHaveURL(/\/you$/)
+      await expect(page).toHaveURL(/\/office$/)
+      await expect(page.getByTestId('port-yard')).toBeVisible({ timeout: 60_000 })
+      // the You page, where the levels stand (the desk's Levels face moved there, 2026-11-16): its figures are the card's
+      await page.goto('you')
+      await ready(page)
       await expect(page.getByTestId('you-levels').first()).toBeVisible({ timeout: 60_000 })
       await expect(page.getByTestId('levels-trading').first()).toBeVisible()
       await expect(page.getByTestId('levels-exploration').first()).toBeVisible()

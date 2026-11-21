@@ -6,6 +6,7 @@ import { useSecondShip } from '../../live/useSecondShip'
 import { useWorld } from '../../live/worldStore'
 import { formatInt } from '../../lib/format'
 import { useNavigate } from 'react-router-dom'
+import { openOfficeCity } from './officeView'
 
 // THE GOAL CARD (remaster S6): one line on the Trade face saying what to aim for: the next Title and how far along you are.
 // NOT a quest: it reads the SAME served read the You page's levels read (`world.levels()`, 0325, the same cached `worldLevels` read) and
@@ -22,6 +23,9 @@ import { useNavigate } from 'react-router-dom'
 // tests/trade.flow.spec.ts T3), and the two do not fit one line at 320 px in English. The title's name stays on the first line and the
 // tracks are one press away (the card opens Levels, where they are whole); they come back to the card with her second ship. The count is the
 // build yard's own "Ready 1 / 4" (live/useSecondShip.ts). While no yard has been read for her the tracks stand as before.
+//
+// 2026-11-22 (P0, a new player can read the game): the count says what it counts, "Second ship · materials 0 / 4" (the yard's lines
+// stored), and the press opens the yard where those materials are stored and the trip to fetch them is planned.
 //
 // THE PRESS LAW: a fixed height in every state (loading, shown, nothing to show), so nothing moves when the read lands or on a press.
 
@@ -50,14 +54,18 @@ export function GoalCard() {
   // While sea limits are not on (`seas_bite` false) the title opens nothing yet, so the card promises nothing.
   const opens = next && v.title.seas_bite && next.opens.length > 0 ? t('command.lvOpens', { what: next.opens.join(', ') }) : null
   return (
-    <button type="button" onClick={() => navigate('/you')} className={`${CARD} ${place} bg-surface-2`}
+    // THE PRESS OPENS THE NEXT STEP (P0 of docs/design/playable-2026-11-22.md): while the second line is the second ship, the step
+    // is the build yard's sheet (Office > City > Build yard: the materials stored, Plan trip, Build); otherwise the levels (You).
+    <button type="button" onClick={() => navigate(second ? openOfficeCity('building_yard') : '/you')} className={`${CARD} ${place} bg-surface-2`}
       data-testid="goal-card"
+      data-next={second ? 'yard' : 'you'}
       // her two track levels stand on the card whatever its second line says (the second ship's count hides the words; a test reads these)
       data-trading={v.tracks.trading.level}
       data-exploration={v.tracks.exploration.level}
     >
       <span className="min-w-0 whitespace-nowrap text-t-body text-ink" data-testid="goal-title">
-        {next ? properName('title', next.name, next.name) : t('command.lvTitleTop')}
+        {/* "Next: Mate" (2026-11-22, P0): the title bare read as a promotion she had not had (the You page still said the old one) */}
+        {next ? t('command.goalNext', { name: properName('title', next.name, next.name) }) : t('command.lvTitleTop')}
       </span>
       {reputation !== null ? (
         <span className="whitespace-nowrap text-t-caption text-ink-faint" data-testid="goal-reputation" data-value={reputation}>

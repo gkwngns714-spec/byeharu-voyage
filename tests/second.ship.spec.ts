@@ -8,7 +8,7 @@ import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 //
 // The shipped world, a new company at Lisbon, at 390×844 and 320×844 (and the played flow at 1280×800, where the goal
 // card stands on every face of the desk):
-//   1. THE GOAL IS ON THE FIRST SCREEN. Trade's goal card reads "Second ship 0 / 4" on its second line, in place of the
+//   1. THE GOAL IS ON THE FIRST SCREEN. Trade's goal card reads "Second ship · materials 0 / 4" on its second line, in place of the
 //      two tracks, at the card's one height (44 px): one line, no word broken, nothing sideways.
 //   2. THE BARCA NEEDS NO PARTS. Her sheet reads "Ready 0 / 4": four goods, no part. Under the totals stands ONE press,
 //      "Plan trip", carrying the four sellers nearest first; it opens the Map's route builder with those stops kept and
@@ -117,7 +117,7 @@ for (const glass of PHONES) {
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
 
       // 1. the first screen
-      await goalCard(page, /^Second ship 0 \/ 4$/)
+      await goalCard(page, /^Second ship · materials 0 \/ 4$/)
       await page.screenshot({ path: info.outputPath('1-trade.png') })
 
       // 2. her sheet: four lines, no part
@@ -222,7 +222,7 @@ for (const glass of PHONES) {
     test('the card, the sheet and the trip read in Korean', async ({ page, request, baseURL }, info) => {
       test.setTimeout(480_000)
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-      await goalCard(page, /^두 번째 배 0 \/ 4$/)
+      await goalCard(page, /^두 번째 배 · 재료 0 \/ 4$/)
       await page.screenshot({ path: info.outputPath('1-trade-ko.png') })
       const tray = await barcaSheet(page, '건조')
       await expect(tray.getByTestId('yard-ready')).toHaveText('준비 0 / 4')
