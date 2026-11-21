@@ -20,11 +20,13 @@ import {
   type TrayDetent,
 } from '../../components/ui'
 import { formatInt, formatRelative } from '../../lib/format'
-import type { PlayerHouse, StandingsBoard } from '../../lib/rpc'
+import { worldHousesWeek, type PlayerHouse, type StandingsBoard } from '../../lib/rpc'
 import { HullCountry } from '../../live/HullCountry'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CountriesBoard } from './CountriesBoard'
+import { WeekBoard } from './WeekBoard'
+import { useServedRead } from '../../live/useServedRead'
 import { leadersOf, linesOf, type Line } from './rankFigures'
 import { useLocale, useT } from '../../lib/i18n'
 import { tabWord } from '../../app/navTabs'
@@ -90,8 +92,12 @@ function RankBody() {
   // asked yet" and "the read was refused", and without the distinction a refused read draws a
   // skeleton for ever.
   const [answered, setAnswered] = useState(false)
-  // 0148: Captains (the board) or Countries (who holds the cities).
-  const [face, setFace] = useState<'captains' | 'countries'>('captains')
+  // 0148: Captains (the board) or Countries (who holds the cities). 0467: Week (the houses' board), offered only when the server says
+  // it is on (houses_board_enabled), and then the face a captain lands on until they pick another.
+  const [picked, setPicked] = useState<'week' | 'captains' | 'countries' | null>(null)
+  const week = useServedRead('houses-week', worldHousesWeek, { name: 'worldHousesWeek' }).view
+  const weekOn = week?.on === true
+  const face = picked === 'week' && !weekOn ? 'captains' : (picked ?? (weekOn ? 'week' : 'captains'))
 
   // KEYED ON `readAt`: the world re-reads itself every thirty seconds and on tab focus, and the
   // board rides that same beat — a refused read is retried with no button, and a new slot's
@@ -126,15 +132,22 @@ function RankBody() {
     >
       <Segmented
         segments={[
-          { id: 'captains', label: t('rank.captains') },
-          { id: 'countries', label: t('rank.countries') },
+          ...(weekOn ? [{ id: 'week' as const, label: t('rank.weekly') }] : []),
+          { id: 'captains' as const, label: t('rank.captains') },
+          { id: 'countries' as const, label: t('rank.countries') },
         ]}
         value={face}
-        onChange={setFace}
+        onChange={setPicked}
         label={title}
         className="w-fit max-w-full max-sm:w-full"
       />
-      {face === 'captains' ? <Board board={board} answered={answered} house={house} /> : <CountriesBoard />}
+      {face === 'week' ? (
+        <WeekBoard read={week} />
+      ) : face === 'captains' ? (
+        <Board board={board} answered={answered} house={house} />
+      ) : (
+        <CountriesBoard />
+      )}
     </Sheet>
   )
 }
