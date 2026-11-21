@@ -84,6 +84,34 @@ const TABLE = {
       { name: 'p_class', type: 'text' },
     ],
   },
+  // 0465: the yard takes an order — what an order of a hull costs here and how long she takes ({on: false} dark), the order, and the
+  // launch into a fleet lying at the yard. The open order itself is a key of world.building_yard (`order`, served only while lit).
+  worldHullQuote: {
+    schema: 'world',
+    fn: 'hull_quote',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_class', type: 'text' },
+    ],
+  },
+  cmdOrderHull: {
+    schema: 'cmd',
+    fn: 'order_hull',
+    mutates: true,
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_class', type: 'text' },
+    ],
+  },
+  cmdLaunchHull: {
+    schema: 'cmd',
+    fn: 'launch_hull',
+    mutates: true,
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_name', type: 'text' },
+    ],
+  },
   worldWorkstation: {
     schema: 'world',
     fn: 'workstation',

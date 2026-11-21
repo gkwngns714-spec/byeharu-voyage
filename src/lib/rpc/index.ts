@@ -30,6 +30,9 @@ import type {
   InnView,
   BuildingYardView,
   YardSources,
+  HullQuote,
+  HullOrdered,
+  HullLaunched,
   WarehouseView,
   WorkstationView,
   ForgeView,
@@ -225,6 +228,22 @@ export function worldBuildingYard(portId: string): Promise<RpcResult<BuildingYar
  *  makes each of her fittings, with the sailed miles. The gates are the verbs' own, answered on the server. */
 export function worldYardSources(portId: string, classCode: string): Promise<RpcResult<YardSources>> {
   return call<YardSources>('worldYardSources', [portId, classCode])
+}
+
+/** WHAT AN ORDER COSTS (0465) — the yard's labour, the materials at the nearest sellers' asks now and the fee, and the wait in real
+ *  minutes, for this company. `{on: false}` while the yard takes no orders. Whether the yard takes it is the door's to say. */
+export function worldHullQuote(portId: string, classCode: string): Promise<RpcResult<HullQuote>> {
+  return call<HullQuote>('worldHullQuote', [portId, classCode])
+}
+
+/** ORDER A HULL (0465): paid whole now to this city; the yard builds her in real time. The server judges every gate. */
+export function cmdOrderHull(portId: string, classCode: string): Promise<RpcResult<HullOrdered>> {
+  return call<HullOrdered>('cmdOrderHull', [portId, classCode])
+}
+
+/** LAUNCH THE ORDERED HULL (0465) into this fleet, docked at the yard, once she is ready; named as a built hull is. */
+export function cmdLaunchHull(fleetId: string, name: string): Promise<RpcResult<HullLaunched>> {
+  return call<HullLaunched>('cmdLaunchHull', [fleetId, name])
 }
 
 /**
