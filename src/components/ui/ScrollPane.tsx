@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode, Ref } from 'react'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A BOUNDED PANE: the glass stays still and the LIST gives (owner, 2026-10-31)
@@ -20,16 +20,19 @@ import type { CSSProperties, ReactNode } from 'react'
 export function ScrollPane({
   className = '',
   style,
+  paneRef,
   children,
   ...rest
 }: {
   className?: string
   /** For a bound that is measured, not fixed: a CSS variable the caller's `max-h-[var(…)]` reads. */
   style?: CSSProperties
+  /** The pane's element, for a caller that measures it. */
+  paneRef?: Ref<HTMLDivElement>
   children: ReactNode
 } & { 'data-testid'?: string }) {
   return (
-    <div className={`bv-scroll min-h-0 overflow-y-auto ${className}`} data-scroll-pane="" style={style} {...rest}>
+    <div className={`bv-scroll min-h-0 overflow-y-auto ${className}`} data-scroll-pane="" style={style} ref={paneRef} {...rest}>
       {children}
     </div>
   )
