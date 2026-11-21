@@ -2191,6 +2191,43 @@ export interface StandingsBoard {
   why?: string
 }
 
+/** One row of `world.houses_week()` (0467): a merchant house or a company, by this week's profit. */
+export interface HouseWeekRow {
+  position: number
+  tied: boolean
+  company_name: string
+  nation: string | null
+  /** True for a company (a player's), false for a merchant house. */
+  company: boolean
+  /** This UTC week's profit: earned less lost (public.history_company_day). */
+  net: number
+  is_you: boolean
+}
+
+/**
+ * `world.houses_week()` (0467) — Rank's houses' board: the merchant houses and the companies with a login, by this week's profit.
+ * Dark (`houses_board_enabled` false) the server answers `{on: false}` and nothing else.
+ */
+export interface HousesWeek {
+  on: boolean
+  week?: string
+  /** The ledger is counted up to here (the history job's mark); `age_seconds` is measured by the server. */
+  through?: string | null
+  age_seconds?: number | null
+  houses?: number
+  board_size?: number
+  board?: HouseWeekRow[]
+  /** Your line, wherever you stand; null when you are not on the board (no company, or no login). */
+  you?: {
+    position: number
+    tied: boolean
+    net: number
+    on_board: boolean
+    /** The house just ahead of you and how far: null when you lead. */
+    ahead: { name: string; gap: number } | null
+  } | null
+}
+
 // ── what is on at the quay (0026) ──────────────────────────────────────────────────────────────
 
 /** The one effect a timed modifier may reach today. Speed is absent ON PURPOSE: `voyage.depart`

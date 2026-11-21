@@ -33,6 +33,14 @@ export const rankDict = defineDict({
     tied: 'tied',
     homeWon: '{home} home · {won} won',
     thisWeek: '{n} this week',
+    // 0467: the houses' board (this week's profit, the merchant houses beside the companies)
+    weekly: 'Week',
+    houses: 'Houses',
+    profit: 'Profit',
+    company: 'Company',
+    placeOf: '#{n} of {of}',
+    ahead: 'Next: {name}, {gap} ahead',
+    leading: 'You lead.',
   },
   ko: {
     standing: '내 순위',
@@ -62,5 +70,12 @@ export const rankDict = defineDict({
     tied: '동점',
     homeWon: '본거지 {home} · 획득 {won}',
     thisWeek: '이번 주 {n}',
+    weekly: '주간',
+    houses: '상회',
+    profit: '이익',
+    company: '회사',
+    placeOf: '{of}곳 중 {n}위',
+    ahead: '다음: {name}, {gap} 차이',
+    leading: '선두입니다.',
   },
 })

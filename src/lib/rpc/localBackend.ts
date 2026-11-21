@@ -120,6 +120,8 @@ const STATS_READS: readonly RpcName[] = [
   'worldStatsFleetList',
   'worldStatsFleet',
   'worldHistory',
+  // 0467: the houses' board is counted by the history job's run
+  'worldHousesWeek',
 ]
 
 // AND THE MARKET (2026-11-18, docs/dev-log/2026-11-18-play-faults.md). On Supabase byeharu-voyage:drift steps every
