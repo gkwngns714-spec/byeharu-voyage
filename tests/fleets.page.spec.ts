@@ -27,8 +27,8 @@ const GLASSES = [
 const LOCALES = ['en-US', 'ko-KR'] as const
 
 const WORDS = {
-  'en-US': { notOpen: 'Not open yet', trading: 'Trading 3', you: /Fleets 2 \/ 3 · Ships 2 \/ 9/, youDark: /Fleets 1 \/ 2 · Ships 2 \/ / },
-  'ko-KR': { notOpen: '아직 안 열림', trading: '교역 3', you: /선단 2 \/ 3 · 배 2 \/ 9/, youDark: /선단 1 \/ 2 · 배 2 \/ / },
+  'en-US': { notOpen: 'Not open yet', trading: 'Trading level 3', you: /Fleets 2 \/ 3 · Ships 2 \/ 9/, youDark: /Fleets 1 \/ 2 · Ships 2 \/ / },
+  'ko-KR': { notOpen: '아직 안 열림', trading: '교역 레벨 3', you: /선단 2 \/ 3 · 배 2 \/ 9/, youDark: /선단 1 \/ 2 · 배 2 \/ / },
 } as const
 
 const NEW_FLEET = 'Armada do Sul Dourado'

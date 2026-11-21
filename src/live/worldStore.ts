@@ -365,6 +365,14 @@ export function servedGoods(): readonly SnapshotGood[] {
   return servedSnapshot?.goods ?? []
 }
 
+/** A ledger event's `good` (the served NAME; an older event may carry the code) in the viewer's language: the good's named
+ *  copy in the store, found through the served copy; else the word as given. The arrival card and History's lines read it
+ *  (2026-11-22 play-test: "Andalusian Horses 100 판매" on a Korean screen). */
+export function goodWordOf(served: string): string {
+  const g = servedSnapshot?.goods.find((x) => x.name === served || x.code === served)
+  return g ? (useWorld.getState().goodByCode[g.code]?.name ?? g.name) : served
+}
+
 /** The snapshot in the viewer's language, and the lookups built once from it. */
 function snapshotLookups(served: WorldSnapshot) {
   setServedClock(served.config)   // 0413: the clock's rate, ratio and anchor, into their one authority (lib/format/time.ts)

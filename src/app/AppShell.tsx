@@ -4,6 +4,7 @@ import { ShellStateContext } from './shellState'
 import { ShellFrame } from './ShellFrame'
 import { RebuildNotice } from './RebuildNotice'
 import { ArrivalCard } from './ArrivalCard'
+import { WelcomeCard } from './WelcomeCard'
 import { AwayCard } from './AwayCard'
 import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
@@ -111,6 +112,7 @@ export function AppShell() {
           <>
             <ArrivalCard />
             <AwayCard />
+            <WelcomeCard />
           </>
         }
       >

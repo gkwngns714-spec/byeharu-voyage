@@ -26,6 +26,10 @@ const NO_TRIP = () => {}
  *  the card (산타크루스데테네리페) widens its card, and with it the board's column, instead of standing out of the card. */
 const SALE_COLUMN = 'grid-cols-1 xl:grid-cols-[minmax(min-content,1fr)] min-[100rem]:grid-cols-1'
 
+/** A price's word ("Buy 561", "Sell 518"): shown where the prices' line (a size container, `SaleBlock`'s `top`) is 9 rem or wider,
+ *  which is where two words and two four-figure prices stand on one line in Korean too; narrower, the figure stands alone. */
+const PRICE_WORD = 'hidden shrink-0 text-t-caption text-ink-faint @min-[9rem]:inline'
+
 export function TradeCard({
   portId,
   r,
@@ -126,20 +130,30 @@ export function TradeCard({
         onPress={onBest ?? NO_TRIP}
         prices={
           <>
-            <span className={`text-t-body font-semibold tabular-nums ${buyDead ? 'text-ink-faint' : 'text-ink'}`} data-testid="trade-good-buy">
-              {buyDead ? '—' : formatPriceFigure(r.buy as number)}
+            {/* EACH PRICE HAS ITS WORD (2026-11-22, P0 of docs/design/playable-2026-11-22.md: "561 / 518" with no words read as
+                nothing). The first is what the city asks (her Buy here), the second what it bids (her Sell here): the Buy and Sell
+                buttons under them, in the same order. The word stands where the card has room for it (`PRICE_WORD`); in the
+                narrowest cards (a 320-px phone, the desk's four to a line) the figures stand alone, over their buttons. */}
+            <span className="flex min-w-0 items-baseline gap-1">
+              <span className={PRICE_WORD} data-testid="trade-good-buy-word">{t('desk.buy')}</span>
+              <span className={`text-t-body font-semibold tabular-nums ${buyDead ? 'text-ink-faint' : 'text-ink'}`} data-testid="trade-good-buy">
+                {buyDead ? '—' : formatPriceFigure(r.buy as number)}
+              </span>
             </span>
             {/* THE CITY'S BID IS PRINTED WHEREVER IT IS SERVED (2026-11-11, the trade-flow slice). With none aboard this cell said
                 "No buyer", which was false: the city buys it, at the bid the Map's tray printed for the same good. It is the bid
                 now, quiet, and its title says why Sell is dead ("None on board"; the card's own "On board 0" stands above it).
                 "No buyer" stays for the one case it is true: the city serves no bid for the good. */}
-            <span
-              className={`text-t-body font-semibold tabular-nums ${sellDead ? 'text-ink-faint' : 'text-ink'}`}
-              data-testid="trade-good-sell"
-              data-state={sell === null ? 'no-buyer' : r.units <= 0 ? 'none-aboard' : 'sell'}
-              title={sell !== null && r.units <= 0 ? t('desk.noneAboard') : undefined}
-            >
-              {sell === null ? t('desk.noBuyer') : formatPriceFigure(sell)}
+            <span className="flex min-w-0 items-baseline gap-1">
+              {sell !== null && <span className={PRICE_WORD} data-testid="trade-good-sell-word">{t('desk.sell')}</span>}
+              <span
+                className={`text-t-body font-semibold tabular-nums ${sellDead ? 'text-ink-faint' : 'text-ink'}`}
+                data-testid="trade-good-sell"
+                data-state={sell === null ? 'no-buyer' : r.units <= 0 ? 'none-aboard' : 'sell'}
+                title={sell !== null && r.units <= 0 ? t('desk.noneAboard') : undefined}
+              >
+                {sell === null ? t('desk.noBuyer') : formatPriceFigure(sell)}
+              </span>
             </span>
           </>
         }
@@ -209,7 +223,8 @@ function SaleBlock({
   const portByCode = useWorld((s) => s.portByCode)
   // two of the card's four shared rows: the prices, and the line under them
   const block = `row-span-2 grid w-full min-w-0 ${canLand ? SALE_COLUMN : 'grid-cols-1'} grid-rows-subgrid gap-y-0`
-  const top = 'flex h-[1.375rem] w-full items-baseline justify-between gap-1'
+  // a size container (`@container`), so each price's word stands only where the line has room for it (`PRICE_WORD`)
+  const top = '@container flex h-[1.375rem] w-full items-baseline justify-between gap-1'
   // the line holds two lines' height where a sale can land (the Trade board); one where none ever does (the HQ Market)
   const line = `flex ${canLand ? 'min-h-9' : 'min-h-[1.125rem]'} w-full min-w-0 flex-wrap content-between items-center gap-x-1 text-t-caption tabular-nums`
   // the profit, the time (0351) and the day line stay together, at the right of whichever line they stand on, and WHAT DOES NOT
@@ -260,9 +275,12 @@ function SaleBlock({
         data-seconds={sale.seconds ?? undefined}
         data-far={sale.far?.port}
       >
-        {/* 0433: the full load is beyond her purse: her purse against what it needs; the sale named is the most she can pay for */}
+        {/* 0433: the full load is beyond her purse: her purse against what it needs; the sale named is the most she can pay for.
+            NOT RED (2026-11-22 play-test): a sale she can pay for still stands, so this is a fact, not a refusal; while she sails
+            with her coin in cargo it stood red on every card and read as an error. The refusal (no sale she can pay for) is the
+            red line above. */}
         {money(sale) !== null ? (
-          <span className="shrink-0 font-medium text-danger" data-testid="best-sale-money">
+          <span className="shrink-0 font-medium text-ink-muted" data-testid="best-sale-money">
             {t('desk.moneyHaveNeed', money(sale)!)}
           </span>
         ) : (

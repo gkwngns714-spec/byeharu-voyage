@@ -37,7 +37,7 @@ export const yardDict = defineDict({
     /** S3 (0363): the trip that fetches what is short, and the goal card's line while a company has one ship. */
     planTrip: 'Plan trip',
     stops: 'stops',
-    secondShip: 'Second ship {n} / {of}',
+    secondShip: 'Second ship · materials {n} / {of}',
     type: 'Type',
     crownNote: 'You pay crew and supplies',
     building: 'Building…',
@@ -116,7 +116,7 @@ export const yardDict = defineDict({
     hireCrewN: '선원 고용 · {n}',
     planTrip: '항로 계획',
     stops: '곳',
-    secondShip: '두 번째 배 {n} / {of}',
+    secondShip: '두 번째 배 · 재료 {n} / {of}',
     type: '종류',
     crownNote: '선원·보급은 내 부담',
     building: '건조하는 중…',

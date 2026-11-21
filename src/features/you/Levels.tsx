@@ -2,9 +2,10 @@ import { HullCountry } from '../../live/HullCountry'
 import { Bar, Card, Clip, GroupHeading, Note, Row, Skeleton, StatCell } from '../../components/ui'
 import { regardBandWord } from '../../domain/port'
 import { formatInt } from '../../lib/format'
-import { properName, useT } from '../../lib/i18n'
+import { properName, useLocale, useT } from '../../lib/i18n'
 import type { LevelsView } from '../../lib/rpc'
 import { LevelTiles, LevelTray } from '../../live/LevelTiles'
+import { seasOpened } from '../../live/levelWords'
 import { useLevels } from './useLevels'
 
 // THE COMPANY'S LEVELS, ON THE YOU PAGE — the one place they stand (2026-11-16).
@@ -46,9 +47,13 @@ export function YouLevels({ picked, onPick }: { picked: string | null; onPick: (
         <div data-testid="you-levels">
           <LevelTiles card={v.level_skills} selected={picked} onSelect={onPick} />
           <Company v={v} />
-          <Note tone={v.bite ? 'success' : 'neutral'} data-testid="levels-bite">
-            {v.bite ? t('command.lvLit') : t('command.lvDark')}
-          </Note>
+          {/* 2026-11-22 (P0): dark, the line said "ship and captain levels: counted only, no effect yet", a builder's note on a
+              player's page. It stands only once they work. */}
+          {v.bite && (
+            <Note tone="success" data-testid="levels-bite">
+              {t('command.lvLit')}
+            </Note>
+          )}
           <Countries v={v} />
         </div>
       )}
@@ -75,6 +80,7 @@ function Words({ label, value }: { label: string; value: string }) {
 
 function Company({ v }: { v: Ready }) {
   const t = useT()
+  const locale = useLocale()
   const sea = v.skills.seamanship
   return (
     <>
@@ -95,7 +101,7 @@ function Company({ v }: { v: Ready }) {
         </span>
         {v.title.next && v.title.next.opens.length > 0 && (
           <span className="mt-1 block text-t-caption text-ink-muted" data-testid="levels-opens">
-            {t(v.title.seas_bite ? 'command.lvOpens' : 'command.lvOpensDark', { what: v.title.next.opens.join(', ') })}
+            {t(v.title.seas_bite ? 'command.lvOpens' : 'command.lvOpensDark', { what: seasOpened(locale, v.title.next.opens) })}
           </span>
         )}
       </div>

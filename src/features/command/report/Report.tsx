@@ -9,6 +9,7 @@ import type { DeskLayout } from '../DeskFrame'
 import { HistoryChart } from '../../../live/HistoryChart'
 import { companyLines } from '../../../live/historyLines'
 import { reportBars } from '../../../live/reportBars'
+import { portNameOf, useWorld } from '../../../live/worldStore'
 
 // REPORT — every earning and loss by SECTION and by POINT (0286, docs/COMMAND_REDESIGN.md §4–5;
 // owner rows 192, 244: *"the profit tab on command, change it to report, saving all the earnings and
@@ -55,6 +56,7 @@ export function Report({ layout }: { layout: DeskLayout }) {
   const [open, setOpen] = useState<Open>(null)
   const read = useServedRead<ReportView>(`report:${span}`, () => worldReport(span))
   const r = read.view
+  const portByCode = useWorld((s) => s.portByCode)
 
   if (read.loading && !r) {
     return layout({
@@ -91,11 +93,14 @@ export function Report({ layout }: { layout: DeskLayout }) {
         />
       ))
     )
+  // A PLACE BY ITS NAME IN HER LANGUAGE (2026-11-22 play-test: "Lisbon", "Setubal" on a Korean Report): the store's named port by its
+  // served CODE (portNameOf, the one reading of a port's name), else the served English name, else the code.
+  const placeName = (code: string | null, served: string | null) => (code && portByCode[code] ? portNameOf(portByCode, code) : (served ?? code))
   const placeTitle = (p: ReportPlace) =>
     p.kind === 'port'
-      ? (p.name ?? p.code ?? t('desk.byPlace'))
+      ? (placeName(p.code, p.name) ?? t('desk.byPlace'))
       : p.kind === 'voyage'
-        ? `${t('desk.voyageWord')} ${p.from ?? '—'}→${p.to ?? '—'}${p.day === null ? '' : ` ${formatRealDay(p.day)}`}`
+        ? `${t('desk.voyageWord')} ${placeName(p.from, p.from_name) ?? '—'}→${placeName(p.to, p.to_name) ?? '—'}${p.day === null ? '' : ` ${formatRealDay(p.day)}`}`
         : t('desk.earlier')
 
   const section = (s: ReportSection) => (
