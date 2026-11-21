@@ -15,6 +15,12 @@ export function levelName(locale: Locale, code: string, word?: string): string {
   return translateMaybe(locale, 'command', `lv${cap(code)}`) ?? word ?? code
 }
 
+/** The seas a title opens (`title.next.opens`, `sea_zones.name` as served), named in the reader's language and listed: the one
+ *  wording of that list (the You page's title block and a level's gifts; 2026-11-22 play-test: English sea names on a Korean You page). */
+export function seasOpened(locale: Locale, seas: readonly string[]): string {
+  return seas.map((s) => properName('sea', s, s, locale)).join(', ')
+}
+
 /** A level's mark: an icon of the kit, or strokes drawn here in the kit's own manner (24 px box, stroked, no fill). */
 export type LevelMark = { icon: IconName } | { paths: readonly string[] }
 
@@ -121,7 +127,7 @@ export function levelGives(locale: Locale, level: number, benefits: readonly Lev
     else if (b.kind === 'perk') out.push(perkLine(locale, b))
     else {
       out.push(translate(locale, 'command.lvGiveTitle', { name: properName('title', b.name, b.name), other: levelName(locale, b.with), n: level }))
-      if (b.opens.length > 0) out.push(translate(locale, 'command.lvOpens', { what: b.opens.join(', ') }))
+      if (b.opens.length > 0) out.push(translate(locale, 'command.lvOpens', { what: seasOpened(locale, b.opens) }))
     }
   }
   return out

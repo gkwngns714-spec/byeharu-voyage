@@ -24,8 +24,10 @@ export interface TradeDone {
 export function doneWords(t: ReturnType<typeof useT>, d: TradeDone, cityName: (c: string) => string): string {
   if (d.sailTo) {
     const sail = t('desk.toastSail', { city: cityName(d.sailTo) })
-    if (d.profit != null) return `${sail} · ${moneyWords('profit', d.profit)}`
-    if (d.total !== null) return `${sail} · ${moneyWords(d.side === 'buy' ? 'cost' : 'total', d.total)}`
+    // THE TRIP'S PROFIT IS THE BOARD'S ESTIMATE (2026-11-22 play-test: the toast said +4,391, the sale paid +4,399): the
+    // market moves while she sails, so the figure is said as an estimate; the arrival card prints the served one.
+    if (d.profit != null) return `${sail} · ${t('desk.toastEst', { money: moneyWords('profit', d.profit) })}`
+    if (d.total !== null) return `${sail} · ${t('desk.toastEst', { money: moneyWords(d.side === 'buy' ? 'cost' : 'total', d.total) })}`
     return sail
   }
   const money = d.total === null ? '' : ` · ${moneyWords(d.side === 'buy' ? 'cost' : 'total', d.total)}`

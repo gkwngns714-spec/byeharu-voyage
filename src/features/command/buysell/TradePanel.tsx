@@ -222,7 +222,7 @@ function Frame({
         value={
           <span className="inline-flex items-baseline gap-2">
             <Figure value={formatPriceFigure(price)} size="figure" />
-            <DayChange change={line.change} />
+            <DayChange change={line.change} side={side} />
           </span>
         }
         data-testid="good-detail-price"

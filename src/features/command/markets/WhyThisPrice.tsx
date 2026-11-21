@@ -3,6 +3,7 @@ import { formatPrice } from '../../../lib/format'
 import type { PriceWhy } from '../../../lib/rpc'
 import { stakeLine, tariffLine, volumeLine, whyLines } from './whyLines'
 import { useT } from '../../../lib/i18n'
+import { useWorld } from '../../../live/worldStore'
 
 // WHY THIS PRICE — the good page's breakdown (docs/PRICE_FACTORS.md §5, slice P1; migration 0185). The
 // server (world.price_why) serves the market price at the focus city and every term it is made of, each as
@@ -11,7 +12,9 @@ import { useT } from '../../../lib/i18n'
 
 export function WhyThisPrice({ why, loading }: { why: PriceWhy | null; loading: boolean }) {
   const t = useT()
-  const lines = why ? whyLines(why) : []
+  // the port priced is served by id (world.price_why `port`); its region CODE names the taste line in her language
+  const region = useWorld((s) => (why ? (s.portById[why.port]?.region ?? s.portByCode[why.port]?.region ?? null) : null))
+  const lines = why ? whyLines(why, region) : []
   const volume = why ? volumeLine(why) : null
   const tariff = why ? tariffLine(why) : null
   return (

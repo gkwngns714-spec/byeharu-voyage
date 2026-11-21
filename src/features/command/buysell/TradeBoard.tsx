@@ -30,14 +30,16 @@ import type { TradeGoodRow } from '../../../domain/market'
 // The rows are domain/market/tradeRows.ts — a pure function; the card is live/TradeCard.tsx (the HQ Market draws it too),
 // so this file holds only the board and the strip.
 
-/** ▲ +3.2 % / ▼ 1.4 % — green up, red down, nothing else coloured (owner row 229). */
-export function DayChange({ change, className = '' }: { change: number | null; className?: string }) {
+/** ▲ +3.2 % / ▼ 1.4 % — green when the move is good for her, red when it is bad, nothing else coloured (owner row 229). Selling, a rise
+ *  is good; BUYING, a fall is (2026-11-22 play-test: a red "▼ 57.7%" stood beside a cheap price on the buy sheet). */
+export function DayChange({ change, side = 'sell', className = '' }: { change: number | null; side?: 'buy' | 'sell'; className?: string }) {
   if (change === null) return <span className={`text-t-caption text-ink-faint ${className}`}>—</span>
   const pts = Math.abs(change * 100)
   if (pts < 0.05) return <span className={`text-t-caption tabular-nums text-ink-faint ${className}`}>0.0%</span>
   const up = change > 0
+  const good = up === (side === 'sell')
   return (
-    <span className={`whitespace-nowrap text-t-caption tabular-nums ${up ? 'text-success' : 'text-danger'} ${className}`} data-testid="day-change" data-dir={up ? 'up' : 'down'}>
+    <span className={`whitespace-nowrap text-t-caption tabular-nums ${good ? 'text-success' : 'text-danger'} ${className}`} data-testid="day-change" data-dir={up ? 'up' : 'down'}>
       {up ? '▲' : '▼'} {formatFixed(pts, 1)}%
     </span>
   )
