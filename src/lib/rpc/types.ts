@@ -1693,6 +1693,11 @@ export interface TradeRequest {
   premium_per_unit: number
   /** 0311 — WHAT IS LEFT of the request's budget, in ducats. */
   premium_ducats: number
+  /** 0466 — 'city': the harbour's own request, sized by its budget; 'hold': a load a small ship can carry, with a deadline of hours.
+   *  Absent before 0466 (read as 'city'). */
+  size?: 'city' | 'hold'
+  /** 0466 — a hold job's whole pay: the units left x (today's bid + the bonus), served as one figure; null on a city's request. */
+  total?: number | null
   mid_at_post: number
   /** Calendar days (`world.game_day`): posted, and the first day it is no longer open. */
   posted_day: number

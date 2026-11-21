@@ -59,6 +59,8 @@ export function RequestBoard({
       {requests.map((r) => {
         const have = aboard[r.good] ?? 0
         const dead = !docked ? t('trade.noShipHere') : have < 1 ? t('trade.noneHeld') : null
+        // 0466: a hold-sized job (a load a small ship can carry) says so, and reads its one served total in place of the budget line
+        const hold = r.size === 'hold'
         return (
           <Row
             key={r.id}
@@ -67,6 +69,11 @@ export function RequestBoard({
               <span className="flex flex-wrap items-center gap-x-1.5 text-t-body">
                 <Clip>{properName('good', r.good, r.name)}</Clip>
                 <GoodKind compact rarity={r.rarity} goodClass={r.class} />
+                {hold && (
+                  <span className="text-t-caption font-semibold text-accent" data-testid="request-hold">
+                    {t('trade.holdJob')}
+                  </span>
+                )}
               </span>
             }
             value={
@@ -89,12 +96,15 @@ export function RequestBoard({
             data-price-each={r.price_each}
             data-sale-price={r.sale_price}
             data-bonus={r.premium_per_unit}
+            data-size={r.size ?? 'city'}
           >
             <span className="block text-t-caption text-ink-faint" data-testid="request-want">
               {t('trade.wantHeld', { want: formatInt(r.qty), held: formatInt(have) })}
             </span>
             <span className="block text-t-caption text-ink-faint" data-testid="request-budget">
-              {t('trade.bonusLine', { price: formatPrice(r.premium_per_unit), left: formatDucats(r.premium_ducats) })}
+              {hold && r.total != null
+                ? t('trade.holdPays', { total: formatDucats(r.total) })
+                : t('trade.bonusLine', { price: formatPrice(r.premium_per_unit), left: formatDucats(r.premium_ducats) })}
             </span>
             <span className="block text-t-caption tabular-nums text-ink-faint" data-testid="request-time">
               {t('trade.timeLeft', { time: formatCountdown(Date.parse(r.expires_at) - nowMs) })}
