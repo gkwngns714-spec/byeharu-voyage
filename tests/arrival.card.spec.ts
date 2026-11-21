@@ -65,12 +65,15 @@ for (const size of SIZES) {
       await expect(page.getByTestId('desk-trade')).toBeVisible()
       await expect(card).toHaveCount(0)
 
-      // the same figure the Report shows (the one sale this company has made)
+      // the same figure the Report's Trade line shows (the one sale this company has made). Not the Report's total:
+      // since 0454/0459 a trip buys its stores at departure, and the total takes those (Supplies) too, while the card
+      // says the sale's own profit (main's red on 9636db6c: card +1 vs total 0, card +43 vs total +35).
       await openOfficeFace(page, 'Report')
       await expect(page.getByTestId('report-total')).toBeVisible()
       const sign = (n: number) => (n < 0 ? `−${Math.abs(n)}` : n > 0 ? `+${n}` : '0')
       const digits = (s: string) => s.replace(/[^\d−+-]/g, '').replace('-', '−')
-      expect(digits(await page.getByTestId('report-total').innerText()), `card ${figures} vs the Report`).toBe(sign(net).replace(/,/g, ''))
+      const sections = (await page.getByTestId('report-sections').innerText()).replace(/\s+/g, ' ')
+      expect(digits(await page.getByTestId('report-section-trade').innerText()), `card ${figures} vs the Report's Trade (${sections})`).toBe(sign(net).replace(/,/g, ''))
     })
   })
 }

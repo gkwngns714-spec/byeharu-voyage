@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { Hint, Note, ScrollPane, Skeleton, TileChoice, TileGrid } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { TradeCard } from '../../../live/TradeCard'
@@ -103,7 +103,7 @@ export function CityChips({ home, city, onCity }: { home: string | null; city: s
  *  live/TradeCard.tsx). The gap is 6 px there, not 8: a Korean card's Buy and Sell need 120 px, and four of them with 8-px
  *  gaps were 504 px in the pane's 502 (it scrolled 2 px sideways). From 1,600 px the pane holds four or more 9.5-rem cards by itself, as before. */
 const CARDS_GRID =
-  'grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))] xl:grid-cols-[repeat(4,minmax(min-content,1fr))] xl:gap-1.5 min-[100rem]:gap-2 min-[100rem]:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]'
+  'grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))] xl:grid-cols-[repeat(var(--cols,4),minmax(min-content,1fr))] xl:gap-1.5 min-[100rem]:gap-2 min-[100rem]:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]'
 
 /** The height of the cards' first row, measured: the first card is as tall as its row (the four lines are the grid's own subgrid).
  *  Null until the first layout. Re-read whenever the grid or its first card is resized, and when another good leads the list. */
@@ -121,6 +121,37 @@ function useFirstRowBound(grid: RefObject<HTMLElement | null>, lead: string | nu
     return () => observer.disconnect()
   }, [grid, lead])
   return height
+}
+
+/** FOUR TO A LINE, UNLESS THE WORDS DO NOT FIT (the owner's law: nothing scrolls sideways; a row wraps to a new line instead).
+ *  Where the board stands its cards four to a line (`CARDS_GRID`, 1,280 to 1,600 px) each column is never narrower than its
+ *  widest card's words, and two long city names in two columns together are wider than the pane (a Korean 산루카르데바라메다 is
+ *  117 px: 133-px columns, four of them in a 502-px pane). The grid then stands one card fewer to a line, down to two, and the
+ *  line the card leaves wraps to the next: no name is cut or broken. Set on the grid as `--cols`, before paint, from what the
+ *  pane measures; it is re-read when the pane is resized or any word in the cards changes. */
+function useFitColumns(pane: RefObject<HTMLElement | null>, grid: RefObject<HTMLElement | null>, cards: number) {
+  useLayoutEffect(() => {
+    const box = pane.current
+    const cardBox = grid.current
+    if (!box || !cardBox) return
+    const fit = () => {
+      for (let cols = 4; cols >= 2; cols--) {
+        cardBox.style.setProperty('--cols', String(cols))
+        if (box.scrollWidth <= box.clientWidth + 1) break
+      }
+    }
+    fit()
+    // the pane changes size, or a word in a card changes (a name is what makes a column wide)
+    const resized = new ResizeObserver(fit)
+    resized.observe(box)
+    const worded = new MutationObserver(fit)
+    worded.observe(cardBox, { subtree: true, childList: true, characterData: true })
+    return () => {
+      resized.disconnect()
+      worded.disconnect()
+    }
+    // (the pane stands only once the quay has goods: the effect runs again when their number changes)
+  }, [pane, grid, cards])
 }
 
 export function TradeBoard({
@@ -155,7 +186,9 @@ export function TradeBoard({
   const portByCode = useWorld((s) => s.portByCode)
   const portId = city ? (portByCode[city]?.id ?? null) : null
   const gridRef = useRef<HTMLDivElement>(null)
+  const paneRef = useRef<HTMLDivElement>(null)
   const firstRow = useFirstRowBound(gridRef, rows[0]?.code ?? null)
+  useFitColumns(paneRef, gridRef, rows.length)
 
   return (
     <div data-testid="trade-board" data-city={city ?? ''} data-docked={docked ? 'true' : 'false'}>
@@ -198,7 +231,7 @@ export function TradeBoard({
             // fixed 10.5 rem the row's Buy and Sell stood under the pane's edge and a press on one first scrolled the cards
             // (tests/desk.layout.spec.ts, "a press … moved the cards": run 44507902138, 6 px). 10.5 rem is only the bound before
             // the first measure.
-            <ScrollPane className="max-h-[var(--first-row,10.5rem)] lg:max-h-none" style={{ '--first-row': firstRow ? `${firstRow}px` : undefined } as CSSProperties}>
+            <ScrollPane paneRef={paneRef} className="max-h-[var(--first-row,10.5rem)] lg:max-h-none" style={{ '--first-row': firstRow ? `${firstRow}px` : undefined } as CSSProperties}>
               <div ref={gridRef} className={CARDS_GRID}>
                 {rows.map((r) => (
                   <TradeCard
