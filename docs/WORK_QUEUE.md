@@ -4,6 +4,8 @@
 
 This block is the current state. The hand-off blocks further down (2026-11-13 and older) are history.
 
+**UPDATE 2026-11-22 later: PROD HEAD IS 0463 (#775 live + merged; gate after 145 ms, 1,084 MB; the compactor walks the backlog off over 3-5 h: read the gate, if the beat rises the owner's knob is `compact_budget_ms`).** Next in order: **0464 #777** (pirates raid companies too, dark behind `raid_companies_enabled`, proof 167), then **0465 #778** (the yard takes an order, dark behind `yard_order_enabled`, proof 168). Client: **#779** P0 consistency (auto-merge), P0 clarity (building). Plan: `docs/design/playable-2026-11-22.md`. **OWNER'S: light `raid_companies_enabled` and `yard_order_enabled`.**
+
 **UPDATE 2026-11-22 (this PC): PROD HEAD IS 0462; the next migration is 0464 (0463 is #775, next proof 166).**
 - **0462 LIVE + MERGED (#776, `anchor-quote`):** before-0462 md5 5638b66f… matched; after-0462 md5 81084646…, roadstead_select true, stable_server_only true; gate after 138 ms, 1,081 MB.
 - **#774 MERGED (`trade-1280-fit`):** fixes main's two layout reds (command.design ko 1280, small.screens 1280: the centre pane may scroll itself). Main's third red, `arrival.card.spec.ts:27` (card +43 vs Report total +35; +1 vs 0), was the spec: the card says the sale's profit, the Report's total also takes the stores bought at departure (0454/0459). The spec now compares the card with the Report's **Trade** line. Main's Acceptance on 176826cd is the net.
