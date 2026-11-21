@@ -129,9 +129,8 @@ export const deskDict = defineDict({
     noGain: 'No gain',
     buySell: 'Buy & sell',
     noGainWarn: 'No better buyer in reach.',
-    // 0351: the other sale of the good, a quiet row in the trip's tray — the dearer, farther one, and the way back
-    farSale: 'Far',
-    nearSale: 'Near',
+    // P1 (2026-11-22): the trip's tray offers the best three places to sell
+    sellWhere: 'Sell at',
     max: 'Max',
     aboardLabel: 'On board',
     aboardN: 'On board {n}',
@@ -276,8 +275,7 @@ export const deskDict = defineDict({
     noGain: '이익 없음',
     buySell: '사서 팔기',
     noGainWarn: '갈 수 있는 곳에 더 비싸게 사는 곳 없음.',
-    farSale: '먼 곳',
-    nearSale: '가까운 곳',
+    sellWhere: '팔 곳',
     max: '최대',
     aboardLabel: '적재',
     aboardN: '적재 {n}',

@@ -19,7 +19,8 @@ import { CargoBest } from './CargoBest'
 import { ShipInfo } from './ShipInfo'
 import { CityChips, TradeBoard } from './TradeBoard'
 import { tradeRows, type TradeGoodRow } from '../../../domain/market'
-import { TradePanel, type OtherSale } from './TradePanel'
+import { TradePanel } from './TradePanel'
+import { saleChoices } from './saleChoice'
 import { doneWords, type TradeDone } from './tradeDone'
 import { useTradeCity } from './tradeCity'
 import { TradeStatus } from './TradeStatus'
@@ -161,7 +162,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
 
   // A BEST SALE PRESSED (0348): her cargo — Sail & sell there (the cargo row's press); else the trip from the city in
   // hand, its plan opened at the card's units (the effect above keeps it while its good, buy and sell cities stand)
-  // 0351: `to` is the sale's other served choice (its far sale, or back to the near one) — the same trip, to that city
+  // 0351: `to` is the sale's other served choice — the same trip, to that city, at that sale's served units
   const pressBest = (s: BestSale, to: { port: string; units: number | null } | null = null) => {
     const sellAt = to?.port ?? s.port
     if (!city || sellAt === null) return
@@ -177,18 +178,19 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
     setBackTo(null)
   }
   const pickedSale = pickedRow ? sales?.get(pickedRow.code) : undefined
-  // THE OTHER SALE (0351): the open trip is the card's sale — its far sale is the quiet second choice in the tray; the
-  // open trip is the far sale — the way back to the near one. Both are served rows of the one read; nothing is worked out.
-  const near = pickedSale && pickedSale.port !== null ? { port: pickedSale.port, units: pickedSale.units, profit: pickedSale.profit, seconds: pickedSale.seconds ?? null } : null
-  const far = pickedSale?.far ?? null
-  const otherSale: OtherSale | null =
-    tripNow && pickedSale && near && far
-      ? tripNow.sellAt === near.port
-        ? { kind: 'far', port: far.port, profit: far.profit, seconds: far.seconds, onPress: () => pressBest(pickedSale, far) }
-        : tripNow.sellAt === far.port
-          ? { kind: 'near', port: near.port, profit: near.profit, seconds: near.seconds, onPress: () => pressBest(pickedSale, near) }
-          : null
-      : null
+  // A CHOICE OF WHERE TO SELL (2026-11-22, P1; saleChoice.ts): the open trip's best three places to sell, rows of the trip's
+  // own board (served, at the units the sheet holds); the card's sale is the default. A place pressed is the same trip
+  // to that city AT THE SAME UNITS — the units its row was priced for, so the sheet's profit is the row's to the coin.
+  const choices = useMemo(
+    () => (tripNow ? saleChoices(trip.board, tripNow.buyAt, tripNow.sellAt, pickedSale?.port ?? null) : null),
+    [tripNow, trip.board, pickedSale],
+  )
+  const chooseSale = (port: string) => {
+    if (!tripNow || port === tripNow.sellAt) return
+    const units = (tripPlan?.units ?? null) !== null ? (tripPlan?.units as number) : tripNow.units
+    setTripTo({ ...tripNow, sellAt: port, units })
+    openPlan({ good: tripNow.good, buyAt: tripNow.buyAt, sellAt: port, units, max: null, min: null, insure: tripPlan?.insure ?? false })
+  }
 
   // THE TOAST after a trade or a trip queued
   const [toast, setToast] = useState<string | null>(null)
@@ -255,7 +257,8 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
         noGain={side === 'buy' && pickedSale !== undefined && !pickedSale.pays && !pickedSale.short}
         trip={trip}
         mode={wide ? 'pane' : 'docked'}
-        otherSale={otherSale}
+        choices={choices}
+        onChoose={chooseSale}
         onClose={closePanel}
         onDone={done}
       />
