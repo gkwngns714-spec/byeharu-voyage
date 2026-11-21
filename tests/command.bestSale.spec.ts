@@ -15,8 +15,8 @@ import { ready } from './appReady.fixture'
 //     units and their Max.
 // 0351 (docs/SUCCESS_PLAN.md T5): A BEST SALE A NEW PLAYER CAN USE. The sale a card names is one her purse can buy, the
 // best per day, and the line says how long it takes in real time; its tray's Total is the card's cost and its button is
-// NOT stopped by "No money"; the dearer, farther sale is one quiet row in that tray ("Far"), pressed: the same trip
-// to that city, still within her purse, with the way back ("Near").
+// NOT stopped by "No money". P1 (2026-11-22): the tray offers the best places to sell (2-3, the card's lit); another pressed
+// is the same trip to that city, at the profit its row printed, and the card's sale is one press back.
 // Nothing here asserts a price: the claim is that the card and the tray print the same served figure.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -90,27 +90,37 @@ for (const size of SIZES) {
       const go = page.getByTestId('trade-act')
       await expect(go).toBeEnabled({ timeout: 120_000 })
       await expect(go).toHaveText('Buy & sell')
-      // THE FAR SALE: one quiet row in the tray — pressed, the same trip to the dearer city, still within her purse; and the way back
-      const other = panel.getByTestId('trade-other-sale')
-      await expect(other).toHaveAttribute('data-kind', 'far')
-      await expect(other).toHaveAttribute('data-port', far)
-      await expect(other).toContainText('Far')
-      // the row's own figure (the served far profit) is the figure the far trip's tray prints
-      const farFigure = ((await other.getByTestId('trade-other-sale-figure').textContent()) ?? '').match(/\+[\d,]+/)?.[0]
-      expect(farFigure, 'the far row prints its profit').toBeTruthy()
+      // A CHOICE OF WHERE TO SELL (P1, 2026-11-22): the tray offers the best places to sell — two at least, three at most —
+      // the card's sale lit; another pressed is the same trip to that city, its row's served profit the tray's to the coin
+      const choices = panel.getByTestId('trade-sale-choice')
+      await expect(choices.first()).toBeVisible({ timeout: 120_000 })
+      const n = await choices.count()
+      expect(n, 'the tray offers a choice of where to sell').toBeGreaterThanOrEqual(2)
+      expect(n).toBeLessThanOrEqual(3)
+      await expect(panel.locator(`[data-testid="trade-sale-choice"][data-on="true"]`)).toHaveAttribute('data-port', port)
+      await expect(panel.locator(`[data-testid="trade-sale-choice"][data-port="${port}"]`).getByTestId('trade-sale-choice-profit')).toHaveText(figure)
+      const ports = await choices.evaluateAll((els) => els.map((e) => e.getAttribute('data-port')))
+      expect(new Set(ports).size, 'the places are different cities').toBe(n)
+      const times = await panel.getByTestId('trade-sale-choice-time').allTextContents()
+      expect(new Set(times).size, 'the places differ in time (near and quick against far and rich)').toBeGreaterThan(1)
+      // the server's far sale, when it is on the list; else the first other place
+      const other = ports.includes(far) ? panel.locator(`[data-testid="trade-sale-choice"][data-port="${far}"]`) : panel.locator('[data-testid="trade-sale-choice"][data-on="false"]').first()
+      const to = (await other.getAttribute('data-port'))!
+      const toFigure = (await other.getByTestId('trade-sale-choice-profit').textContent())!.trim()
+      expect(toFigure).toMatch(/^\+\d/)
       await other.click()
       const farPanel = page.getByTestId('good-detail')
-      await expect(farPanel).toHaveAttribute('data-sell-at', far)
+      await expect(farPanel).toHaveAttribute('data-sell-at', to)
       await expect(farPanel).toHaveAttribute('data-good', good)
-      await expect(farPanel.getByTestId('trade-profit')).toContainText(farFigure!, { timeout: 120_000 })
+      await expect(farPanel.getByTestId('trade-profit')).toContainText(toFigure, { timeout: 120_000 })
+      await expect(farPanel.locator(`[data-testid="trade-sale-choice"][data-port="${to}"]`)).toHaveAttribute('data-on', 'true')
       await expect(page.getByTestId('trade-act')).toBeEnabled({ timeout: 120_000 })
       await expect(page.getByTestId('trade-act')).toHaveText('Buy & sell')
-      const back = farPanel.getByTestId('trade-other-sale')
-      await expect(back).toHaveAttribute('data-kind', 'near')
-      await expect(back).toHaveAttribute('data-port', port)
-      await back.click()
+      // and back to the card's sale
+      await farPanel.locator(`[data-testid="trade-sale-choice"][data-port="${port}"]`).click()
       await expect(page.getByTestId('good-detail')).toHaveAttribute('data-sell-at', port)
       await expect(page.getByTestId('good-detail').getByTestId('trade-profit')).toContainText(figure, { timeout: 120_000 })
+      if (size.width === 390) await page.screenshot({ path: 'test-results/sell-choice-390.png' })
       // the board did not move to the sell city: the press opened a trip, it did not pick a chip
       await expect(board).toHaveAttribute('data-city', home!)
 
