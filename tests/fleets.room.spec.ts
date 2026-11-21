@@ -34,9 +34,9 @@ test('dark: the room says it is not open and offers no press; the fleet shows he
   await expect(room.getByTestId('fleet-room-buy')).toHaveCount(0)
   await expect(room.locator('button')).toHaveCount(0)
   await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-step')).toHaveCount(4)
-  await expect(room.getByTestId('fleet-room-fleet')).toContainText('Trading 1 / 3')
+  await expect(room.getByTestId('fleet-room-fleet')).toContainText('Trading level 1 / 3')
   await expect(room.getByTestId('fleet-room-fleet')).toContainText('60,000')
-  await expect(room.getByTestId('fleet-room-ship')).toContainText('Seamanship or Command 0 / 1')   // have / need (2026-11-15): a new company has neither level yet
+  await expect(room.getByTestId('fleet-room-ship')).toContainText('Seamanship or Command level 0 / 1')   // have / need (2026-11-15): a new company has neither level yet
   await expect(room.getByTestId('fleet-room-ship').getByTestId('fleet-room-step')).toHaveCount(10)
   // nothing in the card shears sideways on a phone
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
@@ -88,10 +88,10 @@ test('lit: one Buy stands on the price she can pay, and a press opens room for a
 
 // THE ROOM CARD, LIT, AS SHIPPED (0370: fleet_room_bite true, fleet_hard_max 6), ON A PHONE AND ON A WIDE SCREEN, IN ENGLISH AND IN KOREAN. No patch: this is the world a player
 // gets. The fleet ladder is the whole way to SIX fleets: the free two, Trading 3, Trading 6, 60,000 and 1,000,000, each step on its own line with its level or its price. A locked level step reads HAVE / NEED
-// (2026-11-15, owner: requirements as have / need): a new company's Trading is 1, so "Trading 1 / 3".
+// (2026-11-15, owner: requirements as have / need): a new company's Trading is 1, so "Trading level 1 / 3".
 const ROOM_WORDS = {
-  en: { rungs: ['Trading 1 / 3', 'Trading 1 / 6'], notOpen: 'Not open yet', buy: 'Buy' },
-  ko: { rungs: ['교역 1 / 3', '교역 1 / 6'], notOpen: '아직 안 열림', buy: '구매' },
+  en: { rungs: ['Trading level 1 / 3', 'Trading level 1 / 6'], notOpen: 'Not open yet', buy: 'Buy' },
+  ko: { rungs: ['교역 레벨 1 / 3', '교역 레벨 1 / 6'], notOpen: '아직 안 열림', buy: '구매' },
 } as const
 
 for (const glass of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {

@@ -96,8 +96,10 @@ async function openLevels(page: Page, lang: 'en' | 'ko') {
     await ready(page)
   }
   expect(await page.evaluate(() => document.documentElement.lang)).toBe(lang)
-  // the goal card on the Trade tab opens the You page, where the levels stand (the desk's Levels face moved there, 2026-11-16)
-  await page.getByTestId('goal-card').click()
+  // the You page, where the levels stand (the desk's Levels face moved there, 2026-11-16). The goal card opened it until
+  // 2026-11-22; with one ship it now opens the build yard, its next step (tests/goal.card.spec.ts)
+  await page.goto('you')
+  await ready(page)
   await expect(page.getByTestId('you-levels').first()).toBeVisible({ timeout: 60_000 })
   await expect(page.getByTestId('level-tiles')).toBeVisible({ timeout: 60_000 })
 }

@@ -152,6 +152,7 @@ function Frame({
   units,
   total,
   extra,
+  profit,
   button,
   after,
 }: {
@@ -174,6 +175,8 @@ function Frame({
   total: number | null
   /** Rows under the total (the trip's estimate). */
   extra?: ReactNode
+  /** A trip that sells: its served profit (null while unknown), on the money's line, pinned above the fold. Undefined: no sale. */
+  profit?: number | null
   button: ReactNode
   /** Under everything (the voyage's reach). */
   after?: ReactNode
@@ -196,9 +199,24 @@ function Frame({
         <>
           {/* THE MONEY rides with the button, pinned: the figure a trade is decided on never scrolls apart from it */}
           {/* 2026-11-11 (the trade-flow slice): a buy's money is its COST, unsigned; it stood as "Total −856", the way a loss is drawn */}
+          {/* 2026-11-22 (P0): A TRIP THAT SELLS CARRIES ITS PROFIT ON THE SAME LINE ("Cost 36,244 · Profit +3,222"). It stood fifth
+              in the estimate, under the chart: under the fold of a 390 × 844 sheet, so the number a trip is chosen by was never seen
+              before the press. One line, not a row of its own, so the half-raised sheet still shows the units. */}
           <Row
             label={total === null ? t('desk.total') : moneyWord(side === 'buy' ? 'cost' : 'total', total)}
-            value={<Figure value={total === null ? '—' : moneyFigure(side === 'buy' ? 'cost' : 'total', total)} size="figure" tone={total === null ? 'faint' : total >= 0 ? 'success' : 'ink'} />}
+            value={
+              <span className="inline-flex items-baseline gap-2">
+                <Figure value={total === null ? '—' : moneyFigure(side === 'buy' ? 'cost' : 'total', total)} size="figure" tone={total === null ? 'faint' : total >= 0 ? 'success' : 'ink'} />
+                {profit !== undefined && (
+                  <span className="inline-flex items-baseline gap-1" data-testid="trade-profit">
+                    <span className="text-t-caption text-ink-muted">{t('desk.profit')}</span>
+                    <span className={`font-semibold tabular-nums ${profit === null ? 'text-ink-faint' : profit >= 0 ? 'text-success' : 'text-danger'}`}>
+                      {profit !== null ? formatPriceDelta(profit) : '—'}
+                    </span>
+                  </span>
+                )}
+              </span>
+            }
             hairline={false}
             data-testid="good-detail-total"
           />
@@ -353,9 +371,10 @@ function DockedAct({
   const aboard = fleetCargoByCode(fleet)[good.code] ?? 0
   const lot = Math.max(1, Math.round(step))
   const ceiling = side === 'buy' ? (capacity.bound?.max ?? 0) : aboard
+  const ducats = useWorld((s) => s.ducats)
   // Sell: all she carries by default, as Sail & sell sells it (owner row 231: one press sells right here)
-  const chosen = Math.min(qty ?? (side === 'sell' ? ceiling : Math.min(ceiling, lot)), ceiling)
-  // the default (Buy: one lot, or all she can when that is less) and the clamp when the ceiling moves, written back in
+  const chosen = Math.min(qty ?? (side === 'sell' ? ceiling : firstBuy(ceiling, ducats, good.buy)), ceiling)
+  // the default (Buy: `firstBuy`, what half her coin buys or the most she can, the smaller) and the clamp when the ceiling moves, written back in
   // place (derive-from-the-last-render) so the quantity previewed is the quantity on the button
   if (ceiling > 0 && qty !== chosen) setQty(chosen)
   const refused = side === 'buy' && (good.available === false || good.offered === false)
@@ -472,11 +491,12 @@ function SailAct({
   const capNow = b && (b.qty.basis === 'capacity' || b.qty.basis === 'step') ? b.qty.units : null
   const [cap, setCap] = useState<number | null>(null)
   if (capNow !== null && capNow !== cap) setCap(capNow)
-  // THE FIRST COUNT, as the docked tray's: one lot, or all she can take when that is less — written into the plan
-  // once the board has sized her hold, so Go buys exactly the units the board priced; Max asks for all she can take
+  // THE FIRST COUNT, as the docked tray's (`firstBuy`: what half her coin buys, or all she can take when that is less) — written
+  // into the plan once the board has sized her hold, so Go buys exactly the units the board priced; Max asks for all she can take
   const step = useWorld((st) => st.snapshot?.config.trade_step_tuns ?? 1)
   const lot = Math.max(1, Math.round(step))
-  const firstCount = side === 'buy' && mine !== null && mine.units === null && cap !== null && cap > 0 ? Math.min(cap, lot) : null
+  const ducats = useWorld((st) => st.ducats)
+  const firstCount = side === 'buy' && mine !== null && mine.units === null && cap !== null && cap > 0 ? firstBuy(cap, ducats, good.price) : null
   useEffect(() => {
     if (firstCount !== null) set({ units: firstCount })
   }, [firstCount, set])
@@ -505,6 +525,7 @@ function SailAct({
       sellAt={sellAt}
       otherSale={otherSale}
       total={mine ? total : null}
+      profit={sells ? profit : undefined}
       units={
         units !== null && units > 0 ? (
           <div className="py-3">
@@ -553,11 +574,6 @@ function SailAct({
                 }
                 data-testid="trade-dues"
               />
-              <Row
-                label={t('desk.profit')}
-                value={<Figure value={profit !== null ? formatPriceDelta(profit) : '—'} tone={profit === null ? 'faint' : profit >= 0 ? 'success' : 'danger'} size="figure" />}
-                data-testid="trade-profit"
-              />
             </>
           )}
           <div className="mt-2 flex items-center gap-3">
@@ -589,6 +605,15 @@ function SailAct({
       after={mine ? <PlanVoyage fleet={fleet} board={b} buyRow={go.buyRow} sellRow={go.sellRow} /> : undefined}
     />
   )
+}
+
+/** THE BUY SHEET'S FIRST COUNT (2026-11-22, P0 of docs/design/playable-2026-11-22.md; decided by default): the most she can take
+ *  (`most`: the served bound, her free hold and her purse) or what HALF her coin buys at this price, whichever is smaller, and at
+ *  least one. The sheet opened at one lot, and where the lot was more than she could take, at everything: a new company's first
+ *  press spent 39,370 of its 40,000 and left nothing for the next trip. Max still asks for all. Coin or price unknown: `most`. */
+function firstBuy(most: number, ducats: number | null, price: number | null | undefined): number {
+  if (ducats === null || price == null || !(price > 0)) return most
+  return Math.max(1, Math.min(most, Math.floor(ducats / 2 / price)))
 }
 
 /** THE TRIP'S DOCK FEE as the tray prints it: the served row's own `dock_fee` (0361: every harbour she calls at, the last

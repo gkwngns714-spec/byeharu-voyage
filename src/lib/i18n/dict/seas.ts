@@ -20,7 +20,7 @@ export const seasDict = defineDict({
     asksWaves: 'Waves {n}',
     harbours: { one: '{n} harbour', other: '{n} harbours' },
     noFleet: 'No fleet yet.',
-    dark: 'Sea rules off · every sea open.',
+    dark: 'Every sea is open.',
     lit: 'Each sea needs a title and waves.',
     // the one help line (it was three): what each figure is
     how: 'Title: lower of Trading and Exploration · Waves: fleet average, planking adds',
@@ -50,7 +50,7 @@ export const seasDict = defineDict({
     asksWaves: '내파 {n}',
     harbours: { one: '항구 {n}곳', other: '항구 {n}곳' },
     noFleet: '아직 함대 없음.',
-    dark: '바다 조건 꺼짐 · 모든 바다 열림.',
+    dark: '모든 바다 열림.',
     lit: '바다마다 직함과 내파 필요.',
     how: '직함: 교역·탐험 중 낮은 레벨 · 내파: 함대 평균, 판재로 올림',
     homeWaters: '본국 바다',

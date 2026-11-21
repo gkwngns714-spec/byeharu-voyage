@@ -4,7 +4,7 @@
 //     a skill's refusal keeps its sentence (it names the skill); figures of another shape keep the sentence alone;
 //   * the eight news templates 0433 writes name the same {words} in English and Korean, and the same words as the templates they replace (0347, 0362),
 //     and each is no longer than the one it replaces; filled, no `{name}` is left;
-//   * a room rung still shut reads her level against it (`Trading 2 / 3`).
+//   * a room rung still shut reads her level against it (`Trading level 2 / 3`).
 
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
@@ -52,7 +52,7 @@ test('the eight short news templates name the same words in both languages and a
 
 test('a room rung still shut reads her level against it', () => {
   const t = tFor('en')
-  expect(roomStepWord(t, { how: 'level', tracks: ['trading'], level: 3, open: false }, 2)).toBe('Trading 2 / 3')
-  expect(roomStepWord(t, { how: 'level', tracks: ['trading'], level: 1, open: true }, 2)).toBe('Trading 1')
-  expect(roomStepWord(t, { how: 'level', tracks: ['trading'], level: 3, open: false })).toBe('Trading 3')
+  expect(roomStepWord(t, { how: 'level', tracks: ['trading'], level: 3, open: false }, 2)).toBe('Trading level 2 / 3')
+  expect(roomStepWord(t, { how: 'level', tracks: ['trading'], level: 1, open: true }, 2)).toBe('Trading level 1')
+  expect(roomStepWord(t, { how: 'level', tracks: ['trading'], level: 3, open: false })).toBe('Trading level 3')
 })

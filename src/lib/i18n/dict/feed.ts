@@ -89,6 +89,13 @@ export const feedDict = defineDict({
     awayTitle: 'While away',
     awayLaps: { one: '{n} lap', other: '{n} laps' },
     awayMoney: 'Money',
+    // THE FIRST-RUN WELCOME (src/app/WelcomeCard.tsx, P0 of docs/design/playable-2026-11-22.md)
+    welcomeTitle: 'Welcome',
+    welcomeWho: 'You run a trading house in {city}, {year}.',
+    welcomeWhoAt: 'You run a trading house, {year}.',
+    welcomeGoal: 'Goal: earn your second ship.',
+    welcomeFirst: 'First: pick a good, press Buy.',
+    welcomeStart: 'Start',
   },
   ko: {
     heading: '돈 기록',
@@ -169,5 +176,11 @@ export const feedDict = defineDict({
     awayTitle: '비운 사이',
     awayLaps: { one: '{n}바퀴', other: '{n}바퀴' },
     awayMoney: '돈',
+    welcomeTitle: '환영합니다',
+    welcomeWho: '{year}년 {city}의 무역 상회를 이끕니다.',
+    welcomeWhoAt: '{year}년, 무역 상회를 이끕니다.',
+    welcomeGoal: '목표: 두 번째 배 마련.',
+    welcomeFirst: '먼저: 상품을 골라 구매를 누르세요.',
+    welcomeStart: '시작',
   },
 })

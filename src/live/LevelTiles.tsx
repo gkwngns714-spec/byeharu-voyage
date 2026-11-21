@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bar, GroupHeading, Icon, Note, Tile, Tray, type TrayDetent } from '../components/ui'
+import { Bar, GroupHeading, Icon, Tile, Tray, type TrayDetent } from '../components/ui'
 import { formatInt, formatRelative } from '../lib/format'
 import { translateMaybe, useLocale, useT } from '../lib/i18n'
 import type { LevelSkill, LevelSkillsCard } from '../lib/rpc'
@@ -105,9 +105,8 @@ function TileGroup({
             <span className="block break-words text-t-body">{name}</span>
             <Bar pct={levelFill(s)} label={t('you.levelOf', { name })} tone={s.counted ? 'accent' : 'neutral'} />
             <span className="flex flex-wrap gap-x-2 text-t-caption text-ink-faint">
-              {!s.counted ? (
-                t('command.lvCombatDark')
-              ) : s.next_at === null ? (
+              {/* a level not counted yet (Combat) says nothing: "Not counted yet" was a builder's note (2026-11-22, P0) */}
+              {!s.counted ? null : s.next_at === null ? (
                 t('command.lvTop')
               ) : (
                 <>
@@ -173,11 +172,6 @@ export function LevelDetail({ card, skill, titled = true }: { card: LevelSkillsC
               t('command.lvToGo', { n: formatInt(Math.ceil(skill.next_at - skill.points)), next: skill.level + 1 }),
             ].join(' · ')}
       </span>
-      {!skill.counted && (
-        <Note tone="neutral" className="mt-2">
-          {t('command.lvCombatDark')}
-        </Note>
-      )}
       {skill.kept === 'record' ? null : (
         <>
           {/* 0455: a land skill has no limit a day (its job's clock is its limit): no "today against the cap" line */}
