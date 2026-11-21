@@ -148,6 +148,7 @@ import type {
   FineReceipt,
   TaxSet,
   NationStandings,
+  HousesWeek,
   WorkKind,
   StandingRouteDeleted,
   StandingRoutePaused,
@@ -1157,4 +1158,9 @@ export function cmdSetTax(portId: string, rate: number): Promise<RpcResult<TaxSe
 /** Rank's Countries board (0148) — every country's cities and its biggest givers. */
 export function worldNationStandings(): Promise<RpcResult<NationStandings>> {
   return call<NationStandings>('worldNationStandings', [])
+}
+
+/** Rank's houses' board (0467) — the merchant houses and the companies, by this week's profit. Dark: `{on: false}`. */
+export function worldHousesWeek(): Promise<RpcResult<HousesWeek>> {
+  return call<HousesWeek>('worldHousesWeek', [])
 }
