@@ -85,6 +85,8 @@ export const yardDict = defineDict({
     orderN: 'Order · {price}',
     ordering: 'Ordering…',
     wait: 'Wait',
+    /** 0472 (first_hour_enabled): a company's second hull costs at least the floor; the raise is in the fee */
+    firstOrder: 'First order',
     onOrder: 'On order',
     readyIn: 'Ready in {t}',
     readyNow: 'Ready',
@@ -168,6 +170,7 @@ export const yardDict = defineDict({
     orderN: '주문 · {price}',
     ordering: '주문하는 중…',
     wait: '대기',
+    firstOrder: '첫 주문',
     onOrder: '주문함',
     readyIn: '{t} 후 완성',
     readyNow: '완성',

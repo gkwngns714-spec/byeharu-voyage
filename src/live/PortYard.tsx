@@ -546,9 +546,12 @@ export function PortYard({
               data-testid="yard-order-wait"
             />
           )}
-          {/* an order's fee (world.hull_quote): what the order adds over labour and every good bought at the nearest ask */}
+          {/* an order's fee (world.hull_quote): what the order adds over labour and every good bought at the nearest ask. 0472: on her
+              second hull the fee is raised to the floor (served `first`, absent dark), and the row says "First order" so the price says why */}
           {offerOrder && quoted && typeof quoted.fee === 'number' && (
-            <Row label={t('yard.orderFee')} value={<Figure value={formatDucats(quoted.fee)} />} data-testid="yard-order-fee" />
+            quoted.first === true
+              ? <Row label={t('yard.firstOrder')} value={<Figure value={formatDucats(quoted.fee)} />} data-testid="yard-order-first" data-fee={quoted.fee} />
+              : <Row label={t('yard.orderFee')} value={<Figure value={formatDucats(quoted.fee)} />} data-testid="yard-order-fee" />
           )}
           {/* S3: one press from the totals to the trip that fetches what is short. It stands above the lines, with the
               totals, so a part unfolding does not move it; it goes when nothing is left to fetch by sea. */}

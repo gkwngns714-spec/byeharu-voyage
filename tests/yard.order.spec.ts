@@ -90,6 +90,8 @@ test.describe('the yard takes an order at 390×844', () => {
     expect(price, 'a Barca on order is not about 26,000').toBeGreaterThan(20_000)
     expect(price, 'a Barca on order is not about 26,000').toBeLessThan(32_000)
     await expect(order).toHaveText(/^Order · /)
+    // 0472 dark (first_hour_enabled false): no floor on her second hull, no "First order" row
+    await expect(tray.getByTestId('yard-order-first')).toHaveCount(0)
     await noSideways(page, 'the sheet with an order')
     await page.screenshot({ path: info.outputPath('2-sheet.png') })
 
@@ -116,6 +118,28 @@ test.describe('the yard takes an order at 390×844', () => {
     await expect(root.getByTestId('yard-launched')).toHaveText('Encomenda launched', { timeout: 60_000 })
     await expect(root.getByTestId('yard-order-open')).toHaveCount(0)
     await page.screenshot({ path: info.outputPath('5-launched.png') })
+  })
+
+  test('0472 lit: her second Barca is quoted at the floor, and the sheet says First order', async ({ page, request, baseURL }, info) => {
+    test.setTimeout(300_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+    await serveWorldImage(
+      page,
+      await patchedWorldImage('yard-order-first-hour', async (pg) => {
+        await pg.exec(`update public.world_config set value = 'true'::jsonb where key in ('yard_order_enabled', 'first_hour_enabled');`)
+      }),
+    )
+    const root = await yard(page, 'Build')
+    const tray = await barcaSheet(page, root)
+    const order = page.getByTestId('yard-order')
+    await expect(order).toHaveAttribute('data-price', /^\d+$/, { timeout: 60_000 })
+    // a new company (one ship, none on order): the floor, 52,000, at Trading 1
+    expect(Number(await order.getAttribute('data-price')), 'her second Barca is not at the floor').toBe(52_000)
+    const first = tray.getByTestId('yard-order-first')
+    await expect(first).toContainText('First order')
+    await expect(first).toHaveAttribute('data-fee', /^\d+$/)
+    await noSideways(page, 'the sheet with a first order')
+    await page.screenshot({ path: info.outputPath('6-first-order.png') })
   })
 })
 
