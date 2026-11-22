@@ -1675,8 +1675,6 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-10-17 with migration 0148 (docs/INFLUENCE.md I6): Rank's COUNTRIES
       // board — every country's cities and its biggest givers. A read; no player id.
       'worldNationStandings',
-      // Pin moved deliberately 2026-11-22 with migration 0467: Rank's houses' board, by this week's profit. A read; no arguments; dark {on: false}.
-      'worldHousesWeek',
       // Pin moved deliberately 2026-11-22 with migration 0469: THE WORLD EVENTS (a famine, a festival, a blockade) running or announced. A read; no
       // arguments, no player id; dark {on: false}. Landed WITH the faces (src/live/WorldEventLine.tsx: Trade and the quay; the map's rings).
       'worldWorldEvents',
