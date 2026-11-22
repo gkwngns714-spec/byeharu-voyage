@@ -57,6 +57,8 @@ export const ICON_NAMES = [
   'menu',
   'laurel',
   'levelUp',
+  // The house's title (slice 9): the You page's plate
+  'coronet',
   // The Office's doors on HQ (slice 2)
   'invest',
   'report',
@@ -77,6 +79,20 @@ export const ICON_NAMES = [
   'foodstuff',
   'raw',
   'navalStores',
+  // The long tail's FAMILIES (visual slice 9): the twelve categories that wore another category's glyph now wear their own, so a
+  // screen of the Codex's rarer grains, drinks or medicines is told apart by family at a glance (goodIcons.ts CATEGORY_ICON).
+  'grain',
+  'drink',
+  'tobacco',
+  'medicine',
+  'dye',
+  'gems',
+  'crafts',
+  'weapons',
+  'guns',
+  'art',
+  'books',
+  'animals',
   // ── ONE MARK PER TRADE GOOD, in `data/goods.json` order ──────────────────────────────────────
   // spice
   'goodBlackPepper',
@@ -304,6 +320,8 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   laurel: ['M9 20.5c-3.4-1.6-5.5-5-5.5-8.7 0-3 1.2-5.6 3.2-7.3', 'M15 20.5c3.4-1.6 5.5-5 5.5-8.7 0-3-1.2-5.6-3.2-7.3', 'M4 9.6l2.4.6', 'M3.8 13.6l2.4-.2', 'M5.4 17.4l2-1', 'M20 9.6l-2.4.6', 'M20.2 13.6l-2.4-.2', 'M18.6 17.4l-2-1'],
   // Two chevrons climbing — Levels (the company's levels, a rank's stripes).
   levelUp: ['m6 12.5 6-6 6 6', 'm6 18.5 6-6 6 6'],
+  // A coronet, five points over its band — the house's TITLE (slice 9). Not the wreath (City hall) nor the laurel (Reputation).
+  coronet: ['M5 17 3.8 8.5l4.4 3.6L12 5.5l3.8 6.6 4.4-3.6L19 17Z', 'M5 20h14', 'M12 13.2a1 1 0 1 0 0 2a1 1 0 1 0 0-2Z'],
   // ── THE OFFICE'S DOORS ON HQ (2026-11-23, the visual overhaul's slice 2): City wears the Office's counting house; these two are new.
   // A stack of coins with a rising arrow — Invest (money put into a city). Not the coin: that is the purse and the Trading level.
   invest: ['M3.5 20h10', 'M3.5 16.5h10', 'M4.5 13h8', 'M3.5 20v-3.5', 'M13.5 20v-3.5', 'M15 12.5 20.5 7', 'M16.5 7h4v4'],
@@ -335,6 +353,31 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   foodstuff: ['M6.5 10.5h11l-1 9.5h-9l-1-9.5Z', 'M9 10.5c0-3 1.3-4.6 3-4.6s3 1.6 3 4.6', 'M12 3.4v2.5'],
   raw: ['M4 19.5 9 6l4.5 5L17 5l3 14.5H4Z', 'M9 6l4.5 5'],
   navalStores: ['M12 3.5v13.5', 'M7.5 8.5 12 3.5l4.5 5', 'M4.5 20.5h15', 'M8 16.8h8'],
+  // ── the long tail's families (visual slice 9): one silhouette each, apart from every good's own mark ─────────────────────
+  // Grain: a sheaf — three stalks bound at the waist, three heads.
+  grain: ['M8 21 12 14 8.5 6.5', 'M16 21l-4-7 3.5-7.5', 'M12 21V5.5', 'M9.6 14h4.8', 'M8.5 6.5c-1-1-1-2.6 0-3.8 1 1.2 1 2.8 0 3.8Z', 'M12 5.5c-1-1-1-2.6 0-3.8 1 1.2 1 2.8 0 3.8Z', 'M15.5 6.5c-1-1-1-2.6 0-3.8 1 1.2 1 2.8 0 3.8Z'],
+  // Drink: an amphora — lip, neck, round belly and two handles.
+  drink: ['M9.5 3.5h5', 'M10.5 3.5v3c-2.5 1-4 3.5-4 6.5 0 3.6 2.4 7 5.5 7s5.5-3.4 5.5-7c0-3-1.5-5.5-4-6.5v-3', 'M7.6 10C5.8 9.4 5.2 7.6 6.4 6.4', 'M16.4 10c1.8-.6 2.4-2.4 1.2-3.6'],
+  // Tobacco: a clay pipe — the bowl, the long stem, a curl of smoke.
+  tobacco: ['M4.5 10h5v4a2.5 2.5 0 0 1-5 0Z', 'M9.5 12.6 20.5 9', 'M7 7.5c-1-1-1-2.2 0-3.4'],
+  // Medicine: an apothecary's bottle with a cross on its belly.
+  medicine: ['M9.5 3.5h5', 'M10.5 3.5V7L7 10.8v8.2A1.5 1.5 0 0 0 8.5 20.5h7A1.5 1.5 0 0 0 17 19v-8.2L13.5 7V3.5', 'M12 12.5v5', 'M9.5 15h5'],
+  // Dye: a skein dipped in a vat.
+  dye: ['M5 11.5h14l-1.5 8.5h-11Z', 'M5.6 14.5h12.8', 'M7.5 4h9', 'M10 4c0 3.4.6 5.6 2 7.5 1.4-1.9 2-4.1 2-7.5'],
+  // Gems: a ring with its stone set high.
+  gems: ['M12 10a5.2 5.2 0 1 0 0 10.4a5.2 5.2 0 1 0 0-10.4Z', 'M9.8 6.8 12 3.6l2.2 3.2L12 10Z'],
+  // Crafts: a woven basket with its handle.
+  crafts: ['M4.5 10.5h15l-2 9h-11Z', 'M8 10.5a4 4 0 0 1 8 0', 'M5.2 13.6h13.6', 'M5.9 16.6h12.2', 'M10 10.5v9', 'M14 10.5v9'],
+  // Weapons: a halberd — the pole, the axe's blade, its back spike.
+  weapons: ['M12 2.5v19', 'M12 5c3 0 5 1.6 5 4s-2 4-5 4', 'M12 8.5H8.5'],
+  // Guns: a musket — the barrel, the stock, the trigger's guard.
+  guns: ['M2.5 10h12.5', 'M15 9h2.6l3.9 4.6-2.2 1.6-3.4-3.2H15Z', 'M12.2 11c0 1.6 1 2.6 2.6 2.6'],
+  // Art: a framed portrait.
+  art: ['M4.5 3.5h15v17h-15Z', 'M7 6h10v12H7Z', 'M12 8.4a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0-3.6Z', 'M8.8 16.4c.6-1.8 1.8-2.6 3.2-2.6s2.6.8 3.2 2.6'],
+  // Books: three on a shelf, the last one leaning.
+  books: ['M3.5 20.5h17', 'M5 5h3v15.5H5Z', 'M8 7.5h3v13H8Z', 'M12.5 8.4l2.9-.8 3.5 12.6-2.9.8Z'],
+  // Animals: an ox's head — the horns, the long face, the muzzle.
+  animals: ['M8 10c0 5 1.8 9 4 9s4-4 4-9c0-2-1.8-3.5-4-3.5S8 8 8 10Z', 'M8.4 8C6 8 4.5 6.5 4.2 4.5', 'M15.6 8c2.4 0 3.9-1.5 4.2-3.5', 'M10 15.8c1.3.8 2.7.8 4 0'],
 
   // ══ ONE MARK PER TRADE GOOD ═══════════════════════════════════════════════════════════════════
   //

@@ -39,24 +39,29 @@ import { properName } from '../../lib/i18n'
  * FALLBACK a good wears when it has no mark of its own, so a shared one is a lesser answer, not a
  * wrong one. Goods with their own drawing (GOOD_ICON below) are unaffected either way.
  */
+//
+// THE LONG TAIL BY FAMILY (2026-11-23, the visual overhaul's slice 9): the 629-good Codex is mostly that tail, and twelve of the
+// seventeen categories wore another's glyph (a grain, a drink and a dish were one sack; a gem, a book and a painting one
+// jewel), so a screen of rarer goods read as rows of one mark. Each category now wears its own family glyph; the seven that
+// already had one keep it. A good's own drawing still wins.
 const CATEGORY_ICON: Record<string, IconName> = {
-  grain: 'foodstuff',
+  grain: 'grain',
   food: 'foodstuff',
-  drink: 'foodstuff',
-  tobacco: 'raw',
+  drink: 'drink',
+  tobacco: 'tobacco',
   spice: 'spice',
-  medicine: 'raw',
-  dye: 'raw',
+  medicine: 'medicine',
+  dye: 'dye',
   cloth: 'textile',
   metal: 'metal',
-  gems: 'luxury',
-  crafts: 'luxury',
-  weapons: 'metal',
-  guns: 'metal',
+  gems: 'gems',
+  crafts: 'crafts',
+  weapons: 'weapons',
+  guns: 'guns',
   'ship-supplies': 'navalStores',
-  art: 'luxury',
-  books: 'luxury',
-  animals: 'raw',
+  art: 'art',
+  books: 'books',
+  animals: 'animals',
 }
 
 /** Good `code` → its own mark: the original seventy, plus every newer good offered at 5+ ports. */

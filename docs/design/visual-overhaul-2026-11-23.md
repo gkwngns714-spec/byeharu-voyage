@@ -183,6 +183,18 @@ player sees.
 - Before: Reputation a bare number; levels under the fold; the next title a sentence.
 - After: a header plate (your house, its flag, title, reputation ring); levels as Melvor-style tiles, each a mark in a ring with level and
   a 6-px bar to the next; the next title is a ring's target; the Codex's long tail gets drawn marks per class family.
+- Built (decided by default, the owner may reverse each): You opens on the house's PLATE (`HousePlate`, YouScreen.tsx): the
+  company's flag on a disc and its name whole, then two rings, the TITLE (a new `coronet` glyph, filled by the lower of her Trading
+  and Exploration levels against the level the next title asks; its name and level beside it, the next title and the two levels
+  it asks under them) and REPUTATION (the laurel, its ring today's capped earnings against the Day cap; the balance and "Day cap
+  a / b" beside it), and the room line at its foot. The title MOVED from the levels card and Reputation from its own card, so each
+  stands once. A level tile is now its mark in a 40-px `Ring` filled to the next level, the level figure, the name, the 6-px bar
+  and the experience with the next level's gift. THE LEVEL-UP MOMENT: a tile whose served level is higher than the one it last
+  drew this session glows gold once, its mark and figure pop and a chevron rises off the ring (1.4 s, `bv-level-*` in index.css;
+  under reduced motion nothing plays); a page load starts with nothing seen, so only a rise plays it. The Codex's long tail: the
+  twelve categories that wore another's glyph wear their own family mark (grain sheaf, amphora, clay pipe, apothecary bottle, dyer's
+  skein, ring, basket, halberd, musket, framed portrait, books on a shelf, ox head; `CATEGORY_ICON`), so 313 tail goods are told
+  apart by family. The Account row stays at the page's foot.
 
 **10. Yard, Land and the welcome.**
 - Before: the yard shows four prices in words; the Land site is a form; the welcome is four sentences.
