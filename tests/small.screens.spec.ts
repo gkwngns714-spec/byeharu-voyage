@@ -118,7 +118,8 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
 
       // Stats: every city
       await open(page, 'stats')
-      await page.locator('[data-testid="stats"] [role="tablist"] [role="tab"]').nth(3).click()
+      // Cities: the third face up front since 2026-11-23 (the visual overhaul's slice 2, X5)
+      await page.locator('[data-testid="stats"] [role="tablist"] [role="tab"]').nth(2).click()
       await expect(page.getByTestId('stats-city-open').first()).toBeVisible({ timeout: 120_000 })
       await page.getByTestId('stats-cities-show-all').click()
       await page.waitForTimeout(400)

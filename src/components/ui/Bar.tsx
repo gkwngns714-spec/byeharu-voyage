@@ -16,8 +16,10 @@ import { Col, type ColWidth } from './Row'
 //                                   count 62% of a line.
 // A caller passes one or the other. Passing `of` is what selects the segmented form.
 //
-// 4px TALL, per §4.3 — a hairline with a job, not a widget. It carries no border and no radius
-// beyond the pill it already is, and it is separated from what is around it by tone, never by a box.
+// 6px TALL since 2026-11-23 (4 until then, per §4.3: "a hairline with a job"). The owner asked for progress you can feel
+// (docs/design/visual-overhaul-2026-11-23.md: "satisfying progress bars", the RuneScape / Melvor skill bar), and a 4-px line
+// read as a rule under the text, not as a thing filling up. The continuous fill is lit from its leading edge (the tone at
+// 65 % behind, whole at the front) so the bar reads as moving toward its end. Still no border, still a pill, still tone only.
 //
 // THE TONE IS THE MEANING, and §4.4's rule holds here more tightly than anywhere else in the game:
 // green-red on a bar ONLY ever mean cheap-dear or gain-loss. A bar that is merely *low* is
@@ -43,6 +45,16 @@ const FILL: Record<BarTone, string> = {
   warning: 'bg-warning',
   danger: 'bg-danger',
   info: 'bg-info',
+  neutral: 'bg-ink-faint',
+}
+
+/** The continuous fill: the same tone, lit toward its leading edge. */
+const RUN: Record<BarTone, string> = {
+  accent: 'bg-linear-to-r from-accent/65 to-accent',
+  success: 'bg-linear-to-r from-success/65 to-success',
+  warning: 'bg-linear-to-r from-warning/65 to-warning',
+  danger: 'bg-linear-to-r from-danger/65 to-danger',
+  info: 'bg-linear-to-r from-info/65 to-info',
   neutral: 'bg-ink-faint',
 }
 
@@ -106,7 +118,7 @@ export function Bar({
         aria-valuenow={segmented ? filled : Math.round(clamped)}
         aria-valuemin={0}
         aria-valuemax={segmented ? (of as number) : 100}
-        className="flex h-1 min-w-0 flex-1 items-stretch gap-0.5 overflow-hidden rounded-chip"
+        className="flex h-1.5 min-w-0 flex-1 items-stretch gap-0.5 overflow-hidden rounded-chip"
         data-track
       >
         {segmented ? (
@@ -119,7 +131,7 @@ export function Bar({
         ) : (
           <span className={`relative block h-full w-full rounded-chip ${TRACK}`}>
             <span
-              className={`block h-full rounded-chip transition-[width] ${FILL[tone]}`}
+              className={`block h-full rounded-chip transition-[width] ${RUN[tone]}`}
               style={{ width: `${solidTo}%` }}
             />
             {pending !== undefined && washTo > washFrom && (

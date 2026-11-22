@@ -18,10 +18,22 @@
 import { expect, type Page } from '@playwright/test'
 import { settled, WORLD_BOOT_MS } from './appReady.fixture'
 
-/** THE OFFICE TAB'S FACE, opened the way a player opens it (2026-11-16: City, Invest and Report left the Trade desk for the
- *  Office tab): its own cell on the nav, then the face in the Office's strip. Works from any screen with the nav. */
+/** THE OFFICE'S FACE, opened the way a player opens it (2026-11-16: City, Invest and Report left the Trade desk for the Office;
+ *  2026-11-23, the visual overhaul's slice 2: the Office cell left the bar and its faces are HQ's doors): the HQ cell, the door,
+ *  then the face in the Office's strip. Works from any screen with the nav. A HQ with no harbour in hand draws no doors; the
+ *  route itself is then the way in (in place, as the router would take it, never a reload). */
 export async function openOfficeFace(page: Page, face: string | RegExp): Promise<void> {
-  if (!new URL(page.url()).pathname.endsWith('/office')) await page.locator('a[href$="/office"]:visible').first().click()
+  if (!new URL(page.url()).pathname.endsWith('/office')) {
+    await page.locator('a[href$="/city"]:visible').first().click()
+    const door = page.getByTestId('city-office-city')
+    await page.locator('[data-testid="city-office-city"], [data-testid="city-nocity"]').first().waitFor({ timeout: WORLD_BOOT_MS })
+    if ((await door.count()) > 0) await door.click()
+    else
+      await page.evaluate(() => {
+        history.pushState({}, '', `${location.pathname.replace(/\/[^/]*$/, '')}/office`)
+        dispatchEvent(new PopStateEvent('popstate'))
+      })
+  }
   const office = page.getByTestId('office')
   await expect(office).toBeVisible({ timeout: WORLD_BOOT_MS })
   await office.getByRole('tablist').first().getByRole('tab', typeof face === 'string' ? { name: face, exact: true } : { name: face }).click()

@@ -219,8 +219,11 @@ for (const size of SIZES) {
 
       // 3b. EVERY FACE INSIDE THE TAB, AND EVERY PAGE ITS SUMMARIES OPEN.
       if (route === 'office') pagesMeasured += await walkFaces(page, size, /office faces/i, ['Invest', 'Report', 'City'])
-      else if (route === 'stats') pagesMeasured += await walkFaces(page, size, null, ['News', 'Markets', 'Cities', 'Merchants', 'Me', 'Overview'])
-      else pagesMeasured += await walkPages(page, size)
+      // the five up front and "More" (2026-11-23, slice 2, X5); then the More strip's own faces, the Overview last (3c reads it)
+      else if (route === 'stats') {
+        pagesMeasured += await walkFaces(page, size, null, ['News', 'Markets', 'Cities', 'Me', 'More'])
+        pagesMeasured += await walkFaces(page, size, /^more faces$/i, ['Merchants', 'Overview'])
+      } else pagesMeasured += await walkPages(page, size)
 
       // 3c. A FACE KEEPS ITS INFORMATION WHERE IT STANDS (the unfold slice, 2026-11-02, owner row 260: Stats has no
       // summary rows any more — U1): the day's money flows draw their figures and net bars ON the Overview, with no

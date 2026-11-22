@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { navWord } from '../../app/navTabs'
 import { Card, Icon, KEEP_WORDS_CLASS, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { ShellFrame } from '../../app/ShellFrame'
@@ -19,7 +20,7 @@ import type { FleetView, Refusal, SnapshotPort, TownHallView } from '../../lib/r
 import { gameSunInstantMs } from '../../lib/format'
 import { daylightAt, subsolarPoint } from '../../chart'
 import { serverNow } from '../../lib/serverClock'
-import { useT, type TKey } from '../../lib/i18n'
+import { useLocale, useT, type TKey } from '../../lib/i18n'
 import { regardBandWord } from '../../domain/port'
 import { CityFacePanel, type CityBuilding } from './CityFace'
 import { CityHallPanel } from './CityHallPanel'
@@ -111,6 +112,13 @@ const CITY_TILES: readonly { id: CitySelection; icon: IconName; label: TKey }[] 
   { id: PRODUCTION_PLACE, icon: 'mallet', label: 'city.production' },
   { id: 'port', icon: 'ship', label: 'city.port' },
   { id: 'inn', icon: 'crew', label: 'city.inn' },
+]
+
+/** THE OFFICE'S FACES AS HQ'S DOORS (slice 2, X2), in the Office's own order; the words are the Office strip's own. */
+const OFFICE_DOORS: readonly { id: 'city' | 'invest' | 'report'; icon: IconName; label: TKey }[] = [
+  { id: 'city', icon: 'office', label: 'command.f_city' },
+  { id: 'invest', icon: 'invest', label: 'command.f_invest' },
+  { id: 'report', icon: 'report', label: 'command.f_report' },
 ]
 
 export function CityScreen() {
@@ -303,6 +311,7 @@ function CityFrame({
   onSelect: (s: CitySelection) => void
 }) {
   const t = useT()
+  const officeWord = navWord(useLocale(), 'Office')
   const { nowMs } = useShellState()
   const kind = useCityKinds()(port.code)
   // THE LOADING METER, WHILE THE SCREEN IS STILL LOADING: the world steps ride `boot`, the hall
@@ -393,6 +402,25 @@ function CityFrame({
                   <Icon name={b.icon} size={20} />
                   <span className="max-w-full text-balance text-center text-t-label leading-tight">{t(b.label)}</span>
                 </button>
+              ))}
+            </div>
+          </nav>
+
+          {/* THE OFFICE'S THREE FACES ARE HQ'S DOORS (2026-11-23, the visual overhaul's slice 2, roadmap X2): the Office cell left the bar and
+              City, Invest and Report stand here as buildings, each a press to its page (`/office?face=`, OfficeScreen turns to it). They
+              open a page rather than this split: each is the desk's own shell with the fleet in hand, which this frame does not carry. */}
+          <nav aria-label={officeWord} data-testid="city-office">
+            <div className="grid grid-cols-3 gap-3 md:gap-4 xl:gap-6">
+              {OFFICE_DOORS.map((d) => (
+                <Link
+                  key={d.id}
+                  to={`/office?face=${d.id}`}
+                  data-testid={`city-office-${d.id}`}
+                  className="flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-tile bg-surface px-1 py-2 text-ink-muted transition hover:bg-surface-2 hover:text-ink"
+                >
+                  <Icon name={d.icon} size={20} />
+                  <span className="max-w-full text-balance text-center text-t-label leading-tight">{t(d.label)}</span>
+                </Link>
               ))}
             </div>
           </nav>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Dot, Segmented, Sheet } from '../../components/ui'
 import { formatKoreaTime } from '../../lib/format'
 import { useLocale, useT } from '../../lib/i18n'
@@ -14,7 +15,7 @@ import { FleetsByKindFace } from './Ships'
 import { FleetsFace } from './Fleets'
 import { NewsFace } from './News'
 import { OverviewFace } from './Overview'
-import { STATS_FACES, type StatsFace } from './statsFaces'
+import { FRONT_FACES, MORE_FACES, statsFaceOf, type StatsFace } from './statsFaces'
 import { useStatsLive } from './statsLive'
 
 // STATS — the world's figures, the way a trading screen shows a market (0214; docs/dev-log/2026-10-20-stats-tab.md).
@@ -61,7 +62,11 @@ export function StatsScreen() {
 
 function StatsBody({ title }: { title: string }) {
   const t = useT()
-  const [face, setFace] = useState<StatsFace>('overview')
+  // THE FACE UP: `?face=` when it names one (a link to a face, the specs' own door), else the first face up front (News).
+  const [params] = useSearchParams()
+  const [face, setFace] = useState<StatsFace>(() => statsFaceOf(params.get('face')) ?? FRONT_FACES[0].id)
+  // THE "MORE" FOLD (slice 2, X5; statsFaces.ts): a face under it lights "More" in the strip and stands its own strip under it.
+  const folded = MORE_FACES.some((f) => f.id === face)
   const { live, liveAtMs } = useStatsLive()
   const updated = liveAtMs === null ? null : t('stats.updated', { time: formatKoreaTime(liveAtMs) })
 
@@ -82,17 +87,27 @@ function StatsBody({ title }: { title: string }) {
         )
       }
     >
-      <Segmented
-        segments={STATS_FACES.map((f) => ({ id: f.id, label: t(`stats.${f.id}`) }))}
-        value={face}
-        onChange={setFace}
+      {/* FIVE FACES AND "MORE" (2026-11-23, slice 2, X5): six cells, three over three on a phone and one row from 640 px (Segmented's
+          own rule for six). Pressing More opens its first face; the folded faces stand as a second strip while one of them is up. */}
+      <Segmented<StatsFace | 'more'>
+        segments={[...FRONT_FACES.map((f) => ({ id: f.id, label: t(`stats.${f.id}`) })), { id: 'more' as const, label: t('stats.more') }]}
+        value={folded ? 'more' : face}
+        onChange={(id) => setFace(id === 'more' ? (folded ? face : MORE_FACES[0].id) : id)}
         label={t('stats.facesLabel')}
-        // TEN FACES (0431: Navy, Pirates, Cargo): five over five below 1,024 px and ONE ROW from it (2026-11-15 owner: shorter, cleaner) — four
-        // columns would leave a ragged third row of two
-        columns={5}
-        className="w-fit max-w-full max-sm:w-full lg:grid-cols-10"
+        className="w-fit max-w-full max-sm:w-full"
       />
-      <LiveNow live={live} />
+      {folded && (
+        <div data-testid="stats-more-faces">
+          <Segmented<StatsFace>
+            segments={MORE_FACES.map((f) => ({ id: f.id, label: t(`stats.${f.id}`) }))}
+            value={face}
+            onChange={setFace}
+            label={t('stats.moreLabel')}
+            className="w-fit max-w-full max-sm:w-full"
+          />
+        </div>
+      )}
+      <LiveNow live={live} world={folded} />
       {face === 'overview' && <OverviewFace live={live} />}
       {face === 'news' && <NewsFace live={live} />}
       {face === 'markets' && <MarketsFace />}

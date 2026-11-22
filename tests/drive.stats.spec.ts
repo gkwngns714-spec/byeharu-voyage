@@ -94,7 +94,7 @@ test('Stats: a counted world — every drawn series ends at its right edge on a 
   // the tab's own count would add a partial row that no production count ever writes (the cron counts at the edges).
   // The wait is in countedWorld: the slot is the world's drift slot, read from its own clock.
   await serveWorldImage(page, await countedWorld())
-  await open(page, request, baseURL, 'stats')
+  await open(page, request, baseURL, 'stats?face=overview')
   await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
   await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 120_000 })
   await page.waitForTimeout(1500)
@@ -164,7 +164,8 @@ test('Stats: the live band asks once a second and its Updated stamp moves every 
       orig.apply(console, args)
     }
   })
-  await open(page, request, baseURL, 'stats')
+  // the world's money stands on the faces under "More" (2026-11-23, slice 2, X5): open on the Overview
+  await open(page, request, baseURL, 'stats?face=overview')
   await expect(page.getByTestId('stats-updated')).toContainText(/\d\d:\d\d:\d\d/, { timeout: 120_000 })
   const stamps = new Set<string>()
   const t0 = await page.evaluate(() => performance.now())
@@ -227,7 +228,7 @@ test('Stats: a young world\'s City purses chart labels its x ticks with differen
 
 // ── ROWS 273, 298, 247: A CITY'S PAGE, ITS KIND, THE MONEY LOG'S CONTROLS ────────────────────────
 test('Stats: a city row opens its page with its kind in the title and the People block, Back returns; the Money log\'s filters (rows 273, 298, 247)', async ({ page, request, baseURL }) => {
-  await open(page, request, baseURL, 'stats')
+  await open(page, request, baseURL, 'stats?face=overview')
   await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
   // (247) the Money log's tappable things: what kind of control they are now
   const controls = await page.evaluate(() => {

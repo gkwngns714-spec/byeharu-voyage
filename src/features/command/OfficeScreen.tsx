@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { DeskShell } from './DeskShell'
 import { City } from './city/City'
 import { Invest } from './invest/Invest'
@@ -19,6 +21,16 @@ export function OfficeScreen() {
   const title = tabWord(useLocale(), '/office')
   const face = useOfficeView((s) => s.face)
   const turnTo = useOfficeView((s) => s.turnTo)
+  // HQ'S DOORS (2026-11-23, slice 2: the Office's faces stand on HQ as buildings): `?face=city|invest|report` turns to that face, once,
+  // and the URL drops it, so the face strip stays the one control of which face is up.
+  const [params, setParams] = useSearchParams()
+  const asked = params.get('face')
+  useEffect(() => {
+    if (asked === null) return
+    const hit = OFFICE_FACES.find((f) => f.id === asked)
+    if (hit) turnTo(hit.id)
+    setParams({}, { replace: true })
+  }, [asked, turnTo, setParams])
   return (
     <DeskShell
       testid="office"

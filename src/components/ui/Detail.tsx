@@ -13,8 +13,9 @@ import { useT } from '../../lib/i18n'
 // *"everything has folded. enough with folding things. make everything small, compact and once
 // clicked show new page popping up. this is wrong"*
 //
-// ONE MECHANISM, EVERYWHERE. A compact block is ONE `SummaryRow`: its title, its key figure, the
-// plain word Open and a chevron, 44 px tall. A press opens a `DetailPage`: a full-screen page fixed
+// ONE MECHANISM, EVERYWHERE. A compact block is ONE `SummaryRow`: its title, its key figure and a
+// chevron, 44 px tall (it also printed the word "Open" before the chevron until 2026-11-23: two marks for
+// one meaning, cut by the visual overhaul's slice 1, docs/design/visual-overhaul-2026-11-23.md). A press opens a `DetailPage`: a full-screen page fixed
 // OVER the tab (not a route, not an in-place unfold), with a back press, the block's title and
 // figure in its header, and its content scrolling inside the page's own bounded body. The tab
 // behind is never re-flowed — a fixed overlay is out of flow by construction — so the owner's
@@ -29,12 +30,11 @@ import { useT } from '../../lib/i18n'
 // `ScrollPane`, so the page lands with the same no-scroll law as a tab (`onepage.spec.ts` measures
 // `[data-detail-page]`). Nothing is deleted: the whole former block lives in the page.
 
-/** A compact block's one line: title, key figure, the word Open, and a chevron. `data-summary-row`
+/** A compact block's one line: title, key figure and a chevron. `data-summary-row`
  *  is what the one-page spec walks. The test id names the row; its page is `${testid}-page`. */
 export function SummaryRow({
   title,
   figure,
-  word,
   onClick,
   className = '',
   ...rest
@@ -42,8 +42,6 @@ export function SummaryRow({
   title: ReactNode
   /** The block's key figure — a number, a formatted string, a `<Figure>`. */
   figure?: ReactNode
-  /** ONE plain word ("Open"). */
-  word?: ReactNode
   onClick: () => void
   className?: string
 } & { 'data-testid'?: string }) {
@@ -85,7 +83,6 @@ export function SummaryRow({
           slots align.spec reads: label · value (beside it) · action (the edge affordance). */}
       {figure !== undefined && <span data-row-cell="value" className="shrink-0 text-t-caption tabular-nums text-ink-muted">{figure}</span>}
       <span data-row-cell="action" className="ml-auto flex shrink-0 items-center justify-end gap-2 text-t-caption tabular-nums text-ink-muted narrow:absolute narrow:right-0 narrow:top-[11px] narrow:ml-0">
-        {word !== undefined && <span className="text-ink-faint">{word}</span>}
         <Icon name="chevron" size={16} />
       </span>
     </button>

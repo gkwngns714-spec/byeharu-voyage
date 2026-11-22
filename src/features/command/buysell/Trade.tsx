@@ -295,13 +295,12 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   // THE CARGO DOOR CARRIES NO FIGURE (owner, 2026-10-31: *"no info duplicate info needed"*): the
   // desk's strip already prints her hold, and Fleets is the cargo fact's home. The door opens the
   // board whole, whose own title carries the figure — one readout, one home.
-  // ON A PHONE THE TWO DOORS SHARE ONE LINE (2026-11-12; the layout below). Half a line has no room for the word "Open"
-  // beside "Your cargo" (177 px of words in 171: it would cut the title), so there that door is its title and its chevron;
-  // nor for the map's city (it is the lit cell of the picker right under it). The Map door keeps "Open": alone it would read
-  // "Map", the nav's own cell (tests/consistency.spec.ts: two controls never share a label). The wide desk's doors are whole.
-  const cargoRow = <SummaryRow title={t('desk.cargo')} word={wide ? t('common.open') : undefined} onClick={() => setPage('cargo')} data-testid="cargo-open" />
-  const mapRow = <SummaryRow title={t('shell.tab_Map')} figure={wide ? mapFigure : undefined} word={t('common.open')} onClick={() => setPage('map')} data-testid="trade-map-open" />
-  const ordersRow = <SummaryRow title={t('desk.orders')} figure={formatInt(fleet.queue.length)} word={t('common.open')} onClick={() => setPage('orders')} data-testid="command-queue" />
+  // ON A PHONE THE TWO DOORS SHARE ONE LINE (2026-11-12; the layout below). Neither prints the word "Open" since 2026-11-23 (the
+  // chevron says it; docs/design/visual-overhaul-2026-11-23.md, slice 1). So the Map door carries the city it opens on at every
+  // width: alone it would read "Map", the nav's own cell (tests/consistency.spec.ts: two controls never share a label).
+  const cargoRow = <SummaryRow title={t('desk.cargo')} onClick={() => setPage('cargo')} data-testid="cargo-open" />
+  const mapRow = <SummaryRow title={t('shell.tab_Map')} figure={mapFigure ?? t('desk.atSea')} onClick={() => setPage('map')} data-testid="trade-map-open" />
+  const ordersRow = <SummaryRow title={t('desk.orders')} figure={formatInt(fleet.queue.length)} onClick={() => setPage('orders')} data-testid="command-queue" />
   const pages = (
     <>
       {page === 'cargo' && (

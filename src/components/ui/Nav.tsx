@@ -90,14 +90,30 @@ export function Nav({
     >
       {items.map((item) => {
         const on = item.id === current
+        const isOpen = item.href === undefined && openGroup === item.id
         const cell = [
-          'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 lg:min-h-16 lg:flex-none lg:gap-1 lg:rounded-tile lg:transition-colors',
-          on ? 'text-accent lg:bg-accent-soft' : 'text-ink-faint lg:hover:bg-surface-2 lg:hover:text-ink',
+          'flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 lg:min-h-16 lg:flex-none lg:gap-1 lg:rounded-tile lg:px-1 lg:transition-colors',
+          on ? 'text-accent lg:bg-accent-soft' : 'text-ink-faint hover:text-ink lg:hover:bg-surface-2',
           // the group stands at the rail's foot, beside where its tray opens
           item.href === undefined ? 'lg:mt-auto' : '',
+          isOpen ? 'text-ink lg:bg-surface-2' : '',
         ].join(' ')
+        // THE MARK LEADS (2026-11-23, docs/design/visual-overhaul-2026-11-23.md, slice 1): the glyph stands on a pill that is
+        // the lit cell's whole signal on a phone (the gold wash under a gold mark, the way a game's bar marks where you are),
+        // and the word under it is a caption. On the rail the cell's own plate is the signal, so the pill stays clear there.
+        // The pill is at most 48 px and never wider than its cell (seven cells at 320 px are 45 px each).
+        const mark = (
+          <span
+            data-nav-mark=""
+            className={`flex h-7 w-full max-w-12 items-center justify-center rounded-chip transition-colors ${
+              on ? 'bg-accent-soft lg:bg-transparent' : isOpen ? 'bg-surface-2 lg:bg-transparent' : ''
+            }`}
+          >
+            <Icon name={item.icon} size={22} strokeWidth={on ? 2 : 1.75} />
+          </span>
+        )
         const label = (
-          <span data-testid={`nav-label-${item.id}`} className="text-t-caption">
+          <span data-testid={`nav-label-${item.id}`} className={`text-t-caption ${on ? 'font-semibold' : ''}`}>
             {item.label}
           </span>
         )
@@ -114,17 +130,13 @@ export function Nav({
               }}
               className={cell}
             >
-              <Icon name={item.icon} size={22} />
+              {mark}
               {label}
             </a>
           )
         }
-        // A GROUP'S GLYPH IS THE CHEVRON, and the RAIL turns it rather than the shell. navTabs.ts
-        // states the rule this draws: a group cell's honest graphic is "this opens", because no
-        // single subject glyph is true of all four members. So it points UP at what it will reveal
-        // and DOWN once the tray is standing — the only thing a press changes about the bar, and
-        // it changes nothing about the bar's geometry.
-        const isOpen = openGroup === item.id
+        // A GROUP opens a tray instead of going anywhere: a `<button>` with `aria-expanded`. Its glyph is the four-tile `menu`
+        // (navTabs.ts GROUPS) and does not turn; the pill under it is the open state. A press changes nothing about the bar's geometry.
         return (
           <button
             key={item.id}
@@ -132,14 +144,50 @@ export function Nav({
             data-testid={`nav-cell-${item.id}`}
             aria-expanded={isOpen}
             onClick={() => onGroup?.(item.id)}
-            className={`${cell} ${isOpen ? 'lg:bg-surface-2 lg:text-ink' : ''}`}
+            className={cell}
           >
-            {/* On the bar it points UP at the tray it opens; on the rail it points RIGHT, where the tray stands beside it. */}
-            <Icon name={item.icon} size={22} className={isOpen ? 'rotate-90 lg:rotate-180' : '-rotate-90 lg:rotate-0'} />
+            {mark}
             {label}
           </button>
         )
       })}
     </nav>
+  )
+}
+
+/**
+ * A PLACE IN THE MENU: its glyph on a disc over its one-word name, as a tile (2026-11-23, docs/design/visual-overhaul-2026-11-23.md,
+ * slice 1). The Menu was a list of rows, each a small line glyph and a word beside a chevron, which read as a settings page; the tiles
+ * stand three to a line, the way a game lays out its screens. The place you are on wears the gold wash. A real `<a href>` (the router
+ * answers a plain click through `onClick`), at least 88 px tall, so every tile is far over the 44-px reach floor.
+ */
+export function MenuTile({
+  href,
+  icon,
+  label,
+  here,
+  onClick,
+}: {
+  href: string
+  icon: IconName
+  label: ReactNode
+  here: boolean
+  onClick: (e: ReactMouseEvent<HTMLAnchorElement>) => void
+}) {
+  return (
+    <a
+      href={href}
+      onClick={onClick}
+      aria-current={here ? 'page' : undefined}
+      data-menu-tile=""
+      className={`flex min-h-22 min-w-0 flex-col items-center justify-center gap-1.5 rounded-tile border px-1 py-2 transition-colors ${
+        here ? 'border-accent/40 bg-accent-soft text-accent' : 'border-edge bg-surface-2 text-ink hover:border-accent/30'
+      }`}
+    >
+      <span className={`flex h-10 w-10 items-center justify-center rounded-chip ${here ? 'bg-accent-soft' : 'bg-surface text-accent'}`}>
+        <Icon name={icon} size={22} strokeWidth={1.75} />
+      </span>
+      <span className="max-w-full text-center text-t-caption font-medium">{label}</span>
+    </a>
   )
 }

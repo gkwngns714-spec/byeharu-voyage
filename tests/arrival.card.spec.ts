@@ -65,15 +65,17 @@ for (const size of SIZES) {
       await expect(page.getByTestId('desk-trade')).toBeVisible()
       await expect(card).toHaveCount(0)
 
-      // the same figure the Report's Trade line shows (the one sale this company has made). Not the Report's total:
-      // since 0454/0459 a trip buys its stores at departure, and the total takes those (Supplies) too, while the card
-      // says the sale's own profit (main's red on 9636db6c: card +1 vs total 0, card +43 vs total +35).
+      // the same figure the Report's Trade and Crew lines show together (the one trip this company has made: the sale, its
+      // profit tax and dock fee are Trade, the wages it paid are Crew). Since 0474 the card says the trip's net (`trip_net`),
+      // the Buy & sell sheet's figure. Not the Report's total: since 0454/0459 a trip buys its stores at departure, and the
+      // total takes those (Supplies) too (main's red on 9636db6c: card +1 vs total 0, card +43 vs total +35).
       await openOfficeFace(page, 'Report')
       await expect(page.getByTestId('report-total')).toBeVisible()
-      const sign = (n: number) => (n < 0 ? `−${Math.abs(n)}` : n > 0 ? `+${n}` : '0')
-      const digits = (s: string) => s.replace(/[^\d−+-]/g, '').replace('-', '−')
+      const amount = (s: string) => Number(s.replace(/[^\d−+-]/g, '').replace(/[−-]/, '-').replace('+', ''))
       const sections = (await page.getByTestId('report-sections').innerText()).replace(/\s+/g, ' ')
-      expect(digits(await page.getByTestId('report-section-trade').innerText()), `card ${figures} vs the Report's Trade (${sections})`).toBe(sign(net).replace(/,/g, ''))
+      const trade = amount(await page.getByTestId('report-section-trade').innerText())
+      const crew = (await page.getByTestId('report-section-crew').count()) ? amount(await page.getByTestId('report-section-crew').innerText()) : 0
+      expect(trade + crew, `card ${figures} vs the Report's Trade and Crew (${sections})`).toBe(net)
     })
   })
 }

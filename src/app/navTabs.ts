@@ -74,7 +74,8 @@ import { translateMaybe, type Locale } from '../lib/i18n'
 // is GONE (owner: *"it is a game you dick. and i told you to remove the command tab"*): the City is
 // the game's home and its Market building is the desk's door. The label is "HQ", the City rail's
 // own word; the bar was HQ · Fleets · Map · Stats · Menu; since 2026-11-11 it is HQ · Trade · Fleets · Map · Menu, and since
-// 2026-11-16 HQ · Trade · Fleets · Map · Office · Menu (SIX cells again).
+// 2026-11-16 HQ · Trade · Fleets · Map · Office · Menu (SIX cells again). Since 2026-11-23 (the visual overhaul's slice 2) the
+// Office is off the bar, its faces HQ's doors: HQ · Trade · Fleets · Map · Land · Menu (five cells while Land is dark).
 //
 // ── THE RAIL HAS ROOM THE BAR HAS NOT (owner, 2026-11-14: *"make you, stats on the left side like hq, trade etc."*) ──
 // From `lg` the nav is a column down the window's left edge, and a column is not short of cells the way a 320-px row
@@ -96,10 +97,9 @@ export type NavGroupId = 'cabin'
 
 interface NavGroup {
   label: string
-  /** The chevron, not a subject glyph. A group cell's honest graphic is "this opens" — every other
-   *  icon in this table names a place, and no single place-glyph is true of all four members (a
-   *  book is not a wreath is not an account). The `Nav` primitive points it up while the tray is
-   *  shut and down while it is standing. */
+  /** Not a subject glyph: no single place-glyph is true of every member. It was the chevron ("this opens") until 2026-11-23;
+   *  it is the four-tile `menu` glyph since (docs/design/visual-overhaul-2026-11-23.md, slice 1), the mark every game's menu
+   *  button wears, and the open tray says the rest. Every other icon in this table names ONE place, and no two share a glyph. */
   icon: IconName
 }
 
@@ -113,7 +113,7 @@ export type LitSwitches = ReadonlySet<ServedSwitch>
 const NONE_LIT: LitSwitches = new Set()
 
 const GROUPS: Record<NavGroupId, NavGroup> = {
-  cabin: { label: 'Menu', icon: 'chevron' },
+  cabin: { label: 'Menu', icon: 'menu' },
 }
 
 const ALL_TABS: readonly (NavTab & {
@@ -124,6 +124,8 @@ const ALL_TABS: readonly (NavTab & {
   rail?: number
   /** On the bar only while the server serves this switch true (ServedSwitch). */
   served?: ServedSwitch
+  /** A tab switched off (`enabled: false`) whose route still stands: the cell lit while you stand on it (`litRoute`). */
+  under?: string
 })[] = [
   // HQ (owner, 2026-10-31: *"i press hq, then command, then hq disappears"*). The City page is the
   // game's home and sits OUTSIDE the shell, so without a cell here the desk's screens had no way
@@ -132,39 +134,42 @@ const ALL_TABS: readonly (NavTab & {
   // rail: HQ · Map · Stats · Menu (Fleets sits between HQ and Map here; the City rail does not
   // carry it). Five cells: 390 ÷ 5 = 78 px, clear of the 44 px floor and the 46 px the widest
   // label needs, and nav.geometry.spec re-measures the row on every run.
-  { to: '/city', label: 'HQ', icon: 'wreath', enabled: true },
+  { to: '/city', label: 'HQ', icon: 'fort', enabled: true },
   // TRADE (owner remaster, 2026-11-11, S1: a new captain landed on HQ with nothing to press and the desk
   // — where you buy, pick a city and sail & sell — was six presses away). The desk IS the first screen
   // now: its own cell, one press from everywhere, and HOME_TAB. The route is still `/command` (old links,
   // FLEETS' "Command her"); the word is "Trade", the desk's own first face. Bar: HQ · Trade · Fleets · Map · Menu.
-  { to: '/command', label: 'Trade', icon: 'compass', enabled: true },
+  { to: '/command', label: 'Trade', icon: 'scales', enabled: true },
   { to: '/fleets', label: 'Fleets', icon: 'ship', enabled: true },
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
   // LAND (owner, 2026-11-16: *"sending expeditions to land site (mountains), for minerals like rs3"*; docs/design/land-2026-11.md 6.7).
   // The party ashore and its skills: its OWN cell, like Map, after the sea's loop. SHIPPED DARK (0455): on the bar only while the
   // world serves `land_enabled` true, so until the owner lights it the bar is the six cells nav.geometry.spec measures. Lit, the
   // phone's bar is seven cells: 320 / 7 = 45.7 px, over the 44-px reach floor (tests/land.party.spec.ts measures it).
-  { to: '/land', label: 'Land', icon: 'pick', enabled: true, served: 'land_enabled' },
+  { to: '/land', label: 'Land', icon: 'mountain', enabled: true, served: 'land_enabled' },
   // OFFICE (owner, 2026-11-16: *"in trade, there are city invest report and levels, which aren't that related to trade. they
   // should have separate tab like map you stats etc."*). The desk's City, Invest and Report faces, MOVED to their own tab
   // (features/command/OfficeScreen.tsx); Levels went to You, where the company's levels already stood. Its OWN cell on the bar and on the rail,
   // like Map, never a Menu member: six cells, which nav.geometry.spec measures at 320 and 390 (this file's 2026-08-25 note:
   // six cells of 53 px at 320, clear of the reach floor). The word is "Office" / "사무소": the company's office ashore; "City"
   // was the HQ page's own word and one of the faces.
-  { to: '/office', label: 'Office', icon: 'coin', enabled: true },
+  // SWITCHED OFF 2026-11-23 (the visual overhaul's slice 2, roadmap X2: docs/design/visual-overhaul-2026-11-23.md). The bar is for
+  // the loop you play; the Office's three faces are the company ashore, so they stand on HQ as three doors (CityScreen's Office
+  // row) and the route stays, its face picked by `?face=`. The HQ cell is lit on it (`under`). Reversible: `enabled: true`.
+  { to: '/office', label: 'Office', icon: 'office', enabled: false, under: '/city' },
   // STATS (owner, 2026-10-20) moved INTO the Menu on 2026-11-11 (S1): the top bar is for the loop you play
   // (Trade · Fleets · Map); the world's figures are consulted, so they sit with the cabin. Every Stats
   // face stays reachable from here.
   { to: '/stats', label: 'Stats', icon: 'stats', enabled: true, group: 'cabin', rail: 2 },
   { to: '/ledger', label: 'History', icon: 'ledger', enabled: true, group: 'cabin' },
-  { to: '/rank', label: 'Rank', icon: 'wreath', enabled: true, group: 'cabin' },
+  { to: '/rank', label: 'Rank', icon: 'trophy', enabled: true, group: 'cabin' },
   // ROUTES (owner row 115, 2026-10-11): every lane the world sails, ranked. In the CABIN for this
   // group's own stated kind — it acts on nothing; a route is COMPOSED on Command, where its verb
   // lives, and this is where you find out what the world's lanes are worth. The word is "Routes"
   // and not a second word for the same idea: Command's fold is where you make one, this is where
   // you read them, as Port and Market turned out to be one place drawn twice. The bar draws FOUR
   // cells since PORT went under Command (2026-10-18, COMMAND_DESK D8) — a group member costs no cell.
-  { to: '/routes', label: 'Routes', icon: 'chart', enabled: true, group: 'cabin' },
+  { to: '/routes', label: 'Routes', icon: 'route', enabled: true, group: 'cabin' },
   // "Codex", not "Compendium": both mean the 도감, and the shorter word is the one that must fit a
   // cell. The screen's own title spells it out in full.
   { to: '/compendium', label: 'Codex', icon: 'codex', enabled: true, group: 'cabin' },
@@ -175,8 +180,10 @@ const ALL_TABS: readonly (NavTab & {
   // cells of nav.geometry.spec.ts stand. The word is "You", which is how every heading in this game
   // already addresses the player ("Your fleets", "Your week"); PROFILE stays the account beside it
   // (the papers that say who you are signed in as), and nothing is printed on both.
-  { to: '/you', label: 'You', icon: 'crew', enabled: true, group: 'cabin', rail: 1 },
-  { to: '/profile', label: 'Profile', icon: 'profile', enabled: true, group: 'cabin' },
+  { to: '/you', label: 'You', icon: 'person', enabled: true, group: 'cabin', rail: 1 },
+  // ACCOUNT (was "Profile"), OFF THE MENU since 2026-11-23 (slice 2, roadmap X4): the language and the sign-in are an "Account" row
+  // at the foot of You, which opens this route; `/profile` stays, and the You cell is lit on it. Reversible: `enabled: true`.
+  { to: '/profile', label: 'Account', icon: 'cog', enabled: false, group: 'cabin', under: '/you' },
 ]
 
 const ENABLED = ALL_TABS.filter((t) => t.enabled)
@@ -230,10 +237,10 @@ function buildCells(wide: boolean, lit: LitSwitches): readonly NavCell[] {
   return cells
 }
 
-/** The PHONE BAR's cells: HQ · Trade · Fleets · Map · Office · Menu, with You and Stats inside the Menu. */
+/** The PHONE BAR's cells: HQ · Trade · Fleets · Map · (Land, lit) · Menu, with You and Stats inside the Menu. */
 export const NAV_CELLS: readonly NavCell[] = buildCells(false, NONE_LIT)
 
-/** The WIDE RAIL's cells: HQ · Trade · Fleets · Map · Office · You · Stats · Menu, the Menu without those two. */
+/** The WIDE RAIL's cells: HQ · Trade · Fleets · Map · (Land, lit) · You · Stats · Menu, the Menu without those two. */
 export const NAV_RAIL_CELLS: readonly NavCell[] = buildCells(true, NONE_LIT)
 
 /** What the nav draws on this glass: the rail's cells from `lg` (`useWide()`), the bar's below it; a switched tab (`served`) only
@@ -268,8 +275,15 @@ export function navWord(locale: Locale, label: string): string {
  *  so its title and its lit nav cell are one word. A route outside the table falls back to its own
  *  last segment (no tab screen does that today; the command desk is not a tab and keeps its own). */
 export function tabWord(locale: Locale, to: string): string {
-  const tab = NAV_TABS.find((t) => t.to === to)
+  // A switched-off tab whose route still stands (the Office, the Account) keeps its word: its screen still titles itself.
+  const tab = ALL_TABS.find((t) => t.to === to)
   return navWord(locale, tab?.label ?? to.replace(/^\//, ''))
+}
+
+/** THE ROUTE WHOSE CELL IS LIT on `pathname`: itself, or, for a switched-off tab whose route still stands, the cell it now lives
+ *  under (`under`: the Office under HQ, the Account under You). */
+export function litRoute(pathname: string): string {
+  return ALL_TABS.find((t) => !t.enabled && t.to === pathname)?.under ?? pathname
 }
 
 /** THE SCREENS THAT READ PRICES — where the status strip carries the market countdown.

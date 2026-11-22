@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CARD_HEAD, CARD_PAD, CARD_SURFACE, CARD_TITLE } from './cardStyles'
+import { CardMark } from './Card'
+import type { IconName } from './icons'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE LIST PANEL — a list that is ON the screen, not behind a press (owner, 2026-11-01)
@@ -159,6 +161,7 @@ export function DenseRows({
 
 export function ListPanel({
   title,
+  icon,
   count,
   trailing,
   controls,
@@ -171,6 +174,8 @@ export function ListPanel({
 }: {
   /** What the list is, in the player's word ("Every good"). Omit it where the screen's own tab already says it. */
   title?: ReactNode
+  /** `card` only: the list's mark before its title (`CardMark`, as a `Card`'s). */
+  icon?: IconName
   /** How many rows the list holds — hugs the title (or stands alone when there is no title). */
   count?: ReactNode
   /** THE ONE CONTROL OF THE TITLE'S LINE — the sort. It stands at the right of the title, so a list with a
@@ -208,6 +213,7 @@ export function ListPanel({
                 {/* THE TITLE KEEPS 8 REM (2026-11-02, the Codex at 320×640): beside a 176-px search the title of a 256-px card was
                     squeezed to 68 px, "Great powers" wrapped and its count ran under the control. A control that does not fit beside
                     8 rem of title wraps UNDER it (the line wraps) — the title is never the thing that gives way. */}
+                {icon !== undefined && <CardMark icon={icon} />}
                 <h2 className={`flex min-w-32 flex-1 items-baseline gap-2 ${CARD_TITLE}`}>
                   {title}
                   {count !== undefined && (

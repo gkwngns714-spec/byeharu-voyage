@@ -44,6 +44,8 @@ const cell = (page: Page, to: string) => page.getByTestId(`nav-cell-${to}`).firs
 /** Stats lives in the Menu on a phone (S1, 2026-11-11), reached through the cabin's tray; on the wide rail it is its
  *  own cell (owner, 2026-11-14), so the cell is pressed where the glass draws one. */
 const press = async (page: Page, to: string) => {
+  // THE OFFICE IS HQ'S DOOR since 2026-11-23 (the visual overhaul's slice 2, X2): its cell is off the bar, so it is pressed on HQ.
+  if (to === '/office') return page.getByTestId('city-office-city').click()
   if (to !== '/stats' || (await cell(page, to).count()) > 0) return cell(page, to).click()
   await cell(page, 'cabin').click()
   await page.getByTestId('nav-group-panel').getByRole('link', { name: 'Stats' }).click()
@@ -190,7 +192,7 @@ test('Fleets: one fleet of seven ships — the company counts 7 hulls, her page 
 
 // ── ROWS 249 / 252 / 246: EVERY CELL BOTH WAYS, FROM THE HQ ──────────────────────────────────────
 for (const size of [PHONE, LAPTOP]) {
-  test(`Tabs @${size.width}: from the HQ each cell goes and comes back; the bar is HQ · Trade · Fleets · Map · Office · Menu (the rail adds You · Stats); the document never scrolls sideways`, async ({ page, request, baseURL }) => {
+  test(`Tabs @${size.width}: from the HQ each cell goes and comes back; the bar is HQ · Trade · Fleets · Map · Menu (the rail adds You · Stats; the Office is HQ's door); the document never scrolls sideways`, async ({ page, request, baseURL }) => {
     test.setTimeout(600_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await page.setViewportSize(size)
@@ -199,9 +201,9 @@ for (const size of [PHONE, LAPTOP]) {
     await expect(page.getByTestId('city-rail')).toBeVisible({ timeout: 120_000 })
     const labels = (await page.getByTestId('city-rail').locator('[data-testid^="nav-label-"]').allInnerTexts()).map((s) => s.trim())
     console.log(`@${size.width} rail: ${labels.join(' · ')}`)
-    // the phone's bar keeps six; the wide rail carries You and Stats as their own cells (owner, 2026-11-14); Office is its own cell on both (2026-11-16)
+    // the phone's bar keeps five; the wide rail carries You and Stats as their own cells (owner, 2026-11-14); the Office is HQ's door (2026-11-23, X2)
     const onRail = size.width >= 1024
-    expect(labels).toEqual(onRail ? ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'You', 'Stats', 'Menu'] : ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'Menu'])
+    expect(labels).toEqual(onRail ? ['HQ', 'Trade', 'Fleets', 'Map', 'You', 'Stats', 'Menu'] : ['HQ', 'Trade', 'Fleets', 'Map', 'Menu'])
     const scrolls: Record<string, string> = {}
     const read = async (name: string) => {
       scrolls[name] = await page.evaluate(() => {
@@ -231,7 +233,8 @@ for (const size of [PHONE, LAPTOP]) {
     const panel = page.getByTestId('nav-group-panel')
     await expect(panel).toBeVisible()
     // one place per destination: the two the rail carries are not in its Menu
-    await expect(panel.getByRole('link')).toHaveCount(onRail ? 5 : 7)
+    // (the Account left the Menu for You's foot on 2026-11-23, X4)
+    await expect(panel.getByRole('link')).toHaveCount(onRail ? 4 : 6)
     await expect(panel.locator('a[href$="/you"], a[href$="/stats"]')).toHaveCount(onRail ? 0 : 2)
     await panel.getByRole('link', { name: /History|기록/ }).click()
     await expect(page.getByTestId('ledger')).toBeVisible({ timeout: 120_000 })

@@ -73,7 +73,10 @@ const TITLED = [
   ['you', '/you'],
 ] as const
 
-const STATS_FACES = ['Overview', 'News', 'Markets', 'Cities', 'Merchants', 'Navy', 'Pirates', 'Cargo', 'Ships', 'Me'] as const
+// THE FIVE UP FRONT, THEN THE FIVE UNDER "More" (2026-11-23, the visual overhaul's slice 2, X5: statsFaces.ts). A folded face is
+// pressed after "More" has opened its strip; every one of the ten is still walked.
+const STATS_FACES = ['News', 'Markets', 'Cities', 'Pirates', 'Me', 'Overview', 'Merchants', 'Navy', 'Cargo', 'Ships'] as const
+const STATS_MORE = new Set<string>(['Overview', 'Merchants', 'Navy', 'Cargo', 'Ships'])
 const OFFICE_FACES = ['City', 'Invest', 'Report'] as const
 
 /** THE ONE DECLARED PLACE FOR A SUB-44 CONTROL — NOW EMPTY (consistency row 33 fixed: the Command
@@ -354,6 +357,10 @@ test.describe('the screen says the rail’s word', () => {
       let word: string
       if ((await cell.count()) > 0) {
         word = ((await page.getByTestId(`nav-label-${to}`).innerText()) ?? '').trim()
+      } else if (to === '/profile') {
+        // THE ACCOUNT LEFT THE MENU (2026-11-23, the visual overhaul's slice 2, X4): its word is on You's Account row, which reaches it.
+        await screen(page, 'you')
+        word = (await page.getByTestId('you-account-row').locator('[data-row-cell="label"]').innerText()).trim()
       } else {
         // A CABIN MEMBER: its word is on the Menu row that reaches it.
         const group = page.locator('[data-testid="nav-bar"] > button').first()
@@ -406,6 +413,8 @@ for (const size of SIZES) {
 
       if (route === 'stats') {
         for (const face of STATS_FACES) {
+          if (STATS_MORE.has(face) && (await page.getByRole('tab', { name: face, exact: true }).count()) === 0)
+            await pressFace(page.getByRole('tablist').first(), 'More', `${size.width} stats/More`, failures)
           if (!(await pressFace(page.getByRole('tablist'), face, `${size.width} stats/${face}`, failures))) continue
           // THE FACE'S LIST PANEL STANDS WHEN ITS READ HAS LANDED, NOT 500 MS AFTER THE PRESS. Main 195a01fd (run 42334341583, 2026-11-07) counted 4 of 5:
           // the sleep below ended before one face's served list had drawn, and `panelsHere()` counted it as 0. Wait for a panel, bounded, and NEVER throw:

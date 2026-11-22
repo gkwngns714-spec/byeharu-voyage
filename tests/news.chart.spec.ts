@@ -61,7 +61,7 @@ async function openStats(page: Page, glass: { width: number; height: number }) {
   const world = await happenedWorld()
   await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body: world, contentType: 'application/gzip' }))
   await page.setViewportSize(glass)
-  await page.goto('stats')
+  await page.goto('stats?face=overview')
   await ready(page)
   await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 180_000 })
 }

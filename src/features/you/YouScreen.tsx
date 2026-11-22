@@ -1,13 +1,13 @@
-import { Card, Clip, Facts, Figure, Icon, ListPanel, PageSplit, Row, Sheet } from '../../components/ui'
+import { Card, CardMark, Clip, Facts, Figure, Icon, ListPanel, PageSplit, Row, Sheet } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import type { FleetView, PlayerHouse } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CaptainRows, CaptainTray } from '../../live/YourCaptains'
 import { useYourCaptains } from '../../live/useYourCaptains'
-import { tabWord } from '../../app/navTabs'
+import { tabHref, tabWord } from '../../app/navTabs'
 import { properName, useLocale, useT } from '../../lib/i18n'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { companyRoom, useHouseRoom } from '../../live/houseRoom'
 import { YouLevelTray, YouLevels } from './Levels'
@@ -83,6 +83,7 @@ function YouBody({ title }: { title: string }) {
             <ListPanel
               look="card"
               columns="fit"
+              icon="crew"
               title={t('books.captains')}
               count={face.captains.length === 0 ? undefined : <span data-testid="your-captains-count">{formatInt(face.captains.length)}</span>}
               data-testid="your-captains"
@@ -104,9 +105,36 @@ function YouBody({ title }: { title: string }) {
           )
         }
       />
+      <AccountRow />
       <CaptainTray face={face} />
       <YouLevelTray picked={level} onClose={() => setLevel(null)} />
     </Sheet>
+  )
+}
+
+/** THE ACCOUNT, ONE ROW AT THE PAGE'S FOOT (2026-11-23, the visual overhaul's slice 2, roadmap X4): the Profile left the Menu, and the
+ *  language and the sign-in are reached from here. The row reads the language in its own script and opens `/profile` (the Account
+ *  page), a real anchor whose plain click routes in place. Its word is the tab table's (`tabWord`), one authority with that page's title. */
+function AccountRow() {
+  const t = useT()
+  const locale = useLocale()
+  const navigate = useNavigate()
+  return (
+    <Card compact data-testid="you-account">
+      <Row
+        mark={<CardMark icon="cog" />}
+        label={tabWord(locale, '/profile')}
+        value={<span className="text-t-caption text-ink-muted">{t(locale === 'ko' ? 'common.korean' : 'common.english')}</span>}
+        chevron
+        hairline={false}
+        href={tabHref('/profile')}
+        onClick={(e) => {
+          e.preventDefault()
+          navigate('/profile')
+        }}
+        data-testid="you-account-row"
+      />
+    </Card>
   )
 }
 
@@ -138,7 +166,7 @@ function Reputation({ player }: { player: PlayerHouse }) {
   const rep = player.reputation
   if (!rep) return null
   return (
-    <Card title={t('shell.reputation')} data-testid="you-reputation">
+    <Card icon="laurel" title={t('shell.reputation')} data-testid="you-reputation">
       <span data-testid="you-reputation-balance" data-value={rep.balance}>
         <Figure value={formatInt(rep.balance)} size="figure" />
       </span>
@@ -167,6 +195,7 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
     <ListPanel
       look="card"
       columns="fit"
+      icon="ship"
       title={t('you.ships')}
       count={
         ships.length === 0 ? undefined : (

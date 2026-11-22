@@ -60,18 +60,31 @@ export type StatsFace = 'overview' | 'news' | 'markets' | 'cities' | 'merchants'
  *  Merchants (the owner, 2026-11-15: "in stats, show like merchants navy, pirates, anad cargo"). 0431: Navy, Pirates and Cargo after Merchants, a
  *  list and a page each as Merchants has (the owner, 2026-11-15: "a separate tab for navy, pirates, and cargoships like merchants"); Ships stays,
  *  after them, as the four kinds side by side (decided by default). */
-export const STATS_FACES: readonly { id: StatsFace }[] = [
-  { id: 'overview' },
+/**
+ *  THE "MORE" FOLD (2026-11-23, the visual overhaul's slice 2, roadmap X5): a player meets News, Markets, Cities, Pirates and Me; the
+ *  builder-facing faces (the Overview's world money, Merchants, Navy, Cargo, Ships) stand under one "More" in the strip, kept for the
+ *  owner. `more: true` is the whole switch: drop it and the face is up front again. The strip opens on the first face up front. */
+export const STATS_FACES: readonly { id: StatsFace; more?: true }[] = [
+  { id: 'overview', more: true },
   { id: 'news' },
   { id: 'markets' },
   { id: 'cities' },
-  { id: 'merchants' },
-  { id: 'navy' },
+  { id: 'merchants', more: true },
+  { id: 'navy', more: true },
   { id: 'pirates' },
-  { id: 'cargo' },
-  { id: 'ships' },
+  { id: 'cargo', more: true },
+  { id: 'ships', more: true },
   { id: 'me' },
 ]
+
+/** The faces up front, and the faces under "More", each in the table's order. */
+export const FRONT_FACES = STATS_FACES.filter((f) => !f.more)
+export const MORE_FACES = STATS_FACES.filter((f) => f.more)
+
+/** A face id from outside (`/stats?face=`), or null when it names none. */
+export function statsFaceOf(id: string | null): StatsFace | null {
+  return STATS_FACES.find((f) => f.id === id)?.id ?? null
+}
 
 /** THE CHART OF A CARD (2026-11-02, owner row 267 — *"charts get room"*): a `SeriesChart` 176 px tall (its plot 150), drawn 1 : 1 at
  *  the width the card leaves, with its reading line above it — the unfold slice drew these as a 24-px sparkline. The large view
