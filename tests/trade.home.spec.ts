@@ -18,19 +18,20 @@ for (const size of [PHONE, { width: 1280, height: 800 }]) {
     await expect(bar.getByTestId('nav-label-/command')).toHaveText('Trade')
     const onRail = size.width >= 1024
     const labels = (await bar.locator('[data-testid^="nav-label-"]').allInnerTexts()).map((s) => s.trim())
-    expect(labels).toEqual(onRail ? ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'You', 'Stats', 'Menu'] : ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'Menu'])
+    // (2026-11-23, the visual overhaul's slice 2: the Office's faces are HQ's doors, X2; the Account is You's foot, X4)
+    expect(labels).toEqual(onRail ? ['HQ', 'Trade', 'Fleets', 'Map', 'You', 'Stats', 'Menu'] : ['HQ', 'Trade', 'Fleets', 'Map', 'Menu'])
     await expect(page.getByTestId('trade-buy').first(), 'no buy button on the landing screen').toBeVisible({ timeout: 120_000 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'sideways scroll').toBe(true)
 
-    // ONE PLACE PER DESTINATION: the rail's own cells are not in its Menu; the phone's Menu holds all seven.
+    // ONE PLACE PER DESTINATION: the rail's own cells are not in its Menu; the phone's Menu holds all six.
     await bar.getByTestId('nav-cell-cabin').click()
     const panel = page.getByTestId('nav-group-panel')
-    await expect(panel.getByRole('link')).toHaveCount(onRail ? 5 : 7)
+    await expect(panel.getByRole('link')).toHaveCount(onRail ? 4 : 6)
     await expect(panel.locator('a[href$="/you"], a[href$="/stats"]')).toHaveCount(onRail ? 0 : 2)
     if (onRail) {
       await bar.getByTestId('nav-cell-cabin').click()
       await expect(panel).toHaveCount(0)
-      // the rail fits its seven cells: the Menu's foot is inside the window
+      // the rail fits its cells: the Menu's foot is inside the window
       const foot = await bar.getByTestId('nav-cell-cabin').evaluate((e) => Math.round(e.getBoundingClientRect().bottom))
       expect(foot, 'the Menu cell is cut off the rail').toBeLessThanOrEqual(size.height)
       await bar.getByTestId('nav-cell-/you').click()

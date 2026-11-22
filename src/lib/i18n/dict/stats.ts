@@ -5,6 +5,8 @@ import { defineDict } from '../define'
 export const statsDict = defineDict({
   en: {
     facesLabel: 'Stats faces',
+    more: 'More',
+    moreLabel: 'More faces',
     overview: 'Overview',
     news: 'News',
     markets: 'Markets',
@@ -309,6 +311,8 @@ export const statsDict = defineDict({
   },
   ko: {
     facesLabel: '통계 화면',
+    more: '더보기',
+    moreLabel: '더보기 화면',
     overview: '개요',
     markets: '시세',
     cities: '도시',

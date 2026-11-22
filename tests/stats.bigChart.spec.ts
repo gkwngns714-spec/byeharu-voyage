@@ -14,7 +14,7 @@ for (const vp of [PHONE, WIDE]) {
     test.setTimeout(420_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await page.setViewportSize(vp)
-    await page.goto('stats')
+    await page.goto('stats?face=overview')
     await ready(page)
     await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
     await expect(page.getByTestId('stats-overview')).toHaveAttribute('data-span', '1d', { timeout: 60_000 })

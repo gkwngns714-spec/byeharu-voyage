@@ -113,28 +113,29 @@ test('in Korean, no tab shows an English UI word outside the served proper nouns
   expect([...new Set(leaks)], 'English UI words in the Korean game').toEqual([])
 })
 
-test('the switch on Profile turns the page to English and back, in place', async ({ page, request, baseURL }) => {
+// (the Profile page is worded Account since 2026-11-23, the visual overhaul's slice 2, X4: You's Account row opens it)
+test('the switch on the Account page turns the page to English and back, in place', async ({ page, request, baseURL }) => {
   test.setTimeout(WORLD_BOOT_MS + 60_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.setViewportSize(PHONE)
   await open(page, 'profile')
   const switcher = page.getByTestId('language-switch')
-  await expect(page.getByRole('heading', { name: '프로필' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '계정' })).toBeVisible()
 
   // A marker on the shell proves the switch re-rendered the page rather than reloading it.
   await page.evaluate(() => document.querySelector('[data-world]')?.setAttribute('data-ko-probe', 'kept'))
   await switcher.getByRole('tab', { name: 'English' }).click()
-  await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible()
   await expect(page.locator('[data-ko-probe="kept"]')).toHaveCount(1)
   expect(await page.evaluate(() => document.documentElement.lang)).toBe('en')
 
   await switcher.getByRole('tab', { name: '한국어' }).click()
-  await expect(page.getByRole('heading', { name: '프로필' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '계정' })).toBeVisible()
   await expect(page.locator('[data-ko-probe="kept"]')).toHaveCount(1)
 
   // The choice is remembered: a reload opens in the language last chosen.
   await switcher.getByRole('tab', { name: 'English' }).click()
   await page.reload()
   await open(page, 'profile')
-  await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible()
 })

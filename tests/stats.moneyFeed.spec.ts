@@ -66,6 +66,8 @@ test('Stats › the money log panel shows my buy in red and the city’s side in
 
   // the default glass is wide: Stats is the rail's own cell there (owner, 2026-11-14), not a Menu row
   await page.getByTestId('nav-bar').getByTestId('nav-cell-/stats').click()
+  // the Overview stands under "More" since 2026-11-23 (the visual overhaul's slice 2, X5)
+  await page.getByRole('tab', { name: 'More', exact: true }).click({ timeout: 120_000 })
   await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
   // the log is the Overview's list panel: its rows are there, nothing to open
   const log = page.getByTestId('money-log')

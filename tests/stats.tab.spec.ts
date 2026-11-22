@@ -32,6 +32,10 @@ for (const vp of [PHONE, WIDE]) {
     await ready(page)
     await expect(page.getByTestId('stats')).toBeVisible()
 
+    // THE TAB OPENS ON NEWS, the first face up front (2026-11-23, the visual overhaul's slice 2, X5); the Overview is under "More".
+    await expect(page.getByTestId('stats-news')).toBeVisible({ timeout: 120_000 })
+    await page.getByRole('tab', { name: 'More', exact: true }).click()
+
     // Overview: the world's money, with its age
     await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
     // THE FACE'S DETAIL IS ON THE FACE (2026-11-02, the unfold slice: it was a summary row and a page): the four
@@ -69,6 +73,7 @@ for (const vp of [PHONE, WIDE]) {
     await noSidewaysScroll(page)
     await closeDetail(page)
 
+    await page.getByRole('tab', { name: 'More', exact: true }).click()
     await page.getByRole('tab', { name: 'Merchants', exact: true }).click()
     await expect(page.getByTestId('stats-merchants')).toBeVisible({ timeout: 60_000 })
     await noSidewaysScroll(page)
@@ -88,9 +93,9 @@ test('Stats is reached from the Menu, not the bar (S1, 2026-11-11)', async ({ pa
   await page.setViewportSize(PHONE)
   await page.goto('command')
   await ready(page)
-  // SIX cells since 2026-11-16: HQ · Trade · Fleets · Map · Office · Menu; Stats lives in the Menu.
+  // FIVE cells since 2026-11-23 (slice 2, X2: the Office's faces are HQ's doors): HQ · Trade · Fleets · Map · Menu; Stats lives in the Menu.
   const labels = await page.getByTestId('nav-bar').locator('a, button').allInnerTexts()
-  expect(labels.map((l) => l.trim())).toEqual(['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'Menu'])
+  expect(labels.map((l) => l.trim())).toEqual(['HQ', 'Trade', 'Fleets', 'Map', 'Menu'])
   await page.getByTestId('nav-bar').getByText('Menu').click()
   await page.getByTestId('nav-group-panel').getByRole('link', { name: 'Stats' }).click()
   await expect(page.getByTestId('stats')).toBeVisible()

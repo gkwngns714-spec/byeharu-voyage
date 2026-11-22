@@ -42,36 +42,39 @@ const ROWS = ['money-move', 'stats-good', 'stats-city-open', 'stats-merchant'] a
 /** The six faces, by their place in the tab strip (a Korean strip has other words), the panel and row each stands, and every
  *  figure / block the old faces had by test id — still on the face (U3). */
 const FACES = [
-  { name: 'Overview', panel: 'money-log', row: 'money-move', ids: ['stats-live', 'stats-live-purse', 'stats-live-world', 'stats-live-sea', 'stats-live-trades', 'stats-money', 'stats-holder', 'stats-new-money', 'stats-watch', 'stats-overview'] },
-  // 0347 (owner row 216): the news, newest first; a fresh world holds at least the UPDATE row of 0347 itself
+  // FIVE UP FRONT, then the five under "More" (2026-11-23, the visual overhaul's slice 2, X5: statsFaces.ts). `fold` is a folded face's
+  // place in the second strip, which "More" (the sixth cell of the first) opens.
   { name: 'News', panel: 'stats-news', row: 'news-item', ids: ['stats-news'] },
   { name: 'Markets', panel: 'stats-goods', row: 'stats-good', ids: ['stats-markets', 'stats-markets-day', 'stats-markets-window', 'stats-risers', 'stats-fallers', 'stats-most-traded', 'stats-markets-filters', 'stats-markets-sort'] },
   { name: 'Cities', panel: 'stats-cities', row: 'stats-city-open', ids: ['stats-cities', 'stats-cities-filters', 'stats-cities-sort'] },
-  { name: 'Merchants', panel: 'stats-merchants-all', row: 'stats-merchant', ids: ['stats-merchants', 'stats-merchant-figures', 'stats-merchant-fold', 'stats-merchant-states', 'stats-merchants-filters', 'stats-merchants-sort'] },
-  // 0419 (owner row 339, "in stats, show like merchants navy, pirates, anad cargo"): the Ships face stands BEFORE Me in the strip
-  // (statsFaces.ts). The walk opens faces by place, so without this row it measured Ships under Me's name and called Me's figures
-  // gone. Ships is new, so U3 has nothing of an old face to keep there; its design laws are measured like every face's.
-  // 0431 (owner, 2026-11-15: "a separate tab for navy, pirates, and cargoships like merchants"): Navy, Pirates and Cargo stand after Merchants and
-  // before Ships. New faces: U3 has nothing of an old face to keep; their design laws are measured like every face's.
-  { name: 'Navy', panel: 'stats-navy-list', row: null, ids: [] },
   { name: 'Pirates', panel: 'stats-pirates-list', row: null, ids: [] },
-  { name: 'Cargo', panel: 'stats-cargo-list', row: null, ids: [] },
-  { name: 'Ships', panel: 'stats-ships-by-country', row: null, ids: [] },
   { name: 'Me', panel: 'stats-best-trades', row: null, ids: ['stats-me', 'stats-me-week', 'stats-me-bars'] },
+  { name: 'Overview', fold: 0, panel: 'money-log', row: 'money-move', ids: ['stats-live', 'stats-live-purse', 'stats-live-world', 'stats-live-sea', 'stats-live-trades', 'stats-money', 'stats-holder', 'stats-new-money', 'stats-watch', 'stats-overview'] },
+  { name: 'Merchants', fold: 1, panel: 'stats-merchants-all', row: 'stats-merchant', ids: ['stats-merchants', 'stats-merchant-figures', 'stats-merchant-fold', 'stats-merchant-states', 'stats-merchants-filters', 'stats-merchants-sort'] },
+  { name: 'Navy', fold: 2, panel: 'stats-navy-list', row: null, ids: [] },
+  { name: 'Cargo', fold: 3, panel: 'stats-cargo-list', row: null, ids: [] },
+  { name: 'Ships', fold: 4, panel: 'stats-ships-by-country', row: null, ids: [] },
 ] as const
 
 const SHEET = '[data-testid="stats"]'
 
 
-async function open(page: Page, glass: { width: number; height: number }) {
+async function open(page: Page, glass: { width: number; height: number }, path = 'stats') {
   await page.setViewportSize(glass)
-  await page.goto('stats')
+  await page.goto(path)
   await ready(page)
   await expect(page.getByTestId('stats')).toBeVisible()
 }
 
-async function openFace(page: Page, index: number) {
-  await page.getByRole('tablist').first().getByRole('tab').nth(index).click()
+/** A face by its place: the first strip's `index`, or, for a face under "More" (`fold`), More and then the second strip's `fold`. */
+async function openFace(page: Page, index: number, fold?: number) {
+  if (fold === undefined) await page.getByRole('tablist').first().getByRole('tab').nth(index).click()
+  else {
+    // (a face has strips of its own, so the fold's strip is found by its id, never by its place among the tablists)
+    const strip = page.getByTestId('stats-more-faces')
+    if ((await strip.count()) === 0) await page.getByRole('tablist').first().getByRole('tab').nth(5).click()
+    await strip.getByRole('tab').nth(fold).click()
+  }
   await page.waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, undefined, { timeout: 120_000 }).catch(() => {})
   await page.waitForTimeout(700)
 }
@@ -90,7 +93,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         let figuresMet = 0
         let rowsMet = 0
         for (const [i, face] of FACES.entries()) {
-          await openFace(page, i)
+          await openFace(page, i, 'fold' in face ? face.fold : undefined)
           const where = `${locale} ${face.name} @${glass.width}×${glass.height}`
           const d = await readDesign(page, { sheet: SHEET, figureIds: FIGURES, rowIds: ROWS })
           const flat = await readGlass(page, face.panel, face.row, SHEET)
@@ -138,7 +141,9 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         }
 
         // NON-VACUITY: the walk measured the live strip on every face and a list's rows on four of them
-        expect(figuresMet, 'the walk measured no stat figures — did the strip render?').toBeGreaterThanOrEqual(FACES.length * FIGURES.length)
+        // (the world's money, "Gold in play", stands on the faces under More only since 2026-11-23, slice 2, X5: three figures up front, four there)
+        const owed = FACES.reduce((n, f) => n + ('fold' in f ? FIGURES.length : FIGURES.length - 1), 0)
+        expect(figuresMet, 'the walk measured no stat figures — did the strip render?').toBeGreaterThanOrEqual(owed)
         expect(rowsMet, 'the walk measured almost no list rows — did the lists render?').toBeGreaterThan(8)
         expect(failures, 'Stats is not the page the owner asked for').toEqual([])
       })
@@ -151,7 +156,7 @@ for (const glass of DESIGN_GLASSES) {
   test(`a chart's tray moves nothing behind it and stands over the side column, at ${glass.width}×${glass.height}`, async ({ page, request, baseURL }) => {
     test.setTimeout(480_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-    await open(page, glass)
+    await open(page, glass, 'stats?face=overview')
     await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
     // the watch and the log stand after the first live read: measure once they do, or a card arriving would read as a move
     await expect(page.getByTestId('stats-watch')).toBeVisible({ timeout: 60_000 })
@@ -190,7 +195,7 @@ test('a city row opens its page and Back returns; the Merchants views are views,
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await open(page, { width: 1280, height: 800 })
-  await openFace(page, 3)   // Cities: the 4th face since 0347 put News after Overview
+  await openFace(page, 2)   // Cities: the 3rd face up front since slice 2 (2026-11-23)
   const rows = page.getByTestId('stats-city-open')
   await expect.poll(() => rows.count(), { timeout: 60_000 }).toBeGreaterThan(10)
   const first = (await rows.first().getByTestId('stats-city-name').innerText()).trim()
@@ -205,7 +210,7 @@ test('a city row opens its page and Back returns; the Merchants views are views,
   await expect(page.getByTestId('stats-cities')).toBeVisible()
   expect(await rows.count(), 'Back returned to a shorter list').toBeGreaterThan(10)
 
-  await openFace(page, 4)   // Merchants
+  await openFace(page, 0, 1)   // Merchants: the 2nd face under More
   await page.getByRole('tab', { name: 'Best day', exact: true }).click()
   await expect(page.getByTestId('stats-merchants-top')).toBeVisible()
   await page.getByRole('tab', { name: 'Worst day', exact: true }).click()
@@ -220,7 +225,7 @@ test('a city row opens its page and Back returns; the Merchants views are views,
 test('the large chart opens and answers a press on the short glass', async ({ page, request, baseURL }) => {
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-  await open(page, { width: 320, height: 640 })
+  await open(page, { width: 320, height: 640 }, 'stats?face=overview')
   await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
   await page.getByTestId('stats-chart-tap').first().click()
   const big = page.getByTestId('stats-big-chart')
@@ -234,7 +239,7 @@ test('the large chart opens and answers a press on the short glass', async ({ pa
 test('the Overview keeps its four holders, its charts, its stacked bar and its watch on the face — no press', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-  await open(page, { width: 1280, height: 800 })
+  await open(page, { width: 1280, height: 800 }, 'stats?face=overview')
   await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
   await expect(page.getByTestId('stats-holder')).toHaveCount(4)
   await expect(page.getByTestId('stats-money').locator('[role="img"]').first()).toBeVisible()
