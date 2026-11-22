@@ -972,7 +972,12 @@ async function readCityList(page: Page, city: string) {
         }
       }),
       all: listEl ? listEl.querySelectorAll('[data-testid="merchant-row"]').length : 0,
-      line: (document.querySelector('[data-testid="map-place-name-line"]')?.textContent ?? '').trim(),
+      // 2026-11-23 (visual overhaul slice 4): the head says its counts as a sail and an anchor with their figures; the numbers are
+      // read off the unit's own data, its words off its accessible name
+      head: (() => {
+        const e = document.querySelector('[data-testid="map-place-merchants"]')
+        return e ? { all: Number(e.getAttribute('data-all')), inPort: Number(e.getAttribute('data-in-port')), words: e.getAttribute('aria-label') ?? '' } : null
+      })(),
     }
   }, GROUPS.map((g) => g.id))
 
@@ -1010,10 +1015,11 @@ async function readCityList(page: Page, city: string) {
   expect(snap.all, `${city}: rows outside every section`).toBe(printed.reduce((n, p) => n + p.rows.length, 0))
   expect(snap.all, `${city}: a list with no rows`).toBeGreaterThanOrEqual(1)
   const inPort = printed.find((p) => p.heading === 'In port')?.rows.length ?? 0
-  const head = Number(snap.line.match(/(\d+) merchants?/)?.[1] ?? '0')
+  const head = snap.head?.all ?? 0
   expect(head, `${city}: the head counts fewer merchants than the tab lists`).toBeGreaterThanOrEqual(snap.all)
-  if (inPort > 0) expect(snap.line).toContain(`· ${inPort} in port`)
-  else expect(snap.line).not.toContain('in port')
+  expect(snap.head?.inPort ?? 0, `${city}: the head's in-port figure is the In port section's`).toBe(inPort)
+  if (inPort > 0) expect(snap.head?.words).toContain(`· ${inPort} in port`)
+  else expect(snap.head?.words ?? '').not.toContain('in port')
   return printed
 }
 

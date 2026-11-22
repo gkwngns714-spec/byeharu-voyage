@@ -209,6 +209,9 @@ export { Icon, IconDisc, type IconDiscTone } from './Icon'
 // sizes. Pure: HullCountry and PortFlag (src/live) decide WHICH nation; the chart's names draw the
 // same file through `flagSrc`. Sources and licences: public/flags/SOURCES.md.
 export { Flag, FlagSlot } from './Flag'
+// A harbour's one picture (the visual overhaul's principle 7): six regional skylines, picked by the served culture.
+export { Skyline } from './Skyline'
+export { SKYLINE_KINDS, skylineOf, type SkylineKind } from './skylineKinds'
 export { flagSrc, FLAG_SIZES, type FlagSize } from './flagSrc'
 export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
 // A mark for a trade good, and the human spelling of its category. Every good in data/goods.json

@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
-import { IconDisc, Row, SheetSection, Skeleton, Clip } from '../../components/ui'
+import { Row, SheetSection, Skeleton, Clip } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import { MerchantRow } from '../../live/MerchantRow'
 import { merchantParts } from '../../live/merchantLine'
@@ -7,6 +7,7 @@ import { harbourSides } from '../../live/merchantGroups'
 import type { PortMerchant } from '../../lib/rpc'
 import { GoToLink, PlaceLine, type FleetOnChart, type MapPort } from '../../chart'
 import { fleetParts } from './fleetLine'
+import { FleetHull } from './FleetHull'
 import { useT } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -17,11 +18,11 @@ import { useT } from '../../lib/i18n'
 // ships."* Two sections, and nothing else:
 //
 //     In port                                        5
-//       [⚓] Gaivota                       yours      ›
+//       [hull] Gaivota                                 ›
 //       [⛵] Carreira da Guiné    12     2 h 14 min   ›
 //            Casa de Aveiro · 3 ships     level  Resting
 //     Incoming                                       3
-//       [⛵] Gaivota II                      yours     ›
+//       [hull] Gaivota II                              ›
 //            to Lisbon · 11m
 //       [⛵] Costeiros do Sul     4         Ending     ›
 //            Casa de Faro · 2 ships · to Lisbon · 11m
@@ -81,7 +82,6 @@ export function CityHarbour({
             <OwnRow
               key={f.fleet.id}
               f={f}
-              right={<span className="text-t-caption text-accent">yours</span>}
               onOpen={onOpenFleet}
               hairline={i < inPortCount - 1}
             />
@@ -106,7 +106,6 @@ export function CityHarbour({
               f={f}
               // `to Lisbon · 11m` — her ETA, in the one where-line (fleetLine.ts).
               line={<PlaceLine parts={fleetParts(f, portsByCode, nowMs)} />}
-              right={<span className="text-t-caption text-accent">yours</span>}
               onOpen={onOpenFleet}
               hairline={i < incomingCount - 1}
             />
@@ -156,32 +155,31 @@ function Section({
   )
 }
 
-/** A fleet of yours: her name, where she is in the one where-line, and a right-hand fact. */
+/** A fleet of yours: her silhouette, her name, and where she is in the one where-line. */
 function OwnRow({
   f,
   line,
-  right,
   onOpen,
   hairline,
 }: {
   f: FleetOnChart
   line?: ReactNode
-  right?: ReactNode
   onOpen: (fleetId: string) => void
   hairline: boolean
 }) {
   return (
     <Row
-      mark={<IconDisc name={f.dockedAtCode ? 'anchor' : 'ship'} tone="accent" />}
+      // HER FLAGSHIP'S SILHOUETTE IN BRASS (2026-11-23, the visual overhaul's slice 4) says "yours": the English word "yours"
+      // that stood at the right of the row (never in the dictionary) is gone, and her name is in the accent.
+      mark={<FleetHull fleet={f} />}
       label={
         <span className="block min-w-0">
-          <Clip className="text-t-body text-ink">
+          <Clip className="text-t-body text-accent">
             <GoToLink to={{ kind: 'fleet', id: f.fleet.id }}>{f.fleet.name}</GoToLink>
           </Clip>
           {line !== undefined && <span className="block break-words text-t-caption text-ink-faint">{line}</span>}
         </span>
       }
-      value={right}
       chevron
       hairline={hairline}
       onClick={() => onOpen(f.fleet.id)}

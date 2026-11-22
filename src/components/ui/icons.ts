@@ -50,6 +50,9 @@ export const ICON_NAMES = [
   // The Office's doors on HQ (slice 2)
   'invest',
   'report',
+  // The Map's filter chips (slice 4)
+  'layers',
+  'waves',
   // The seven trade-good CATEGORIES. Not a good's own mark any more — the fallback, for a good
   // that arrives from a migration before anyone has drawn it. See goodIcons.ts.
   'spice',
@@ -269,6 +272,11 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   invest: ['M3.5 20h10', 'M3.5 16.5h10', 'M4.5 13h8', 'M3.5 20v-3.5', 'M13.5 20v-3.5', 'M15 12.5 20.5 7', 'M16.5 7h4v4'],
   // A page with a folded corner and its lines — Report (the company's book of results). Not the open book: that is History.
   report: ['M6 3h8.5L19 7.5V21H6V3Z', 'M14.5 3v4.5H19', 'M9 12h7', 'M9 15.5h7', 'M9 19h4'],
+  // ── THE MAP'S FILTER CHIPS (2026-11-23, the visual overhaul's slice 4) ──
+  // Three sheets stacked — the chart's filter itself, and its "Off" chip (the plain chart). `regions` stays the Regions chip.
+  layers: ['M12 4 3 8.5l9 4.5 9-4.5L12 4Z', 'M3 12.5l9 4.5 9-4.5', 'M3 16.5l9 4.5 9-4.5'],
+  // Three swells — the Seas chip (the sea zones, their waves and what each asks to pass). Not `route`, not the chart.
+  waves: ['M3 8c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0', 'M3 13c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0', 'M3 18c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0'],
 
   // ── THE SEVEN CATEGORY MARKS — now the FALLBACK, not the answer ───────────────────────────────
   // Every good in `data/goods.json` has its own mark below. These seven remain because a good can
