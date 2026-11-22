@@ -11,9 +11,9 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 import { useShellState } from '../../../app/shellState'
 import { formatCountdown, formatDaysReal, formatInt, formatPriceDelta, formatPriceFigure, instantMs, moneyFigure, moneyWord } from '../../../lib/format'
 import type { BoardSellRow, FleetView, MarketGood, PriceSeries } from '../../../lib/rpc'
-import { useT } from '../../../lib/i18n'
+import { properName, useT } from '../../../lib/i18n'
 import { WhyThisPrice } from '../markets/WhyThisPrice'
-import { useDeskPlan } from '../plans/planDraft'
+import { useDeskPlan, type PlanDraft } from '../plans/planDraft'
 import { PlanVoyage } from '../plans/PlanVoyage'
 import { useTripGo } from '../plans/useTripGo'
 import type { useTripBoard } from '../plans/useTripBoard'
@@ -555,6 +555,11 @@ function SailAct({
               />
             </>
           )}
+          {/* 0475: THE SECOND GOOD (a Trade card's `top`): one line, ticked; the one press buys and sells both. Only for the units it was
+              served for: the room and the coin it was sized to go when the first count moves. */}
+          {sellAt !== null && mine?.also && mine.units === mine.also.with && (
+            <AlsoLine also={mine.also} onToggle={() => mine.also && set({ also: { ...mine.also, on: !mine.also.on } })} />
+          )}
           <div className="mt-2 flex items-center gap-3">
             <Chip on={mine?.insure === true} onClick={() => set({ insure: !mine?.insure })} className="shrink-0 whitespace-nowrap" data-testid="plan-insure">
               {t('desk.insure')}
@@ -593,6 +598,27 @@ function SailAct({
 function firstBuy(most: number, ducats: number | null, price: number | null | undefined): number {
   if (ducats === null || price == null || !(price > 0)) return most
   return Math.max(1, Math.min(most, Math.floor(ducats / 2 / price)))
+}
+
+/** 0475: THE SECOND GOOD'S LINE: a tick ("Also load") and the good, its units and the served profit (sale less buy, tax and the dock fee it
+ *  adds). Nothing is priced here. */
+function AlsoLine({ also, onToggle }: { also: NonNullable<PlanDraft['also']>; onToggle: () => void }) {
+  const t = useT()
+  const goodByCode = useWorld((s) => s.goodByCode)
+  const name = properName('good', also.good, goodByCode[also.good]?.name ?? also.good)
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" data-testid="plan-also" data-good={also.good} data-units={also.units} data-on={also.on}>
+      <Chip on={also.on} onClick={onToggle} className="shrink-0 whitespace-nowrap" data-testid="plan-also-tick">
+        {t('desk.alsoLoad')}
+      </Chip>
+      <span className="text-t-caption text-ink" data-testid="plan-also-good">
+        {name} {formatInt(also.units)}
+      </span>
+      <span className={`ml-auto text-t-caption font-semibold tabular-nums ${also.on ? 'text-success' : 'text-ink-faint'}`} data-testid="plan-also-profit">
+        {formatPriceDelta(also.profit)}
+      </span>
+    </div>
+  )
 }
 
 /** THE TRIP'S DOCK FEE as the tray prints it: the served row's own `dock_fee` (0361: every harbour she calls at, the last

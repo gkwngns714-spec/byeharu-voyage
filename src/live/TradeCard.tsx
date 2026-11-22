@@ -7,7 +7,7 @@ import { portNameOf, useWorld } from './worldStore'
 import { dayLine } from '../domain/market'
 import type { TradeGoodRow } from '../domain/market'
 import { formatInt, formatPriceDelta, formatPriceFigure, formatRealShort } from '../lib/format'
-import { useT } from '../lib/i18n'
+import { properName, useT } from '../lib/i18n'
 import type { BestSale } from '../lib/rpc'
 
 // THE GOODS CARD — ONE card per good, wherever a good is traded (S5, 2026-11-11: the owner's remaster). The Trade board
@@ -221,6 +221,7 @@ function SaleBlock({
 }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
+  const goodByCode = useWorld((s) => s.goodByCode)
   // two of the card's four shared rows: the prices, and the line under them
   const block = `row-span-2 grid w-full min-w-0 ${canLand ? SALE_COLUMN : 'grid-cols-1'} grid-rows-subgrid gap-y-0`
   // a size container (`@container`), so each price's word stands only where the line has room for it (`PRICE_WORD`)
@@ -267,7 +268,13 @@ function SaleBlock({
   // 0351: the real time to that sale and what the buy costs (served; absent from a server before 0351)
   const time = sale.seconds != null ? formatRealShort(sale.seconds * 1000) : null
   const cost = sale.cost != null && sale.basis !== 'on_board' ? `${t('desk.cost')} ${formatPriceDelta(-sale.cost)}` : null
-  const words = [`${t('desk.bestSale')}: ${sale.pays ? '' : `${t('desk.noGain')} · `}${city} ${formatPriceDelta(sale.profit)}`, time, cost].filter(Boolean).join(' · ')
+  // 0475: the card's second good (the sheet's "Also load" line) is said in the line's title
+  const topWords = sale.top
+    ? `${t('desk.alsoLoad')} ${properName('good', sale.top.good, goodByCode[sale.top.good]?.name ?? sale.top.good)} ${formatInt(sale.top.units)} ${formatPriceDelta(sale.top.profit)}`
+    : null
+  const words = [`${t('desk.bestSale')}: ${sale.pays ? '' : `${t('desk.noGain')} · `}${sale.near === false ? `${t('desk.farTrip')} · ` : ''}${city} ${formatPriceDelta(sale.profit)}`, time, cost, topWords]
+    .filter(Boolean)
+    .join(' · ')
   return (
     <button type="button" onClick={() => onPress(sale)} title={words} className={`${block} rounded text-left transition hover:bg-surface active:scale-[0.99]`}>
       <span className={top}>{prices}</span>
@@ -282,6 +289,9 @@ function SaleBlock({
         data-cost={sale.cost ?? undefined}
         data-seconds={sale.seconds ?? undefined}
         data-far={sale.far?.port}
+        data-near={sale.near === undefined ? undefined : String(sale.near)}
+        data-spread={sale.spread}
+        data-top={sale.top?.good}
       >
         {/* 0433: the full load is beyond her purse: her purse against what it needs; the sale named is the most she can pay for.
             NOT RED (2026-11-22 play-test): a sale she can pay for still stands, so this is a fact, not a refusal; while she sails
@@ -293,6 +303,12 @@ function SaleBlock({
           </span>
         ) : (
           !sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>
+        )}
+        {/* 0475: in the first hour, a sale beyond the near trips is marked, not hidden (served `near` false; absent while dark) */}
+        {sale.near === false && (
+          <span className="shrink-0 font-medium text-ink-muted" data-testid="best-sale-far">
+            {t('desk.farTrip')}
+          </span>
         )}
         {/* the flag and the name stand together; in a card too narrow for both (산타크루스데테네리페 is 130 px, a 158-px card
             has 142 inside) the name takes the next line whole rather than being cut */}

@@ -183,8 +183,10 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
       return
     }
     const units = (to ?? s).units ?? 0
+    // 0475: the card's second good for the same harbour rides along (the sheet's line, ticked); another city pressed: none
+    const top = !to && s.top ? { ...s.top, with: units, on: true } : null
     setTripTo({ good: s.good, buyAt: city, sellAt, units })
-    openPlan({ good: s.good, buyAt: city, sellAt, units, max: null, min: null, insure: false })
+    openPlan({ good: s.good, buyAt: city, sellAt, units, max: null, min: null, insure: false, also: top })
     setSide('buy')
     pickGood(s.good)
     setBackTo(null)
