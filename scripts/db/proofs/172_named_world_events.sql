@@ -31,6 +31,7 @@ declare
   v_qty   numeric;
   v_q0    numeric;
   v_q1    numeric;
+  v_left  numeric;
   v_sp0   numeric;
   v_at    timestamptz := '2099-03-01 00:20:00+00';
   v_slot  bigint;
@@ -138,8 +139,14 @@ begin
     raise exception 'PROOF 172 FAIL: lit, the market''s rows do not say the famine (food x2, grain x2, cloth nothing)';
   end if;
   select q.avg_price into v_q1 from world.quote(v_lis, v_food, v_qty, 'sell', null, null) q;
-  if v_q0 is null or v_q1 is null or v_q1 < v_q0 * 1.8 or v_q1 > v_q0 * 2.2 then
-    raise exception 'PROOF 172 FAIL: lit, a sale of % at the famine is not about double (dark %, lit %)', v_qty, v_q0, v_q1;
+  -- only the units LEFT at the famine's cap (its 25 % less what was sold there this period) are paid x2, the rest at the plain price
+  -- (0255's walk). A world whose merchants sold food at Lisbon this period leaves fewer than v_qty (main's red, 2026-11-22: 16.50 → 29.16,
+  -- x1.77): the expected multiple is the served one, (2·min(left, qty) + rest) / qty, within 10 %.
+  select least(v_qty, greatest(0, w.left_units)) into v_left from world.want_left(v_lis, v_food) w;
+  v_left := coalesce(v_left, 0);
+  if v_q0 is null or v_q1 is null or v_left <= 0
+     or v_q1 < v_q0 * (2 * v_left + (v_qty - v_left)) / v_qty * 0.9 or v_q1 > v_q0 * (2 * v_left + (v_qty - v_left)) / v_qty * 1.1 then
+    raise exception 'PROOF 172 FAIL: lit, a sale of % at the famine (% of them left at x2) is not paid as served (dark %, lit %)', v_qty, v_left, v_q0, v_q1;
   end if;
   raise notice 'PASS: WE_FAMINE — % food and grain rows wanted x2, cloth nothing; a sale of % quoted % a unit (was %)', (select p.code from public.ports p where p.id = v_lis), v_qty, round(v_q1, 2), round(v_q0, 2);
 
