@@ -65,7 +65,8 @@ export function QuayFair({ portId }: { portId: string | null }) {
     }
   }, [portId, buffs, edge, buffsAt, nowMs, loadBuffs])
 
-  const live = buffs?.port ? buffs.port.running.filter((r) => r.live) : []
+  // 0469: only the FAIR shaves the fee; a world event at this quay is drawn by QuayEvents (./WorldEventLine.tsx), from its own read
+  const live = buffs?.port ? buffs.port.running.filter((r) => r.live && r.effect === 'SPREAD') : []
   if (!buffs || !buffs.port || live.length === 0) return null
 
   return (

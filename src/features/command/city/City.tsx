@@ -6,6 +6,7 @@ import { PORT_FACES, productionHref, type PortFace } from '../../../live/cityFac
 import { CityTownHall } from '../../../live/CityTownHall'
 import { PortAcademy } from '../../../live/PortAcademy'
 import { QuayFair } from '../../../live/PortFair'
+import { QuayEvents } from '../../../live/WorldEventLine'
 import { PortFlag } from '../../../live/PortFlag'
 import { PortGear } from '../../../live/PortGear'
 import { PortInn } from '../../../live/PortInn'
@@ -130,6 +131,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
         className={`mt-3 max-sm:w-full lg:flex lg:flex-wrap lg:*:min-w-11 lg:*:flex-auto lg:*:px-1! ${offered.length > 8 ? NINE_ON_TWO_LINES : ''}`}
       />
       <QuayFair portId={port.id} />
+      <QuayEvents portCode={port.code} />
       {/* 0255 (E6b, CLOSED_ECONOMY §4b): what this city wants now and pays a multiple for (absent while dark) */}
       {quay.market?.wants && quay.market.wants.length > 0 && (
         <Note tone="neutral" className="mt-3" data-testid="desk-city-wants">

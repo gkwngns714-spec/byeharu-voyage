@@ -633,6 +633,8 @@ const TABLE = {
   worldNationStandings: { schema: 'world', fn: 'nation_standings', args: [] },
   // 0467: Rank's houses' board, by this week's profit (dark: {on: false}).
   worldHousesWeek: { schema: 'world', fn: 'houses_week', args: [] },
+  // 0469: the world events (a famine, a festival, a blockade) running or announced (dark: {on: false}).
+  worldWorldEvents: { schema: 'world', fn: 'world_events', args: [] },
   // 0157 (docs/SKILLS_AND_CAPTAINS.md K5): seat a captain in a cabin of a ship, move her, or put her
   // ashore (ship null). Only in port — the server refuses E_NOT_IN_PORT otherwise.
   // 0160 (docs/SKILLS_AND_CAPTAINS.md K6): your captains — levels in three tracks, homesickness,

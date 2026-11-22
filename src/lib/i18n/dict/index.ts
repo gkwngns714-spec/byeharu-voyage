@@ -11,6 +11,7 @@ import { commandDict } from './command'
 import { commonDict } from './common'
 import { deskDict } from './desk'
 import { domainDict } from './domain'
+import { eventsDict } from './events'
 import { feedDict } from './feed'
 import { fightDict } from './fight'
 import { fleetsDict } from './fleets'
@@ -50,6 +51,7 @@ export const DICT = {
   common: commonDict,
   desk: deskDict,
   domain: domainDict,
+  events: eventsDict,
   feed: feedDict,
   fight: fightDict,
   fleets: fleetsDict,

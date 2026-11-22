@@ -153,6 +153,7 @@ import type {
   TaxSet,
   NationStandings,
   HousesWeek,
+  WorldEvents,
   WorkKind,
   StandingRouteDeleted,
   StandingRoutePaused,
@@ -1188,4 +1189,9 @@ export function worldNationStandings(): Promise<RpcResult<NationStandings>> {
 /** Rank's houses' board (0467) — the merchant houses and the companies, by this week's profit. Dark: `{on: false}`. */
 export function worldHousesWeek(): Promise<RpcResult<HousesWeek>> {
   return call<HousesWeek>('worldHousesWeek', [])
+}
+
+/** The world events (0469) — every famine, festival and blockade running or announced. Dark: `{on: false}`. */
+export function worldWorldEvents(): Promise<RpcResult<WorldEvents>> {
+  return call<WorldEvents>('worldWorldEvents', [])
 }
