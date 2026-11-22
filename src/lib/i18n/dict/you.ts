@@ -12,7 +12,8 @@ export const youDict = defineDict({
     noShips: 'No ships yet.',
     flagship: 'flagship',
     // F5: the room the company has (world.house_room), one line, a link to Fleets
-    room: 'Fleets {a} / {b} · Ships {c} / {d}',
+    // 2026-11-22 second play-test: "Ships 1 / 4" here beside Fleets' "Ships each 1 / 2" read as two counts of one thing; this is every fleet's room together
+    room: 'Fleets {a} / {b} · All ships {c} / {d}',
   },
   ko: {
     noCompany: '아직 회사 없음.',
@@ -21,6 +22,6 @@ export const youDict = defineDict({
     ships: '배',
     noShips: '아직 배 없음.',
     flagship: '기함',
-    room: '선단 {a} / {b} · 배 {c} / {d}',
+    room: '선단 {a} / {b} · 전체 배 {c} / {d}',
   },
 })

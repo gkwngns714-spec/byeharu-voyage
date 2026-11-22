@@ -29,6 +29,10 @@ export const yardDict = defineDict({
     store: 'Store',
     makeParts: 'Make parts',
     total: 'Total',
+    /** 2026-11-22 second play-test: one hull read three prices (15,000 on the card, Total 17,483, Order 26,226) with no word for which is which.
+     *  The card's figure and its own row are the yard's labour; Total is labour + the goods still to buy; an order adds its fee. */
+    labour: 'Labour',
+    orderFee: 'Order fee',
     weight: 'Weight',
     fits: 'Fits',
     tooHeavy: 'Too heavy',
@@ -115,6 +119,8 @@ export const yardDict = defineDict({
     store: '입고',
     makeParts: '부품 제작',
     total: '합계',
+    labour: '공임',
+    orderFee: '주문 수수료',
     weight: '무게',
     fits: '실림',
     tooHeavy: '초과',

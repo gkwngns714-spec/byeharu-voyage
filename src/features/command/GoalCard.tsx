@@ -73,6 +73,7 @@ export function GoalCard() {
   // THE PRESS OPENS THE NEXT STEP (2026-11-22 second play-test): the yard where she lies; away from it the Map, where its city is
   // (Office > City opens the city she lies in, and one with no yard fell back to its Market with no word why)
   const next2 = !second ? 'you' : second.here ? 'yard' : 'map'
+  const nextTitle = next ? t('command.goalNext', { name: properName('title', next.name, next.name) }) : t('command.lvTitleTop')
   return (
     // THE PRESS OPENS THE NEXT STEP (P0 of docs/design/playable-2026-11-22.md): while the second line is the second ship, the step
     // is the build yard's sheet (Office > City > Build yard: the materials stored, Plan trip, Build); otherwise the levels (You).
@@ -86,7 +87,16 @@ export function GoalCard() {
     >
       <span className="min-w-0 whitespace-nowrap text-t-body text-ink" data-testid="goal-title">
         {/* "Next: Mate" (2026-11-22, P0): the title bare read as a promotion she had not had (the You page still said the old one) */}
-        {second && unlock ? unlock : next ? t('command.goalNext', { name: properName('title', next.name, next.name) }) : t('command.lvTitleTop')}
+        {second && unlock ? (
+          // UNDER 390 PX THE UNLOCK GIVES WAY TO THE TITLE (2026-11-22 second play-test: at 320 px English "Trading 4 → Ships per fleet +1"
+          // ran under "Reputation 101"; the line never breaks and the card stays 44 px). The unlock stays one press away, on You.
+          <>
+            <span className="hidden min-[390px]:inline" data-testid="goal-unlock">{unlock}</span>
+            <span className="min-[390px]:hidden">{nextTitle}</span>
+          </>
+        ) : (
+          nextTitle
+        )}
       </span>
       {reputation !== null ? (
         <span className="whitespace-nowrap text-t-caption text-ink-faint" data-testid="goal-reputation" data-value={reputation}>

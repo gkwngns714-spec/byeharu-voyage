@@ -41,7 +41,8 @@ export const shellDict = defineDict({
     gift: 'Gift',
     gameDate: 'Game date',
     reputation: 'Reputation',
-    repToday: 'Today {a} / {b}',
+    // 2026-11-22 second play-test: "Today 5 / 600" with 70 earned today read as a wrong sum; the figure is what counts toward the day's cap
+    repToday: 'Day cap {a} / {b}',
   },
   ko: {
     tab_HQ: '본부',
@@ -81,6 +82,6 @@ export const shellDict = defineDict({
     gift: '지원금',
     gameDate: '게임 날짜',
     reputation: '평판',
-    repToday: '오늘 {a} / {b}',
+    repToday: '일일 한도 {a} / {b}',
   },
 })

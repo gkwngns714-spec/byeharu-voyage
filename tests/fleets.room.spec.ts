@@ -33,11 +33,11 @@ test('dark: the room says it is not open and offers no press; the fleet shows he
   await expect(room.getByTestId('fleet-room-dark')).toHaveText('Not open yet')
   await expect(room.getByTestId('fleet-room-buy')).toHaveCount(0)
   await expect(room.locator('button')).toHaveCount(0)
-  await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-step')).toHaveCount(4)
-  await expect(room.getByTestId('fleet-room-fleet')).toContainText('Trading level 1 / 3')
-  await expect(room.getByTestId('fleet-room-fleet')).toContainText('60,000')
+  // 2026-11-22 second play-test: the next place only, by level or by price, not the whole ladder
+  await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-next')).toContainText('Next: Trading level 1 / 3 or Price 60,000')
+  await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-have')).toContainText('1 / 2 · max 6')
   await expect(room.getByTestId('fleet-room-ship')).toContainText('Seamanship or Command level 0 / 1')   // have / need (2026-11-15): a new company has neither level yet
-  await expect(room.getByTestId('fleet-room-ship').getByTestId('fleet-room-step')).toHaveCount(10)
+  await expect(room.getByTestId('fleet-room-next')).toHaveCount(2)
   // nothing in the card shears sideways on a phone
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 
@@ -87,11 +87,12 @@ test('lit: one Buy stands on the price she can pay, and a press opens room for a
 })
 
 // THE ROOM CARD, LIT, AS SHIPPED (0370: fleet_room_bite true, fleet_hard_max 6), ON A PHONE AND ON A WIDE SCREEN, IN ENGLISH AND IN KOREAN. No patch: this is the world a player
-// gets. The fleet ladder is the whole way to SIX fleets: the free two, Trading 3, Trading 6, 60,000 and 1,000,000, each step on its own line with its level or its price. A locked level step reads HAVE / NEED
-// (2026-11-15, owner: requirements as have / need): a new company's Trading is 1, so "Trading level 1 / 3".
+// gets. The fleet ladder is the way to SIX fleets (the free two, Trading 3, Trading 6, 60,000 and 1,000,000); since the 2026-11-22 second play-test the card says what she
+// has, the most there is, and the NEXT place only: the level or the price that opens it. A locked level step reads HAVE / NEED (2026-11-15, owner: requirements as
+// have / need): a new company's Trading is 1, so "Trading level 1 / 3".
 const ROOM_WORDS = {
-  en: { rungs: ['Trading level 1 / 3', 'Trading level 1 / 6'], notOpen: 'Not open yet', buy: 'Buy' },
-  ko: { rungs: ['교역 레벨 1 / 3', '교역 레벨 1 / 6'], notOpen: '아직 안 열림', buy: '구매' },
+  en: { have: '1 / 2 · max 6', next: 'Next: Trading level 1 / 3 or Price 60,000', notOpen: 'Not open yet', buy: 'Buy' },
+  ko: { have: '1 / 2 · 최대 6', next: '다음: 교역 레벨 1 / 3 또는 가격 60,000', notOpen: '아직 안 열림', buy: '구매' },
 } as const
 
 for (const glass of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
@@ -99,7 +100,7 @@ for (const glass of [{ width: 390, height: 844 }, { width: 1280, height: 800 }])
     test.describe(`the room card as shipped, ${glass.width}px ${lang}`, () => {
       test.use({ viewport: glass, locale: lang === 'ko' ? 'ko-KR' : 'en-US' })
 
-      test('lit: the fleet ladder shows both level steps and both prices, one Buy, nothing cut', async ({ page, request, baseURL }) => {
+      test('lit: the fleet room says what she has, the most, and the next place by level or price; one Buy, nothing cut', async ({ page, request, baseURL }) => {
         test.setTimeout(480_000)
         test.skip(!(await reachable(request, baseURL ?? '')), 'no served build')
         await openFleets(page)
@@ -108,13 +109,8 @@ for (const glass of [{ width: 390, height: 844 }, { width: 1280, height: 800 }])
         await expect(room).toBeVisible()
         await expect(room.getByTestId('fleet-room-dark')).toHaveCount(0)
         await expect(room).not.toContainText(w.notOpen)
-        const fleetSteps = room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-step')
-        await expect(fleetSteps).toHaveCount(4)
-        await expect(fleetSteps.nth(0)).toContainText(w.rungs[0])
-        await expect(fleetSteps.nth(1)).toContainText(w.rungs[1])
-        await expect(fleetSteps.nth(2)).toContainText('60,000')
-        await expect(fleetSteps.nth(3)).toContainText('1,000,000')
-        await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-have')).toContainText('1 / 2')
+        await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-next')).toContainText(w.next)
+        await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-have')).toContainText(w.have)
         // a founding purse pays the first ship step only: one Buy on the card, in her language
         await expect(room.getByTestId('fleet-room-buy')).toHaveCount(1)
         await expect(room.getByTestId('fleet-room-buy')).toHaveText(w.buy)
