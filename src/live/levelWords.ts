@@ -112,6 +112,29 @@ export function perksNow(locale: Locale, level: number, benefits: readonly Level
   })
 }
 
+/** WHAT ONE LEVEL OPENS (0468, docs/design/playable-2026-11-22.md P2): the things a company can use from that level on, as short phrases:
+ *  a fleet, a captain's promotion, a step of a benefit (0417's for the levels raised by doing; 0468's for Trading while lit). Not the
+ *  Reputation gift (the level line carries it) and not a title (it asks the other track too, so a level alone does not open it). The arrival
+ *  card's "Opens:" line and the goal card read this; every phrase is `levelGives`' own. */
+export function levelOpens(locale: Locale, level: number, benefits: readonly LevelBenefit[]): string[] {
+  if (level < 2) return []
+  return levelGives(
+    locale,
+    level,
+    benefits.filter((b) => b.level === level && (b.kind === 'fleet' || b.kind === 'promote' || b.kind === 'perk')),
+  )
+}
+
+/** The first level above `from` that opens something, and what (the goal card's "Trading 4: Ships a fleet +1"); null when none is left. */
+export function nextOpening(locale: Locale, from: number, benefits: readonly LevelBenefit[]): { level: number; what: string } | null {
+  const levels = [...new Set(benefits.map((b) => b.level).filter((l): l is number => l !== null && l > from))].sort((a, b) => a - b)
+  for (const l of levels) {
+    const what = levelOpens(locale, l, benefits)
+    if (what.length > 0) return { level: l, what: what.join(', ') }
+  }
+  return null
+}
+
 /** What ONE level gives, as short phrases: its Reputation gift first, then what the rules give at that level. */
 export function levelGives(locale: Locale, level: number, benefits: readonly LevelBenefit[], every = 1): string[] {
   const out: string[] = []

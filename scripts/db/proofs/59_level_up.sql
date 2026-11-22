@@ -11,7 +11,7 @@
 -- @pass LEVEL_MERCHANT_NOTHING  a merchant's settle, arrival and real laps closed at a gain: null, no write to the marks or the Reputation tables, and public.player_progress is not called once (pg_stat_xact_user_functions; a human's settle is the positive control)
 -- @pass LEVEL_ONCE              a new house's first session through the doors: each level crossed is ONE LEVEL_UP event and ONE book row of 10 x the level; the door and the arrival called again write nothing; the first session's levels and Reputation are printed
 -- @pass LEVEL_NO_BACKPAY        a house with history whose marks are seeded as the migration seeds them is paid nothing by the door or by an arrival; her next crossing pays that level alone
--- @pass LEVEL_STAYS_DERIVED     public.player_progress and world.levels() are byte-equal before and after a settle that pays, and after a mark is moved by hand; only the settle and the card name the marks table (pg_proc scan); a sale does not call the settle
+-- @pass LEVEL_STAYS_DERIVED     public.player_progress and world.levels() are byte-equal before and after a settle that pays, and after a mark is moved by hand; only the settle, the card and (0468, a Trading step's level) public.level_perk name the marks table (pg_proc scan); a sale does not call the settle
 -- @pass LEVEL_COMBAT_PLAYABLE   while combat is not playable her fights make no mark and no event; lit, each combat level crossed fires once
 -- @pass LEVEL_SWITCHES          reputation_on false: the settle writes nothing and pays when it is lit again; rep_level_per_level 0: the event fires with reputation 0 and no book row
 -- @pass LEVEL_LAP               a real standing-route lap closed at a gain pays rep_lap once (key lap:<lap id>, inside the day's cap); a lap closed at a loss pays nothing
@@ -253,7 +253,10 @@ begin
   update public.house_level_marks set level = v_t_lv where player_id = v_a and track = 'trading';
   select string_agg(n.nspname || '.' || p.proname, ',' order by n.nspname, p.proname) into v_names
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace where p.prokind in ('f', 'p') and p.prosrc like '%house_level_marks%';
-  if v_names is distinct from 'public.level_marks_settle,public.reputation_card' then
+  -- 0468: public.level_perk reads the mark too, for a Trading step only (an unlock opens at the LEVEL_UP moment it is announced at). A mark
+  -- never stands above the derived level (Trading never falls; the settle raises a mark only to it), so it can only open a step late, never
+  -- early; the level itself stays derived (the checks above).
+  if v_names is distinct from 'public.level_marks_settle,public.level_perk,public.reputation_card' then
     raise exception 'PROOF 59 FAILED: the marks table is named by: %', v_names;
   end if;
   if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace

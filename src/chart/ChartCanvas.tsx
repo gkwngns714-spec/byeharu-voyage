@@ -4,6 +4,7 @@ import { CoastlineLayer } from './CoastlineLayer'
 import { project } from '../lib/geo'
 import { FleetsLayer, TracksLayer } from './FleetsLayer'
 import { FightRingsLayer } from './FightRingsLayer'
+import { EventMarksLayer, type MapEventMark } from './EventMarksLayer'
 import { fightRings, type MapFight } from './fightRings'
 import { LabelsLayer } from './LabelsLayer'
 import { PortsLayer } from './PortsLayer'
@@ -109,6 +110,7 @@ const LABEL_ADVANCE_EM = 0.9
 const NO_SEAS: readonly MapSea[] = []
 const NO_ISLETS: readonly Point[] = []
 const NO_FIGHTS: readonly MapFight[] = []
+const NO_EVENT_MARKS: readonly MapEventMark[] = []
 
 /** The slack `portMarks` keeps beyond the glass, applied to a fleet's name request too. */
 const REQUEST_MARGIN = 0.06
@@ -136,6 +138,7 @@ export function ChartCanvas({
   portFlags = null,
   islets = NO_ISLETS,
   fights = NO_FIGHTS,
+  events = NO_EVENT_MARKS,
   inFight,
   selection,
   keepOut,
@@ -173,6 +176,8 @@ export function ChartCanvas({
   islets?: readonly Point[]
   /** 0364 — the battles being fought: each is ringed (./fightRings.ts). Absent on a chart that shows none. */
   fights?: readonly MapFight[]
+  /** 0469 — the world events running or announced: each harbour ringed (./EventMarksLayer.tsx). Absent on a chart that shows none. */
+  events?: readonly MapEventMark[]
   /** 0435 — every fleet in a battle being fought (`fleetsInFight`): drawn on a red ground (./FleetsLayer.tsx). */
   inFight?: ReadonlySet<string>
   selection: MapSelection
@@ -501,6 +506,8 @@ export function ChartCanvas({
               {/* THE BATTLES' RINGS (0364) — under the harbours, the hulls and the names: a ring goes ROUND its
                   fleets and never covers one, nor a city's name. */}
               <FightRingsLayer rings={rings} selectedId={selectedFightId} unitsPerPx={unitsPerPx} />
+              {/* 0469: THE WORLD EVENTS' RINGS, with the battles': under the harbours, the hulls and the names. */}
+              <EventMarksLayer marks={events} unitsPerPx={unitsPerPx} />
               <PortsLayer
                 marks={marks}
                 portRoles={portRoles}

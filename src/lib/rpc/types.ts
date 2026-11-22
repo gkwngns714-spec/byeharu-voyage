@@ -2290,7 +2290,7 @@ export interface HousesWeek {
 /** The one effect a timed modifier may reach today. Speed is absent ON PURPOSE: `voyage.depart`
  *  freezes a fleet's speed into `voyages.speed_profile`, and a modifier that moved a frozen number
  *  would be folded into a stored total the moment she sailed. */
-export type BuffEffect = 'SPREAD'
+export type BuffEffect = 'SPREAD' | 'WANT' | 'TOLL'   // 0469: WANT (a city pays a multiple for goods of a kind) and TOLL (points on the cut)
 
 /** An authored kind of thing that can be on — the calendar is DATA, so magnitude, duration, season
  *  length and chance all live on this row rather than in a knob table beside it. */
@@ -2348,6 +2348,36 @@ export interface BuffsView {
   kinds: BuffKind[]
   /** Null when asked without a port — the catalogue with nobody's quay attached. */
   port: PortBuffs | null
+}
+
+// ── the world events (0469) ─────────────────────────────────────────────────────────────────────
+
+/** A famine, a festival or a blockade the server has named at a harbour (`world.world_events`). */
+export type WorldEventCode = 'FAMINE' | 'FESTIVAL' | 'BLOCKADE'
+
+export interface WorldEvent {
+  id: string
+  code: WorldEventCode
+  effect: BuffEffect
+  /** A WANT's multiple (the city pays this times the price for goods of `categories`); null for a TOLL. */
+  mult: number | string | null
+  /** A TOLL's points of the price added to the port's cut; null for a WANT. */
+  toll_pct: number | string | null
+  categories: string[]
+  port_id: string
+  port_code: string
+  port_name: string
+  starts_at: string
+  ends_at: string
+  /** On now (it has started); otherwise announced. The server's reading at `now`. */
+  live: boolean
+}
+
+/** Dark (`world_events_enabled` false): `{on: false}` and nothing else. */
+export interface WorldEvents {
+  on: boolean
+  now?: string
+  events?: WorldEvent[]
 }
 
 /** What `cmd.hire_officer` / `cmd.study_skill` (0166: `cmd.post_officer` is retired — `cmd.seat_captain` seats) hand back. A refusal arrives as

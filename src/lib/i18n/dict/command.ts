@@ -125,6 +125,10 @@ export const commandDict = defineDict({
     lvPerk_route_room: 'Routes you may keep: +{n}',
     lvPerk_share_regard: 'Investing wins {n}% more favour with the country',
     lvPerk_run: 'Runs {n}% better',
+    /** 0468: Trading's unlocks (lit: level_unlocks_enabled), the served running total */
+    lvPerk_trade_routes: 'Routes +{n}',
+    lvPerk_fleet_ships: 'Ships a fleet +{n}',
+    lvPerk_yard_fee: 'Yard fee −{n}%',
     lvAct_trade: 'Buy or sell goods',
     lvAct_give: 'Invest in or donate to a city',
     lvAct_mayor: 'Be mayor for a day',
@@ -160,6 +164,8 @@ export const commandDict = defineDict({
     /** 2026-11-22 (P0): the goal card's title is the NEXT one; bare, it read as a promotion. */
     goalNext: 'Next: {name}',
     goalTracks: 'Trading {a}/{n} · Exploration {b}/{n}',
+    /** 0468: the goal card names what the next level opens ("Trading 4: Ships a fleet +1") */
+    goalOpens: '{track} {n}: {what}',
     lvActsAs: 'acts as level {n}',
     lvLit: 'Ship and captain levels: on.',
     lvRegard: 'Countries',
@@ -285,6 +291,9 @@ export const commandDict = defineDict({
     lvPerk_route_room: '둘 수 있는 항로 +{n}',
     lvPerk_share_regard: '투자로 얻는 나라의 호감 {n}% 증가',
     lvPerk_run: '도주 능력 {n}% 증가',
+    lvPerk_trade_routes: '항로 +{n}',
+    lvPerk_fleet_ships: '선단당 배 +{n}',
+    lvPerk_yard_fee: '조선소 수수료 −{n}%',
     lvAct_trade: '교역품 사고팔기',
     lvAct_give: '도시에 투자하거나 기부',
     lvAct_mayor: '시장으로 지낸 하루',
@@ -319,6 +328,7 @@ export const commandDict = defineDict({
     lvTitleTop: '가장 높은 직함.',
     goalNext: '다음: {name}',
     goalTracks: '교역 {a}/{n} · 탐험 {b}/{n}',
+    goalOpens: '{track} {n}: {what}',
     lvActsAs: '레벨 {n}로 작동',
     lvLit: '배·선장 레벨: 작동 중.',
     lvRegard: '나라',
