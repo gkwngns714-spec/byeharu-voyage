@@ -83,6 +83,9 @@ export { ShipPowerLine, ShipTile } from './ShipTile'
 export { CargoRows } from './CargoRows'
 export { OfficerTile } from './OfficerTile'
 export { SkillTile } from './SkillTile'
+//    A CAPTAIN'S PORTRAIT PLATE and THE RING a level fills around its mark (the visual overhaul's slice 6): pure props, drawn inline.
+export { Portrait } from './Portrait'
+export { Ring, type RingTone } from './Ring'
 
 // 7. BAR — one proportion, 4px, continuous or countable. Meter + Gauge + stockBar + pips, folded.
 export { Bar, type BarTone } from './Bar'

@@ -7,7 +7,6 @@ import {
   FilterBar,
   Figure,
   Hint,
-  Icon,
   ListPanel,
   Note,
   PageSplit,
@@ -23,6 +22,7 @@ import type { Officer } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
 import { jobWord, roleKeyWord, roleOf, roleRank, roleWord, speaksWords, traitIdle, traitLines } from '../../live/captainWords'
+import { CaptainPortrait } from '../../live/captainLook'
 import { optionsOf } from './codexFilters'
 import { NoAnswer } from './NoAnswer'
 import { useLocale, useT, t as tNow } from '../../lib/i18n'
@@ -165,7 +165,7 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
                 // company holds her is read from the roster and only read; a bonus nothing reads is MUTED.
                 <Row
                   key={o.code}
-                  mark={<Icon name="crew" size={20} />}
+                  mark={<CaptainPortrait captain={o} />}
                   label={o.name}
                   value={<Figure value={`+${formatPctPoints(o.bonus_pct)}`} tone={o.takes_effect ? 'success' : 'faint'} />}
                   tone={o.takes_effect ? 'default' : 'muted'}

@@ -1,14 +1,16 @@
 import { Fragment, useState } from 'react'
-import { Bar, Button, Clip, Facts, FactsLine, Figure, Icon, ListHeading, Note, Row, Tray } from '../components/ui'
+import { Button, Clip, Facts, FactsLine, ListHeading, Note, Row, Tray } from '../components/ui'
 import { cmdCaptainTraitsSet, cmdPromoteCaptain } from '../lib/rpc'
 import type { Refusal, YourCaptain } from '../lib/rpc'
-import { formatInt, formatPctPoints } from '../lib/format'
+import { formatInt } from '../lib/format'
 import type { YourCaptainsFace } from './useYourCaptains'
 import { CaptainStats } from './CaptainStats'
 import { CaptainSkills } from './CaptainSkills'
 import { useWorld } from './worldStore'
 import { t as tl } from '../lib/i18n'
-import { ROLE_ORDER, jobWord, roleKeyWord, roleOf, roleRank, roleWord, traitLines } from './captainWords'
+import { ROLE_ORDER, jobWord, roleKeyWord, roleOf, roleRank, roleWord, traitWorks } from './captainWords'
+import { CaptainPortrait, LevelRing, LevelRings, TraitChips } from './captainLook'
+import { levelsThatMatter } from './captainMarks'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // YOUR CAPTAINS — levels, homesickness and the traits each one uses (0160, docs/SKILLS_AND_CAPTAINS.md K6).
@@ -59,14 +61,17 @@ export function CaptainRows({ face }: { face: YourCaptainsFace }) {
           {[...list]
             .sort((a, b) => (b.grade_ord ?? 0) - (a.grade_ord ?? 0) || a.name.localeCompare(b.name))
             .map((c, i) => {
-              // her first trait speaks for her on the row, as it did on the tile; muted when nothing reads it yet
-              const takesEffect = c.traits?.[0]?.in_use ?? false
+              // muted when her job is one nothing reads yet
+              const job = c.traits?.[0]
+              const takesEffect = job ? traitWorks(job) : false
+              // VISUAL SLICE 6 (2026-11-23): her plate (role hat, tongue tint, grade in the corner); under her name, her two levels that
+              // matter as rings, then her job and her ship. The rings stand on line 2, not beside the name: at 320 a name's longest word
+              // ("Bartholomäus") and two rings do not fit one line. The cabin and her job's per cent are on her sheet.
               return (
                 <Row
                   key={c.code}
-                  mark={<Icon name="crew" size={20} />}
+                  mark={<CaptainPortrait captain={c} />}
                   label={<Clip>{c.name}</Clip>}
-                  value={<Figure value={`+${formatPctPoints(c.traits?.[0]?.pct ?? 0)}`} tone={takesEffect ? 'success' : 'faint'} />}
                   tone={takesEffect ? 'default' : 'muted'}
                   chevron
                   onClick={() => press(c.code)}
@@ -74,7 +79,8 @@ export function CaptainRows({ face }: { face: YourCaptainsFace }) {
                   data-testid="your-captain"
                 >
                   <FactsLine>
-                    <Facts items={[c.grade, jobWord(c.job_word), c.ship, c.ship ? c.cabin_word : tl('books.ashore')]} />
+                    <LevelRings captain={c} size={20} />
+                    <Facts items={[jobWord(c.job_word), c.ship ?? tl('books.ashore')]} />
                   </FactsLine>
                 </Row>
               )
@@ -105,6 +111,7 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
   const toggle = (code: string) =>
     setChosen((was) => (was.includes(code) ? was.filter((c) => c !== code) : [...was, code]))
   const changed = chosen.length !== captain.active.length || chosen.some((c) => !captain.active.includes(c))
+  const matter = levelsThatMatter(captain)
 
   const save = () => {
     if (busy) return
@@ -120,43 +127,31 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
 
   return (
     <div data-testid="captain-sheet">
-      <Row label={tl('books.grade')} value={captain.grade ?? ''} />
-      <Row label={tl('books.job')} value={jobWord(captain.job_word) ?? ''} />
-      <Row label={tl('codex.role')} value={roleWord(captain) ?? ''} data-testid="captain-role-word" />
-      <Row label={tl('books.where')} value={captain.ship ? `${captain.ship} · ${captain.cabin_word ?? ''}` : tl('books.ashore')} />
+      {/* HER PLATE (visual slice 6): the portrait, her job, her role and where she sits, in place of four label-and-value rows */}
+      <div className="flex items-center gap-3 pb-3 pt-1" data-testid="captain-plate">
+        <CaptainPortrait captain={captain} size={64} />
+        <div className="min-w-0 flex-1">
+          <span className="block break-words text-t-body">{jobWord(captain.job_word)}</span>
+          <span className="block break-words text-t-label text-ink-muted" data-testid="captain-role-word">{roleWord(captain)}</span>
+          <span className="block break-words text-t-caption text-ink-faint">
+            {captain.ship ? `${captain.ship} · ${captain.cabin_word ?? ''}` : tl('books.ashore')}
+          </span>
+        </div>
+      </div>
+      {/* HER LEVELS AS RINGS, the two that matter first; a level her company's caps holds back says so under them */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pb-2" data-testid="captain-levels">
+        {[...matter, ...captain.levels.filter((l) => !matter.includes(l))].map((l) => (
+          <LevelRing key={l.track} level={l} size={40} />
+        ))}
+      </div>
+      {captain.levels.flatMap((l) =>
+        l.cap_line ? [<span key={l.track} className="block text-t-caption text-ink-faint" data-testid={`captain-cap-${l.track}`}>{l.cap_line}</span>] : [],
+      )}
       {captain.homesick && <Row label={captain.homesick.line} tone="accent" data-testid="captain-homesick" />}
 
-      <CaptainStats code={captain.code} />
-
-      {captain.levels.map((l) => (
-        <Row key={l.track} label={l.word} value={`${formatInt(l.level)} / 20`} data-testid={`captain-level-${l.track}`}>
-          <Bar pct={l.next_at > 0 ? Math.min(1, l.points / l.next_at) * 100 : 0} tone="accent" label={`${l.word} experience`} className="mt-1" />
-          {l.cap_line && <span className="block text-t-caption text-ink-faint">{l.cap_line}</span>}
-        </Row>
-      ))}
-
-      {captain.promote && <Promote captain={captain} />}
-
-      <CaptainSkills code={captain.code} />
-
+      {/* HER TRAITS AS CHIPS: a glyph and a figure each, lit gold where she uses it; a press chooses while she may change them */}
       <h4 className="pb-1 pt-4 text-t-caption text-ink-faint">{tl('books.traits', { n: chosen.length, slots })}</h4>
-      {(captain.traits ?? []).map((t) => {
-        const on = chosen.includes(t.code)
-        // THE SENTENCE IS LINE 2 (2026-11-02), as in the Codex's captain tray (CaptainsFace.tsx): as the row's `value` it
-        // stood in a one-line cell beside the name, so "Ship-supplies trader" was left 9 px wide, one letter a line, at 320.
-        return (
-          <Row
-            key={t.code}
-            label={jobWord(t.word)}
-            tone={on ? 'default' : 'muted'}
-            onClick={captain.can_change ? () => toggle(t.code) : undefined}
-            data-testid={`captain-trait-${t.code}`}
-          >
-            <span className="block text-t-body">{traitLines(t.lines)}</span>
-            {on && <span className="block text-t-caption text-accent">{tl('books.inUse')}</span>}
-          </Row>
-        )
-      })}
+      <TraitChips traits={captain.traits} chosen={chosen} onToggle={captain.can_change ? toggle : undefined} testPrefix="captain-trait" />
       {captain.can_change ? (
         <div className="pb-3 pt-2">
           <Button variant="primary" className="w-full" disabled={!changed || busy} busy={busy} busyLabel={tl('books.saving')} onClick={save}
@@ -172,6 +167,12 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
           {refusal.sentence}
         </Note>
       )}
+
+      <CaptainStats code={captain.code} />
+
+      {captain.promote && <Promote captain={captain} />}
+
+      <CaptainSkills code={captain.code} />
     </div>
   )
 }

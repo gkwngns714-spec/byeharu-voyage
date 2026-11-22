@@ -17,8 +17,8 @@ import { activityLine, everyLevelLine, giftAt, levelFill, levelGives, levelMark,
 // THE PRESS LAW: a press selects. On a phone the level opens in a tray docked over the page; on a wide glass it stands in the
 // middle pane. No tile moves.
 
-/** A level's mark, in the kit's own stroke. */
-function Mark({ code, size = 20 }: { code: string; size?: number }) {
+/** A level's mark, in the kit's own stroke. Also a captain's level rings' (captainLook.tsx): one mark a track. */
+export function Mark({ code, size = 20 }: { code: string; size?: number }) {
   const m = levelMark(code)
   if ('icon' in m) return <Icon name={m.icon} size={size} />
   return (
