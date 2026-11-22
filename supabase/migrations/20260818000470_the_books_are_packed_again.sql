@@ -1,6 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 -- 0470 — THE BOOKS ARE PACKED AGAIN   (a LOAD-ONLY slice: four tables are rewritten compact in place, the way 0297 rewrote voyages;
 --                                     no row, function, option, knob, switch, cron job or schedule moves)
+-- news: none
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- ── WHY (prod, read-only, head 0467, 2026-11-22 00:20 UTC; scripts/ops/harness/hot-set/before-0470.sql) ──────────────────────────
