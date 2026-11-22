@@ -6,6 +6,7 @@ import { properName, useLocale, useT } from '../lib/i18n'
 import { worldLand } from '../lib/rpc'
 import { levelName } from '../live/levelWords'
 import { useWorld } from '../live/worldStore'
+import { ShipPicture } from '../features/fleets/ShipPicture'
 
 // WHILE YOU WERE AWAY (2026-11-16, the content plan's slice B; docs/design/content-plan-2026-11.md §5.3 no. 2). The route
 // trades by itself, and when she came back nothing said what it did. One card says it, once, on her return.
@@ -48,6 +49,9 @@ export function AwayCard() {
   const locale = useLocale()
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
+  const fleets = useWorld((s) => s.fleets)
+  // her flagship's class, for the fleet's picture (a fleet no longer served draws the smallest)
+  const fleetClass = (id: string | undefined) => fleets.find((f) => f.id === id)?.ships[0]?.class_code ?? null
   const [report, setReport] = useState<AwayReport | null>(null)
   // whether this visit (a load, or a return to view) has been compared against the mark yet
   const compared = useRef(false)
@@ -108,8 +112,13 @@ export function AwayCard() {
         <p className="text-t-label font-semibold">{t('feed.awayTitle')}</p>
         {report.routes.map((r) => (
           <div key={r.id} className="mt-1" data-testid="away-route" data-laps={r.laps} data-net={r.net} data-stuck={r.stuck ? 'true' : 'false'}>
-            <p className="flex justify-between gap-3 text-t-body">
-              <span className="min-w-0 break-words">{routeTitle(r.name, r.stops, portByCode)}</span>
+            {/* EACH FLEET'S ROUTE EARNINGS (2026-11-23, the roadmap's slice 6): the fleet that ran it, with her picture, and the route
+                under it; a route no fleet runs keeps its own name */}
+            <p className="flex items-center justify-between gap-3 text-t-body">
+              <span className="flex min-w-0 items-center gap-2">
+                <ShipPicture code={fleetClass(r.route.fleet?.id)} size="mark" />
+                <span className="min-w-0 break-words" data-testid="away-route-fleet">{r.route.fleet?.name ?? routeTitle(r.name, r.stops, portByCode)}</span>
+              </span>
               {r.laps > 0 && (
                 <span className={`shrink-0 font-semibold tabular-nums ${r.net < 0 ? 'text-danger' : r.net > 0 ? 'text-success' : ''}`} data-testid="away-route-net">
                   {formatDucatsDelta(r.net)}
@@ -117,6 +126,7 @@ export function AwayCard() {
               )}
             </p>
             <p className="text-t-caption text-ink-muted">
+              {r.route.fleet && <span className="break-words" data-testid="away-route-title">{routeTitle(r.name, r.stops, portByCode)} · </span>}
               {r.laps > 0 && <span data-testid="away-route-laps">{t('feed.awayLaps', { n: formatInt(r.laps), count: r.laps })}</span>}
               {r.laps > 0 && r.stuck && ' · '}
               {r.stuck && (

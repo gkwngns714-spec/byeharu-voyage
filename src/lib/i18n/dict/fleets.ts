@@ -28,6 +28,11 @@ export const fleetsDict = defineDict({
     perDay: '{amount} a day',
     slowest: 'Slowest',
     shortCrew: 'Short crew',
+    // 2026-11-23 (the roadmap's slice 6): a hull just launched into a fleet: its own fleet on her best route, or stay
+    ownFleet: 'Own fleet',
+    joinFleet: 'Join {name}',
+    // the red crew line's next step, off a harbour (in one, the press says "Hire crew · 8", yard.hireCrewN)
+    hireInPort: 'Hire in port',
     rename: 'Rename',
     renameTo: 'Rename {name}',
     renameSave: 'Save',
@@ -124,6 +129,9 @@ export const fleetsDict = defineDict({
     perDay: '하루 {amount}',
     slowest: '가장 느림',
     shortCrew: '선원 부족',
+    ownFleet: '단독 선단',
+    joinFleet: '{name} 합류',
+    hireInPort: '항구에서 고용',
     rename: '이름 변경',
     renameTo: '{name} 이름 변경',
     renameSave: '저장',

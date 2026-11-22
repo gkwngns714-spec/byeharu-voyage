@@ -237,6 +237,10 @@ for (const run of RUNS) {
       expect(net).toBe(m1.routes[id].net - m0.routes[id].net)
       const money = await away.getAttribute('data-money')
       if (m1.ducats !== m0.ducats) expect(Number(money)).toBe(m1.ducats! - m0.ducats!)
+      // each FLEET's route earnings (2026-11-23, the roadmap's slice 6): the fleet that ran it, with her picture, the route under it
+      await expect(row.getByTestId('away-route-fleet')).not.toBeEmpty()
+      await expect(row.locator('[data-ship-picture]')).toHaveCount(1)
+      await expect(row.getByTestId('away-route-title')).toBeVisible()
       const netWords = (await row.getByTestId('away-route-net').innerText()).trim()
       console.log(`${tag}: away card ${JSON.stringify((await away.innerText()).replace(/\s+/g, ' '))}`)
       // inside the glass, nothing sideways; Close takes it away and the page under it did not move

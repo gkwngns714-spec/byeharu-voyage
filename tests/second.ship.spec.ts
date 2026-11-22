@@ -210,8 +210,19 @@ test.describe('the played flow at 1280×800', () => {
     const card = page.getByTestId('goal-card')
     await expect(card.getByTestId('goal-tracks')).toBeVisible({ timeout: 60_000 })
     await expect(card.getByTestId('goal-second-ship')).toHaveCount(0)
-    await expect(card.getByTestId('goal-tracks')).toContainText(/Trading \d+\/\d+ · Exploration \d+\/\d+/)
+    // a met requirement reads "Trading 7 ✓", an unmet one "Trading 3/4" (2026-11-23, finding 26): never "7/4"
+    await expect(card.getByTestId('goal-tracks')).toContainText(/Trading \d+(\/\d+| ✓) · Exploration \d+(\/\d+| ✓)/)
+    const tracks = await card.getByTestId('goal-tracks').innerText()
+    for (const [, a, n] of tracks.matchAll(/(\d+)\/(\d+)/g)) expect(Number(a), `a met requirement drawn as ${a}/${n}`).toBeLessThan(Number(n))
     await page.screenshot({ path: info.outputPath('3-two-ships.png') })
+
+    // the red crew line says what to do (2026-11-23, finding 26): the hands she lacks, and one press that hires them
+    const hint = page.getByTestId('crew-hint').first()
+    await expect(hint).toBeVisible({ timeout: 60_000 })
+    await expect(hint.getByTestId('crew-hint-hire')).toHaveText('Hire crew · 8')
+    await hint.getByTestId('crew-hint-hire').click()
+    await expect(page.getByTestId('crew-hint')).toHaveCount(0, { timeout: 60_000 })
+    await page.screenshot({ path: info.outputPath('4-hired.png') })
   })
 })
 
