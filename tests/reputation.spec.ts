@@ -9,7 +9,7 @@ import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 // When the fleet comes in and sells, the arrival card says `+N Reputation` (KO `평판 +N`), and N is held to fixed
 // facts, all of them served: the top bar's figure went from 0 to N; N is 25 for the first landfall, 1 for each 250 of
 // the sale's profit (the card's own figure) and the voyage's miles (at most 40); the You tab shows N and
-// `Today N−25 / 600`, because a landfall is outside the day's cap. Phone and desktop, EN and KO.
+// `Day cap N−25 / 600`, because a landfall is outside the day's cap. Phone and desktop, EN and KO.
 // The voyage is driven in English (the trade fixtures read English words); the language is changed while she sails.
 //
 // A LEVEL CROSSED IS A MOMENT (migration 0356, slice R4). The same voyage crosses levels, and each crossing pays 10 x the
@@ -37,7 +37,7 @@ const WORDS = {
   en: {
     name: 'Reputation',
     earned: /^\+([\d,]+) Reputation$/,
-    today: (a: number) => `Today ${a} / 600`,
+    today: (a: number) => `Day cap ${a} / 600`,
     track: { trading: 'Trading', exploration: 'Exploration', combat: 'Combat' },
     level: (track: string, n: number, rep: number) => `${track} level ${n} · +${rep} Reputation`,
     next: (n: number) => `Next +${n}`,
@@ -45,7 +45,7 @@ const WORDS = {
   ko: {
     name: '평판',
     earned: /^평판 \+([\d,]+)$/,
-    today: (a: number) => `오늘 ${a} / 600`,
+    today: (a: number) => `일일 한도 ${a} / 600`,
     track: { trading: '교역', exploration: '탐험', combat: '전투' },
     level: (track: string, n: number, rep: number) => `${track} ${n}레벨 · 평판 +${rep}`,
     next: (n: number) => `다음 +${n}`,

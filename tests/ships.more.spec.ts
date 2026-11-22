@@ -81,6 +81,16 @@ test('the migration loads the generator\'s rows, figure for figure', () => {
   expect((sql.match(/drop function pg_temp\./g) ?? []).length).toBe(2)
 })
 
+// 2026-11-22 second play-test: about 90 older hulls were English on a Korean screen. Every hull the generator serves, and the three
+// starting hulls, has a Korean name now, whole and its own.
+test('every hull served has a Korean name, whole and its own', () => {
+  const served = [...ALL.map((h) => h.name), 'Barca', 'Caravela latina', 'Nau / Carrack']
+  expect(served.filter((n) => !KO_HULLS[n]), 'no Korean name').toEqual([])
+  const names = served.map((n) => KO_HULLS[n])
+  expect(names.filter((n) => /…|\.\.\.|[A-Za-z]/.test(n) || n.trim() !== n), 'a Korean name is cut or still Latin').toEqual([])
+  expect(new Set(names).size, 'two hulls share a Korean name').toBe(names.length)
+})
+
 test('every new hull has a Korean name, whole, and its job word in both languages', () => {
   const missing = NEW.filter((h) => !KO_HULLS[h.name]).map((h) => h.name)
   expect(missing, 'no Korean name').toEqual([])
