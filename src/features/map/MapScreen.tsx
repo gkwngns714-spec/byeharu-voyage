@@ -23,6 +23,8 @@ import { usePirateShipCard } from '../../live/usePirateShipCard'
 import { useMerchantCard } from '../../live/useMerchantCard'
 import { useMerchantsHere } from '../../live/useMerchantsHere'
 import { useFights } from '../../live/useFights'
+import { useWorldEvents } from '../../live/useWorldEvents'
+import type { MapEventMark } from '../../chart/EventMarksLayer'
 import { FightSheet } from '../../live/FightSheet'
 import { BattleScreen } from '../../live/battle/BattleScreen'
 import { JoinBar } from '../../live/battle/JoinBar'
@@ -418,6 +420,16 @@ function Chart({
   // and a press on a ring opens the fight (src/live/FightSheet.tsx). Asked only while this screen is mounted.
   const fightCards = useFights()
   const fights = useMemo(() => mapFightsOf(fightCards), [fightCards])
+  // 0469: THE WORLD EVENTS (a famine, a festival, a blockade): a ring round each harbour, at the harbour's place on this shore.
+  const worldEvents = useWorldEvents()
+  const eventMarks = useMemo<MapEventMark[]>(
+    () =>
+      worldEvents.flatMap((e) => {
+        const port = portsByCode.get(e.port_code)
+        return port ? [{ id: e.id, code: e.code, portCode: e.port_code, live: e.live, lat: port.lat, lon: port.lon }] : []
+      }),
+    [worldEvents, portsByCode],
+  )
   // EVERY FLEET OF A FIGHT STANDS AT THE FIGHT while it is fought (src/chart/fightPins.ts): the raider that struck from her
   // port, the ship the server holds, a ship the wide map would thin out. From the fight's own card; gone with the ring.
   const pins = useMemo(() => fightPinsOf(fightCards), [fightCards])
@@ -715,6 +727,7 @@ function Chart({
           portFlags={portFlags}
           islets={shore.islets}
           fights={fights}
+          events={eventMarks}
           inFight={inFight}
           selection={selection}
           plannedD={routeView ? routeD : pathD}
