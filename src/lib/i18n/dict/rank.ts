@@ -41,6 +41,8 @@ export const rankDict = defineDict({
     placeOf: '#{n} of {of}',
     ahead: 'Next: {name}, {gap} ahead',
     leading: 'You lead.',
+    // 0473: your week is counted live; the other houses' rows are the history job's count, this old
+    othersCounted: 'Others counted {when}',
   },
   ko: {
     standing: '내 순위',
@@ -77,5 +79,6 @@ export const rankDict = defineDict({
     placeOf: '{of}곳 중 {n}위',
     ahead: '다음: {name}, {gap} 차이',
     leading: '선두입니다.',
+    othersCounted: '다른 상회 {when} 집계',
   },
 })

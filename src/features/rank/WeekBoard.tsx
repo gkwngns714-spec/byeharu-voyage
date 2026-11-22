@@ -58,7 +58,9 @@ export function WeekBoard({ read }: { read: HousesWeek | null }) {
           columns="fit"
           title={t('rank.houses')}
           count={formatInt(houses)}
-          footer={settled === null ? undefined : <Hint>{t('rank.settled', { when: settled })}</Hint>}
+          // 0473: your figure is live; the board's other rows are the history job's count, and the word says so (not "Updated", the
+          // page's word for the Captains' photograph)
+          footer={settled === null ? undefined : <Hint data-testid="rank-week-counted">{t('rank.othersCounted', { when: settled })}</Hint>}
           data-testid="rank-week"
         >
           {read.board.length === 0 && <Row label={t('rank.empty')} tone="muted" hairline={false} />}

@@ -88,6 +88,9 @@ export const tradeDict = defineDict({
     // 0466: a hold-sized job (a load a small ship can carry), beside the city's own requests.
     holdJob: 'Ship job',
     holdPays: 'Pays {total}',
+    // 0473: where a hold job's good is sold, and a Barca's sailing time there (both served)
+    holdFrom: 'Buy at {city} · {time}',
+    holdFromCity: 'Buy at {city}',
   },
   ko: {
     supplies: '보급',
@@ -173,5 +176,7 @@ export const tradeDict = defineDict({
     tradesMerchant: '상인',
     holdJob: '배 의뢰',
     holdPays: '보수 {total}',
+    holdFrom: '{city}에서 구매 · {time}',
+    holdFromCity: '{city}에서 구매',
   },
 })
