@@ -6,6 +6,7 @@ import { RebuildNotice } from './RebuildNotice'
 import { ArrivalCard } from './ArrivalCard'
 import { WelcomeCard } from './WelcomeCard'
 import { AwayCard } from './AwayCard'
+import { LaunchOffer } from './LaunchOffer'
 import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
 import { readIntervalMs } from '../domain/readClock'
@@ -112,6 +113,8 @@ export function AppShell() {
           <>
             <ArrivalCard />
             <AwayCard />
+            {/* a hull joined her fleet: its own fleet on her best route, or stay (LaunchOffer.tsx, the roadmap's slice 6) */}
+            <LaunchOffer />
             <WelcomeCard />
           </>
         }

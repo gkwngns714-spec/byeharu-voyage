@@ -23,6 +23,9 @@ export interface PlanDraft {
   /** 0213: insure the cargo — ` INSURED` on every laden SAIL line (planLines.ts). Absent on a draft
    *  written before 0213, which reads as not asked. */
   insure?: boolean
+  /** 0475: A SECOND GOOD for the same trip (a Trade card's `top`): bought at buyAt after the first, sold at sellAt after it. Served for
+   *  the first good's units `with`: the lines carry it only while the plan still holds those units and `on` (the sheet's tick). */
+  also?: { good: string; units: number; cost: number; profit: number; with: number; on: boolean } | null
 }
 
 export interface DeskPlanState {

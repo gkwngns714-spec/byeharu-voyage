@@ -56,6 +56,13 @@ export function tripRows(b: GoodBoard | null, plan: Pick<PlanDraft, 'buyAt' | 's
   return { buyRow, sellRow, days: plan.buyAt && !buyRow ? null : (sellRow?.days ?? null), supplies: sellRow?.supplies ?? null }
 }
 
+/** 0475: THE SECOND GOOD the plan's lines carry (a Trade card's `top`, world.best_sales), or null: none, ticked off on the sheet, a
+ *  one-ended trip, or the first good's units moved off the count it was served for (the room and the coin it was sized to are gone). */
+export function planAlso(plan: Pick<PlanDraft, 'also' | 'units' | 'buyAt' | 'sellAt'>): { good: string; units: number } | null {
+  const a = plan.also
+  return a && a.on && plan.buyAt && plan.sellAt && plan.units === a.with && a.units > 0 ? { good: a.good, units: a.units } : null
+}
+
 export function planLines(
   plan: PlanDraft,
   fleet: FleetView,
@@ -70,6 +77,7 @@ export function planLines(
   let from = sailOrigin(fleet, portByCode)
   // 0213: laden from the start when the plan sells what is on board; otherwise from the BUY on
   let laden = plan.buyAt === null
+  const also = planAlso(plan)
   /** A SAIL with its proposed course. */
   const sail = (code: string): boolean => {
     const next = courseLeg(nav, portByCode, from, here, code)
@@ -97,6 +105,8 @@ export function planLines(
     lines.push({
       text: `BUY ${plan.good} ${plan.units !== null && plan.units > 0 ? num(plan.units) : 'ALL'}${plan.max !== null ? ` AT <= ${num(plan.max)}` : ''}`,
     })
+    // 0475: the second good, bought right after the first at the same quay (planAlso: only for the units it was served for)
+    if (also) lines.push({ text: `BUY ${also.good} ${num(also.units)}` })
     laden = true
   }
   if (plan.sellAt) {
@@ -105,6 +115,7 @@ export function planLines(
       if (missed) return { ok: false, noCourseTo: missed }
     }
     lines.push({ text: `SELL ${plan.good} ALL${plan.min !== null ? ` AT >= ${num(plan.min)}` : ''}` })
+    if (also) lines.push({ text: `SELL ${also.good} ALL` })
   }
   return { ok: true, lines, legs }
 }

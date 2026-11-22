@@ -71,6 +71,12 @@ export const cityDict = defineDict({
     noYard: 'No build or repair',
     noInn: 'No inn',
     noMarket: 'No market',
+    // slice 7: the plates' figures, by name (each the figure's accessible name), and the level that opens a held door
+    freeHold: 'Free hold',
+    fleetsHere: 'Fleets here',
+    crewHere: 'Crew here',
+    yourShares: 'Your shares',
+    opensAt: 'Opens at',
   },
   ko: {
     title: '도시',
@@ -138,5 +144,10 @@ export const cityDict = defineDict({
     noYard: '건조·수리 없음',
     noInn: '주점 없음',
     noMarket: '시장 없음',
+    freeHold: '빈 적재',
+    fleetsHere: '정박 선단',
+    crewHere: '정박 선원',
+    yourShares: '내 지분',
+    opensAt: '열리는 레벨',
   },
 })

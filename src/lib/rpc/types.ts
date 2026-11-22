@@ -3925,6 +3925,23 @@ export interface BestSale {
   need?: number | null
   /** 0351: the dearest sale within her purse, when it is another city; null when the answer is that sale. */
   far?: FarSale | null
+  /** 0475 (near_choice_enabled): the harbour this card left for `port`, its harbour holding enough cards already (a real choice). */
+  spread?: string
+  /** 0475: while she has a near horizon (the first hour), whether the sale named is within it; false: no near sale pays (marked, not hidden). */
+  near?: boolean
+  /** 0475: a SECOND good bought here for the same harbour, for the room and coin the load leaves (its profit: sale less buy, tax, dock fee). */
+  top?: TopUp
+}
+
+/** 0475 `world.best_sales` `top`: the second good a light load can take to the same harbour. */
+export interface TopUp {
+  /** The good's CODE. */
+  good: string
+  units: number
+  /** What the buy costs (world.quote's total). */
+  cost: number
+  /** The sale there less the buy, the profit tax and the dock fee the larger cargo adds. */
+  profit: number
 }
 
 /** 0348 `world.best_sales(fleet, port)`: every good the city sells, by code. `cut`: the server's time budget ran

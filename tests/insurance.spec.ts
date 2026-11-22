@@ -158,4 +158,12 @@ test('the plan builder writes INSURED on the laden legs alone, and only when ask
   // not asked (and a draft from before 0213, with no field at all): no word anywhere
   const plain = planLines({ ...base, buyAt: 'FNC', sellAt: 'LIS' }, docked, nav, portByCode)
   expect(plain.ok && plain.lines.map((l) => l.text).join(' ')).not.toContain('INSURED')
+  // 0475: a card's second good rides the same trip (BUY, BUY, SAIL, SELL, SELL), only ticked and only for the units it was served for
+  const also = { good: 'cork', units: 150, cost: 7000, profit: 480, with: 10, on: true }
+  const two = planLines({ ...base, units: 10, buyAt: 'FNC', sellAt: 'LIS', insure: true, also }, docked, nav, portByCode)
+  expect(two.ok && two.lines.map((l) => l.text)).toEqual(['SAIL FNC', 'BUY cloves 10', 'BUY cork 150', 'SAIL LIS INSURED', 'SELL cloves ALL', 'SELL cork ALL'])
+  const off = planLines({ ...base, units: 10, buyAt: 'FNC', sellAt: 'LIS', also: { ...also, on: false } }, docked, nav, portByCode)
+  expect(off.ok && off.lines.map((l) => l.text).join(' ')).not.toContain('cork')
+  const moved = planLines({ ...base, units: 12, buyAt: 'FNC', sellAt: 'LIS', also }, docked, nav, portByCode)
+  expect(moved.ok && moved.lines.map((l) => l.text).join(' ')).not.toContain('cork')
 })

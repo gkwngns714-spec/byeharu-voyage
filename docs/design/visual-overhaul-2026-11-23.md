@@ -173,21 +173,70 @@ player sees.
 - After: the city's skyline across the top (principle 7), buildings as plates with their glyph and one figure (gold, population trend,
   relationship as a mark); Office's faces as buildings (from slice 2); Academy, Workstation and Invest shown from Trading 5 with an
   unlock line (X6, one level gate).
+- Built (decided by default, the owner may reverse each): the city's regional skyline (slice 4's `Skyline`, by `skylineOf`) stands
+  behind HQ's title across the glass (`Sheet backdrop`, copies side by side and every second mirrored, so a wide glass does not crop it
+  to its quay); it takes no room, so every glass law stands where it stood. The five buildings and the three doors are plates: the
+  mark on a gold disc, the word, one figure already on the page (no plate asks a read of its own) — the hall the city's gold, the
+  market its tax, production your free hold here, the port your fleets here (anchor), the inn their crew (crew); City this city's
+  buildings, Invest your shares here; Report has none (its week's profit is a read of its own). Each figure's word is its accessible
+  name. From `lg` the buildings and the doors stand on one row (5 : 3), which also puts the plan back on the first glass at 1280 x 800
+  (law h; the doors' second row had pushed it 45 px under). The HQ city drawing, its walkers and the hall panel are untouched. X6 is
+  `live/levelGate.ts`, the one table (`GATED`, `FROM`): Skills (Academy), Craft (Workstation) and the Office's Invest are held under
+  Trading 5, and only while Trading's unlocks are lit (`level_unlocks_enabled`, the goal card's own test); dark, nothing is held. A held
+  door on HQ is a dimmed plate whose figure is "Trading 5" (the unlock line), a held building on the City face's Town list a row with
+  no door and the same figure, and the Office strip drops the held face. The Office faces: Report's sections and places each draw their
+  share of the list as a bar (green in, red out); Invest's work levels are bars, not "Level 2 / 5"; City's door wears HQ's fort.
 
 **8. Rank and Stats.**
 - Before: lists of names and zeros; Stats' figures as 24-px words with dots.
 - After: the top three on a podium (trophy, flags, bars of profit); your line pinned and lit; "tied" and the counted-ago lines gone
   where the figure says it; Stats' player faces lead with one chart each, holders as a stacked bar with marks.
+- Built (decided by default, the owner may reverse each): the three boards (Week, Captains, Countries) share one picture
+  (`src/features/rank/Podium.tsx`): the top three on a podium (second · first · third, the trophy over the first, each flag, the whole
+  name, the figure, and a step as tall as its figure against the first's; the countries' steps carry no place, since that board serves
+  none); your line pinned at the head of the list in a gold edge (your company or your country, whether placed or off the board's
+  end; the fame tray opens from it) and lit again in its place; every row the place, the flag picture and the whole name, the figure,
+  and a 6-px bar against the first row (the Week's green for a gain, red for a loss). "tied" left the rows and your standing (two houses
+  level wear the same place; the tray keeps it), the leaders' country caption became their flag, the companies' count stands under
+  your place ("of 846", a separate "Companies" line gone), your fame's lines wear coin, compass and anchor, and the Week no longer says
+  "You lead." for a shared first. Stats: the live strip's figures wear coin, ship and scales; News leads with a line of time (the
+  list's happenings as dots from the oldest to now, headlines larger; it counts nothing and adds no read); Markets' Up, Down and Most
+  traded are ranked bars, each good with its own drawn mark; Me's week shows sold and bought as one stacked bar and the trades as a
+  scales line (the "{n} trades" sentence gone). Markets and Cities already led with their two chart cards and kept them; Pirates was
+  left as it is (its states bar is the chart). No new read: every figure is the one the face already asked.
 
 **9. You and levels (and the Codex's marks).**
 - Before: Reputation a bare number; levels under the fold; the next title a sentence.
 - After: a header plate (your house, its flag, title, reputation ring); levels as Melvor-style tiles, each a mark in a ring with level and
   a 6-px bar to the next; the next title is a ring's target; the Codex's long tail gets drawn marks per class family.
+- Built (decided by default, the owner may reverse each): You opens on the house's PLATE (`HousePlate`, YouScreen.tsx): the
+  company's flag on a disc and its name whole, then two rings, the TITLE (a new `coronet` glyph, filled by the lower of her Trading
+  and Exploration levels against the level the next title asks; its name and level beside it, the next title and the two levels
+  it asks under them) and REPUTATION (the laurel, its ring today's capped earnings against the Day cap; the balance and "Day cap
+  a / b" beside it), and the room line at its foot. The title MOVED from the levels card and Reputation from its own card, so each
+  stands once. A level tile is now its mark in a 40-px `Ring` filled to the next level, the level figure, the name, the 6-px bar
+  and the experience with the next level's gift. THE LEVEL-UP MOMENT: a tile whose served level is higher than the one it last
+  drew this session glows gold once, its mark and figure pop and a chevron rises off the ring (1.4 s, `bv-level-*` in index.css;
+  under reduced motion nothing plays); a page load starts with nothing seen, so only a rise plays it. The Codex's long tail: the
+  twelve categories that wore another's glyph wear their own family mark (grain sheaf, amphora, clay pipe, apothecary bottle, dyer's
+  skein, ring, basket, halberd, musket, framed portrait, books on a shelf, ox head; `CATEGORY_ICON`), so 313 tail goods are told
+  apart by family. The Account row stays at the page's foot.
 
 **10. Yard, Land and the welcome.**
 - Before: the yard shows four prices in words; the Land site is a form; the welcome is four sentences.
 - After: the yard is hull silhouettes with one price and the press she can make; Land shows the site's peak and the party as marks with
   a trip bar; the welcome is a picture (Lisbon's skyline, your ship) with one line and the goal ring.
+- Built (decided by default, the owner may reverse each): a hull's tile leads with her picture (`ShipPicture`, slice 5's) and keeps
+  its ONE figure, Labour; her sheet opens on her picture (`ShipPicture` hero) and carries one price a road, Total (build her yourself)
+  and the Order press, with Labour under Total and the order's fee (Order fee, or #800's First-ship fee) under Wait as small print, not
+  rows of their own; #800's rule (the Order is gold while materials are short) stands. Each material is its mark (`goodIcon`; a part
+  the workshop's mallet), its need, and a 6-px bar of what is stored here with what is on board washed on, the words ("12 in storage ·
+  3 on board") under the bar, the "Materials" / "Parts" prefixes a heading over the lines. Land's Party card opens on a drawn site
+  (`LandSite`: the home town, the road, the mountains and the mine's lit mouth, the sea across the road for a far land) with the
+  party a gold mark on the road as far along as the trip bar; the Storage leads each good with its mark; a skill's jobs are a field of
+  tiles (mark, name, where, one figure, a bar of the skill's level against the job's). The welcome opens on her city's skyline with
+  her ship on its water, then one line ("Your trading house · Lisbon, 1507"), the goal as a `Ring` around a ship with the goal card's
+  own line ("Second ship · 40,000 / 52,000"; the two cards read one hook, `useSecondShipGoal`), and the first press; "Welcome" went.
 
 ## 4. How we will know
 

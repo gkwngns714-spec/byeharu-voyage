@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { navWord } from '../../app/navTabs'
-import { Card, Icon, KEEP_WORDS_CLASS, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, type IconName, type LoadStep } from '../../components/ui'
+import { Card, Icon, KEEP_WORDS_CLASS, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, Skyline, skylineOf, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { ShellFrame } from '../../app/ShellFrame'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
@@ -17,11 +17,13 @@ import { portNameOf, portNationOf, useWorld } from '../../live/worldStore'
 import { useWorldBeat } from '../../live/worldStore'
 import { worldLoadSteps } from '../../live/loadSteps'
 import type { FleetView, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
-import { gameSunInstantMs } from '../../lib/format'
+import { formatDucats, formatInt, formatPct, formatTons, gameSunInstantMs } from '../../lib/format'
+import { FROM, useLevelGate } from '../../live/levelGate'
+import { levelName } from '../../live/levelWords'
 import { daylightAt, subsolarPoint } from '../../chart'
 import { serverNow } from '../../lib/serverClock'
 import { useLocale, useT, type TKey } from '../../lib/i18n'
-import { regardBandWord } from '../../domain/port'
+import { buildingsOf, regardBandWord } from '../../domain/port'
 import { CityFacePanel, type CityBuilding } from './CityFace'
 import { CityHallPanel } from './CityHallPanel'
 import { CityScene } from './CityScene'
@@ -120,6 +122,46 @@ const OFFICE_DOORS: readonly { id: 'city' | 'invest' | 'report'; icon: IconName;
   { id: 'invest', icon: 'invest', label: 'command.f_invest' },
   { id: 'report', icon: 'report', label: 'command.f_report' },
 ]
+
+/** Enough copies of the skyline to cross a 2,560-px glass at the title bar's height. */
+const SKYLINE_COPIES = [0, 1, 2, 3, 4, 5, 6, 7] as const
+
+/** A plate's one figure: its text, its word (the figure's accessible name and tooltip), and, where the figure is a count of a thing,
+ *  that thing's glyph before it. */
+type PlateFigure = { text: string; name: string; mark?: IconName }
+
+/** A PLATE (slice 7): a lit card, lit faintly from above like every card (slice 1), at least 64 px tall and never narrower than its
+ *  word. `on` is the open place (the gold ring), `held` a door the level gate holds (dimmed, no press). */
+function plateClass(state: 'on' | 'off' | 'held'): string {
+  // ON A PHONE the plate is as tall as the tile it replaced (its mark bare, the air tighter), so the hall's Investors row still stands on
+  // the first glass at 390 x 844; from `sm` the mark stands on its disc.
+  const base = 'flex min-h-16 min-w-0 flex-col items-center justify-center gap-0.5 rounded-tile bg-linear-to-b px-1 py-1.5 transition sm:gap-1 sm:py-2'
+  if (state === 'on') return `${base} from-surface-2 to-surface-2 text-ink ring-1 ring-inset ring-accent`
+  if (state === 'held') return `${base} from-surface to-surface text-ink-faint`
+  return `${base} from-surface-2/70 to-surface text-ink-muted hover:from-surface-2 hover:to-surface-2 hover:text-ink`
+}
+
+/** The plate's face: its mark on a gold-washed disc, its word, its one figure. */
+function Plate({ icon, word, figure }: { icon: IconName; word: string; figure: PlateFigure | null }) {
+  return (
+    <>
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-chip text-accent sm:h-8 sm:w-8 sm:bg-accent-soft" data-plate-mark="">
+        <Icon name={icon} size={18} strokeWidth={1.75} />
+      </span>
+      <span className="max-w-full text-balance text-center text-t-label leading-tight">{word}</span>
+      {/* the figure's line stands on every plate, empty or not, so a row of plates is one height */}
+      <span
+        className="flex min-h-4 max-w-full items-center gap-1 whitespace-nowrap text-t-caption leading-tight tabular-nums text-ink-faint"
+        title={figure?.name}
+        aria-label={figure ? `${figure.name} ${figure.text}` : undefined}
+        data-plate-figure=""
+      >
+        {figure?.mark && <Icon name={figure.mark} size={12} />}
+        {figure?.text}
+      </span>
+    </>
+  )
+}
 
 export function CityScreen() {
   const t = useT()
@@ -336,6 +378,24 @@ function CityFrame({
   const relation: Relation =
     stance ?? (houseNation === null ? 'none' : portNation === null ? 'free' : houseNation === portNation ? 'home' : 'different')
 
+  // THE PLATES' FIGURES — each a served fact already on this page (the hall's one read, the port row, your fleets lying here).
+  const locale = useLocale()
+  const gate = useLevelGate()
+  const freeHold = docked.reduce((n, f) => n + f.free_hold, 0)
+  const crewHere = docked.reduce((n, f) => n + f.ships.reduce((m, s) => m + s.crew, 0), 0)
+  const plateFigure: Record<CitySelection, PlateFigure> = {
+    hall: { text: hall ? formatDucats(hall.purse.ducats) : '—', name: t('city.gold') },
+    market: { text: formatPct(port.tax_rate, 1), name: t('inn.marketTax') },
+    [PRODUCTION_PLACE]: { text: docked.length > 0 ? formatTons(freeHold) : '—', name: t('city.freeHold') },
+    port: { text: formatInt(docked.length), name: t('city.fleetsHere'), mark: 'anchor' },
+    inn: { text: formatInt(crewHere), name: t('city.crewHere'), mark: 'crew' },
+  }
+  const doorFigure: Record<(typeof OFFICE_DOORS)[number]['id'], PlateFigure | null> = {
+    city: { text: formatInt(buildingsOf(port).length), name: t('city.buildings') },
+    invest: { text: hall ? formatInt(hall.you.holdings.reduce((n, h) => n + h.shares, 0)) : '—', name: t('city.yourShares') },
+    report: null,
+  }
+
   return (
     <>
       {/* THE PAGE (2026-11-04, owner row 267: *"everything is on left, too packed"* — the HQ takes the pattern Stats set, `Sheet layout="page"`,
@@ -346,6 +406,18 @@ function CityFrame({
         <Sheet
           layout="page"
           data-testid="city-page"
+          // THE CITY'S SKYLINE ACROSS THE TOP (2026-11-23, the visual overhaul's slice 7, principle 7): the harbour's regional picture
+          // (components/ui/Skyline.tsx; `skylineOf` the one table, from the served culture), behind the title. It takes no room: the
+          // title bar is the height it was, so every glass law below it stands where it stood.
+          // The picture keeps its own shape at the bar's height (a wide glass would otherwise crop it to its quay): copies stand side by
+          // side, every second one mirrored so the seams meet house to house.
+          backdrop={
+            <div className="flex h-full opacity-90" data-testid="city-skyline">
+              {SKYLINE_COPIES.map((i) => (
+                <Skyline key={i} kind={skylineOf(port.culture)} className={`h-full w-auto shrink-0 ${i % 2 === 1 ? '-scale-x-100' : ''}`} />
+              ))}
+            </div>
+          }
           title={
             // THE NAME TURNS ONLY AT A SPACE, AND THE KIND GOES UNDER IT WHOLE (2026-11-14, owner row 318): on a 320-px glass "Port Royal",
             // "Island capital" and the day stood on one line, each of the two turned in half. The flag and the name are one piece.
@@ -379,51 +451,56 @@ function CityFrame({
             </div>
           )}
 
-          {/* THE FIVE PLACES — a row of cards across the page, always there: a press swaps the plan and the side panel and moves nothing here
-              (owner, 2026-10-31: "in buildings 6 building tappable should always be inside"). */}
-          <nav aria-label={t('city.buildings')} data-testid="city-buildings">
-            {/* FIVE TILES LEAVE NO HOLE (2026-11-14, the second look pass): on a phone the words do not fit five across ("Production" is
-                71 px in a 53-px cell at 320), and three columns left an empty sixth cell. So the phone's rail is two over three on six
-                tracks: the first two tiles take three tracks each, the rest two. From `sm` it is one row of five, as before. */}
-            <div className="grid grid-cols-6 gap-3 sm:grid-cols-5 md:gap-4 xl:gap-6" data-testid="city-building-grid">
-              {CITY_TILES.map((b, i) => (
-                <button
-                  key={b.id}
-                  type="button"
-                  onClick={() => onSelect(b.id)}
-                  aria-pressed={selected === b.id}
-                  data-testid={`city-building-${b.id}`}
-                  className={`${i < 2 ? 'col-span-3' : 'col-span-2'} flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-tile px-1 py-2 transition sm:col-span-1 ${
-                    selected === b.id
-                      ? 'bg-surface-2 text-ink ring-1 ring-inset ring-accent'
-                      : 'bg-surface text-ink-muted hover:bg-surface-2 hover:text-ink'
-                  }`}
-                >
-                  <Icon name={b.icon} size={20} />
-                  <span className="max-w-full text-balance text-center text-t-label leading-tight">{t(b.label)}</span>
-                </button>
-              ))}
-            </div>
-          </nav>
+          {/* THE PLACES AS PLATES (2026-11-23, the visual overhaul's slice 7): each building and each door is a plate — its mark on a gold
+              disc, its word, and ONE figure, a fact of that place already on this page (no plate asks a read of its own): the hall the city's
+              gold, the market its tax, production the free hold of your fleets here, the port your fleets here, the inn their crew; the
+              City door this city's buildings, Invest your shares here. Report has no figure here: its one figure, the week's profit, is a
+              read of its own. Each figure's word is its accessible name. From `lg` the five buildings and the three doors stand on ONE row
+              (5 : 3), so the plan still stands whole on the first glass (law h). */}
+          <div className="flex flex-col gap-3 md:gap-4 lg:grid lg:grid-cols-[5fr_3fr] xl:gap-6">
+            {/* THE FIVE PLACES — a row of cards across the page, always there: a press swaps the plan and the side panel and moves nothing here
+                (owner, 2026-10-31: "in buildings 6 building tappable should always be inside"). */}
+            <nav aria-label={t('city.buildings')} data-testid="city-buildings">
+              {/* FIVE TILES LEAVE NO HOLE (2026-11-14, the second look pass): on a phone the words do not fit five across ("Production" is
+                  71 px in a 53-px cell at 320), and three columns left an empty sixth cell. So the phone's rail is two over three on six
+                  tracks: the first two tiles take three tracks each, the rest two. From `sm` it is one row of five, as before. */}
+              <div className="grid grid-cols-6 gap-3 sm:grid-cols-5 md:gap-4 xl:gap-6" data-testid="city-building-grid">
+                {CITY_TILES.map((b, i) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => onSelect(b.id)}
+                    aria-pressed={selected === b.id}
+                    data-testid={`city-building-${b.id}`}
+                    className={`${i < 2 ? 'col-span-3' : 'col-span-2'} sm:col-span-1 ${plateClass(selected === b.id ? 'on' : 'off')}`}
+                  >
+                    <Plate icon={b.icon} word={t(b.label)} figure={plateFigure[b.id]} />
+                  </button>
+                ))}
+              </div>
+            </nav>
 
-          {/* THE OFFICE'S THREE FACES ARE HQ'S DOORS (2026-11-23, the visual overhaul's slice 2, roadmap X2): the Office cell left the bar and
-              City, Invest and Report stand here as buildings, each a press to its page (`/office?face=`, OfficeScreen turns to it). They
-              open a page rather than this split: each is the desk's own shell with the fleet in hand, which this frame does not carry. */}
-          <nav aria-label={officeWord} data-testid="city-office">
-            <div className="grid grid-cols-3 gap-3 md:gap-4 xl:gap-6">
-              {OFFICE_DOORS.map((d) => (
-                <Link
-                  key={d.id}
-                  to={`/office?face=${d.id}`}
-                  data-testid={`city-office-${d.id}`}
-                  className="flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-tile bg-surface px-1 py-2 text-ink-muted transition hover:bg-surface-2 hover:text-ink"
-                >
-                  <Icon name={d.icon} size={20} />
-                  <span className="max-w-full text-balance text-center text-t-label leading-tight">{t(d.label)}</span>
-                </Link>
-              ))}
-            </div>
-          </nav>
+            {/* THE OFFICE'S THREE FACES ARE HQ'S DOORS (2026-11-23, the visual overhaul's slice 2, roadmap X2): the Office cell left the bar and
+                City, Invest and Report stand here as buildings, each a press to its page (`/office?face=`, OfficeScreen turns to it). They
+                open a page rather than this split: each is the desk's own shell with the fleet in hand, which this frame does not carry.
+                X6 (live/levelGate.ts, the one level gate): a door the gate holds is no door — its plate stands dimmed, its figure the level
+                that opens it (the one unlock line; the Office's City face says the same on its Town rows). */}
+            <nav aria-label={officeWord} data-testid="city-office">
+              <div className="grid grid-cols-3 gap-3 md:gap-4 xl:gap-6">
+                {OFFICE_DOORS.map((d) =>
+                  gate.shut(d.id) ? (
+                    <div key={d.id} data-testid={`city-office-${d.id}-held`} className={plateClass('held')}>
+                      <Plate icon={d.icon} word={t(d.label)} figure={{ text: `${levelName(locale, FROM.track)} ${FROM.level}`, name: t('city.opensAt'), mark: 'levelUp' }} />
+                    </div>
+                  ) : (
+                    <Link key={d.id} to={`/office?face=${d.id}`} data-testid={`city-office-${d.id}`} className={plateClass('off')}>
+                      <Plate icon={d.icon} word={t(d.label)} figure={doorFigure[d.id]} />
+                    </Link>
+                  ),
+                )}
+              </div>
+            </nav>
+          </div>
 
           {selected === PRODUCTION_PLACE ? (
             <div data-testid="city-open-panel">

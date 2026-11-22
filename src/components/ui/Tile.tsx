@@ -106,7 +106,7 @@ export function Tile({
   className?: string
   /** The caller's own tap zones (a good's two price cells), under the figures. */
   children?: ReactNode
-} & { 'data-testid'?: string; 'data-level'?: number; 'aria-pressed'?: boolean }) {
+} & { 'data-testid'?: string; 'data-level'?: number; 'data-rose'?: number; 'aria-pressed'?: boolean }) {
   const inTray = useInTray()
   const head = (
     <>

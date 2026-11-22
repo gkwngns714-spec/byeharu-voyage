@@ -11,6 +11,7 @@ import { FleetTotals } from './FleetTotals'
 import { RenameFleet } from './RenameFleet'
 import { fleetDue } from './fleetLine'
 import { RaidOrder } from '../../live/RaidOrder'
+import { CrewHint } from '../../live/CrewHint'
 import { BattleCard } from '../../live/BattleCard'
 import { tabWord } from '../../app/navTabs'
 import { useLocale, useT } from '../../lib/i18n'
@@ -63,6 +64,8 @@ export function FleetMore({ fleet, onClose }: { fleet: FleetView; onClose: () =>
 
         {/* 0354: what the fleet adds up to */}
         <FleetTotals fleet={fleet} />
+        {/* the red crew line's next step: the hands she lacks and the one press that hires them (2026-11-23, finding 26) */}
+        <CrewHint fleet={fleet} />
 
         {/* 0353: her standing order when raiders close (Fight, Flee, Pay). Draws nothing while orders are dark. */}
         <RaidOrder fleetId={fleet.id} className="mt-4" />

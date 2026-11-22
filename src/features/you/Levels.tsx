@@ -2,10 +2,9 @@ import { HullCountry } from '../../live/HullCountry'
 import { Bar, Card, Clip, GroupHeading, Note, Row, Skeleton, StatCell } from '../../components/ui'
 import { regardBandWord } from '../../domain/port'
 import { formatInt } from '../../lib/format'
-import { properName, useLocale, useT } from '../../lib/i18n'
+import { useT } from '../../lib/i18n'
 import type { LevelsView } from '../../lib/rpc'
 import { LevelTiles, LevelTray } from '../../live/LevelTiles'
-import { seasOpened } from '../../live/levelWords'
 import { useLevels } from './useLevels'
 
 // THE COMPANY'S LEVELS, ON THE YOU PAGE — the one place they stand (2026-11-16).
@@ -18,8 +17,8 @@ import { useLevels } from './useLevels'
 //   · the tiles are the Levels face's, every level `level_skills` serves (the three tracks among them, so the three bars that
 //     repeated them are gone); a pressed tile opens that level in the tray: her experience, what raises it, what levels give,
 //     the experience table (LevelTiles.tsx).
-//   · seamanship, the title and what the next one opens, whether levels act yet, and the countries' regard: the face's own
-//     blocks, moved.
+//   · seamanship, whether levels act yet, and the countries' regard: the face's own blocks, moved. The title and what the next
+//     one opens moved again (2026-11-23, visual slice 9) to the page's house plate, as a ring (YouScreen.tsx `HouseTitle`).
 //   · each hull's level stands on her row in Your ships (YouScreen.tsx `Ships`), each captain's in her own tray — the face's
 //     two lists of them would have been a second list of the same hulls and captains on one page.
 //   · the face's "Room" block is the room line at the top of this page (`RoomLine`, world.house_room) — one answer to "how many
@@ -64,19 +63,8 @@ export function YouLevelTray({ picked, onClose }: { picked: string | null; onClo
   return <LevelTray card={v.level_skills} code={picked} onClose={onClose} />
 }
 
-/** A label over a word figure (StatCell's value is a counting number). */
-function Words({ label, value }: { label: string; value: string }) {
-  return (
-    <>
-      <span className="block text-t-body text-ink-muted">{label}</span>
-      <span className="block text-t-card text-ink">{value}</span>
-    </>
-  )
-}
-
 function Company({ v }: { v: Ready }) {
   const t = useT()
-  const locale = useLocale()
   const sea = v.skills.seamanship
   return (
     <>
@@ -84,24 +72,6 @@ function Company({ v }: { v: Ready }) {
         <StatCell look="stacked" label={t('command.lvSeamanship')} value={sea.level} format={(n) => `${formatInt(n)} ${t('command.lvOf', { max: sea.max })}`} />
         <Bar value={sea.level} of={sea.max} label={t('you.levelOf', { name: t('command.lvSeamanship') })} tone="accent" className="mt-1" />
         <span className="mt-1 block text-t-caption text-ink-faint">{t('command.lvSkillNote')}</span>
-      </div>
-      <div className="min-w-0 border-t border-edge py-2" data-testid="levels-title">
-        <Words label={t('command.lvTitle')} value={`${v.title.name ? properName('title', v.title.name, v.title.name) : ''} ${t('command.lvLevel', { n: v.title.level })}`.trim()} />
-        <span className="mt-1 block text-t-caption text-ink-faint">
-          {v.title.next
-            ? t('command.lvTitleNext', {
-                name: properName('title', v.title.next.name, v.title.next.name),
-                tracks: t('command.goalTracks', { a: v.tracks.trading.level, b: v.tracks.exploration.level, n: v.title.next.level }),
-              })
-            : t('command.lvTitleTop')}
-        </span>
-        {/* what the title opens, only while sea limits are on (2026-11-23, finding 14: dark it read "(sea rules off)", a builder's note;
-            the goal card has always kept it to the lit case) */}
-        {v.title.next && v.title.seas_bite && v.title.next.opens.length > 0 && (
-          <span className="mt-1 block text-t-caption text-ink-muted" data-testid="levels-opens">
-            {t('command.lvOpens', { what: seasOpened(locale, v.title.next.opens) })}
-          </span>
-        )}
       </div>
     </>
   )

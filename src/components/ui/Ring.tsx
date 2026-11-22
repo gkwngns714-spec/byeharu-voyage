@@ -18,6 +18,7 @@ export function Ring({
   pct,
   size = 36,
   tone = 'accent',
+  track = 'inset',
   label,
   children,
   className = '',
@@ -27,6 +28,9 @@ export function Ring({
   pct: number
   size?: number
   tone?: RingTone
+  /** The unfilled track: `inset` (the default, on a card) or `edge`, the bar's own track tone, for a ring standing on an inset tile (a level tile, slice 9),
+   *  where the inset tone would vanish into the tile. */
+  track?: 'inset' | 'edge'
   /** What the ring says to a screen reader: the thing, its level, how far to the next. */
   label: string
   /** The mark in the middle. */
@@ -46,7 +50,7 @@ export function Ring({
       {...rest}
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="absolute inset-0 -rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-surface-2)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={track === 'edge' ? 'color-mix(in srgb, var(--color-ink-faint) 20%, transparent)' : 'var(--color-surface-2)'} strokeWidth={stroke} />
         {p > 0 && (
           <circle
             cx={size / 2}

@@ -1,4 +1,4 @@
-import { StatCard, StatStrip } from '../../components/ui'
+import { Icon, StatCard, StatStrip, type IconName } from '../../components/ui'
 import { formatDucats, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import type { StatsNow } from '../../lib/rpc'
@@ -21,6 +21,10 @@ import { useWorld } from '../../live/worldStore'
 
 // THE WORLD'S MONEY IS A BUILDER'S FIGURE (2026-11-23, the visual overhaul's slice 2, roadmap X5): "Gold in play" and the funds at sea
 // stand on the faces under "More" (`world`), with the Overview whose subject they are; the faces up front keep the player's three.
+// THE MARKS (2026-11-23, the visual overhaul's slice 8): each figure wears the one glyph of its meaning before its word — money the coin,
+// fleets at sea the ship, trades the scales — so the strip is read by its marks first (principle 1; the words stay, they are short).
+const mark = (name: IconName) => <Icon name={name} size={18} className="shrink-0 text-ink-muted" aria-hidden="true" />
+
 export function LiveNow({ live, world }: { live: StatsNow | null; world: boolean }) {
   const t = useT()
   // Selected as a primitive, one selector (worldStore's rule).
@@ -29,6 +33,7 @@ export function LiveNow({ live, world }: { live: StatsNow | null; world: boolean
   return (
     <StatStrip aria-label={t('stats.rightNow')} data-testid="stats-live">
       <StatCard
+        mark={mark('coin')}
         label={t('stats.purse')}
         value={ducats ?? 0}
         format={formatDucats}
@@ -37,6 +42,7 @@ export function LiveNow({ live, world }: { live: StatsNow | null; world: boolean
         data-testid="stats-live-purse"
       />
       <StatCard
+        mark={mark('ship')}
         label={t('stats.fleetsAtSea')}
         value={live?.at_sea ?? 0}
         format={formatInt}
@@ -44,6 +50,7 @@ export function LiveNow({ live, world }: { live: StatsNow | null; world: boolean
         data-testid="stats-live-sea"
       />
       <StatCard
+        mark={mark('scales')}
         label={t('stats.tradesSince')}
         value={live?.since_count.trades ?? 0}
         format={formatInt}
@@ -52,6 +59,7 @@ export function LiveNow({ live, world }: { live: StatsNow | null; world: boolean
       />
       {world && (
         <StatCard
+          mark={mark('coin')}
           label={t('stats.money')}
           value={live?.total ?? 0}
           format={formatDucats}
@@ -61,7 +69,7 @@ export function LiveNow({ live, world }: { live: StatsNow | null; world: boolean
       )}
       {/* 0310: a part of Set aside, served only while a cargo ship exists. */}
       {world && live?.funds_at_sea !== undefined && (
-        <StatCard label={t('stats.fundsAtSea')} value={live.funds_at_sea} format={formatDucats} data-testid="stats-live-funds" />
+        <StatCard mark={mark('coin')} label={t('stats.fundsAtSea')} value={live.funds_at_sea} format={formatDucats} data-testid="stats-live-funds" />
       )}
     </StatStrip>
   )

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Bar, GroupHeading, Icon, Tile, Tray, type TrayDetent } from '../components/ui'
+import { useEffect, useState } from 'react'
+import { Bar, GroupHeading, Icon, Ring, Tile, Tray, type TrayDetent } from '../components/ui'
 import { formatInt, formatRelative } from '../lib/format'
 import { translateMaybe, useLocale, useT } from '../lib/i18n'
 import type { LevelSkill, LevelSkillsCard } from '../lib/rpc'
@@ -73,56 +73,96 @@ function TileGroup({
   onSelect: (code: string) => void
   testid: string
 }) {
-  const t = useT()
-  const locale = useLocale()
   return (
     <div className="grid grid-cols-2 gap-2" data-testid={testid}>
-      {skills.map((s) => {
-        const name = levelName(locale, s.code, s.word)
-        const gift = nextGift(s)
-        const on = selected === s.code
-        return (
-          // THE KIT'S TILE (2026-11-15; tests/duplication.spec.ts "no inline border+bg skin"): its skin, its selected wash and hairline;
-          // the body is the level's own (no head). A level tile is tighter than a catalogue tile and stands inset on its sheet.
-          <Tile
-            key={s.code}
-            tap="whole"
-            state={on ? 'selected' : 'rest'}
-            onClick={() => onSelect(s.code)}
-            aria-pressed={on}
-            data-testid={`levels-${s.code}`}
-            data-level={s.level}
-            className={`min-w-0 gap-1! p-2! ${on ? '' : 'bg-surface-2!'} ${s.counted ? '' : 'text-ink-faint'}`}
-          >
-            <span className="flex items-center justify-between gap-2">
-              <span className={s.counted ? 'text-accent' : 'text-ink-faint'}>
-                <Mark code={s.code} size={22} />
-              </span>
-              <span className="text-t-title tabular-nums" data-testid="level-tile-level">
-                {formatInt(s.level)}
-              </span>
-            </span>
-            <span className="block break-words text-t-body">{name}</span>
-            <Bar pct={levelFill(s)} label={t('you.levelOf', { name })} tone={s.counted ? 'accent' : 'neutral'} />
-            <span className="flex flex-wrap gap-x-2 text-t-caption text-ink-faint">
-              {/* a level not counted yet (Combat) says nothing: "Not counted yet" was a builder's note (2026-11-22, P0) */}
-              {!s.counted ? null : s.next_at === null ? (
-                t('command.lvTop')
-              ) : (
-                <>
-                  <span className="whitespace-nowrap">{t('command.lvExpOf', { a: formatInt(s.points), b: formatInt(s.next_at) })}</span>
-                  {gift > 0 && (
-                    <span className="whitespace-nowrap text-accent" data-testid="levels-gift" data-value={gift}>
-                      {t('command.lvNextGift', { n: formatInt(gift) })}
-                    </span>
-                  )}
-                </>
-              )}
-            </span>
-          </Tile>
-        )
-      })}
+      {skills.map((s) => (
+        <LevelTile key={s.code} s={s} on={selected === s.code} onSelect={onSelect} />
+      ))}
     </div>
+  )
+}
+
+/** THE LEVEL EACH TILE LAST SHOWED, for the session (the visual overhaul's slice 9). A tile whose served level is higher than the
+ *  one it last drew plays the level-up moment once: so a level that rose while she was on another tab greets her when she comes
+ *  back to You. A page load starts it empty, so nothing plays on the first sight of a level. Nothing is worked out here: it
+ *  compares two served levels. */
+const shown = new Map<string, number>()
+
+/** How many times this level has risen in front of her (0: never): the moment's key, so each rise plays it afresh. */
+function useRises(code: string, level: number): number {
+  // the first sight: a rise since this tile last stood on the page (another tab, the same session)
+  const [seen, setSeen] = useState(() => {
+    const before = shown.get(code)
+    return { level, rises: before !== undefined && level > before ? 1 : 0 }
+  })
+  // a rise while she looks: the served level moved under the drawn one (React's adjust-state-while-rendering pattern)
+  if (seen.level !== level) setSeen({ level, rises: level > seen.level ? seen.rises + 1 : seen.rises })
+  useEffect(() => {
+    shown.set(code, level)
+  }, [code, level])
+  return seen.rises
+}
+
+/** One level as a Melvor-style tile: its mark in a ring filling to the next level, the level figure, its name, the 6-px bar to the
+ *  next, and the experience against the next level with the next level's gift. */
+function LevelTile({ s, on, onSelect }: { s: LevelSkill; on: boolean; onSelect: (code: string) => void }) {
+  const t = useT()
+  const locale = useLocale()
+  const name = levelName(locale, s.code, s.word)
+  const gift = nextGift(s)
+  const fill = levelFill(s)
+  const rises = useRises(s.code, s.level)
+  return (
+    // THE KIT'S TILE (2026-11-15; tests/duplication.spec.ts "no inline border+bg skin"): its skin, its selected wash and hairline;
+    // the body is the level's own (no head). A level tile is tighter than a catalogue tile and stands inset on its sheet.
+    <Tile
+      tap="whole"
+      state={on ? 'selected' : 'rest'}
+      onClick={() => onSelect(s.code)}
+      aria-pressed={on}
+      data-testid={`levels-${s.code}`}
+      data-level={s.level}
+      data-rose={rises > 0 ? rises : undefined}
+      className={`relative min-w-0 gap-1! p-2! ${on ? '' : 'bg-surface-2!'} ${s.counted ? '' : 'text-ink-faint'}`}
+    >
+      {/* THE LEVEL-UP MOMENT: a gold glow round the tile and a chevron rising off the ring, once (1.4 s). Keyed by the rise, so a
+          second rise plays it again; under reduced motion it is not drawn at all (index.css `.bv-level-*`). */}
+      {rises > 0 && <span key={`glow-${rises}`} aria-hidden="true" className="bv-level-glow pointer-events-none absolute inset-0 rounded-tile" />}
+      <span className="flex items-center justify-between gap-2">
+        <span className="relative inline-flex">
+          <Ring pct={fill} size={40} track="edge" tone={s.counted ? 'accent' : 'muted'} label={t('books.levelRing', { track: name, n: formatInt(s.level) })}>
+            <span key={`mark-${rises}`} className={`inline-flex ${s.counted ? 'text-accent' : 'text-ink-faint'} ${rises > 0 ? 'bv-level-pop' : ''}`}>
+              <Mark code={s.code} size={20} />
+            </span>
+          </Ring>
+          {rises > 0 && (
+            <span key={`up-${rises}`} aria-hidden="true" className="bv-level-up pointer-events-none absolute -top-1 left-1/2 -ml-2 text-accent">
+              <Icon name="levelUp" size={16} />
+            </span>
+          )}
+        </span>
+        <span key={`level-${rises}`} className={`text-t-title tabular-nums ${rises > 0 ? 'bv-level-pop text-accent' : ''}`} data-testid="level-tile-level">
+          {formatInt(s.level)}
+        </span>
+      </span>
+      <span className="block break-words text-t-body">{name}</span>
+      <Bar pct={fill} label={t('you.levelOf', { name })} tone={s.counted ? 'accent' : 'neutral'} />
+      <span className="flex flex-wrap gap-x-2 text-t-caption text-ink-faint">
+        {/* a level not counted yet (Combat) says nothing: "Not counted yet" was a builder's note (2026-11-22, P0) */}
+        {!s.counted ? null : s.next_at === null ? (
+          t('command.lvTop')
+        ) : (
+          <>
+            <span className="whitespace-nowrap tabular-nums">{t('command.lvExpOf', { a: formatInt(s.points), b: formatInt(s.next_at) })}</span>
+            {gift > 0 && (
+              <span className="whitespace-nowrap text-accent" data-testid="levels-gift" data-value={gift}>
+                {t('command.lvNextGift', { n: formatInt(gift) })}
+              </span>
+            )}
+          </>
+        )}
+      </span>
+    </Tile>
   )
 }
 

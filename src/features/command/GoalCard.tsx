@@ -2,14 +2,12 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { Bar, useWide } from '../../components/ui'
 import { properName, useLocale, useT } from '../../lib/i18n'
 import { levelName, nextOpening } from '../../live/levelWords'
-import { worldHullQuote, worldLevels, type HullQuote, type LevelsView } from '../../lib/rpc'
+import { worldLevels, type LevelsView } from '../../lib/rpc'
 import { useServedRead } from '../../live/useServedRead'
-import { useSecondShip } from '../../live/useSecondShip'
+import { useSecondShipGoal } from '../../live/useSecondShipGoal'
 import { useWorld } from '../../live/worldStore'
-import { formatInt, formatRealShort } from '../../lib/format'
-import { portNameOf } from '../../live/worldStore'
+import { formatInt } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
-import type { SecondShip } from '../../live/useSecondShip'
 import { useNavigate } from 'react-router-dom'
 import { openOfficeCity } from './officeView'
 import { useShowOnMap } from '../../live/showOnMap'
@@ -70,21 +68,12 @@ export function GoalCard() {
   const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
   const v = read.view
   const reputation = useWorld((s) => s.player?.reputation?.balance ?? null)
-  const purse = useWorld((s) => s.ducats)
-  const second = useSecondShip()
-  const portByCode = useWorld((s) => s.portByCode)
   const { nowMs } = useShellState()
-  // the Order's price: asked only while the yard takes orders and nothing is on order (the yard's sheet asks the same key)
-  const quoteAt = second && second.orderOn && !second.order && second.portId !== null ? second.portId : null
-  const quoteHull = second?.hull ?? ''
-  const quote = useServedRead<HullQuote>(
-    quoteAt === null ? null : `${quoteAt}:${quoteHull}`,
-    () => worldHullQuote(quoteAt as string, quoteHull),
-    // not on the world's beat: the price moves with her Trading level (0472's discount), so that is what re-asks it
-    { name: 'worldHullQuote', trigger: v && v.company ? v.tracks.trading.level : 0 },
-  )
-  const price = quoteAt !== null && quote.view?.on && typeof quote.view.price === 'number' ? quote.view.price : null
-  const saving = price !== null && purse !== null ? { have: purse, price } : null
+  // the second ship as a goal: its line, and her purse against the Order's price while the yard takes orders (the one reading the
+  // welcome card's ring also draws, live/useSecondShipGoal.ts)
+  const goal = useSecondShipGoal(nowMs)
+  const second = goal?.second ?? null
+  const saving = goal?.saving ?? null
   // the unlock stands only where it fits beside the reputation (measured, at every width)
   const titleBox = useRef<HTMLSpanElement>(null)
   const unlockGhost = useRef<HTMLSpanElement>(null)
@@ -113,7 +102,7 @@ export function GoalCard() {
   // (Office > City opens the city she lies in, and one with no yard fell back to its Market with no word why)
   const next2 = !second ? 'you' : second.here ? 'yard' : 'map'
   const nextTitle = next ? t('command.goalNext', { name: properName('title', next.name, next.name) }) : t('command.lvTitleTop')
-  const showSaving = second !== null && second.order === null && saving !== null
+  const showSaving = saving !== null
   const press = () => {
     if (next2 === 'yard' && second) {
       // the yard ON the hull's sheet, where the Order is (finding 3); with a hull on order, the yard itself
@@ -163,11 +152,11 @@ export function GoalCard() {
           data-testid="goal-second-ship"
           data-ready={second.ready}
           data-of={second.of}
-          data-purse={showSaving ? saving.have : undefined}
-          data-price={showSaving ? saving.price : undefined}
+          data-purse={saving?.have}
+          data-price={saving?.price}
         >
-          {showSaving ? <span>{secondWords(t, second, second.port ? portNameOf(portByCode, second.port) : null, nowMs, saving)}</span> : secondWords(t, second, second.port ? portNameOf(portByCode, second.port) : null, nowMs, null)}
-          {showSaving && (
+          {showSaving ? <span>{goal?.words}</span> : goal?.words}
+          {saving && (
             // the purse against the price, in the rest of the line: no line is added, the card keeps its one height
             <span className="min-w-6 flex-1" data-testid="goal-saving">
               <Bar
@@ -181,38 +170,19 @@ export function GoalCard() {
       ) : next && (
         <span className="col-span-2 min-w-0 break-words text-t-caption text-ink-faint" data-testid="goal-tracks">
           <span className="whitespace-nowrap">
-            {t('command.goalTracks', { a: v.tracks.trading.level, b: v.tracks.exploration.level, n: next.level })}
+            {/* a met requirement reads "Trading 7 ✓", not "Trading 7/4" (2026-11-23, finding 26) */}
+            {[
+              v.tracks.trading.level >= next.level
+                ? t('command.goalTradingMet', { a: v.tracks.trading.level })
+                : t('command.goalTrading', { a: v.tracks.trading.level, n: next.level }),
+              v.tracks.exploration.level >= next.level
+                ? t('command.goalExplorationMet', { a: v.tracks.exploration.level })
+                : t('command.goalExploration', { a: v.tracks.exploration.level, n: next.level }),
+            ].join(' · ')}
           </span>
           {opens ? ` · ${opens}` : unlock && ` · ${unlock}`}
         </span>
       )}
     </button>
   )
-}
-
-/** The second ship's line: a hull on order (0465) says when she is ready; else the materials stored, with the yard's city when she is not
- *  lying there (the count is of THAT yard, so the line says which). */
-function secondWords(
-  t: ReturnType<typeof useT>,
-  s: SecondShip,
-  city: string | null,
-  nowMs: number,
-  saving: { have: number; price: number } | null,
-): string {
-  if (s.order) {
-    const left = Date.parse(s.order.readyAt) - nowMs
-    const name = properName('hull', s.order.name, s.order.name)
-    return s.order.ready || left <= 0
-      ? t('yard.secondShipOrderReady', { name })
-      : t('yard.secondShipOrdered', { name, time: formatRealShort(left) })
-  }
-  // the yard takes orders: her purse against the Order's price (finding 3), not materials
-  if (saving) {
-    const have = formatInt(Math.max(0, saving.have))
-    const price = formatInt(saving.price)
-    return !s.here && city ? t('yard.secondShipSaveAt', { city, have, price }) : t('yard.secondShipSave', { have, price })
-  }
-  const n = formatInt(s.ready)
-  const of = formatInt(s.of)
-  return !s.here && city ? t('yard.secondShipAt', { city, n, of }) : t('yard.secondShip', { n, of })
 }

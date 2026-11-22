@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DetailPage, Figure, GroupHeading, Note, Row, ScrollPane, Segmented, SignedBars, Skeleton, SummaryRow } from '../../../components/ui'
+import { Bar, DetailPage, Figure, GroupHeading, Note, Row, ScrollPane, Segmented, SignedBars, Skeleton, SummaryRow } from '../../../components/ui'
 import { useServedRead } from '../../../live/useServedRead'
 import { formatDucatsDelta, formatRealDay } from '../../../lib/format'
 import { worldReport, type Report as ReportView, type ReportLine, type ReportPlace, type ReportSection } from '../../../lib/rpc'
@@ -103,11 +103,18 @@ export function Report({ layout }: { layout: DeskLayout }) {
         ? `${t('desk.voyageWord')} ${placeName(p.from, p.from_name) ?? '—'}→${placeName(p.to, p.to_name) ?? '—'}${p.day === null ? '' : ` ${formatRealDay(p.day)}`}`
         : t('desk.earlier')
 
+  // EACH ROW'S SHARE AS A BAR (2026-11-23, slice 7): a section's or a place's served sum against the largest of its list, green in and red out,
+  // so the list is read by its bars before its figures. Drawn from the served sums; nothing is added up here.
+  const share = (d: number, all: readonly { ducats: number }[]) => {
+    const most = Math.max(0, ...all.map((x) => Math.abs(x.ducats)))
+    return <Bar pct={most > 0 ? (Math.abs(d) / most) * 100 : 0} tone={d > 0 ? 'success' : d < 0 ? 'danger' : 'neutral'} />
+  }
   const section = (s: ReportSection) => (
     <SummaryRow
       key={s.id}
       title={t(SECTION_KEYS[s.id])}
       figure={<Figure value={formatDucatsDelta(s.ducats)} tone={tone(s.ducats)} />}
+      meter={share(s.ducats, r.sections)}
       onClick={() => setOpen({ kind: 'section', id: s.id })}
       data-testid={`report-section-${s.id}`}
     />
@@ -117,6 +124,7 @@ export function Report({ layout }: { layout: DeskLayout }) {
       key={`${p.kind}-${i}`}
       title={placeTitle(p)}
       figure={<Figure value={formatDucatsDelta(p.ducats)} tone={tone(p.ducats)} />}
+      meter={share(p.ducats, r.places)}
       onClick={() => setOpen({ kind: 'place', index: i })}
       data-testid={`report-place-${p.kind}-${i}`}
     />

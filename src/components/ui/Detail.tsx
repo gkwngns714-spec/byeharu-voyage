@@ -35,6 +35,7 @@ import { useT } from '../../lib/i18n'
 export function SummaryRow({
   title,
   figure,
+  meter,
   onClick,
   className = '',
   ...rest
@@ -42,6 +43,8 @@ export function SummaryRow({
   title: ReactNode
   /** The block's key figure — a number, a formatted string, a `<Figure>`. */
   figure?: ReactNode
+  /** A `<Bar>` under the row, full width: the row's share of a whole. */
+  meter?: ReactNode
   onClick: () => void
   className?: string
 } & { 'data-testid'?: string }) {
@@ -85,6 +88,12 @@ export function SummaryRow({
       <span data-row-cell="action" className="ml-auto flex shrink-0 items-center justify-end gap-2 text-t-caption tabular-nums text-ink-muted narrow:absolute narrow:right-0 narrow:top-[11px] narrow:ml-0">
         <Icon name="chevron" size={16} />
       </span>
+      {/* THE ROW'S BAR (2026-11-23, slice 7): a summary that is a share of a whole (the Report's sections) draws it as a full-width line under its title. */}
+      {meter !== undefined && (
+        <span className="basis-full pt-1.5" data-row-meter="">
+          {meter}
+        </span>
+      )}
     </button>
   )
 }

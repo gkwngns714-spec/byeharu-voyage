@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Card,
   Figure,
+  Flag,
+  FlagSlot,
   Hint,
-  ListHeading,
+  Icon,
   ListPanel,
   Note,
   PageSplit,
@@ -19,6 +21,7 @@ import {
   type StackedPart,
   type TrayDetent,
 } from '../../components/ui'
+import { BoardRow, Pinned, Podium, type PodiumStep } from './Podium'
 import { formatInt, formatRelative } from '../../lib/format'
 import { worldHousesWeek, type PlayerHouse, type StandingsBoard } from '../../lib/rpc'
 import { HullCountry } from '../../live/HullCountry'
@@ -46,10 +49,11 @@ import { tabWord } from '../../app/navTabs'
 // the first rows of the board as ranked bars. The page scrolls, never a list inside itself; nothing is pinned and nothing
 // follows the scroll. The numbers it was measured to are in docs/dev-log/2026-11-03-rank-design.md.
 //
-// YOUR LINE IS IN THE LIST, where it stands: in its place when you are on the board, else under its own heading after the
-// board's rows (0025 serves `you` off the board's end for exactly this). It was pinned in the panel's header — a line that
-// docks and follows the scroll, which the page pattern does not do; your standing's figures stand in the side column instead,
-// where every page keeps its second block.
+// YOUR LINE IS PINNED AT THE HEAD OF THE LIST (2026-11-23, the visual overhaul's slice 8): under the podium of the top three, lit,
+// whether you placed or stand off the board's end (0025 serves `you` off the end for exactly this), and lit again in its place when
+// you placed. It is pinned in the flow, not docked: it does not follow the scroll (the page pattern pins nothing that moves; it
+// stood in the panel's header and followed the scroll until 2026-11-03). Every row is the place, the flag and the whole name, the
+// figure, and a bar against the first row (Podium.tsx).
 //
 // YOUR LINE OPENS THE FAME TRAY — the place, the country, the two fames the total is made of, the ports, the cities you are
 // mayor of, the total — and it slides over the side column and moves nothing, as it always did. The other rows are read-only,
@@ -233,29 +237,38 @@ function Board({
     setOpen(line)
     setDetent('half')
   }
-  const row = (r: Line) => (
-    <Row
-      key={`${r.position}-${r.name}`}
-      mark={<Place position={r.position} mine={r.mine} />}
-      label={r.name}
-      value={<Figure value={formatInt(r.total_fame)} tone={r.mine ? 'accent' : 'ink'} />}
-      tone={r.mine ? 'accent' : 'default'}
-      chevron={r.mine}
-      // ONE FIGURE COLUMN (owner, 2026-11-12): your own row carries a chevron (32 px) and the others do not, so your fame stood
-      // 32 px left of the column above it. A row without the chevron keeps the chevron's room.
-      className={r.mine ? '' : 'pr-8'}
-      hairline={false}
-      onClick={r.mine ? () => show(r) : undefined}
-      data-testid={r.mine ? 'rank-you' : 'rank-row'}
-    >
-      <Standing nation={flag(r.nation)} tied={r.tied} />
-      {r.mayor_of.length > 0 && (
-        <span className="block text-t-caption text-ink-faint" data-testid="rank-mayor-of">
-          {t('rank.mayorOf', { cities: r.mayor_of.join(', ') })}
-        </span>
-      )}
-    </Row>
+  // THE BAR'S MEASURE: the board's first row (the server's order is the ranking — a slice, never a sort)
+  const widest = Math.abs(lines.rows[0]?.total_fame ?? 0)
+  // 2026-11-23 (slice 8): a row is a mark, a figure and a bar — the place, the flag and the whole name, the fame, a bar against the
+  // first. "tied" left the row: two houses level wear the same place, and the tray still says it. Your line in its place is lit; the
+  // one press it opens is your PINNED line at the head of the list (`rank-you`).
+  const row = (r: Line, pinned = false) => (
+    <BoardRow
+      key={`${pinned ? 'pin' : 'row'}-${r.position}-${r.name}`}
+      place={r.position}
+      name={r.name}
+      nation={r.nation}
+      value={r.total_fame}
+      text={formatInt(r.total_fame)}
+      widest={widest}
+      mine={r.mine}
+      pinned={pinned}
+      caption={
+        r.mayor_of.length > 0 ? <span data-testid="rank-mayor-of">{t('rank.mayorOf', { cities: r.mayor_of.join(', ') })}</span> : undefined
+      }
+      onClick={pinned ? () => show(r) : undefined}
+      data-testid={pinned ? 'rank-you' : 'rank-row'}
+    />
   )
+  const podium: PodiumStep[] = leadersOf(lines.rows, 3).map((r) => ({
+    key: `${r.position}-${r.name}`,
+    place: r.position,
+    name: r.name,
+    nation: r.nation,
+    value: r.total_fame,
+    text: formatInt(r.total_fame),
+    mine: r.mine,
+  }))
 
   // THE TWO FAMES THE TOTAL IS MADE OF, as the parts of one bar (0014's two tracks; the server sums them)
   const split: StackedPart[] =
@@ -265,11 +278,16 @@ function Board({
           { id: 'trade', label: t('rank.trade'), value: mine.trade_fame, tone: 'accent' },
           { id: 'exploration', label: t('rank.exploration'), value: mine.exploration_fame, tone: 'info' },
         ]
+  // the leaders' flags are pictures (their names the pictures' accessible names), not a caption line under each name
   const leaders: RankRow[] = leadersOf(lines.rows, LEADERS).map((r) => ({
     id: `${r.position}-${r.name}`,
-    label: r.name,
+    label: (
+      <span className="flex min-w-0 items-center gap-2">
+        {r.nation === null ? <FlagSlot /> : <Flag code={r.nation} name={flag(r.nation) ?? r.nation} />}
+        <span className="min-w-0">{r.name}</span>
+      </span>
+    ),
     value: r.total_fame,
-    note: [flag(r.nation), r.tied ? t('rank.tied') : null].filter(Boolean).join(' · ') || undefined,
     tone: r.mine ? 'accent' : 'neutral',
   }))
 
@@ -290,15 +308,10 @@ function Board({
             footer={mine !== null && !lines.onBoard ? <Hint>{t('rank.below', { n: formatInt(board.board_size) })}</Hint> : undefined}
             data-testid="rank-list"
           >
-            {lines.rows.map(row)}
-            {mine !== null && !lines.onBoard && (
-              <>
-                {/* YOUR LINE UNDER ITS OWN HEADING (ListHeading spans the card's columns), after the board's rows */}
-                <ListHeading data-testid="rank-you-heading">{t('rank.yourCompany')}</ListHeading>
-                {row(mine)}
-              </>
-            )}
-            {mine === null && <Row label={t('rank.notRanked')} tone="muted" hairline={false} />}
+            <Podium steps={podium} label={t('rank.podium')} />
+            {/* YOUR LINE, PINNED AT THE HEAD OF THE LIST (slice 8), whether you placed or stand off the board's end */}
+            {mine !== null ? <Pinned>{row(mine, true)}</Pinned> : <Row label={t('rank.notRanked')} tone="muted" hairline={false} />}
+            {lines.rows.map((r) => row(r))}
           </ListPanel>
         }
         side={
@@ -310,7 +323,7 @@ function Board({
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <StatCell look="stacked" label={t('rank.place')} value={mine.position} format={formatInt} tone="accent" data-testid="rank-place">
-                      {mine.tied && <span className="block text-t-caption text-ink-faint">{t('rank.tied')}</span>}
+                      <span className="block text-t-caption text-ink-faint">{t('rank.ofN', { of: formatInt(board.houses) })}</span>
                     </StatCell>
                     <StatCell look="stacked" label={t('rank.fame')} value={mine.total_fame} format={formatInt} data-testid="rank-fame" />
                   </div>
@@ -319,13 +332,13 @@ function Board({
                     <StackedBar parts={split} format={formatInt} label={t('rank.fameByKind')} className="mt-5" data-testid="rank-fame-split" />
                   ) : (
                     <div className="mt-3">
-                      <StatCell look="line" label={t('rank.trade')} value={mine.trade_fame} format={formatInt} />
-                      <StatCell look="line" label={t('rank.exploration')} value={mine.exploration_fame} format={formatInt} />
+                      <StatCell look="line" mark={<Icon name="coin" size={18} aria-hidden="true" />} label={t('rank.trade')} value={mine.trade_fame} format={formatInt} />
+                      <StatCell look="line" mark={<Icon name="compass" size={18} aria-hidden="true" />} label={t('rank.exploration')} value={mine.exploration_fame} format={formatInt} />
                     </div>
                   )}
+                  {/* the companies' count stands under the place ("of 846"); the ports reached keep their line, with the port's anchor */}
                   <div className="mt-3">
-                    <StatCell look="line" label={t('rank.ports')} value={mine.ports_reached} format={formatInt} />
-                    <StatCell look="line" label={t('rank.companies')} value={board.houses} format={formatInt} />
+                    <StatCell look="line" mark={<Icon name="anchor" size={18} aria-hidden="true" />} label={t('rank.ports')} value={mine.ports_reached} format={formatInt} />
                   </div>
                 </>
               )}
@@ -357,19 +370,4 @@ function Board({
       )}
     </>
   )
-}
-
-/** The place, as a right-aligned figure so the names line up whatever the number's width. */
-function Place({ position, mine = false }: { position: number; mine?: boolean }) {
-  return <Figure value={formatInt(position)} tone={mine ? 'accent' : 'faint'} className="w-7 justify-end" />
-}
-
-/** The second line of a row: the flag, and whether the place is shared. 0025 ranks by competition,
- *  so two houses level are BOTH second and the next is fourth — "tied" is what stops the missing
- *  number after them reading as a gap. */
-function Standing({ nation, tied }: { nation: string | null; tied: boolean }) {
-  const t = useT()
-  const text = [nation, tied ? t('rank.tied') : null].filter(Boolean).join(' · ')
-  if (text === '') return null
-  return <span className="block text-t-caption text-ink-faint">{text}</span>
 }
