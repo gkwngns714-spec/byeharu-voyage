@@ -46,6 +46,10 @@ export const yardDict = defineDict({
     secondShipAt: 'Second ship · {city} · materials {n} / {of}',
     secondShipOrdered: 'Second ship · {name} in {time}',
     secondShipOrderReady: 'Second ship · {name} ready',
+    /** 2026-11-23 third play-test: while the yard takes orders, her purse against the Order's price (and its bar's name) */
+    secondShipSave: 'Second ship · {have} / {price}',
+    secondShipSaveAt: 'Second ship · {city} · {have} / {price}',
+    secondShipBar: 'Saved toward the order',
     type: 'Type',
     crownNote: 'You pay crew and supplies',
     building: 'Building…',
@@ -83,10 +87,13 @@ export const yardDict = defineDict({
     /** 0465 — the yard takes an order: a hull for coin and time, then launched into a fleet lying here. */
     order: 'Order',
     orderN: 'Order · {price}',
+    /** 2026-11-23: the Order she cannot pay yet says by how much, on the button itself (it is disabled) */
+    orderShort: 'Short {n}',
     ordering: 'Ordering…',
     wait: 'Wait',
-    /** 0472 (first_hour_enabled): a company's second hull costs at least the floor; the raise is in the fee */
-    firstOrder: 'First order',
+    /** 0472 (first_hour_enabled): a company's second hull costs at least the floor; the raise is in the fee. 2026-11-23: it is a FEE,
+     *  so it is called one ("First order 34,434" read as a fourth price for the same hull). */
+    firstOrder: 'First-ship fee',
     onOrder: 'On order',
     readyIn: 'Ready in {t}',
     readyNow: 'Ready',
@@ -132,6 +139,9 @@ export const yardDict = defineDict({
     secondShipAt: '두 번째 배 · {city} · 재료 {n} / {of}',
     secondShipOrdered: '두 번째 배 · {name} {time} 후',
     secondShipOrderReady: '두 번째 배 · {name} 완성',
+    secondShipSave: '두 번째 배 · {have} / {price}',
+    secondShipSaveAt: '두 번째 배 · {city} · {have} / {price}',
+    secondShipBar: '주문까지 모은 돈',
     type: '종류',
     crownNote: '선원·보급은 내 부담',
     building: '건조하는 중…',
@@ -168,9 +178,10 @@ export const yardDict = defineDict({
     dismiss: '닫기',
     order: '주문',
     orderN: '주문 · {price}',
+    orderShort: '{n} 부족',
     ordering: '주문하는 중…',
     wait: '대기',
-    firstOrder: '첫 주문',
+    firstOrder: '첫 배 수수료',
     onOrder: '주문함',
     readyIn: '{t} 후 완성',
     readyNow: '완성',

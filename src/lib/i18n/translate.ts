@@ -33,8 +33,20 @@ function fill(text: string, vars: TVars | undefined): string {
 // filled in: no screen and no dictionary entry carries the character itself. English is never touched.
 const BEFORE_BRACKET = /([\uAC00-\uD7A3A-Za-z0-9])(?=\()/g
 const WORD_JOINER = '\u2060'
+// THE PARTICLE IS CHOSEN, NOT PRINTED BOTH WAYS (2026-11-23 third play-test: the sail toast read "세투바우(으)로 출항"). A dictionary entry
+// writes "{city}(으)로" because the city is filled in later; once it is, the last letter decides: a syllable with no final consonant, or
+// with ㄹ, takes 로 ("리스본으로" but "세투바우로", "브리스틀로"); any other takes 으로. A name that does not end in a Hangul syllable
+// (a Latin name, a digit) keeps "(으)로", the honest both-ways form.
+const EURO = /([가-힣])\(으\)로/g
+function particle(text: string): string {
+  return text.replace(EURO, (_all, last: string) => {
+    const final = (last.charCodeAt(0) - 0xac00) % 28
+    return `${last}${final === 0 || final === 8 ? '로' : '으로'}`
+  })
+}
+
 function whole(locale: Locale, text: string): string {
-  return locale === 'ko' ? text.replace(BEFORE_BRACKET, `$1${WORD_JOINER}`) : text
+  return locale === 'ko' ? particle(text).replace(BEFORE_BRACKET, `$1${WORD_JOINER}`) : text
 }
 
 function pick(msg: Msg, vars: TVars | undefined): string {

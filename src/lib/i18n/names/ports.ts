@@ -46,7 +46,7 @@ export const KO_PORTS: Readonly<Record<string, string>> = {
   'San Francisco': '샌프란시스코', 'San Juan': '산후안', 'Sanlucar de Barrameda': '산루카르데바라메다',
   'Santa Cruz de Tenerife': '산타크루스데테네리페', 'Santo Domingo': '산토도밍고', Santos: '산투스',
   'Sao Tome': '상투메', Setubal: '세투바우', Seville: '세비야', Shimonoseki: '시모노세키', Sofala: '소팔라',
-  Soyo: '소요', Split: '스플리트', 'St. Augustine': '세인트오거스틴', "St. George's": '세인트조지스',
+  Soyo: '소요(콩고)', Split: '스플리트', 'St. Augustine': '세인트오거스틴', "St. George's": '세인트조지스',
   "St. John's": '세인트존스', Stockholm: '스톡홀름', Suakin: '수아킨', Suez: '수에즈', Surabaya: '수라바야',
   Surat: '수라트', Sydney: '시드니', Tainan: '타이난', Tallinn: '탈린', Tangier: '탕헤르', Ternate: '테르나테',
   Thanlyin: '탄린', Thessaloniki: '테살로니키', Tidore: '티도레', Tokyo: '도쿄', Tongyeong: '통영',

@@ -21,7 +21,9 @@ import { whereabouts, type WhereFacts, type Whereabouts } from '../domain/fleet'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export type GoToTarget =
-  | { readonly kind: 'port'; readonly code: string }
+  /** `open`: the harbour's tray comes up too, with its Sail press (2026-11-23 play-test: the goal card's press to the yard's
+   *  city opened the Map with nothing chosen). Every other go-to selects nothing. */
+  | { readonly kind: 'port'; readonly code: string; readonly open?: boolean }
   /** A fleet of yours or a merchant, by id. `where` is her row's own whereabouts, for a hull the
    *  chart does not draw (a merchant resting in a harbour is served by that harbour alone). */
   | { readonly kind: 'fleet'; readonly id: string; readonly where?: Whereabouts }

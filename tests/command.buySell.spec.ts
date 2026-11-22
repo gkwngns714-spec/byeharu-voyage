@@ -41,7 +41,7 @@ for (const size of SIZES) {
       // THE SHIP under the orders (row 233): cargo, crew, stores — from the readings FLEETS already draws
       const ship = face.getByTestId('buy-ship')
       await expect(ship).toBeVisible()
-      await expect(ship.getByTestId('buy-ship-crew')).toContainText(/\d+\/\d+/)
+      await expect(ship.getByTestId('buy-ship-crew')).toContainText(/\d+ · room \d+/)
       await expect(ship.getByTestId('buy-ship-stores')).toContainText(/\d/)
       // back to the compact face before working the board
       await closeDetail(page)

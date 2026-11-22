@@ -2,7 +2,7 @@ import { Figure, Hint, Note, Row } from '../../../components/ui'
 import { fleetCrew } from '../../../domain/fleet'
 import { useSeaConditions } from '../../../live/useSeaConditions'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import { formatInt, formatOfTotal } from '../../../lib/format'
+import { formatInt } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, FleetView, GoodBoard } from '../../../lib/rpc'
 import { properName, useT } from '../../../lib/i18n'
 import { reachBoard, reachWords, seaPairs } from './planLines'
@@ -69,10 +69,11 @@ export function PlanVoyage({
 
   return (
     <div className="mt-4" data-testid="plan-voyage">
-      {/* CREW AS HAVE / NEED (2026-11-15 owner: shorter words): aboard against the ships' minimum, short in the warning tone */}
+      {/* CREW NEEDED (2026-11-15 owner: shorter words; 2026-11-23, finding 15: one figure, the ships' minimum; who is aboard is the
+          ship panel's "Crew 8 · room 20"), short in the warning tone with the hint under it */}
       <Row
         label={t('desk.crewNow')}
-        value={<Figure value={formatOfTotal(crew.aboard, crew.required)} tone={crew.short > 0 ? 'warning' : 'ink'} />}
+        value={<Figure value={formatInt(crew.required)} tone={crew.short > 0 ? 'warning' : 'ink'} />}
         hairline={false}
         data-testid="plan-crew-min"
       />

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DetailPage, SummaryRow, useWide } from '../../../components/ui'
 import { fleetCargoByCode, fleetHoldTotal, fleetHoldUsed } from '../../../domain/fleet'
 import { useBestSales, usePriceWhy } from '../../../live/useDesk'
@@ -70,7 +70,18 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const openPlan = useDeskPlan((s) => s.open)
 
   // The city in hand (tradeCity.ts: the one reading; the line that says where she is reads the same)
-  const { home, city, here } = useTradeCity(fleet)
+  const { home, city, here, docked } = useTradeCity(fleet)
+  // AN ARRIVAL HANDS THE BOARD BACK TO WHERE SHE LIES (2026-11-23, third play-test finding 27): a Cadiz chip pressed at Gibraltar stayed
+  // the city in hand after she sailed to Lisbon, "In port Lisbon" over Cadiz's board. When this fleet comes into a harbour (a new
+  // `docked`), a city pressed elsewhere is let go; one she has just arrived at is the same city and stays.
+  const focus = useDeskGood((s) => s.focus)
+  const lay = useRef<{ fleet: string; docked: string | null }>({ fleet: fleet.id, docked })
+  useEffect(() => {
+    const was = lay.current
+    lay.current = { fleet: fleet.id, docked }
+    if (was.fleet !== fleet.id || docked === null || docked === was.docked) return
+    if (focus !== null && focus !== docked) setFocus(null)
+  }, [fleet.id, docked, focus, setFocus])
   const cityPort = city ? (portByCode[city] ?? null) : null
   const quay = usePortMarket(cityPort?.id ?? null)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])

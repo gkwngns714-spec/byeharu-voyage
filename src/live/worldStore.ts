@@ -373,6 +373,13 @@ export function goodWordOf(served: string): string {
   return g ? (useWorld.getState().goodByCode[g.code]?.name ?? g.name) : served
 }
 
+/** A nation's served NAME (the Inn serves "Castile-Spain", not the code) in the viewer's language, through the served copy; else the
+ *  word as given (2026-11-23 play-test: the Korean captain sheet read "Castile-Spain"). */
+export function nationWordOf(served: string): string {
+  const n = servedSnapshot?.nations.find((x) => x.name === served || x.code === served)
+  return n ? (useWorld.getState().nationByCode[n.code]?.name ?? n.name) : served
+}
+
 /** The snapshot in the viewer's language, and the lookups built once from it. */
 function snapshotLookups(served: WorldSnapshot) {
   setServedClock(served.config)   // 0413: the clock's rate, ratio and anchor, into their one authority (lib/format/time.ts)

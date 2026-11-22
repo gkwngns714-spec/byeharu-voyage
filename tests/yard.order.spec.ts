@@ -120,7 +120,7 @@ test.describe('the yard takes an order at 390×844', () => {
     await page.screenshot({ path: info.outputPath('5-launched.png') })
   })
 
-  test('0472 lit: her second Barca is quoted at the floor, and the sheet says First order', async ({ page, request, baseURL }, info) => {
+  test('0472 lit: her second Barca is quoted at the floor, and the sheet says First-ship fee, and the Order she cannot pay is the gold button saying by how much', async ({ page, request, baseURL }, info) => {
     test.setTimeout(300_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await serveWorldImage(
@@ -136,8 +136,14 @@ test.describe('the yard takes an order at 390×844', () => {
     // a new company (one ship, none on order): the floor, 52,000, at Trading 1
     expect(Number(await order.getAttribute('data-price')), 'her second Barca is not at the floor').toBe(52_000)
     const first = tray.getByTestId('yard-order-first')
-    await expect(first).toContainText('First order')
+    await expect(first).toContainText('First-ship fee')
     await expect(first).toHaveAttribute('data-fee', /^\d+$/)
+    // a new company has 40,000: the Order says what she lacks and cannot be pressed; Build (materials 0 / 4) is the plain button
+    await expect(order).toHaveAttribute('data-short', '12000')
+    await expect(order).toHaveText(/^Order · 52,000\s\S+ · Short 12,000$/)
+    await expect(order).toBeDisabled()
+    await expect(order).toHaveAttribute('data-variant', 'primary')
+    await expect(tray.getByTestId('yard-next')).toHaveAttribute('data-variant', 'secondary')
     await noSideways(page, 'the sheet with a first order')
     await page.screenshot({ path: info.outputPath('6-first-order.png') })
   })
@@ -160,3 +166,45 @@ test.describe('the yard takes an order in Korean at 390×844', () => {
     await page.screenshot({ path: info.outputPath('ko-sheet.png') })
   })
 })
+
+// 2026-11-23 (third play-test, findings 3 and 21): while the yard takes orders the goal card counts her purse against the Order's price
+// (the yard's own quote) with a bar, and its press opens the yard ON the Barca's sheet, where the Order is.
+for (const [locale, words] of [
+  ['en-US', /^Second ship · 40,000 \/ 52,000$/],
+  ['ko-KR', /^두 번째 배 · 40,000 \/ 52,000$/],
+] as const) {
+  test.describe(`the goal card while the yard takes orders, ${locale}`, () => {
+    test.use({ viewport: PHONE, deviceScaleFactor: 2, locale })
+
+    test('reads purse / price with a bar, holds its height, and opens the Barca\'s sheet', async ({ page, request, baseURL }, info) => {
+      test.setTimeout(300_000)
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+      await serveWorldImage(
+        page,
+        await patchedWorldImage('yard-order-first-hour', async (pg) => {
+          await pg.exec(`update public.world_config set value = 'true'::jsonb where key in ('yard_order_enabled', 'first_hour_enabled');`)
+        }),
+      )
+      await page.goto('command')
+      await ready(page)
+      const card = page.getByTestId('goal-card')
+      await expect(card).toBeVisible({ timeout: 120_000 })
+      const line = card.getByTestId('goal-second-ship')
+      await expect(line).toHaveText(words, { timeout: 120_000 })
+      await expect(line).toHaveAttribute('data-price', '52000')
+      await expect(card.getByTestId('goal-saving').getByRole('meter')).toHaveAttribute('aria-valuenow', '77')
+      expect(Math.round((await card.boundingBox())!.height), 'the card is not its one fixed height').toBe(44)
+      await noSideways(page, 'Trade with the saving line')
+      await page.screenshot({ path: info.outputPath(`goal-${locale}.png`) })
+
+      await expect(card).toHaveAttribute('data-next', 'yard')
+      await card.click()
+      await expect(page).toHaveURL(/\/office$/)
+      const tray = page.getByTestId('yard-tray')
+      await expect(tray).toBeVisible({ timeout: 60_000 })
+      await expect(page.getByTestId('yard-order')).toHaveAttribute('data-price', '52000', { timeout: 60_000 })
+      await expect(page.getByTestId('yard-order')).toBeInViewport()
+      await page.screenshot({ path: info.outputPath(`goal-press-${locale}.png`) })
+    })
+  })
+}

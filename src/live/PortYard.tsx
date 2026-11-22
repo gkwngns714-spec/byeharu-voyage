@@ -31,7 +31,7 @@ import { cmdLaunchHull, cmdOrderHull, worldHullQuote, worldLevels } from '../lib
 import type { FleetView, HullQuote, LevelsView, PlanLine, Refusal, YardHull, YardInput, YardSource } from '../lib/rpc'
 import { goTo, useGoTo } from '../chart'
 import { useDeskGood } from '../store/deskGood'
-import { openOfficeCity } from '../features/command/officeView'
+import { openOfficeCity, useYardAsk } from '../features/command/officeView'
 import { useRouteSeed } from '../features/map/routeSeed'
 import { properName, useLocale, useT, t as tNow } from '../lib/i18n'
 
@@ -174,6 +174,22 @@ export function PortYard({
   const [launchRefusal, setLaunchRefusal] = useState<Refusal | null>(null)
   const [launched, setLaunched] = useState<string | null>(null)
   const [clock, setClock] = useState(() => Date.now())
+  // her purse: the Order she cannot pay yet says by how much, on the button (2026-11-23 play-test: the refusal stood below the fold)
+  const purse = useWorld((s) => s.ducats)
+  // A HULL ASKED FOR FROM OUTSIDE (the goal card's press, officeView.ts `useYardAsk`): its sheet opens once the yard has answered
+  const asked = useYardAsk((s) => s.hull)
+  useEffect(() => {
+    if (asked === null || !view) return
+    // on the next frame, as a press would: the yard's tiles are drawn first, and the sheet rises over them
+    const frame = requestAnimationFrame(() => {
+      const h = view.hulls.find((x) => x.class === useYardAsk.getState().take())
+      if (!h) return
+      setRefusal(null)
+      setDetent('half')
+      setOpen(h)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [asked, view])
   const waiting = order?.open && !order.open.ready ? order.open.ready_at : null
   useEffect(() => {
     if (waiting === null) return
@@ -331,6 +347,11 @@ export function PortYard({
   const untilReady = (at: string) => t('yard.readyIn', { t: formatRealShort(Math.max(0, Date.parse(at) - clock)) })
   const offerOrder = hull !== null && order?.on === true && openOrder === null && hull.buildable
   const quoted = quote.view?.on ? quote.view : null
+  const orderPrice = quoted && typeof quoted.price === 'number' ? quoted.price : null
+  const orderShort = orderPrice !== null && purse !== null && purse < orderPrice ? orderPrice - purse : 0
+  // THE PRIMARY BUTTON IS THE ONE SHE CAN DO (2026-11-23 play-test, finding 5): while materials are missing the Build button cannot be
+  // pressed, so the Order is the gold one and Build the plain one; once the materials are in, Build is gold again.
+  const orderFirst = offerOrder && step === 'wait'
 
   return (
     <div data-testid="port-yard">
@@ -435,11 +456,18 @@ export function PortYard({
             hull.buildable ? (
               <>
                 {/* always one line and one button, so a change of the label moves nothing */}
+                {/* a refusal stands here, over the buttons, where the press was (it stood below the sheet's fold) */}
+                {refusal && (
+                  <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mb-2" data-testid="yard-refusal">
+                    {refusal.sentence}
+                  </Note>
+                )}
                 <div className="mb-2 text-center text-t-label text-ink-dim" data-testid="yard-ready">
                   {t('yard.ready', { n: formatInt(plan.ready), of: formatInt(plan.of) })}
                 </div>
                 <Button
-                  variant="primary"
+                  variant={orderFirst ? 'secondary' : 'primary'}
+                  data-variant={orderFirst ? 'secondary' : 'primary'}
                   className="w-full"
                   busy={sending}
                   busyLabel={step === 'build' ? t('yard.building') : undefined}
@@ -463,16 +491,22 @@ export function PortYard({
                 {/* 0465: the order, under the one button: the whole price now and a real wait (served only while the yard takes orders) */}
                 {offerOrder && (
                   <Button
-                    variant="secondary"
+                    variant={orderFirst ? 'primary' : 'secondary'}
+                    data-variant={orderFirst ? 'primary' : 'secondary'}
                     className="mt-2 w-full"
                     busy={ordering}
                     busyLabel={t('yard.ordering')}
-                    disabled={!quoted || typeof quoted.price !== 'number' || sending}
+                    disabled={orderPrice === null || orderShort > 0 || sending}
                     onClick={() => placeOrder(hull)}
                     data-testid="yard-order"
-                    data-price={quoted && typeof quoted.price === 'number' ? quoted.price : undefined}
+                    data-price={orderPrice ?? undefined}
+                    data-short={orderShort > 0 ? orderShort : undefined}
                   >
-                    {quoted && typeof quoted.price === 'number' ? t('yard.orderN', { price: formatDucats(quoted.price) }) : t('yard.order')}
+                    {orderPrice === null
+                      ? t('yard.order')
+                      : orderShort > 0
+                        ? `${t('yard.orderN', { price: formatDucats(orderPrice) })} · ${t('yard.orderShort', { n: formatInt(orderShort) })}`
+                        : t('yard.orderN', { price: formatDucats(orderPrice) })}
                   </Button>
                 )}
               </>
@@ -639,7 +673,7 @@ export function PortYard({
               data-testid="yard-name"
             />
           )}
-          {refusal && (
+          {refusal && !hull.buildable && (
             <Note tone="danger" code={refusal.code} figures={refusal.figures}>
               {refusal.sentence}
             </Note>

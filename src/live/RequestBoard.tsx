@@ -1,8 +1,12 @@
-import { ActCell, Figure, GoodKind, goodClassRow, Row, Clip } from '../components/ui'
+import { ActCell, Figure, GoodKind, goodClassRow, Icon, Row, Clip } from '../components/ui'
 import { useShellState } from '../app/shellState'
 import { formatDucats, formatInt, formatPrice, formatPriceFigure, formatRealShort, formatTimeLeft } from '../lib/format'
 import type { TradeRequest } from '../lib/rpc'
 import { properName, useT } from '../lib/i18n'
+import { useNavigate } from 'react-router-dom'
+import { useGoTo } from '../chart'
+import { useRouteSeed } from '../features/map/routeSeed'
+import { useWorld } from './worldStore'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE REQUEST BOARD — what this port asks for, one row per request, shaped like the ledger.
@@ -24,6 +28,11 @@ import { properName, useT } from '../lib/i18n'
 // holds, is the server's (`cmd.preview_fulfil`); a cell is dead only for the two things a row can see:
 // nobody of yours is here, or she holds none of it.
 //
+// ── A HOLD JOB'S SOURCE IS A PRESS (2026-11-23, third play-test finding 4) ─────────────────────
+// "Buy at Bristol · 19m" (0473's served `from`) was plain text, and nothing else on the screen led to Bristol. It is now the press
+// that plans the trip as the yard's "Plan trip" does (features/map/routeSeed.ts): her fleet lying at this board's harbour (else her
+// first), the source harbour, then back here, handed to the Map's route builder as a draft. Nothing is sent: Final is still hers.
+//
 // What a press OPENS is the caller's affair (the FulfilTray, in the one slot); this component
 // inserts nothing into the list it stands in, so the board holds still under the finger.
 
@@ -34,6 +43,7 @@ export function RequestBoard({
   docked,
   pick,
   onPick,
+  at,
 }: {
   /** The served board's rows, or null before the first read lands. */
   requests: readonly TradeRequest[] | null
@@ -45,9 +55,21 @@ export function RequestBoard({
   /** The request whose tray is open, if any — its cell draws the wash. */
   pick: string | null
   onPick: (request: TradeRequest) => void
+  /** This board's harbour (CODE): where a hold job's trip comes back to. */
+  at: string
 }) {
   const t = useT()
   const { nowMs } = useShellState()
+  const fleets = useWorld((s) => s.fleets)
+  const navigate = useNavigate()
+  const fleet = fleets.find((f) => f.port === at) ?? fleets[0] ?? null
+  const planFrom = (from: string) => {
+    if (!fleet) return
+    useRouteSeed.getState().plan(fleet.id, fleet.port === from ? [at] : [from, at])
+    const { openMap } = useGoTo.getState()
+    if (openMap) openMap()
+    else navigate('/map')
+  }
   if (requests === null) {
     return <Row label={t(loading ? 'trade.loading' : 'trade.noRequests')} tone="muted" hairline={false} className="mt-3" />
   }
@@ -108,11 +130,19 @@ export function RequestBoard({
             </span>
             {/* 0473: where a hold job's good is sold, and a Barca's sailing time there: both served (world.contracts `from`) */}
             {hold && r.from && (
-              <span className="block text-t-caption text-ink-faint" data-testid="request-from" data-from={r.from.code}>
+              <button
+                type="button"
+                className="flex min-h-11 min-w-11 items-center gap-1 text-left text-t-caption text-accent disabled:text-ink-faint"
+                disabled={!fleet}
+                onClick={() => r.from && planFrom(r.from.code)}
+                data-testid="request-from"
+                data-from={r.from.code}
+              >
                 {r.from.sail_seconds != null
                   ? t('trade.holdFrom', { city: properName('port', r.from.name, r.from.name), time: formatRealShort(r.from.sail_seconds * 1000) })
                   : t('trade.holdFromCity', { city: properName('port', r.from.name, r.from.name) })}
-              </span>
+                <Icon name="chevron" size={14} />
+              </button>
             )}
             <span className="block text-t-caption tabular-nums text-ink-faint" data-testid="request-time">
               {t('trade.timeLeft', { time: formatTimeLeft(Date.parse(r.expires_at) - nowMs) })}
