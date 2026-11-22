@@ -186,9 +186,16 @@ function PlaceRow({
             name was squeezed to its longest word, the flag alone on the line above it (tests/names.whole.spec.ts). The name
             now asks for 9 rem first; where the figures do not fit beside that they take the next line, whole, at the right. */}
         <Clip className="flex-1 basis-36 text-t-caption text-ink" data-testid="cargo-place-name">
-          {/* the flag and the name's first word are one piece (a no-break space): the flag never stands alone on a line */}
-          <PortFlag code={port} />
-          {' '}
+          {/* the flag and the name's first word are one piece: the flag never stands alone on a line. A no-break space alone
+              does NOT do it: Chromium keeps a break chance between a picture and the space after it, so the box's narrowest
+              width was the name's longest word WITHOUT the flag; where the figures left the name a width between that and
+              flag + word (the 9-rem start at 390 px: main's ko-KR names.whole red on 산타크루스데테네리페), the flag stood
+              alone above the name and the figures beside the flag. Now the flag and its no-break space are one unbreakable
+              piece, the space glues the name's first word to it, and the name stays one text that turns at its own spaces. */}
+          <span className="whitespace-nowrap">
+            <PortFlag code={port} />
+            {' '}
+          </span>
           {name}
         </Clip>
         <span className="ml-auto flex shrink-0 items-baseline gap-x-3">
