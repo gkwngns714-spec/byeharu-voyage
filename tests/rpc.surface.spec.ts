@@ -1554,6 +1554,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // because the game is played rather than because one tab was opened — but it is still a
       // writer reached through a read, and that is worth knowing before anyone "optimises" it.
       'worldStandings', 'worldBuffs',
+      // Pin moved deliberately 2026-11-22 with migration 0467 (the houses' board): world.houses_week()
+      // - a READ, no argument, no player id: the merchant houses ranked by this week's profit, test
+      // companies off, {on: false} dark behind houses_board_enabled. Landed WITH the face that reads
+      // it (src/features/rank/WeekBoard.tsx).
+      'worldHousesWeek',
       // The book of standing orders (0034: `worldProvisionPresets` and its three verbs) LEFT this list
       // deliberately 2026-10-25 with migration 0225 (owner row 203): supplies are bought by every SAIL
       // through public.supply_need, the verbs are revoked and out of the registry, and FLEETS has no
