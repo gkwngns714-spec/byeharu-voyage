@@ -106,6 +106,26 @@ export function traitLines(lines: readonly string[]): string {
   return lines.map(traitLine).join(' · ')
 }
 
+/** The effect a served line names (`speed`, `hold`, `spread`, … the `eff_` keys without it), or null for a line of no known shape. */
+export function traitEffect(served: string): string | null {
+  for (const [shape, key] of EFFECT_SHAPES) if (shape.test(served.trim())) return key.slice(4)
+  return null
+}
+
+// ── X7: A TRAIT THAT DOES NOTHING IS NOT SHOWN (roadmap 2026-11-23 §4: "Hidden · Word list"; the visual overhaul's slice 6) ──────────
+// The card (world.captain_card, 0156) serves `in_use` and `note` from the DARK arm's rule: only her job, and only for the four effects
+// that were live before crew_bite. Since 0179 lit crew_bite, every fleet effect of every trait she uses is read (public.crew_terms;
+// 0355 reads "does it work" the same way), so the card's "Not in use yet." is stale and #800's `in_use` filter hid traits that work
+// (measured: Elcano's Pilot, −5.4% storm damage, stands on her sheet's Seamanship). What still does nothing is a SHIP effect while
+// combat is off, and the card says so in its own words: 0168 serves "Works when combat arrives." only then. So the word list is that
+// sentence; a trait whose card says it is idle, and that is not her job at work, is left off every face a player hires or keeps a
+// captain on (the Inn's room, You), by this ONE test. The Codex, the catalogue of everything, keeps them all with their idle word.
+const IDLE_NOTES: readonly string[] = ['Works when combat arrives.']
+
+export function traitWorks(t: { in_use: boolean; note: string | null }): boolean {
+  return t.in_use || t.note === null || !IDLE_NOTES.includes(t.note.trim())
+}
+
 /** A trait that does nothing yet says so in a player's two words (the served note, "Not in use yet." / "Works when combat arrives.",
  *  was a builder's sentence); null when it works. */
 export function traitIdle(note: string | null | undefined): string | null {

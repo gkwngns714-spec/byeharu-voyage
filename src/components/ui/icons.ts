@@ -35,6 +35,16 @@ export const ICON_NAMES = [
   'crew',
   'mallet',
   'pick',
+  // A captain's trait, by what it does (visual slice 6): the chips on her sheet and the Inn's cards
+  'speed',
+  'crate',
+  'tag',
+  'shield',
+  'heart',
+  'storm',
+  'target',
+  'cannon',
+  'cutlass',
   // ── ONE GLYPH PER DESTINATION (2026-11-23, the visual overhaul's slice 1) ─────────────────────
   'fort',
   'scales',
@@ -233,6 +243,28 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   mallet: ['M13.5 3.2 20.8 10.5l-3 3-7.3-7.3 3-3Z', 'M10.8 8.9 3.4 16.3a2.2 2.2 0 0 0 3.1 3.1l7.4-7.4'],
   // 0455: a miner's pick, the Land tab's mark (docs/design/land-2026-11.md 6.7): the head's arc and the haft
   pick: ['M3.5 9.5C7.5 5.2 14.5 4.2 20.5 7', 'M12.4 5.6 8.5 20.5'],
+
+  // ── WHAT A CAPTAIN'S TRAIT DOES (2026-11-23, the visual overhaul's slice 6) ──────────────────────
+  // One glyph an effect of data/captains.json `effects` (captainWords.ts `traitEffect` reads it from the served line), so a trait
+  // is a chip of mark and figure, not a sentence. Days of supplies wear the `cask` they wear everywhere; nothing here is a place's.
+  // Three lines streaming behind a point — speed.
+  speed: ['M3 8h8.5', 'M1.5 12h11', 'M3 16h8.5', 'M14.5 6.5 20 12l-5.5 5.5'],
+  // A crate on its corner — cargo space (the hold).
+  crate: ['M4 8 12 4l8 4v8.5L12 20.5 4 16.5V8Z', 'M4 8l8 4 8-4', 'M12 12v8.5'],
+  // A price tag with its eyelet — better prices.
+  tag: ['M3.5 4h8.2l8.8 8.8-7.7 7.7L4 11.7V4Z', 'M8 7.2a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z'],
+  // A shield — fewer crew lost to pirates.
+  shield: ['M12 3 19.5 6v5.5c0 4.5-3.2 8-7.5 9.5-4.3-1.5-7.5-5-7.5-9.5V6L12 3Z'],
+  // A heart — homesickness eased.
+  heart: ['M12 20s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10Z'],
+  // A bolt — less storm damage.
+  storm: ['M13.5 2.5 5.5 13.5h6l-1 8 8-11h-6l1-8Z'],
+  // Rings and a bead — accuracy. Not `locate`: that is the chart's find control.
+  target: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z', 'M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z', 'M12 11.2a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6Z'],
+  // A gun on its wheel — reach.
+  cannon: ['M2.5 11.5 15 7l1.6 4.4L4 16Z', 'M16.4 9.2h4.6', 'M8.5 14.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z'],
+  // One blade with its guard — attack. The crossed blades are the Combat level's (levelWords.ts).
+  cutlass: ['M5 19 17 5.5c1.6 1.4 2 3.2 1.2 5L8 20.5', 'M3.5 16.5l4 4', 'M4.5 19.5 3 21'],
 
   // ── ONE GLYPH PER DESTINATION (2026-11-23, docs/design/visual-overhaul-2026-11-23.md, slice 1) ──
   // The bar and the Menu drew HQ and Rank with the same wreath, Map and Routes with the same chart, Office with the coin that

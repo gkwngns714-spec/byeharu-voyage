@@ -145,6 +145,20 @@ player sees.
 - Before: name, role word, a list of trait sentences (some that do nothing).
 - After: a portrait plate (role glyph on a nation-tinted disc), the two skills that matter as rings, traits as glyph chips; traits that
   do nothing are hidden by one word list (X7, finishing #800).
+- Built (decided by default, the owner may reverse each): a captain is drawn by one file (`src/live/captainLook.tsx`, its rules in
+  `captainMarks.ts`) on You, the Inn and the Codex alike: her PLATE (`Portrait`, inline SVG) is her head and shoulders under the hat of
+  her role (a soft cap for Trading, a tricorne for Exploration, a bicorne for Combat · Long range, a knotted scarf for Combat · Close
+  range), one of three faces by her code, her grade's letter in the corner (gold at S), on a disc in the tint of her HOME TONGUE (her
+  first served language, which every face already serves, so no new read; the great powers' seven tongues wear their nation ink).
+  Her RINGS (`Ring`) are her levels: the two that matter (her role's track, then her stronger other one) under her name on the You
+  roster, all three on her sheet, each the track's level mark in a ring filled toward the next level, the level beside it. Her TRAITS
+  are chips, a new glyph per effect (speed, crate, tag, shield, heart, storm, target, cannon, cutlass; supplies keep the cask) and the
+  line's figure, lit gold where she uses one and pressed to choose; the trait's name is the chip's accessible name. X7: `traitWorks`
+  is the one test, a word list of the card's idle sentences: since 0179 lit crew_bite every fleet effect is read, so the card's
+  "Not in use yet." is stale (#800's `in_use` filter hid working traits, e.g. a Pilot's storm damage); only "Works when combat
+  arrives." (a ship effect, combat off) still means idle. Such a trait is not drawn on the Inn or on You; the Codex keeps all.
+  The sheet's Grade / Job / Role / Where rows became the plate; the Inn's guests are cards of plate, name, job, what the job adds
+  (its glyph and per cent, dim where nothing reads it) and the wage; the hire tray opens on the plate and the chips.
 
 **7. HQ and the city.**
 - Before: five word-and-line-glyph buildings; City hall a column of equal-weight figures.
