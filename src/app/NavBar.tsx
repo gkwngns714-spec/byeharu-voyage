@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Icon, NAV_TRAY_CEILING, Nav, Row, TapAway, Tray, navTrayAnchorClass, useWide, type NavItem, type TrayDetent } from '../components/ui'
+import { MenuTile, NAV_TRAY_CEILING, Nav, TapAway, Tray, navTrayAnchorClass, useWide, type NavItem, type TrayDetent } from '../components/ui'
 import { navCells, navWord, tabHref, type LitSwitches, type ServedSwitch } from './navTabs'
 import { useT, useLocale } from '../lib/i18n'
 import { useWorld } from '../live/worldStore'
@@ -22,7 +22,7 @@ import { useWorld } from '../live/worldStore'
 //   · the cell — a 22px icon over a 12px sentence-case label, no mono, no letter-spacing, no
 //     `uppercase tracking-wider` — is the `Nav` primitive's, drawn once and never re-spelt here
 //   · the revealed panel — which was 25 lines of hand-placed `absolute … bottom-full` markup with
-//     its own border, its own surface and its own grid class — is a `Tray` of `Row`s, one per member
+//     its own border, its own surface and its own grid class — is a `Tray` (a grid of tiles since 2026-11-23), one per member
 // The routing, the group table and the open/shut fact stay here, which is where they belong.
 //
 // ── A GROUP REVEALS. IT DOES NOT REPLACE THE BAR ────────────────────────────────────────────────
@@ -63,11 +63,15 @@ const CABIN_DETENT: TrayDetent = 'half'
 // at `half` only: a drag down to `peek` must still be a peek.
 const CABIN_FLOOR = 'min-h-[var(--cabin-floor)]'
 
-/** `--cabin-floor` for a tray of `rows` member rows: the rows (`--spacing-row`, src/index.css) plus
+/** The Menu grid's tiles to a line, and one line's height with the gap under it (a 5.5-rem tile and the 0.5-rem gap). */
+const CABIN_COLS = 3
+const CABIN_LINE_REM = 6
+
+/** `--cabin-floor` for a tray of `members` tiles: its lines of tiles (the last line's gap stands for the grid's 0.25-rem top) plus
  *  the Tray's 5.875rem of chrome (3.25 handle row + 2.125 head + 0.5 foot), capped at the free glass. */
-const cabinFloor = (rows: number) =>
+const cabinFloor = (members: number) =>
   ({
-    '--cabin-floor': `min(calc(var(--spacing-row) * ${rows} + 5.875rem), ${NAV_TRAY_CEILING})`,
+    '--cabin-floor': `min(calc(${Math.ceil(members / CABIN_COLS) * CABIN_LINE_REM}rem + 5.875rem), ${NAV_TRAY_CEILING})`,
   }) as CSSProperties
 
 export function NavBar() {
@@ -155,22 +159,28 @@ export function NavBar() {
               }}
               title={word(openMembers.label)}
             >
-              {openMembers.members.map((m, i) => (
-                <Row
-                  key={m.to}
-                  href={tabHref(m.to)}
-                  onClick={(e) => {
-                    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
-                    e.preventDefault()
-                    go(m.to)
-                  }}
-                  mark={<Icon name={m.icon} size={20} />}
-                  label={word(m.label)}
-                  chevron
-                  tone={m.to === pathname ? 'accent' : 'default'}
-                  hairline={i < openMembers.members.length - 1}
-                />
-              ))}
+              {/* THE MENU IS A GRID OF PLACES (2026-11-23, docs/design/visual-overhaul-2026-11-23.md, slice 1): three tiles to a
+                  line, each its own glyph on a disc over a one-word name, the way a game's menu lays out its screens. Each stays
+                  an `<a href>` the router answers on a plain click, as the rows were. */}
+              <div className="grid grid-cols-3 gap-2 pt-1" data-testid="nav-group-grid">
+                {openMembers.members.map((m) => {
+                  const here = m.to === pathname
+                  return (
+                    <MenuTile
+                      key={m.to}
+                      href={tabHref(m.to)}
+                      icon={m.icon}
+                      label={word(m.label)}
+                      here={here}
+                      onClick={(e) => {
+                        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+                        e.preventDefault()
+                        go(m.to)
+                      }}
+                    />
+                  )
+                })}
+              </div>
             </Tray>
           </div>
         </>

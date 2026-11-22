@@ -19,7 +19,6 @@ export const ICON_NAMES = [
   'ship',
   'ledger',
   'wreath',
-  'profile',
   'codex',
   'chevron',
   'close',
@@ -36,6 +35,18 @@ export const ICON_NAMES = [
   'crew',
   'mallet',
   'pick',
+  // ── ONE GLYPH PER DESTINATION (2026-11-23, the visual overhaul's slice 1) ─────────────────────
+  'fort',
+  'scales',
+  'office',
+  'trophy',
+  'route',
+  'mountain',
+  'person',
+  'cog',
+  'menu',
+  'laurel',
+  'levelUp',
   // The seven trade-good CATEGORIES. Not a good's own mark any more — the fallback, for a good
   // that arrives from a migration before anyone has drawn it. See goodIcons.ts.
   'spice',
@@ -173,8 +184,6 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   ledger: ['M12 6.5C10.5 5 8.5 4.5 6 4.5H3.5v13H6c2.5 0 4.5.5 6 2', 'M12 6.5c1.5-1.5 3.5-2 6-2H20.5v13H18c-2.5 0-4.5.5-6 2', 'M12 6.5v15'],
   // Laurel-ringed marker — Rank.
   wreath: ['M12 3.5a8.5 8.5 0 0 1 0 17', 'M12 3.5a8.5 8.5 0 0 0 0 17', 'M8.5 12h7', 'M12 8.5v7'],
-  // Head-and-shoulders in a circle — Profile.
-  profile: ['M12 2.5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19Z', 'M12 7.2a3.1 3.1 0 1 0 0 6.2 3.1 3.1 0 0 0 0-6.2Z', 'M5.8 19a7.5 7.5 0 0 1 12.4 0'],
   // CLOSED book with a bookmark — Compendium (the reference you look things up in). The OPEN book
   // is the Ledger's, and the two must stay tellable apart: the record you write vs the book you consult.
   codex: ['M7 2.5h12.5v19H7A2.5 2.5 0 0 1 4.5 19V5A2.5 2.5 0 0 1 7 2.5Z', 'M4.5 19a2.5 2.5 0 0 1 2.5-2.5h12.5', 'M13.5 2.5V9l2.25-1.7L18 9V2.5'],
@@ -221,6 +230,37 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   mallet: ['M13.5 3.2 20.8 10.5l-3 3-7.3-7.3 3-3Z', 'M10.8 8.9 3.4 16.3a2.2 2.2 0 0 0 3.1 3.1l7.4-7.4'],
   // 0455: a miner's pick, the Land tab's mark (docs/design/land-2026-11.md 6.7): the head's arc and the haft
   pick: ['M3.5 9.5C7.5 5.2 14.5 4.2 20.5 7', 'M12.4 5.6 8.5 20.5'],
+
+  // ── ONE GLYPH PER DESTINATION (2026-11-23, docs/design/visual-overhaul-2026-11-23.md, slice 1) ──
+  // The bar and the Menu drew HQ and Rank with the same wreath, Map and Routes with the same chart, Office with the coin that
+  // is also the Trading level's mark, and Trade with the compass that is also Exploration's. A glyph that means two places
+  // means none, so every destination has its own here, and each is drawn to read at 22 px on a 56-px cell.
+  // A harbour fort: the house's seat in its home city — HQ.
+  fort: ['M3.5 20.5h17', 'M5 20.5V9.5h14v11', 'M5 9.5V5h2.6v2h2.2V5h4.4v2h2.2V5H19v4.5', 'M10 20.5v-3.8a2 2 0 0 1 4 0v3.8'],
+  // A merchant's balance — Trade (buy here, sell there).
+  scales: ['M12 4v16', 'M8 20h8', 'M5 7.5h14', 'M5 7.5 2.6 13a2.4 2.4 0 0 0 4.8 0L5 7.5', 'M19 7.5 16.6 13a2.4 2.4 0 0 0 4.8 0L19 7.5'],
+  // A counting house under its pediment — Office (the city, investments, the report).
+  office: ['M3.5 9 12 4l8.5 5', 'M4.5 9h15', 'M6.5 9v8.5', 'M10.2 9v8.5', 'M13.8 9v8.5', 'M17.5 9v8.5', 'M4.5 17.5h15', 'M3.5 20.5h17'],
+  // A cup on its foot — Rank.
+  trophy: ['M7.5 4h9v5a4.5 4.5 0 0 1-9 0V4Z', 'M7.5 6H4.5a3 3 0 0 0 3.2 3.9', 'M16.5 6h3a3 3 0 0 1-3.2 3.9', 'M12 13.5v3.5', 'M8.5 20.5h7', 'M9.5 17h5v3.5'],
+  // Two harbours and the lane between them — Routes.
+  route: ['M6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z', 'M18 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z', 'M7.6 16.8c2.4-1.6 1-4.8 4.4-5.8s4.6-1.6 4.8-3.8'],
+  // A peak with its snow line — Land (the party ashore).
+  mountain: ['M2.5 19.5 9.5 6.5l4.2 7.2 2.3-3.4 5.5 9.2H2.5Z', 'M7.4 10.4l2.1 1.6 2.1-1.6'],
+  // One head and shoulders — You (who you have become). `crew` (two figures) stays the inn's and the captains'.
+  person: ['M12 3.8a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z', 'M4.8 20.2a7.2 7.2 0 0 1 14.4 0'],
+  // A cog — Profile (the account and its settings).
+  cog: [
+    'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z',
+    'M10.4 3.2h3.2l.5 2.4 1.9 1.1 2.3-.8 1.6 2.8-1.8 1.6v2.2l1.8 1.6-1.6 2.8-2.3-.8-1.9 1.1-.5 2.4h-3.2l-.5-2.4-1.9-1.1-2.3.8-1.6-2.8 1.8-1.6v-2.2L4.1 8.7l1.6-2.8 2.3.8 1.9-1.1.5-2.4Z',
+  ],
+  // Four tiles — the Menu (the group that opens the rest). The chevron it wore said "this opens"; the tray's own handle says
+  // that once it stands, and a grid says "more places" at a glance, as every game's menu button does.
+  menu: ['M4.5 4.5h6v6h-6z', 'M13.5 4.5h6v6h-6z', 'M4.5 13.5h6v6h-6z', 'M13.5 13.5h6v6h-6z'],
+  // A laurel, two branches open at the top — Reputation (what the world thinks of your house). The wreath stays City hall's.
+  laurel: ['M9 20.5c-3.4-1.6-5.5-5-5.5-8.7 0-3 1.2-5.6 3.2-7.3', 'M15 20.5c3.4-1.6 5.5-5 5.5-8.7 0-3-1.2-5.6-3.2-7.3', 'M4 9.6l2.4.6', 'M3.8 13.6l2.4-.2', 'M5.4 17.4l2-1', 'M20 9.6l-2.4.6', 'M20.2 13.6l-2.4-.2', 'M18.6 17.4l-2-1'],
+  // Two chevrons climbing — Levels (the company's levels, a rank's stripes).
+  levelUp: ['m6 12.5 6-6 6 6', 'm6 18.5 6-6 6 6'],
 
   // ── THE SEVEN CATEGORY MARKS — now the FALLBACK, not the answer ───────────────────────────────
   // Every good in `data/goods.json` has its own mark below. These seven remain because a good can

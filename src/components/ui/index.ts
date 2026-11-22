@@ -148,7 +148,7 @@ export { Empty } from './Empty'
 export { Facts, FactsLine } from './FactsLine'
 
 //     NAV — the tab rail: six cells, one row, 22px icon, no uppercase. Step 3 repoints the shell.
-export { Nav, type NavItem } from './Nav'
+export { MenuTile, Nav, type NavItem } from './Nav'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // COMPOSITIONS OF THE TWELVE that two faces draw — docs/QUAY_LEDGER.md (owner row 76): the quay

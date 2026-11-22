@@ -108,7 +108,6 @@ export function Report({ layout }: { layout: DeskLayout }) {
       key={s.id}
       title={t(SECTION_KEYS[s.id])}
       figure={<Figure value={formatDucatsDelta(s.ducats)} tone={tone(s.ducats)} />}
-      word={t('common.open')}
       onClick={() => setOpen({ kind: 'section', id: s.id })}
       data-testid={`report-section-${s.id}`}
     />
@@ -118,7 +117,6 @@ export function Report({ layout }: { layout: DeskLayout }) {
       key={`${p.kind}-${i}`}
       title={placeTitle(p)}
       figure={<Figure value={formatDucatsDelta(p.ducats)} tone={tone(p.ducats)} />}
-      word={t('common.open')}
       onClick={() => setOpen({ kind: 'place', index: i })}
       data-testid={`report-place-${p.kind}-${i}`}
     />
@@ -147,7 +145,7 @@ export function Report({ layout }: { layout: DeskLayout }) {
           <div className="flex flex-col gap-1.5">
             {r.sections.map(section)}
             {/* a door, not a card: the record by day, week and month is a page of its own, and sits in this scrolling list so the face stays one glass tall at 390 px (tests/onepage.spec.ts) */}
-            <SummaryRow title={t('stats.yourHistory')} word={t('common.open')} onClick={() => setOpen({ kind: 'history' })} data-testid="report-history" />
+            <SummaryRow title={t('stats.yourHistory')} onClick={() => setOpen({ kind: 'history' })} data-testid="report-history" />
           </div>
         </ScrollPane>
       </>

@@ -154,6 +154,7 @@ function FleetsBody({ title }: { title: string }) {
           <ListPanel
             look="card"
             columns="fit"
+            icon="ship"
             title={fleets.length === 0 ? undefined : t('fleets.count', { n: formatInt(fleets.length), count: fleets.length })}
             data-testid="fleets-list"
           >
@@ -183,7 +184,7 @@ function FleetsBody({ title }: { title: string }) {
         }
         side={
           <>
-          <Card title={t('fleets.company')} data-testid="fleets-company">
+          <Card icon="office" title={t('fleets.company')} data-testid="fleets-company">
             <div className="grid grid-cols-2 gap-4">
               <StatCell look="stacked" label={title} value={fleets.length} format={formatInt} data-testid="fleets-total" />
               <StatCell look="stacked" label={t('fleets.ships')} value={hulls} format={formatInt} data-testid="fleets-hulls" />

@@ -83,6 +83,7 @@ function YouBody({ title }: { title: string }) {
             <ListPanel
               look="card"
               columns="fit"
+              icon="crew"
               title={t('books.captains')}
               count={face.captains.length === 0 ? undefined : <span data-testid="your-captains-count">{formatInt(face.captains.length)}</span>}
               data-testid="your-captains"
@@ -138,7 +139,7 @@ function Reputation({ player }: { player: PlayerHouse }) {
   const rep = player.reputation
   if (!rep) return null
   return (
-    <Card title={t('shell.reputation')} data-testid="you-reputation">
+    <Card icon="laurel" title={t('shell.reputation')} data-testid="you-reputation">
       <span data-testid="you-reputation-balance" data-value={rep.balance}>
         <Figure value={formatInt(rep.balance)} size="figure" />
       </span>
@@ -167,6 +168,7 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
     <ListPanel
       look="card"
       columns="fit"
+      icon="ship"
       title={t('you.ships')}
       count={
         ships.length === 0 ? undefined : (
