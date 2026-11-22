@@ -63,7 +63,9 @@ export function ShipInfo({ fleet, aside = false }: { fleet: FleetView; aside?: b
       )}
       <Row
         label={t('fleets.crew')}
-        value={<Figure value={`${formatInt(crew.aboard)}/${formatInt(crew.max)}`} tone={crew.short > 0 ? 'danger' : 'ink'} />}
+        // ONE READING OF THE CREW (2026-11-23, finding 15): "Crew 8/20" here beside the sheet's "Crew needed 8 / 8" read as two counts.
+        // Here: who is aboard and the room for more; the sheet says what the voyage needs.
+        value={<Figure value={t('desk.crewRoom', { n: formatInt(crew.aboard), max: formatInt(crew.max) })} tone={crew.short > 0 ? 'danger' : 'ink'} />}
         data-testid="buy-ship-crew"
       />
       {wages !== null && (

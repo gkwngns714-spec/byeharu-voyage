@@ -178,6 +178,7 @@ export function RequestsFace({
         docked={false}
         pick={null}
         onPick={() => undefined}
+        at={port.code}
       />
       <div className="mt-4 text-t-caption text-ink-faint" data-testid="city-own-heading">
         {t('city.ownHeading')}

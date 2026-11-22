@@ -70,3 +70,53 @@ export function roleWord(c: RoleOf): string | null {
   const role = roleOf(c)
   return role === null ? null : roleKeyWord(role)
 }
+
+// ── A TRAIT'S LINE, HER LANGUAGES AND A TRAIT THAT DOES NOTHING YET, IN THE VIEWER'S LANGUAGE (2026-11-23 third play-test) ──────────
+// The Korean captain sheet was half English: "+4.5% better prices", "Speaks Spanish", and the builder's "Not in use yet." under three
+// traits. A trait's line is one of the eleven effect sentences of data/captains.json (`effects[].words`, "+{pct}% speed"), so it is
+// read back by that sentence's shape and worded from `books.eff_<effect>`; a line of no known shape prints as served. Her languages
+// are the twenty of data/captains.json `languages` (`books.lang_<name>`). English keeps the server's own lines.
+const EFFECT_SHAPES: readonly (readonly [RegExp, string])[] = [
+  [/^\+([\d.,]+)% speed$/, 'eff_speed'],
+  [/^\+([\d.,]+)% cargo space$/, 'eff_hold'],
+  [/^\+([\d.,]+)% better prices on (.+)$/, 'eff_category_spread'],
+  [/^\+([\d.,]+)% better prices$/, 'eff_spread'],
+  [/^[−-]([\d.,]+)% crew lost to pirates$/, 'eff_crew_saved'],
+  [/^[−-]([\d.,]+) points of homesickness$/, 'eff_homesick_relief'],
+  [/^[−-]([\d.,]+)% storm damage$/, 'eff_storm'],
+  [/^\+([\d.,]+)% days of supplies$/, 'eff_supplies'],
+  [/^\+([\d.,]+)% accuracy$/, 'eff_accuracy'],
+  [/^\+([\d.,]+)% reach$/, 'eff_reach'],
+  [/^\+([\d.,]+)% attack$/, 'eff_attack'],
+]
+
+/** One served trait line in the viewer's language ("+4.5% better prices" → 거래 가격 4.5% 유리). */
+export function traitLine(served: string): string {
+  const locale = getLocale()
+  if (locale === 'en') return served
+  for (const [shape, key] of EFFECT_SHAPES) {
+    const m = shape.exec(served.trim())
+    if (m) return translateMaybe(locale, 'books', key, { pct: m[1], goods: m[2] ?? '' }) ?? served
+  }
+  return served
+}
+
+/** A trait's lines, joined as the faces print them. */
+export function traitLines(lines: readonly string[]): string {
+  return lines.map(traitLine).join(' · ')
+}
+
+/** A trait that does nothing yet says so in a player's two words (the served note, "Not in use yet." / "Works when combat arrives.",
+ *  was a builder's sentence); null when it works. */
+export function traitIdle(note: string | null | undefined): string | null {
+  return note ? (translateMaybe(getLocale(), 'books', 'traitIdle') ?? note) : null
+}
+
+/** "Speaks Portuguese, Spanish" from her served languages, in the viewer's language; the served sentence when none are listed. */
+export function speaksWords(c: { languages?: string[]; speaks?: string }): string | null {
+  const langs = c.languages ?? []
+  if (langs.length === 0) return c.speaks ?? null
+  const locale = getLocale()
+  const names = langs.map((l) => translateMaybe(locale, 'books', `lang_${key(l)}`) ?? l)
+  return translateMaybe(locale, 'books', 'speaks', { langs: names.join(', ') }) ?? c.speaks ?? null
+}

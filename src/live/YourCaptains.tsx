@@ -8,7 +8,7 @@ import { CaptainStats } from './CaptainStats'
 import { CaptainSkills } from './CaptainSkills'
 import { useWorld } from './worldStore'
 import { t as tl } from '../lib/i18n'
-import { ROLE_ORDER, jobWord, roleKeyWord, roleOf, roleRank, roleWord } from './captainWords'
+import { ROLE_ORDER, jobWord, roleKeyWord, roleOf, roleRank, roleWord, traitLines } from './captainWords'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // YOUR CAPTAINS — levels, homesickness and the traits each one uses (0160, docs/SKILLS_AND_CAPTAINS.md K6).
@@ -152,7 +152,7 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
             onClick={captain.can_change ? () => toggle(t.code) : undefined}
             data-testid={`captain-trait-${t.code}`}
           >
-            <span className="block text-t-body">{t.lines.join(' · ')}</span>
+            <span className="block text-t-body">{traitLines(t.lines)}</span>
             {on && <span className="block text-t-caption text-accent">{tl('books.inUse')}</span>}
           </Row>
         )

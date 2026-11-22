@@ -1,7 +1,8 @@
-import { useWide } from '../../components/ui'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { Bar, useWide } from '../../components/ui'
 import { properName, useLocale, useT } from '../../lib/i18n'
 import { levelName, nextOpening } from '../../live/levelWords'
-import { worldLevels, type LevelsView } from '../../lib/rpc'
+import { worldHullQuote, worldLevels, type HullQuote, type LevelsView } from '../../lib/rpc'
 import { useServedRead } from '../../live/useServedRead'
 import { useSecondShip } from '../../live/useSecondShip'
 import { useWorld } from '../../live/worldStore'
@@ -11,6 +12,7 @@ import { useShellState } from '../../app/shellState'
 import type { SecondShip } from '../../live/useSecondShip'
 import { useNavigate } from 'react-router-dom'
 import { openOfficeCity } from './officeView'
+import { goTo, useGoTo } from '../../chart'
 
 // THE GOAL CARD (remaster S6): one line on the Trade face saying what to aim for: the next Title and how far along you are.
 // NOT a quest: it reads the SAME served read the You page's levels read (`world.levels()`, 0325, the same cached `worldLevels` read) and
@@ -36,6 +38,16 @@ import { openOfficeCity } from './officeView'
 // first line in place of the far title while the second line is the second ship, else after the two tracks where the seas would stand
 // (the seas win when the title opens one). Dark the served list has no Trading step and the card is exactly as before.
 //
+// 2026-11-23 (third play-test, finding 3): WHILE THE YARD TAKES ORDERS (its served `order` key) AND NO HULL IS ON ORDER, the second line
+// is her purse against the Order's price, "Second ship · 46,112 / 52,000", with a thin bar in the rest of that line: the price is the yard's
+// own quote (world.hull_quote, the same cached read the yard's sheet asks; 0472 serves the newcomer's floor there). The materials count
+// stays the line while ordering is dark. The press opens the yard ON that hull's sheet, where the Order is; away from the yard's city,
+// the Map with that city's tray up (finding 21: it opened with nothing chosen).
+//
+// 2026-11-23 (finding 9): THE UNLOCK NEVER RUNS UNDER THE REPUTATION. Under 390 px it gave way to the title; at 1280 in Korean it still
+// ran under "평판 226". Now it stands only where it is measured to fit beside it, at every width, else the title stands; and from `sm`
+// up the figure is the top bar's (TopBar.tsx shows Reputation there), so the card's first line is the unlock's.
+//
 // THE PRESS LAW: a fixed height in every state (loading, shown, nothing to show), so nothing moves when the read lands or on a press.
 
 // A control is 44 px (tests/consistency.spec.ts), so the card is 44 px. It stands on the Trade tab, under the fleet strip (phone) or under the
@@ -57,9 +69,35 @@ export function GoalCard() {
   const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
   const v = read.view
   const reputation = useWorld((s) => s.player?.reputation?.balance ?? null)
+  const purse = useWorld((s) => s.ducats)
   const second = useSecondShip()
   const portByCode = useWorld((s) => s.portByCode)
   const { nowMs } = useShellState()
+  // the Order's price: asked only while the yard takes orders and nothing is on order (the yard's sheet asks the same key)
+  const quoteAt = second && second.orderOn && !second.order && second.portId !== null ? second.portId : null
+  const quoteHull = second?.hull ?? ''
+  const quote = useServedRead<HullQuote>(
+    quoteAt === null ? null : `${quoteAt}:${quoteHull}`,
+    () => worldHullQuote(quoteAt as string, quoteHull),
+    // not on the world's beat: the price moves with her Trading level (0472's discount), so that is what re-asks it
+    { name: 'worldHullQuote', trigger: v && v.company ? v.tracks.trading.level : 0 },
+  )
+  const price = quoteAt !== null && quote.view?.on && typeof quote.view.price === 'number' ? quote.view.price : null
+  const saving = price !== null && purse !== null ? { have: purse, price } : null
+  // the unlock stands only where it fits beside the reputation (measured, at every width)
+  const titleBox = useRef<HTMLSpanElement>(null)
+  const unlockGhost = useRef<HTMLSpanElement>(null)
+  const [fits, setFits] = useState(true)
+  useLayoutEffect(() => {
+    const box = titleBox.current
+    const ghost = unlockGhost.current
+    if (!box || !ghost) return
+    const measure = () => setFits(ghost.scrollWidth <= box.clientWidth + 0.5)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(box)
+    return () => ro.disconnect()
+  })
   if (!v || !v.company) return <div className={`${CARD} ${place}`} data-testid="goal-card-hold" aria-hidden />
 
   const next = v.title.next
@@ -74,10 +112,21 @@ export function GoalCard() {
   // (Office > City opens the city she lies in, and one with no yard fell back to its Market with no word why)
   const next2 = !second ? 'you' : second.here ? 'yard' : 'map'
   const nextTitle = next ? t('command.goalNext', { name: properName('title', next.name, next.name) }) : t('command.lvTitleTop')
+  const showSaving = second !== null && second.order === null && saving !== null
+  const press = () => {
+    if (next2 === 'yard' && second) {
+      // the yard ON the hull's sheet, where the Order is (finding 3); with a hull on order, the yard itself
+      navigate(openOfficeCity('building_yard', second.order ? undefined : second.hull))
+    } else if (next2 === 'map' && second?.port) {
+      // the yard's city, its tray up with the Sail press (finding 21)
+      goTo({ kind: 'port', code: second.port, open: true })
+      if (!useGoTo.getState().openMap) navigate('/map')
+    } else navigate(next2 === 'map' ? '/map' : '/you')
+  }
   return (
     // THE PRESS OPENS THE NEXT STEP (P0 of docs/design/playable-2026-11-22.md): while the second line is the second ship, the step
-    // is the build yard's sheet (Office > City > Build yard: the materials stored, Plan trip, Build); otherwise the levels (You).
-    <button type="button" onClick={() => navigate(next2 === 'yard' ? openOfficeCity('building_yard') : next2 === 'map' ? '/map' : '/you')} className={`${CARD} ${place} bg-surface-2`}
+    // is the build yard's sheet (Office > City > Build yard: the materials stored, the Order, Plan trip, Build); otherwise the levels (You).
+    <button type="button" onClick={press} className={`${CARD} ${place} bg-surface-2`}
       data-testid="goal-card"
       data-next={next2}
       // her two track levels stand on the card whatever its second line says (the second ship's count hides the words; a test reads these)
@@ -85,21 +134,24 @@ export function GoalCard() {
       data-exploration={v.tracks.exploration.level}
       data-unlock-level={ahead?.level}
     >
-      <span className="min-w-0 whitespace-nowrap text-t-body text-ink" data-testid="goal-title">
+      <span ref={titleBox} className="relative min-w-0 overflow-hidden whitespace-nowrap text-t-body text-ink" data-testid="goal-title">
         {/* "Next: Mate" (2026-11-22, P0): the title bare read as a promotion she had not had (the You page still said the old one) */}
         {second && unlock ? (
-          // UNDER 390 PX THE UNLOCK GIVES WAY TO THE TITLE (2026-11-22 second play-test: at 320 px English "Trading 4 → Ships per fleet +1"
-          // ran under "Reputation 101"; the line never breaks and the card stays 44 px). The unlock stays one press away, on You.
+          // THE UNLOCK STANDS WHERE IT FITS (2026-11-23, finding 9): measured against the line's own box at every width, else the
+          // title stands; the unlock stays one press away, on You. The ghost is the measure: unseen and out of the flow.
           <>
-            <span className="hidden min-[390px]:inline" data-testid="goal-unlock">{unlock}</span>
-            <span className="min-[390px]:hidden">{nextTitle}</span>
+            <span ref={unlockGhost} aria-hidden className="invisible absolute left-0 top-0 whitespace-nowrap">
+              {unlock}
+            </span>
+            {fits ? <span data-testid="goal-unlock">{unlock}</span> : nextTitle}
           </>
         ) : (
           nextTitle
         )}
       </span>
       {reputation !== null ? (
-        <span className="whitespace-nowrap text-t-caption text-ink-faint" data-testid="goal-reputation" data-value={reputation}>
+        // from `sm` up the top bar carries Reputation (TopBar.tsx), and the card's first line is the goal's
+        <span className="whitespace-nowrap text-t-caption text-ink-faint sm:hidden" data-testid="goal-reputation" data-value={reputation}>
           {t('shell.reputation')} {formatInt(reputation)}
         </span>
       ) : (
@@ -107,12 +159,24 @@ export function GoalCard() {
       )}
       {second ? (
         <span
-          className="col-span-2 min-w-0 whitespace-nowrap text-t-caption text-ink-faint"
+          className={`col-span-2 min-w-0 whitespace-nowrap text-t-caption text-ink-faint ${showSaving ? 'flex items-center gap-2' : ''}`}
           data-testid="goal-second-ship"
           data-ready={second.ready}
           data-of={second.of}
+          data-purse={showSaving ? saving.have : undefined}
+          data-price={showSaving ? saving.price : undefined}
         >
-          {secondWords(t, second, second.port ? portNameOf(portByCode, second.port) : null, nowMs)}
+          {showSaving ? <span>{secondWords(t, second, second.port ? portNameOf(portByCode, second.port) : null, nowMs, saving)}</span> : secondWords(t, second, second.port ? portNameOf(portByCode, second.port) : null, nowMs, null)}
+          {showSaving && (
+            // the purse against the price, in the rest of the line: no line is added, the card keeps its one height
+            <span className="min-w-6 flex-1" data-testid="goal-saving">
+              <Bar
+                pct={(Math.max(0, saving.have) / saving.price) * 100}
+                tone={saving.have >= saving.price ? 'success' : 'accent'}
+                label={t('yard.secondShipBar')}
+              />
+            </span>
+          )}
         </span>
       ) : next && (
         <span className="col-span-2 min-w-0 break-words text-t-caption text-ink-faint" data-testid="goal-tracks">
@@ -128,13 +192,25 @@ export function GoalCard() {
 
 /** The second ship's line: a hull on order (0465) says when she is ready; else the materials stored, with the yard's city when she is not
  *  lying there (the count is of THAT yard, so the line says which). */
-function secondWords(t: ReturnType<typeof useT>, s: SecondShip, city: string | null, nowMs: number): string {
+function secondWords(
+  t: ReturnType<typeof useT>,
+  s: SecondShip,
+  city: string | null,
+  nowMs: number,
+  saving: { have: number; price: number } | null,
+): string {
   if (s.order) {
     const left = Date.parse(s.order.readyAt) - nowMs
     const name = properName('hull', s.order.name, s.order.name)
     return s.order.ready || left <= 0
       ? t('yard.secondShipOrderReady', { name })
       : t('yard.secondShipOrdered', { name, time: formatRealShort(left) })
+  }
+  // the yard takes orders: her purse against the Order's price (finding 3), not materials
+  if (saving) {
+    const have = formatInt(Math.max(0, saving.have))
+    const price = formatInt(saving.price)
+    return !s.here && city ? t('yard.secondShipSaveAt', { city, have, price }) : t('yard.secondShipSave', { have, price })
   }
   const n = formatInt(s.ready)
   const of = formatInt(s.of)

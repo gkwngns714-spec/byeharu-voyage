@@ -56,11 +56,24 @@ export const useOfficeView = create<OfficeViewState>()(
   ),
 )
 
+/** A HULL ASKED FOR ON THE YARD from outside it (2026-11-23 play-test: the goal card's press opens the yard ON the Barca's sheet,
+ *  where her Order is). Session-only and taken once: the yard opens that hull's sheet when it has it, and lets the ask go. */
+export const useYardAsk = create<{ hull: string | null; ask: (hull: string | null) => void; take: () => string | null }>((set, get) => ({
+  hull: null,
+  ask: (hull) => set({ hull }),
+  take: () => {
+    const h = get().hull
+    if (h !== null) set({ hull: null })
+    return h
+  },
+}))
+
 /** THE ONE DOOR TO A BUILDING OF THE CITY FACE from anywhere else (the yard's hire and workshop links, an old `/port` link):
- *  turns the Office to City at that building and returns the route to navigate to. */
-export function openOfficeCity(building?: PortFace): string {
+ *  turns the Office to City at that building and returns the route to navigate to. `hull` (the yard only): that hull's sheet opens. */
+export function openOfficeCity(building?: PortFace, hull?: string): string {
   const s = useOfficeView.getState()
   if (building) s.setCityFace(building)
+  if (building === 'building_yard' && hull) useYardAsk.getState().ask(hull)
   s.turnTo('city')
   return OFFICE_TAB
 }

@@ -47,13 +47,9 @@ export function YouLevels({ picked, onPick }: { picked: string | null; onPick: (
         <div data-testid="you-levels">
           <LevelTiles card={v.level_skills} selected={picked} onSelect={onPick} />
           <Company v={v} />
-          {/* 2026-11-22 (P0): dark, the line said "ship and captain levels: counted only, no effect yet", a builder's note on a
-              player's page. It stands only once they work. */}
-          {v.bite && (
-            <Note tone="success" data-testid="levels-bite">
-              {t('command.lvLit')}
-            </Note>
-          )}
+          {/* 2026-11-22 (P0): dark, a line said "ship and captain levels: counted only, no effect yet", a builder's note on a
+              player's page; 2026-11-23 (third play-test, finding 14) its lit twin "Ship and captain levels: on." went too: a switch's
+              state is not a player's word. */}
           <Countries v={v} />
         </div>
       )}
@@ -99,9 +95,11 @@ function Company({ v }: { v: Ready }) {
               })
             : t('command.lvTitleTop')}
         </span>
-        {v.title.next && v.title.next.opens.length > 0 && (
+        {/* what the title opens, only while sea limits are on (2026-11-23, finding 14: dark it read "(sea rules off)", a builder's note;
+            the goal card has always kept it to the lit case) */}
+        {v.title.next && v.title.seas_bite && v.title.next.opens.length > 0 && (
           <span className="mt-1 block text-t-caption text-ink-muted" data-testid="levels-opens">
-            {t(v.title.seas_bite ? 'command.lvOpens' : 'command.lvOpensDark', { what: seasOpened(locale, v.title.next.opens) })}
+            {t('command.lvOpens', { what: seasOpened(locale, v.title.next.opens) })}
           </span>
         )}
       </div>

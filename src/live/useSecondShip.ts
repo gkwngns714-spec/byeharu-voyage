@@ -34,6 +34,12 @@ export interface SecondShip {
   /** 0465: a hull she has ON ORDER (at this yard, else the first elsewhere), as the yard's own read serves it; null when none. The
    *  card says the order, not "materials 0 / 4": an ordered ship needs no materials. */
   order: { name: string; readyAt: string; ready: boolean } | null
+  /** The yard counted, by id, and the cheapest hull it lays down for her (the one counted): what world.hull_quote is asked about. */
+  portId: string | null
+  hull: string
+  /** 0465: the yard takes orders (the served `order` key, yard_order_enabled lit). Then the newcomer's road is the Order, and the card
+   *  counts her purse against its price (2026-11-23 play-test) rather than materials she would sail half an hour for. */
+  orderOn: boolean
 }
 
 /** The yard she was last counted at. A per-browser convenience: without it the card simply waits for her next call at a yard. */
@@ -58,14 +64,14 @@ const useCountedYard = create<{ company: string | null; portId: string | null; k
 )
 
 /** The cheapest hull this yard lays down for her now, counted by the sheet's own fold; null when it builds her none. */
-function counted(view: BuildingYardView | null): Pick<SecondShip, 'ready' | 'of' | 'order'> | null {
+function counted(view: BuildingYardView | null): Pick<SecondShip, 'ready' | 'of' | 'order' | 'hull' | 'orderOn'> | null {
   const hull = view?.hulls.filter((h) => h.buildable).reduce<BuildingYardView['hulls'][number] | null>((a, h) => (a === null || h.ducats < a.ducats ? h : a), null)
   if (!hull) return null
   const plan = yardPlan(hull, undefined, {})
   const o = view?.order?.open ?? null
   const away = view?.order?.elsewhere[0] ?? null
   const order = o ? { name: o.name, readyAt: o.ready_at, ready: o.ready } : away ? { name: away.name, readyAt: away.ready_at, ready: away.ready } : null
-  return plan.of > 0 ? { ready: plan.ready, of: plan.of, order } : null
+  return plan.of > 0 ? { ready: plan.ready, of: plan.of, order, hull: hull.class, orderOn: view?.order?.on === true } : null
 }
 
 export function useSecondShip(): SecondShip | null {
@@ -99,5 +105,10 @@ export function useSecondShip(): SecondShip | null {
   }, [company, at, keptAt, keep])
 
   if (!pick) return null
-  return { ...pick.count, port: (pick.at !== null ? portById[pick.at]?.code : null) ?? null, here: pick.at !== null && pick.at === hereId }
+  return {
+    ...pick.count,
+    port: (pick.at !== null ? portById[pick.at]?.code : null) ?? null,
+    portId: pick.at,
+    here: pick.at !== null && pick.at === hereId,
+  }
 }
