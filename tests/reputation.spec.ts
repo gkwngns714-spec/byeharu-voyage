@@ -178,9 +178,10 @@ for (const size of SIZES) {
           // the gift is 10 x each level crossed: from the level paid at the quay (Trading) or from 1 (a new house's other tracks)
           expect(rep, `${track} level ${level} gave ${rep}`).toBe(giftsTo(level) - (track === 'trading' ? giftsTo(quayLevel) : 0))
         }
-        // 25 for the first landfall, 1 a 250 of the sale's profit (the card's own figure), and the miles (0 to 40).
+        // 25 for the first landfall, 1 a 250 of the sale's profit (the sale's served margin, on the card's sale line: since 0474 the
+        // card's figure is the trip's net, after the tax, the wages and the dock fee), and the miles (0 to 40).
         await expect(page.getByTestId('arrival-sale')).toHaveCount(1)
-        const net = Number(await card.getAttribute('data-net'))
+        const net = Number(await page.getByTestId('arrival-sale').getAttribute('data-profit'))
         expect(Number.isFinite(net)).toBe(true)
         const sale = Math.min(Math.floor(Math.max(net, 0) / 250), 120)
         const miles = earned - 25 - sale
