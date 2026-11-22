@@ -292,7 +292,8 @@ export function PortYard({
         setDetent('half')
         setOpen(hull)
       }}
-      figure={<Figure value={formatDucats(hull.ducats)} />}
+      // the yard's LABOUR, said as such (2026-11-22 second play-test: the bare figure read as the hull's price beside Total and Order)
+      figure={<Figure value={formatDucats(hull.ducats)} unit={t('yard.labour')} />}
       data-testid={`hull-${hull.class}`}
     />
   )
@@ -517,6 +518,8 @@ export function PortYard({
           )}
           {/* S1 — THE TOTALS, above the lines so a part unfolding moves neither: what is still to buy at the sellers'
               prices now plus the yard's labour, and the weight of what is still to fetch against her free hold. */}
+          {/* the labour, so Total reads as labour + the goods still to buy (the card's figure is this one) */}
+          <Row label={t('yard.labour')} value={<Figure value={formatDucats(hull.ducats)} />} data-testid="yard-labour" />
           <Row
             label={t('yard.total')}
             value={<Figure value={plan.goodsCost === null ? '…' : formatDucats(Math.round(plan.goodsCost) + hull.ducats)} />}
@@ -542,6 +545,10 @@ export function PortYard({
               value={<Figure value={quoted && typeof quoted.minutes === 'number' ? formatRealShort(quoted.minutes * 60_000) : '…'} />}
               data-testid="yard-order-wait"
             />
+          )}
+          {/* an order's fee (world.hull_quote): what the order adds over labour and every good bought at the nearest ask */}
+          {offerOrder && quoted && typeof quoted.fee === 'number' && (
+            <Row label={t('yard.orderFee')} value={<Figure value={formatDucats(quoted.fee)} />} data-testid="yard-order-fee" />
           )}
           {/* S3: one press from the totals to the trip that fetches what is short. It stands above the lines, with the
               totals, so a part unfolding does not move it; it goes when nothing is left to fetch by sea. */}

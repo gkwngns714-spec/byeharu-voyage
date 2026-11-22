@@ -95,7 +95,7 @@ export const feedDict = defineDict({
     welcomeWho: 'You run a trading house in {city}, {year}.',
     welcomeWhoAt: 'You run a trading house, {year}.',
     welcomeGoal: 'Goal: earn your second ship.',
-    welcomeFirst: 'First: pick a good, press Buy.',
+    welcomeFirst: 'First: press a good’s green line, then Buy & sell.',
     welcomeStart: 'Start',
   },
   ko: {
@@ -182,7 +182,7 @@ export const feedDict = defineDict({
     welcomeWho: '{year}년 {city}의 무역 상회를 이끕니다.',
     welcomeWhoAt: '{year}년, 무역 상회를 이끕니다.',
     welcomeGoal: '목표: 두 번째 배 마련.',
-    welcomeFirst: '먼저: 상품을 골라 구매를 누르세요.',
+    welcomeFirst: '먼저: 상품의 초록 줄, 그다음 사서 팔기를 누르세요.',
     welcomeStart: '시작',
   },
 })

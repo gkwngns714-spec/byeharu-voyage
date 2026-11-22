@@ -233,7 +233,15 @@ export function TradeBoard({
             // fixed 10.5 rem the row's Buy and Sell stood under the pane's edge and a press on one first scrolled the cards
             // (tests/desk.layout.spec.ts, "a press … moved the cards": run 44507902138, 6 px). 10.5 rem is only the bound before
             // the first measure.
-            <ScrollPane paneRef={paneRef} className="max-h-[var(--first-row,10.5rem)] lg:max-h-none" style={{ '--first-row': firstRow ? `${firstRow}px` : undefined } as CSSProperties}>
+            // THE NEXT ROW PEEKS (2026-11-22 second play-test: "two cards of ten in view, no sign that the pane scrolls"). Where more cards
+            // stand under the first row, the bound is one row and 1 rem more: the row gap and the top of the next two cards show, so the
+            // list reads as one that goes on. The first row's Buy and Sell stay wholly inside the pane (a press never scrolls it).
+            <ScrollPane
+              paneRef={paneRef}
+              className={`${rows.length > 2 ? 'max-h-[calc(var(--first-row,10.5rem)+1rem)]' : 'max-h-[var(--first-row,10.5rem)]'} lg:max-h-none`}
+              style={{ '--first-row': firstRow ? `${firstRow}px` : undefined } as CSSProperties}
+              data-testid="trade-cards-pane"
+            >
               <div ref={gridRef} className={CARDS_GRID}>
                 {rows.map((r) => (
                   <TradeCard

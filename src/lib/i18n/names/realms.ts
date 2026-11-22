@@ -50,6 +50,29 @@ export const KO_HULLS: Readonly<Record<string, string>> = {
   Hoy: '호이', Holk: '홀크', Cocca: '코카', Caochuan: '조량선', Taforeia: '타포레이아', Hourque: '우르크', Jong: '종', 'Nave grossa': '나베 그로사',
   // 2026-11-22 second play-test: the three hulls of the starting yard (Lisbon) and the starting ship were English on a Korean screen
   Barca: '바르카', 'Caravela latina': '카라벨라 라티나', 'Nau / Carrack': '나우 / 캐랙',
+  // 2026-11-22 second play-test, the rest (Waves A-D and the famous ships, scripts/build-ships.mjs): every served hull has its Korean
+  // name now (tests/ships.more.spec.ts reads data/ships.generated.json whole). Same rule as above; unchecked translations.
+  'Caravela redonda': '카라벨라 레돈다', 'Galeão': '갈레앙', Patache: '파타체', 'Carabela de Indias': '카라벨라 데 인디아스', Zabra: '사브라',
+  Urca: '우르카', 'Galeón': '갈레온', Jacht: '야흐트', Haringbuis: '하링뷔스', Fluit: '플라위트', Pinas: '피나스', Retourschip: '레투르스힙',
+  Pinnace: '피니스', Crayer: '크레이어', Bark: '바크', 'Levant Merchantman': '레반트 상선', 'Race-built Galleon': '레이스빌트 갤리언',
+  Barque: '바르크', 'Caravelle normande': '노르망디 카라벨', 'Navire marchand': '나비르 마르샹', 'Galère': '갈레르', Galion: '갈리옹',
+  Fusta: '푸스타', Marciliana: '마르칠리아나', 'Galea sottile': '갈레아 소틸레', 'Galea grossa': '갈레아 그로사', 'Caracca genovese': '제노바 카라카',
+  'Kayık': '카이으크', 'Şebek (xebec)': '셰베크 (지벡)', 'Karamürsel': '카라뮈르셀', 'Kadırga': '카드르가', 'Baştarda': '바슈타르다',
+  Dhow: '다우', Sambuk: '삼부크', Ghurab: '구라브', Baghlah: '바글라', 'Gujarati Jahaz': '구자라트 자하즈',
+  Niaochuan: '조선 (새배)', Shachuan: '사선', Cangshan: '창산선', 'Junk (Fuzhou trader)': '푸저우 정크', Fuchuan: '복선',
+  Kobaya: '고바야', Kobune: '고부네', Sekibune: '세키부네', Shuinsen: '슈인센', Atakebune: '아타케부네',
+  'Nau da Carreira': '나우 다 카헤이라', 'Carraca grande': '대형 카라카', 'Galeón de Manila': '마닐라 갈레온', 'Galeón real': '갈레온 레알',
+  Spiegelretourschip: '스피헐레투르스힙', 'East Indiaman': '동인도 무역선', 'Great Ship': '그레이트 십', 'Grand navire': '그랑 나비르',
+  Galeazza: '갈레아차', Kalyon: '칼리온', 'Baştarda-i Hümayun': '바슈타르다 휘마윤', 'Hajji Jahaz': '하지 자하즈',
+  'Dachuan (great junk)': '대선 (대형 정크)', 'Ō-atakebune': '오아타케부네',
+  'Caravela de armada': '카라벨라 드 아르마다', 'Nau de guerra': '나우 드 게하', 'Galeón de la Plata': '라플라타 갈레온',
+  'Fragata de Dunquerque': '됭케르크 프리깃', 'Gewapende fluit': '무장 플라위트', Kaperschip: '카퍼스힙', "Queen's Pinnace": '여왕의 피니스',
+  'Armed Merchantman': '무장 상선', 'Frégate de course': '사략 프리깃', 'Flûte royale': '왕실 플뤼트', 'Galea bastarda': '갈레아 바스타르다',
+  'Caracca armata': '무장 카라카', 'Korsan şebeği': '해적 셰베크', Mavna: '마브나', Batil: '바틸', 'Ghurab-i-jang': '전투 구라브',
+  Zhanchuan: '전선', Haicang: '해창선', 'Murakami kobaya': '무라카미 고바야', 'Ō-shuinsen': '오슈인센',
+  'Madre de Deus': '마드르 드 데우스', 'San Martín': '산 마르틴', Batavia: '바타비아', 'Golden Hind': '골든 하인드', 'La Couronne': '라 쿠론',
+  'Galeazza di Duodo': '두오도의 갈레아차', "Turgut Reis's Kadırga": '투르구트 레이스의 카드르가', Rahimi: '라히미',
+  'Baochuan (treasure ship)': '보선 (보물선)', 'San Juan Bautista': '산 후안 바우티스타',
 }
 
 // A COMPANY'S TITLE (`public.title_names`, eleven rungs), keyed by the served English name. They were the one English word on

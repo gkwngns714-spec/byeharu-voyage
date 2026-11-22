@@ -3,7 +3,7 @@ import { ready, reachable } from './appReady.fixture'
 
 // THE FIRST-RUN WELCOME (src/app/WelcomeCard.tsx; P0 of docs/design/playable-2026-11-22.md). A fresh company that has never traded
 // meets one card on the Trade tab: who she is (a trading house in Lisbon, the world's year), the goal (the second ship) and the
-// first press (pick a good, press Buy). It is an overlay (nothing under it moves, nothing scrolls sideways), and Start closes it
+// first press (a good's green line, then Buy & sell: it buys, sails and sells). It is an overlay (nothing under it moves, nothing scrolls sideways), and Start closes it
 // for good in this browser. Every other spec starts with the mark set (playwright.config.ts); this one starts without it.
 
 test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, storageState: { cookies: [], origins: [] } })
@@ -17,7 +17,7 @@ test('a new company is welcomed once: who, the goal, the first press; Start clos
   await expect(card).toBeVisible({ timeout: 120_000 })
   await expect(card.getByTestId('welcome-who')).toHaveText(/^You run a trading house in Lisbon, 1[5-6]\d\d\.$/)
   await expect(card.getByTestId('welcome-goal')).toHaveText('Goal: earn your second ship.')
-  await expect(card.getByTestId('welcome-first')).toHaveText('First: pick a good, press Buy.')
+  await expect(card.getByTestId('welcome-first')).toHaveText('First: press a good’s green line, then Buy & sell.')
   // an overlay: out of the flow (fixed), and the page does not scroll sideways
   expect(await page.getByTestId('welcome-card-wrap').evaluate((el) => getComputedStyle(el).position)).toBe('fixed')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'the page scrolls sideways').toBe(true)

@@ -9,7 +9,7 @@ import { useShellState } from './shellState'
 // THE FIRST-RUN WELCOME (2026-11-22, P0 of docs/design/playable-2026-11-22.md: "No welcome, no goal"). A new player met about
 // 20 s of loading and then the Trade desk with 40,000 coins and nothing saying who she is or what to do. One short card says it,
 // once: who you are (a trading house in the city her fleet lies in, in the world's year), the goal (the second ship, the goal
-// card's own line), and the first press (pick a good, press Buy).
+// card's own line), and the first press (a good's green line, then Buy & sell, which buys, sails and sells; 2026-11-22 second play-test: "press Buy" bought here and stopped, a dead end).
 //
 // WHO SEES IT, decided by default: a company that has NEVER TRADED, read from the served `fame.turnover` (the ledger's turnover
 // on completed buys and sells; 0 until her first trade), on the Trade tab, where the first press is. Her first trade ends it.
