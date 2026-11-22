@@ -12,7 +12,7 @@ import { useShellState } from '../../app/shellState'
 import type { SecondShip } from '../../live/useSecondShip'
 import { useNavigate } from 'react-router-dom'
 import { openOfficeCity } from './officeView'
-import { goTo, useGoTo } from '../../chart'
+import { useShowOnMap } from '../../live/showOnMap'
 
 // THE GOAL CARD (remaster S6): one line on the Trade face saying what to aim for: the next Title and how far along you are.
 // NOT a quest: it reads the SAME served read the You page's levels read (`world.levels()`, 0325, the same cached `worldLevels` read) and
@@ -66,6 +66,7 @@ export function GoalCard() {
   const wide = useWide()
   const place = wide ? WIDE : PHONE
   const navigate = useNavigate()
+  const showOnMap = useShowOnMap()
   const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
   const v = read.view
   const reputation = useWorld((s) => s.player?.reputation?.balance ?? null)
@@ -119,8 +120,7 @@ export function GoalCard() {
       navigate(openOfficeCity('building_yard', second.order ? undefined : second.hull))
     } else if (next2 === 'map' && second?.port) {
       // the yard's city, its tray up with the Sail press (finding 21)
-      goTo({ kind: 'port', code: second.port, open: true })
-      if (!useGoTo.getState().openMap) navigate('/map')
+      showOnMap(second.port, true)
     } else navigate(next2 === 'map' ? '/map' : '/you')
   }
   return (

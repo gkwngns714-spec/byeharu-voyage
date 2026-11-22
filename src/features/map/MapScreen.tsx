@@ -102,7 +102,7 @@ import { RouteEditor } from '../../live/RouteEditor'
 import { useRouteBuilder } from './useRouteBuilder'
 import { useRouteSeed } from './routeSeed'
 import { CityHarbour } from './CityHarbour'
-import { merchantsSummary } from '../../live/merchantGroups'
+import { merchantsCount, merchantsSummary } from '../../live/merchantGroups'
 import { viewLeftFrame } from './frame'
 import { seaAsksLine, seaShortLine } from './seaLines'
 import { useLocale, useT, t as tNow } from '../../lib/i18n'
@@ -193,7 +193,11 @@ export function MapScreen() {
  *  and how many of them lie here, and which of yours are here or heading here. The merchants
  *  resting here are not drawn on the chart (chartModel.ts), so the city counts them — the
  *  harbour's own read (`world.port_merchants`), never the capped sea window — and the list itself
- *  is the Port tab (CityHarbour.tsx). */
+ *  is the Port tab (CityHarbour.tsx).
+ *
+ *  2026-11-23 (the visual overhaul's slice 4: "fewer words in trays, icon + number"): the counts are a sail and a figure, an
+ *  anchor and a figure (`27 merchants · 2 in port` is their accessible name), and your fleets are their names after an anchor
+ *  (here) or a route (heading here), the words kept as the glyph's name. */
 function portLine(
   model: ChartModel,
   port: MapPort,
@@ -204,16 +208,51 @@ function portLine(
   const bound = fleetsBoundFor(model, port.code)
   // 0143 (D14): THE FLAG IT FLIES TODAY, in place of the modern country's name — none until read.
   const parts: ReactNode[] = allegiance ? [<CityFlag allegiance={allegiance} />] : []
-  const summary = merchantsSummary(merchants, port.code)
-  if (summary) parts.push(summary)
-  if (here.length > 0) parts.push(<>{fleetLinks(here)} {tNow('map.here')}</>)
-  else if (bound.length > 0) parts.push(<>{fleetLinks(bound)} {tNow('map.headingHere')}</>)
+  const count = merchantsCount(merchants, port.code)
+  if (count.all > 0)
+    parts.push(
+      <span
+        className="inline-flex items-center gap-2 whitespace-nowrap align-bottom"
+        role="img"
+        aria-label={merchantsSummary(merchants, port.code)}
+        data-testid="map-place-merchants"
+        data-all={count.all}
+        data-in-port={count.inPort}
+      >
+        <GlyphFigure icon="ship" n={count.all} />
+        {count.inPort > 0 && <GlyphFigure icon="anchor" n={count.inPort} />}
+      </span>,
+    )
+  if (here.length > 0) parts.push(<OwnFleets icon="anchor" word={tNow('map.here')} fleets={here} />)
+  else if (bound.length > 0) parts.push(<OwnFleets icon="route" word={tNow('map.headingHere')} fleets={bound} />)
   return parts.map((p, i) => (
     <Fragment key={i}>
       {i > 0 && ' · '}
       {p}
     </Fragment>
   ))
+}
+
+/** A glyph and its figure, one unit: `[sail] 27`. */
+function GlyphFigure({ icon, n }: { icon: 'ship' | 'anchor'; n: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 tabular-nums" aria-hidden="true">
+      <Icon name={icon} size={14} />
+      {n}
+    </span>
+  )
+}
+
+/** Your fleets here or bound here: the glyph that says which (its word as its name), then their names in brass. */
+function OwnFleets({ icon, word, fleets }: { icon: 'anchor' | 'route'; word: string; fleets: readonly FleetOnChart[] }) {
+  return (
+    <span className="text-accent" data-testid="map-place-own">
+      <span role="img" aria-label={word} className="mr-0.5 inline-flex align-[-2px]">
+        <Icon name={icon} size={14} />
+      </span>
+      {fleetLinks(fleets)}
+    </span>
+  )
 }
 
 /** Your fleets by name, each a go-to link (src/chart/goTo.ts), comma-separated. */

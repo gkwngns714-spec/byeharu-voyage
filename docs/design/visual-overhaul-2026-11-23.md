@@ -134,6 +134,14 @@ player sees.
 - Before: your ship is a small triangle; a harbour's tray is rows of words; the minimap and filter are text buttons.
 - After: your fleets are hull silhouettes with a gold halo; a harbour's tray opens on its regional skyline (principle 7) with the flag,
   the three best goods as marks with arrows, and one Sail press; filters are glyph chips.
+- Built (decided by default, the owner may reverse each): your fleets on the chart keep their class silhouettes and gain a brass
+  glow and a brass rim (selected: an ink rim and a dashed ink ring); the Fleets corner and the Port tab lead each fleet of yours with
+  her flagship's outline seen from the beam (`FleetHull`, masts by `shipRig`, tier by `hullTierOf`), the selected corner row in a
+  brass wash with a brass edge, and the untranslated "yours" tag gone; the harbour tray carries its regional skyline over the tabs
+  (`Skyline`, six pictures picked from the served culture by `skylineOf`); the head line's counts are a sail and an anchor with
+  their figures and your fleets an anchor (here) or a route (bound here) before their names, the words kept as accessible names;
+  the filter is a glyph square (new `layers` and `waves` glyphs) whose choices are glyph chips. The three best goods on the tray
+  wait for the Trade desk's slice (0474/0475 own those cards).
 
 **5. Fleets and ships.**
 - Before: a fleet row, then a card that repeats it, then the Room ladder in sentences.

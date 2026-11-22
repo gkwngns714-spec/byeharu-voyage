@@ -4,6 +4,8 @@
 // codes across four migrations; the name is what every reader already holds. A port with no entry
 // (or one the server renames) prints its served name — a truthful lesser answer (NO_SPAGHETTI §7C).
 // Established Korean forms where they exist (리스본, 세비야, 런던); 국립국어원 외래어 표기 otherwise.
+// A NAME WITH A BRACKET IS ONE WORD: a word joiner (U+2060, unseen) stands before its bracket, or a line may turn there ("소요" /
+// "(콩고)" in a 92-px picker cell at 320 px; names are never cut or broken, tests/trade.layout.spec.ts).
 export const KO_PORTS: Readonly<Record<string, string>> = {
   Acapulco: '아카풀코', Accra: '아크라', Aden: '아덴', Agadir: '아가디르', Alexandria: '알렉산드리아',
   Algiers: '알제', Ambon: '암본', Amsterdam: '암스테르담', Ancona: '안코나', Angra: '앙그라',
@@ -46,7 +48,7 @@ export const KO_PORTS: Readonly<Record<string, string>> = {
   'San Francisco': '샌프란시스코', 'San Juan': '산후안', 'Sanlucar de Barrameda': '산루카르데바라메다',
   'Santa Cruz de Tenerife': '산타크루스데테네리페', 'Santo Domingo': '산토도밍고', Santos: '산투스',
   'Sao Tome': '상투메', Setubal: '세투바우', Seville: '세비야', Shimonoseki: '시모노세키', Sofala: '소팔라',
-  Soyo: '소요(콩고)', Split: '스플리트', 'St. Augustine': '세인트오거스틴', "St. George's": '세인트조지스',
+  Soyo: '소요⁠(콩고)', Split: '스플리트', 'St. Augustine': '세인트오거스틴', "St. George's": '세인트조지스',
   "St. John's": '세인트존스', Stockholm: '스톡홀름', Suakin: '수아킨', Suez: '수에즈', Surabaya: '수라바야',
   Surat: '수라트', Sydney: '시드니', Tainan: '타이난', Tallinn: '탈린', Tangier: '탕헤르', Ternate: '테르나테',
   Thanlyin: '탄린', Thessaloniki: '테살로니키', Tidore: '티도레', Tokyo: '도쿄', Tongyeong: '통영',

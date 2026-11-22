@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { Button, Hint, Row, SheetSection, Tray, TrayTitle, seaName, type TrayDetent } from '../../components/ui'
+import { Button, Hint, Row, SheetSection, Skyline, skylineOf, Tray, TrayTitle, seaName, type TrayDetent } from '../../components/ui'
+import { useWorld } from '../../live/worldStore'
 import type { SeaWall } from '../../lib/rpc'
 import { PortFlag } from '../../live/PortFlag'
 import { CHART_CHROME, GoToLink } from '../../chart'
@@ -76,6 +77,7 @@ export function SendFleet({
   const inArmada = new Set(armadas.armadas.flatMap((a) => a.fleets))
   const fleets = inArmada.size === 0 ? flow.fleets : flow.fleets.filter((f) => !inArmada.has(f.id))
   const turnTo = useCityTab((s) => s.turnTo)
+  const culture = useWorld((s) => (dest.kind === 'port' ? s.portByCode[dest.code]?.culture : undefined))
 
   const picked = fleets.find((f) => f.id === flow.picked) ?? null
   const sendable = picked !== null && canGo(flow.standingOf(picked))
@@ -181,7 +183,14 @@ export function SendFleet({
       {...CHART_CHROME}
     >
       {dest.kind === 'port' ? (
-        <CityTabs
+        <>
+          {/* THE HARBOUR'S PICTURE (2026-11-23, the visual overhaul's slice 4, principle 7): its regional skyline at dusk, above
+              the tabs, from the served culture (components/ui/Skyline.tsx `skylineOf`, the one table). Decoration; the head
+              above says where. It scrolls away under the pinned tabs. */}
+          <div className="mb-2 overflow-hidden rounded-tile border border-edge" data-testid="map-harbour-skyline-band">
+            <Skyline kind={skylineOf(culture)} height={64} data-testid="map-harbour-skyline" />
+          </div>
+          <CityTabs
           portCode={dest.code}
           harbour={
             <>
@@ -189,7 +198,8 @@ export function SendFleet({
               {harbour}
             </>
           }
-        />
+          />
+        </>
       ) : (
         sendSection
       )}

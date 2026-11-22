@@ -511,7 +511,6 @@ export function planLabels(
   const glyph = (options.glyphRadiusPx ?? DEFAULTS.glyphRadiusPx) * u
   const inset = (options.edgeInsetPx ?? DEFAULTS.edgeInsetPx) * u
   const keepOut = options.keepOut ?? EMPTY_KEEP_OUT
-
   const vb = options.viewBox
   const frame: Rect = {
     x: vb.x + inset,
@@ -572,13 +571,26 @@ export function planLabels(
     const bare: LabelRequest = { ...request, flag: undefined }
     if (!set(bare, false)) set(bare, true)
   }
+  // ── A CAPITAL'S FLAG, SOUGHT IN THE GAPS (2026-11-23) ─────────────────────────────────────────────────────────────────
+  // The eight sides on three rings are 24 fixed boxes, and in Europe's corner on a phone held furthest out every one of them
+  // touched a neighbour: Hamburg stands between the lone flags of Amsterdam, Copenhagen, Stockholm, Gdańsk and Genoa, and its
+  // flag was the one capital not set (measured on the running game: free water 33 px by 38 px a little south-west of the
+  // mark, which no ring box fell inside). A FOURTH pass, after every name has had its every place, so it only fills water no
+  // one wanted: a capital still unset searches every box position on a 2 px grid whose nearest edge lies within the
+  // furthest ring's reach, nearest first, held to all the same laws (the frame, the chrome, no name, no better mark, and a
+  // leader that crosses neither). Nothing placed before moves.
+  // (a plan pinned to the snug ring alone, `rings: [1]`, has no reach to search)
+  const setIds = new Set(placed.map((l) => l.id))
+  if (Math.max(...(options.rings ?? LABEL_RINGS)) > 1) for (const request of ordered) {
+    if (request.flagOnlyFallback && request.flag && !setIds.has(request.id)) set({ ...request, text: '' }, 'search')
+  }
 
   return placed
 
-  /** Place one label, on its snug ring (`stepOut` false) or on the further rings only (true).
-   *  Returns whether it was placed. A CENTRED name (a sea's, a region's) has no rings: it is
-   *  tried once, in the first pass, on its anchor with its own give. */
-  function set(request: LabelRequest, stepOut: boolean): boolean {
+  /** Place one label, on its snug ring (`stepOut` false), on the further rings only (true), or — a capital's lone flag
+   *  only — on the fine search inside the furthest ring's reach ('search'). Returns whether it was placed. A CENTRED name
+   *  (a sea's, a region's) has no rings: it is tried once, in the first pass, on its anchor with its own give. */
+  function set(request: LabelRequest, stepOut: boolean | 'search'): boolean {
     const centredName = request.placement === 'centred'
     if (centredName && stepOut) return false
     const sizePx = request.sizePx ?? options.fontSizePx ?? DEFAULTS.fontSizePx
@@ -593,9 +605,12 @@ export function planLabels(
       textEm(request.text, spacingEm) * size + (request.flag ? (request.text ? FLAG_ADVANCE_EM : FLAG_HEIGHT_EM * 1.5) * size : 0),
       request.note ? textEm(request.note) * noteSize : 0,
     )
+    const rings = options.rings ?? LABEL_RINGS
     const options_ = centredName
       ? centredNear(request.at, width, size + (request.note ? noteSize * NOTE_LINE_EM : 0), request.slackLines ?? 0)
-      : candidates(request.at, width, size * NAME_HEIGHT_EM, gap, overMark && request.text !== '' ? [1] : (options.rings ?? LABEL_RINGS), overMark, request.priority >= LABEL_PRIORITY.route || request.text === '').filter(
+      : stepOut === 'search'
+        ? searched(request.at, width, size * NAME_HEIGHT_EM, gap, gap * Math.max(...rings), u)
+        : candidates(request.at, width, size * NAME_HEIGHT_EM, gap, overMark && request.text !== '' ? [1] : rings, overMark, request.priority >= LABEL_PRIORITY.route || request.text === '').filter(
           (c) => (c.stepped ?? false) === stepOut,
         )
 
@@ -656,6 +671,33 @@ export function planLabels(
     })
     return true
   }
+}
+
+/**
+ * THE FINE SEARCH (the fourth pass in `planLabels`): every position of a `width` × `height` box on a 2 px grid whose nearest
+ * edge is at least one gap and at most `reach` from the mark, nearest first (then by angle, so the order is fixed). Each is
+ * a stepped placement: it carries a leader back to its mark. `u` is chart units per CSS pixel.
+ */
+function searched(at: Point, width: number, height: number, gap: number, reach: number, u: number): Candidate[] {
+  const step = 2 * u
+  const out: { candidate: Candidate; d: number; angle: number }[] = []
+  const spanX = Math.ceil((reach + width / 2) / step)
+  const spanY = Math.ceil((reach + height / 2) / step)
+  for (let i = -spanX; i <= spanX; i++) {
+    for (let j = -spanY; j <= spanY; j++) {
+      const cx = at.x + i * step
+      const cy = at.y + j * step
+      const box: Rect = { x: cx - width / 2, y: cy - height / 2, width, height }
+      const dx = Math.min(Math.max(at.x, box.x), box.x + width) - at.x
+      const dy = Math.min(Math.max(at.y, box.y), box.y + height) - at.y
+      const d = Math.sqrt(dx * dx + dy * dy)
+      if (d < gap || d > reach) continue
+      const side: LabelSide = Math.abs(i * width) >= Math.abs(j * height) ? (i >= 0 ? 'right' : 'left') : j < 0 ? 'above' : 'below'
+      out.push({ candidate: { side, x: cx, y: cy, anchor: 'middle', box, stepped: true }, d, angle: Math.atan2(j, i) })
+    }
+  }
+  out.sort((a, b) => a.d - b.d || a.angle - b.angle)
+  return out.map((o) => o.candidate)
 }
 
 /** The hairline from a mark to a name set away from it: from the glyph's edge to the nearest point

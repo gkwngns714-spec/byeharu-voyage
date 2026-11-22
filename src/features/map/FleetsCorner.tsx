@@ -1,6 +1,7 @@
 import { Corner, Icon, Row } from '../../components/ui'
 import { CHART_CHROME, type ChartModel, type MapPort } from '../../chart'
 import { fleetLine } from './fleetLine'
+import { FleetHull } from './FleetHull'
 import { useT } from '../../lib/i18n'
 
 // THE FLEETS PILL, TOP-LEFT — `⛵ 1`, and a list when it is pressed.
@@ -49,25 +50,27 @@ export function FleetsCorner({
       {fleets.length === 0 ? (
         <Row tone="muted" hairline={false} label={t('map.noFleets')} />
       ) : (
-        fleets.map((f, i) => (
-          <Row
-            key={f.fleet.id}
-            mark={
-              <Icon
-                name={f.dockedAtCode ? 'anchor' : 'ship'}
-                size={20}
-                className={selectedId === f.fleet.id ? 'text-accent' : 'text-ink-faint'}
-              />
-            }
-            label={f.fleet.name}
-            tone={selectedId === f.fleet.id ? 'accent' : 'default'}
-            hairline={i < fleets.length - 1}
-            onClick={() => onSelect(f.fleet.id)}
-            data-testid="map-fleet-row"
-          >
-            <span className="block text-t-caption text-ink-faint">{fleetLine(f, portsByCode, nowMs)}</span>
-          </Row>
-        ))
+        fleets.map((f, i) => {
+          const selected = selectedId === f.fleet.id
+          return (
+            <Row
+              key={f.fleet.id}
+              // HER FLAGSHIP'S SILHOUETTE (slice 4), where a sail or an anchor glyph stood; in port or at sea is the line under her name.
+              mark={<FleetHull fleet={f} />}
+              label={f.fleet.name}
+              tone={selected ? 'accent' : 'default'}
+              hairline={i < fleets.length - 1}
+              onClick={() => onSelect(f.fleet.id)}
+              // SELECTED IS A SHAPE, NOT ONLY A SHADE: a brass wash and a brass bar at her left edge, as the chart rings her.
+              className={`rounded-control px-2 ${selected ? 'bg-accent-soft shadow-[inset_3px_0_0_var(--color-accent)]' : ''}`}
+              aria-current={selected ? 'true' : undefined}
+              data-testid="map-fleet-row"
+              data-selected={selected ? 'true' : undefined}
+            >
+              <span className="block text-t-caption text-ink-faint">{fleetLine(f, portsByCode, nowMs)}</span>
+            </Row>
+          )
+        })
       )}
     </Corner>
   )
