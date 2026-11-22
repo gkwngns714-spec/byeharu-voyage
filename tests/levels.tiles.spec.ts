@@ -222,7 +222,9 @@ test.describe('Levels at 390×844, en: a voyage raises Supplies', () => {
     await sailAndSell(page, code, city)
     await page.goto('you')
     await ready(page)
-    await expect(page.getByTestId('arrival-card')).toBeVisible({ timeout: 480_000 })
+    // the landing is waited by the one authority (ten voyage-days, tests/arrivalWait.fixture.ts), not a wait of its own: this
+    // spec's 480 s (0411) is under one voyage-day since 0413 (450 s), so one calm on the trip (450 s or more) outran it
+    // (main's red on #798: LIS to OPO lands in about 5 min, and one calm put it past 8)
     await arrivalCard(page, 'Levels: a voyage raises Supplies')
 
     await page.goto('you')
