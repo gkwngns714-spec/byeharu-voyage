@@ -2,6 +2,7 @@
 // One file per screen or domain, so two changes never fight over one file.
 import { battleDict } from './battle'
 import { booksDict } from './books'
+import { bountyDict } from './bounty'
 import { chartDict } from './chart'
 import { cityDict } from './city'
 import { codesDict } from './codes'
@@ -40,6 +41,7 @@ import { youDict } from './you'
 export const DICT = {
   battle: battleDict,
   books: booksDict,
+  bounty: bountyDict,
   chart: chartDict,
   city: cityDict,
   codes: codesDict,

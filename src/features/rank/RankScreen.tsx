@@ -26,6 +26,8 @@ import { nationNameOf, useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CountriesBoard } from './CountriesBoard'
 import { WeekBoard } from './WeekBoard'
+import { BountyBoard } from './BountyBoard'
+import { usePirateBounties } from '../../live/usePirateBounties'
 import { useServedRead } from '../../live/useServedRead'
 import { leadersOf, linesOf, type Line } from './rankFigures'
 import { useLocale, useT } from '../../lib/i18n'
@@ -94,10 +96,14 @@ function RankBody() {
   const [answered, setAnswered] = useState(false)
   // 0148: Captains (the board) or Countries (who holds the cities). 0467: Week (the houses' board), offered only when the server says
   // it is on (houses_board_enabled), and then the face a captain lands on until they pick another.
-  const [picked, setPicked] = useState<'week' | 'captains' | 'countries' | null>(null)
+  // 0471: Bounties (the named pirates), offered only when the server says it is on (pirate_bounties_enabled), never the face landed on.
+  const [picked, setPicked] = useState<'week' | 'captains' | 'countries' | 'bounties' | null>(null)
   const week = useServedRead('houses-week', worldHousesWeek, { name: 'worldHousesWeek' }).view
   const weekOn = week?.on === true
-  const face = picked === 'week' && !weekOn ? 'captains' : (picked ?? (weekOn ? 'week' : 'captains'))
+  const bounties = usePirateBounties()
+  const bountiesOn = bounties?.on === true
+  const chosen = (picked === 'week' && !weekOn) || (picked === 'bounties' && !bountiesOn) ? 'captains' : picked
+  const face = chosen ?? (weekOn ? 'week' : 'captains')
 
   // KEYED ON `readAt`: the world re-reads itself every thirty seconds and on tab focus, and the
   // board rides that same beat — a refused read is retried with no button, and a new slot's
@@ -135,13 +141,16 @@ function RankBody() {
           ...(weekOn ? [{ id: 'week' as const, label: t('rank.weekly') }] : []),
           { id: 'captains' as const, label: t('rank.captains') },
           { id: 'countries' as const, label: t('rank.countries') },
+          ...(bountiesOn ? [{ id: 'bounties' as const, label: t('bounty.tab') }] : []),
         ]}
         value={face}
         onChange={setPicked}
         label={title}
         className="w-fit max-w-full max-sm:w-full"
       />
-      {face === 'week' ? (
+      {face === 'bounties' ? (
+        <BountyBoard read={bounties} />
+      ) : face === 'week' ? (
         <WeekBoard read={week} />
       ) : face === 'captains' ? (
         <Board board={board} answered={answered} house={house} />
