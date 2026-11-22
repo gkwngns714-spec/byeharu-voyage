@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Button, Clip, Note, ScrollPane, Segmented, Skeleton, WRAP_ROW_CLASS } from '../../../components/ui'
+import { Button, Clip, Icon, Note, ScrollPane, Segmented, Skeleton, WRAP_ROW_CLASS } from '../../../components/ui'
 import { alongsideAt, boundForLabel, fleetPortCode, whereabouts } from '../../../domain/fleet'
 import { buildingTier, hasBuilding } from '../../../domain/port'
 import { PORT_FACES, productionHref, type PortFace } from '../../../live/cityFaces'
@@ -22,6 +22,7 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 import type { FleetView } from '../../../lib/rpc'
 import type { DeskLayout } from '../DeskFrame'
 import { useOfficeView } from '../officeView'
+import { useLevelGate } from '../../../live/levelGate'
 import { useT } from '../../../lib/i18n'
 
 // CITY — every building of the city the fleet is at, on the desk (docs/COMMAND_DESK.md §2.1, §3.6, D5). The
@@ -51,6 +52,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
   const portByCode = useWorld((s) => s.portByCode)
   const face = useOfficeView((s) => s.cityFace)
   const setFace = useOfficeView((s) => s.setCityFace)
+  const gate = useLevelGate()
 
   const where = whereabouts(fleet)
   const code = fleetPortCode(fleet)
@@ -77,7 +79,8 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
   // who of yours is docked HERE (the one that acts), and whether the selected fleet is one of them
   const { docked } = alongsideAt(fleets, port.code, fleet.id)
   const here = where.kind === 'docked' && where.port === port.code
-  const offered = PORT_FACES.filter((f) => f.building === null || hasBuilding(port, f.building))
+  // X6 (live/levelGate.ts): a building the level gate holds is not offered (its Town row says what opens it).
+  const offered = PORT_FACES.filter((f) => (f.building === null || hasBuilding(port, f.building)) && !gate.shut(f.id))
   // Storage and the Forge are one page of the HQ now: the `warehouse` tab and Town row go there, and a saved `warehouse` face falls to the first.
   const shown = offered.find((f) => f.id === face && f.id !== 'warehouse') ?? offered[0]
   const acting = here ? fleet : null
@@ -106,6 +109,8 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
           onClick={() => navigate(`/city?port=${encodeURIComponent(port.code)}`)}
           data-testid="desk-city-open"
         >
+          {/* the HQ's own mark: the door opens HQ on this city (slice 7) */}
+          <Icon name="fort" size={16} />
           {t('city.open')}
         </Button>
       </div>
@@ -175,7 +180,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
           ))}
         {shown.id === 'city' && (
           <>
-            <PortTown port={port} onOpenFace={openFace} />
+            <PortTown port={port} onOpenFace={openFace} gate={gate} />
             <div className="mt-6" data-testid="desk-town-hall">
               <CityTownHall port={port} />
             </div>

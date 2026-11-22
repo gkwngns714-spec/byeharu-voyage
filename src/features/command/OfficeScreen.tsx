@@ -7,6 +7,7 @@ import { Report } from './report/Report'
 import { OFFICE_FACES, useOfficeView } from './officeView'
 import { tabWord } from '../../app/navTabs'
 import { useLocale, useT } from '../../lib/i18n'
+import { useLevelGate } from '../../live/levelGate'
 
 // THE OFFICE TAB (owner, 2026-11-16: *"in trade, there are city invest report and levels, which aren't that related to trade.
 // they should have separate tab like map you stats etc."*). City, Invest and Report were the Trade desk's faces; they MOVED
@@ -19,8 +20,12 @@ export function OfficeScreen() {
   const t = useT()
   // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord) — one authority with the lit nav cell.
   const title = tabWord(useLocale(), '/office')
-  const face = useOfficeView((s) => s.face)
+  const turned = useOfficeView((s) => s.face)
   const turnTo = useOfficeView((s) => s.turnTo)
+  // X6 (live/levelGate.ts, the one level gate): a face the gate holds is not on the strip, and a turn to it stands on City.
+  const gate = useLevelGate()
+  const faces = OFFICE_FACES.filter((f) => !gate.shut(f.id))
+  const face = gate.shut(turned) ? 'city' : turned
   // HQ'S DOORS (2026-11-23, slice 2: the Office's faces stand on HQ as buildings): `?face=city|invest|report` turns to that face, once,
   // and the URL drops it, so the face strip stays the one control of which face is up.
   const [params, setParams] = useSearchParams()
@@ -35,7 +40,7 @@ export function OfficeScreen() {
     <DeskShell
       testid="office"
       title={title}
-      faces={{ segments: OFFICE_FACES, value: face, onChange: turnTo, label: t('command.officeFaces') }}
+      faces={{ segments: faces, value: face, onChange: turnTo, label: t('command.officeFaces') }}
       body={(fleet, layout) =>
         face === 'city' ? <City fleet={fleet} layout={layout} /> : face === 'invest' ? <Invest fleet={fleet} layout={layout} /> : <Report layout={layout} />
       }

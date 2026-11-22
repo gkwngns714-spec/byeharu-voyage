@@ -44,6 +44,7 @@ export function Sheet({
   title,
   trailing,
   layout = 'column',
+  backdrop,
   children,
   className = '',
   ...rest
@@ -58,6 +59,10 @@ export function Sheet({
    *  the title at 30 px, the page scrolling (never an inner scroll). Screens take it one at a time;
    *  screenLayout.ts "THE PAGE" is its law and Card.tsx its pieces. */
   layout?: 'column' | 'page'
+  /** A PICTURE BEHIND THE PAGE'S TITLE (2026-11-23, the visual overhaul's slice 7: HQ's city skyline). `page` only: it fills the
+   *  title bar at rest, across the glass, under the title's words, and takes no room of its own (the title bar is the height it
+   *  was); pinned, the bar is the plain surface it always was. Decoration: the caller hands an `aria-hidden` drawing. */
+  backdrop?: ReactNode
   children: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
@@ -100,6 +105,11 @@ export function Sheet({
           data-pinned={pinned}
           className={pinned ? PINNED : AT_REST}
         >
+          {backdrop !== undefined && !pinned && (
+            <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" data-sheet-backdrop="">
+              {backdrop}
+            </div>
+          )}
           {/* flex-wrap (2026-11-23, visual slice 5: Fleets' title carries its figures): a title too long to share its line with the trailing block keeps the
               whole line and the block drops under it, so a name is never squeezed out of its own heading */}
           <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${pinned ? 'py-2' : 'pb-3 pt-5 lg:pb-4 lg:pt-8'} ${pageColumnClass()}`}>

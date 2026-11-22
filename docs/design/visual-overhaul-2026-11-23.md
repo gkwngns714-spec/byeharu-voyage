@@ -173,6 +173,19 @@ player sees.
 - After: the city's skyline across the top (principle 7), buildings as plates with their glyph and one figure (gold, population trend,
   relationship as a mark); Office's faces as buildings (from slice 2); Academy, Workstation and Invest shown from Trading 5 with an
   unlock line (X6, one level gate).
+- Built (decided by default, the owner may reverse each): the city's regional skyline (slice 4's `Skyline`, by `skylineOf`) stands
+  behind HQ's title across the glass (`Sheet backdrop`, copies side by side and every second mirrored, so a wide glass does not crop it
+  to its quay); it takes no room, so every glass law stands where it stood. The five buildings and the three doors are plates: the
+  mark on a gold disc, the word, one figure already on the page (no plate asks a read of its own) — the hall the city's gold, the
+  market its tax, production your free hold here, the port your fleets here (anchor), the inn their crew (crew); City this city's
+  buildings, Invest your shares here; Report has none (its week's profit is a read of its own). Each figure's word is its accessible
+  name. From `lg` the buildings and the doors stand on one row (5 : 3), which also puts the plan back on the first glass at 1280 x 800
+  (law h; the doors' second row had pushed it 45 px under). The HQ city drawing, its walkers and the hall panel are untouched. X6 is
+  `live/levelGate.ts`, the one table (`GATED`, `FROM`): Skills (Academy), Craft (Workstation) and the Office's Invest are held under
+  Trading 5, and only while Trading's unlocks are lit (`level_unlocks_enabled`, the goal card's own test); dark, nothing is held. A held
+  door on HQ is a dimmed plate whose figure is "Trading 5" (the unlock line), a held building on the City face's Town list a row with
+  no door and the same figure, and the Office strip drops the held face. The Office faces: Report's sections and places each draw their
+  share of the list as a bar (green in, red out); Invest's work levels are bars, not "Level 2 / 5"; City's door wears HQ's fort.
 
 **8. Rank and Stats.**
 - Before: lists of names and zeros; Stats' figures as 24-px words with dots.

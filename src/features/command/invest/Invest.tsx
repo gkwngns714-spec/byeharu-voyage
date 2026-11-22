@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Figure, Hint, Note, Row, ScrollPane, SheetSection, Skeleton } from '../../../components/ui'
+import { Bar, Figure, Hint, Icon, Note, Row, ScrollPane, SheetSection, Skeleton } from '../../../components/ui'
 import { fleetPortCode } from '../../../domain/fleet'
 import { CityTownHall } from '../../../live/CityTownHall'
 import { WORK_NAME } from '../../../live/workNames'
@@ -47,9 +47,10 @@ export function Invest({ fleet, layout }: { fleet: FleetView; layout: DeskLayout
           <Note tone="danger">{t('desk.holdingsFailed')}</Note>
         ) : (
           <>
+            {/* THE THREE TOTALS: what you hold wears the Invest mark (slice 7), the door's own glyph on HQ. */}
             <div className="grid grid-cols-3 gap-3 pb-2" data-testid="invest-totals">
               <div className="min-w-0">
-                <span className="block text-t-caption text-ink-faint">{t('desk.held')}</span>
+                <span className="flex items-center gap-1 text-t-caption text-ink-faint"><Icon name="invest" size={14} />{t('desk.held')}</span>
                 <Figure value={formatDucats(h.held)} size="figure" />
               </div>
               <div className="min-w-0">
@@ -91,10 +92,12 @@ export function Invest({ fleet, layout }: { fleet: FleetView; layout: DeskLayout
                   }
                   data-testid="holding-row"
                 >
+                  {/* the work's level is its bar (slice 7: a level is drawn, not a sentence); the shares and a share's price stay figures */}
                   <span className="block break-words text-t-caption text-ink-faint">
-                    {t('desk.shares', { n: formatInt(r.shares), count: r.shares })} · {t('desk.levelOf', { n: r.level, max: r.level_max })}
+                    {t('desk.shares', { n: formatInt(r.shares), count: r.shares })}
                     {r.share_price !== null ? t('desk.sharePrice', { price: formatDucats(r.share_price) }) : ''}
                   </span>
+                  <Bar value={r.level} of={r.level_max} label={t('desk.levelOf', { n: r.level, max: r.level_max })} className="mt-1 max-w-40" />
                 </Row>
               ))}
               </ScrollPane>
