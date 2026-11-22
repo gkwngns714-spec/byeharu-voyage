@@ -194,6 +194,13 @@ so what a screen quotes and what a door charges are the same number.
   bigger premium on a request (it is paid from the city's own escrow); less material for an item (the recipe is read in three
   places, with no one function to cut); more stops on a route (the same).
 
+**0468: Trading opens something at every level from 2 to 20** (dark behind `level_unlocks_enabled`). 17 more rows of
+`public.level_perks`, skill `trading`: `trade_routes` (one more route at 2, 7, 11, 15, 19: `public.standing_route_max_for`),
+`fleet_ships` (one more ship in each fleet at 4, 9, 13, 17: `public.fleet_room_caps`, never above `fleet_ship_top`), `yard_fee` (the
+yard order's fee 10 % less at 5, 8, 10, 12, 14, 16, 18, 20: `public.hull_order_price`); with the fleet rungs at 3 and 6 that is one
+thing a level. A Trading step is read at the level last paid (`public.house_level_marks`, the LEVEL_UP moment), not by
+`public.player_progress`. Dark, `public.level_perk` answers 0 for them and the page lists none. docs/dev-log/2026-11-22-level-unlocks.md.
+
 On the page, a level's detail says what each benefit is worth to her NOW (or the level it begins at), and the experience table
 shows every step at its level with the figure it reaches there.
 
