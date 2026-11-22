@@ -2,6 +2,8 @@ import type { ComponentProps, ReactNode } from 'react'
 import { CARD_HEAD, CARD_PAD, CARD_PAD_COMPACT, CARD_SURFACE, CARD_TITLE } from './cardStyles'
 import { PAGE_GAP, pageSplitClass, pageThreeClass } from './screenLayout'
 import { StatCell } from './StatCell'
+import { Icon } from './Icon'
+import type { IconName } from './icons'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE PAGE'S PIECES — a split, a card, a stat card (2026-11-02, owner row 267)
@@ -42,7 +44,7 @@ type DataAttrs = { [K in `data-${string}`]?: string | number | boolean | undefin
 // strip wears the card's surface once and each stat is a line in it, closed by a hairline; from `sm` they are cards, as before.
 const STRIP_PHONE = 'max-sm:rounded-sheet max-sm:border max-sm:border-edge max-sm:bg-surface max-sm:shadow-raise'
 const STRIP_LINE_PHONE =
-  'max-sm:rounded-none! max-sm:border-x-0! max-sm:border-t-0! max-sm:bg-transparent! max-sm:px-0! max-sm:py-3! max-sm:shadow-none! max-sm:last:border-b-0!'
+  'max-sm:rounded-none! max-sm:border-x-0! max-sm:border-t-0! max-sm:bg-transparent! max-sm:bg-none! max-sm:px-0! max-sm:py-3! max-sm:shadow-none! max-sm:last:border-b-0!'
 
 /** THE STAT STRIP: a row of `StatCard`s across the whole page — one column on a phone (each a line), two from 640, four from
  *  1,280 (302 px a card at 1,440: the world's money, nine digits and a coin, is 188 px at 24 px and fits it with its padding). */
@@ -129,6 +131,7 @@ export function CardRow({
  *  the ONE small control of the title's line (a window picker); `compact` is for a card that is one figure. */
 export function Card({
   title,
+  icon,
   aside,
   compact = false,
   flush = false,
@@ -137,6 +140,9 @@ export function Card({
   ...rest
 }: {
   title?: ReactNode
+  /** THE CARD'S MARK (2026-11-23, docs/design/visual-overhaul-2026-11-23.md, slice 1): a glyph on a small gold disc before the
+   *  title, so a page of cards is read by its marks before its words. Drawn only with a title. */
+  icon?: IconName
   aside?: ReactNode
   compact?: boolean
   /** NO PADDING: the card is a SURFACE only (a pane of the Command desk, which pads and scrolls its own content). */
@@ -156,7 +162,15 @@ export function Card({
     >
       {(title !== undefined || aside !== undefined) && (
         <header className={`${CARD_HEAD} flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-2`}>
-          {title !== undefined && <h2 className={`min-w-0 ${CARD_TITLE}`}>{title}</h2>}
+          {title !== undefined &&
+            (icon === undefined ? (
+              <h2 className={`min-w-0 ${CARD_TITLE}`}>{title}</h2>
+            ) : (
+              <div className="flex min-w-0 items-center gap-2.5">
+                <CardMark icon={icon} />
+                <h2 className={`min-w-0 ${CARD_TITLE}`}>{title}</h2>
+              </div>
+            ))}
           {aside !== undefined && <div className="ml-auto shrink-0">{aside}</div>}
         </header>
       )}
@@ -178,5 +192,14 @@ export function StatCard({ className = '', ...stat }: Omit<ComponentProps<typeof
         {...stat}
       />
     </Card>
+  )
+}
+
+/** A card's (or a card list's) mark: its glyph on a 32-px gold-washed disc, before the title. One recipe for `Card` and `ListPanel`. */
+export function CardMark({ icon }: { icon: IconName }) {
+  return (
+    <span data-card-mark="" className="flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-chip bg-accent-soft text-accent">
+      <Icon name={icon} size={18} strokeWidth={1.75} />
+    </span>
   )
 }

@@ -13,8 +13,9 @@
 //
 // The rhythm BETWEEN cards is the page's gutter (screenLayout.ts `PAGE_GAP`: 12 · 16 · 20 · 24), unchanged and the one gap.
 
-/** The card's surface: corner, hairline, tone and raise. */
-export const CARD_SURFACE = 'min-w-0 rounded-sheet border border-edge bg-surface shadow-raise'
+/** The card's surface: corner, hairline, tone and raise, and since 2026-11-23 a faint light from above (3.5 % of the ink at its top
+ *  edge, gone by 40 % down), so a card reads as a lit panel over the sea and not a flat cut-out (the visual overhaul's slice 1). */
+export const CARD_SURFACE = 'min-w-0 rounded-sheet border border-edge bg-surface bg-linear-to-b from-ink/[0.035] to-transparent to-40% shadow-raise'
 
 /** The card's room: 16 px on a phone, 24 from 768. */
 export const CARD_PAD = 'p-4 md:p-6'

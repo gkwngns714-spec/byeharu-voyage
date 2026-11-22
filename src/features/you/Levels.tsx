@@ -38,7 +38,7 @@ export function YouLevels({ picked, onPick }: { picked: string | null; onPick: (
   const read = useLevels()
   const v = read.view
   return (
-    <Card title={t('you.levels')} data-testid="levels">
+    <Card icon="levelUp" title={t('you.levels')} data-testid="levels">
       {!v ? (
         read.loading ? <Skeleton className="h-[200px] w-full" /> : <Note tone="danger">{t('command.lvFailed')}</Note>
       ) : !v.company ? (
