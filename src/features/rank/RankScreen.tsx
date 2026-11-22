@@ -98,8 +98,12 @@ function RankBody() {
   // it is on (houses_board_enabled), and then the face a captain lands on until they pick another.
   // 0471: Bounties (the named pirates), offered only when the server says it is on (pirate_bounties_enabled), never the face landed on.
   const [picked, setPicked] = useState<'week' | 'captains' | 'countries' | 'bounties' | null>(null)
-  const week = useServedRead('houses-week', worldHousesWeek, { name: 'worldHousesWeek' }).view
+  const weekRead = useServedRead('houses-week', worldHousesWeek, { name: 'worldHousesWeek' })
+  const week = weekRead.view
   const weekOn = week?.on === true
+  // THE TABS WAIT FOR THE WEEK'S ANSWER (2026-11-23, third play-test finding 17): Rank opened on Captains and, 4 s later, Week
+  // appeared in front and took the page. Until the read has answered (a view, or a refusal) the tab bar and the board are held.
+  const weekKnown = week !== null || !weekRead.loading
   const bounties = usePirateBounties()
   const bountiesOn = bounties?.on === true
   const chosen = (picked === 'week' && !weekOn) || (picked === 'bounties' && !bountiesOn) ? 'captains' : picked
@@ -137,26 +141,36 @@ function RankBody() {
         )
       }
     >
-      <Segmented
-        segments={[
-          ...(weekOn ? [{ id: 'week' as const, label: t('rank.weekly') }] : []),
-          { id: 'captains' as const, label: t('rank.captains') },
-          { id: 'countries' as const, label: t('rank.countries') },
-          ...(bountiesOn ? [{ id: 'bounties' as const, label: t('bounty.tab') }] : []),
-        ]}
-        value={face}
-        onChange={setPicked}
-        label={title}
-        className="w-fit max-w-full max-sm:w-full"
-      />
-      {face === 'bounties' ? (
-        <BountyBoard read={bounties} />
-      ) : face === 'week' ? (
-        <WeekBoard read={week} />
-      ) : face === 'captains' ? (
-        <Board board={board} answered={answered} house={house} />
+      {!weekKnown ? (
+        <div data-testid="rank-hold" aria-busy>
+          <Skeleton className="h-11 w-full max-w-sm" />
+          <Skeleton className="mt-3 h-12 w-full" />
+          <Skeleton className="mt-2 h-12 w-full" />
+        </div>
       ) : (
-        <CountriesBoard />
+        <>
+          <Segmented
+            segments={[
+              ...(weekOn ? [{ id: 'week' as const, label: t('rank.weekly') }] : []),
+              { id: 'captains' as const, label: t('rank.captains') },
+              { id: 'countries' as const, label: t('rank.countries') },
+              ...(bountiesOn ? [{ id: 'bounties' as const, label: t('bounty.tab') }] : []),
+            ]}
+            value={face}
+            onChange={setPicked}
+            label={title}
+            className="w-fit max-w-full max-sm:w-full"
+          />
+          {face === 'bounties' ? (
+            <BountyBoard read={bounties} />
+          ) : face === 'week' ? (
+            <WeekBoard read={week} />
+          ) : face === 'captains' ? (
+            <Board board={board} answered={answered} house={house} />
+          ) : (
+            <CountriesBoard />
+          )}
+        </>
       )}
     </Sheet>
   )

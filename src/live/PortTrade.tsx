@@ -208,6 +208,7 @@ export function PortTrade({
             setQty(null)
             setSlot({ kind: 'request', request })
           }}
+          at={port.code}
         />
       ) : (
         <QuayLedger

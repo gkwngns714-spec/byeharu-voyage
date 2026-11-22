@@ -87,6 +87,8 @@ export const deskDict = defineDict({
     longerThan: 'Supplies short · leg {leg}',
     orSupplies: 'Too far or supplies short',
     crewNow: 'Crew needed',
+    /** the ship panel's crew: aboard, and the room for more (finding 15) */
+    crewRoom: '{n} · room {max}',
     crewShort: 'Hire {n} more',
     restrictions: 'Sea rules',
     yourTitle: 'Title',
@@ -238,6 +240,7 @@ export const deskDict = defineDict({
     longerThan: '보급 부족 · 구간 {leg}',
     orSupplies: '너무 멀거나 보급 부족',
     crewNow: '필요 선원',
+    crewRoom: '{n} · 정원 {max}',
     crewShort: '{n}명 더 고용',
     restrictions: '해역 조건',
     yourTitle: '작위',

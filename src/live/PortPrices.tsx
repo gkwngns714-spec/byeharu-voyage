@@ -87,6 +87,7 @@ export function PortPrices({
           docked={false}
           pick={null}
           onPick={() => undefined}
+          at={port.code}
         />
       ) : (
         <QuayLedger

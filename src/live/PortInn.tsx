@@ -4,7 +4,6 @@ import {
   Bar,
   Button,
   Figure,
-  Hint,
   Icon,
   Note,
   Row,
@@ -22,8 +21,8 @@ import { useStepOrder, type StepVerb } from './useStepOrder'
 import { fleetCrew } from '../domain/fleet'
 import { useCrewCost } from './useCrewCost'
 import { useInn } from './useInn'
-import { useWorld } from './worldStore'
-import { jobWord, roleWord } from './captainWords'
+import { nationWordOf, useWorld } from './worldStore'
+import { jobWord, roleWord, speaksWords, traitLines } from './captainWords'
 import { cmdHireOfficer } from '../lib/rpc'
 import {
   formatDucats,
@@ -35,7 +34,7 @@ import {
   instantMs,
 } from '../lib/format'
 import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../lib/rpc'
-import { properName, t as tNow, useT } from '../lib/i18n'
+import { properName, t as tNow, useLocale, useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE INN — the crew, hired and let go from one stepper, and who is drinking here today (0073).
@@ -108,7 +107,7 @@ function whereFrom(guest: InnGuest, ports: readonly SnapshotPort[] | undefined):
   const home = code ? <GoToLink to={{ kind: 'port', code }}>{named}</GoToLink> : named
   return guest.nation ? (
     <>
-      {guest.nation} · {home}
+      {nationWordOf(guest.nation)} · {home}
     </>
   ) : (
     home
@@ -310,6 +309,7 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
 /** This quarter hour's room — the read, the faces, and the hiring tray. */
 function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView | null; trayMode?: TrayMode }) {
   const t = useT()
+  const locale = useLocale()
   const { view, loading } = useInn(port.id)
   // THE ONE CLOCK (src/app/shellState.ts) counts down to the served turn (0119 `turns_at`).
   const { nowMs } = useShellState()
@@ -410,13 +410,14 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
                   or two of prose ("−4.2% crew lost to pirates · −4.2 points of homesickness", 436 px) and `Row` keeps a `value` on one line, so as the value it
                   shoved the tray sideways and left the trait's name one letter wide; on line 2 it wraps under its label and the row is as wide as the tray. The
                   row's tone and the served `in_use` still colour it. */}
-              {(open.traits ?? []).map((t) => (
-                <Row key={t.code} label={jobWord(t.word)} tone={t.in_use ? 'default' : 'muted'} data-testid={`inn-trait-${t.code}`}>
-                  <span className={`block text-t-body ${t.in_use ? 'text-success' : ''}`}>{t.lines.join(' · ')}</span>
-                  {t.note && <Hint>{t.note}</Hint>}
+              {/* 2026-11-23 (third play-test): the hire sheet shows the traits that work; one that does nothing yet stood under a
+                  builder's "Not in use yet." (the Codex keeps every trait, with its idle word) */}
+              {(open.traits ?? []).filter((t) => t.in_use).map((t) => (
+                <Row key={t.code} label={jobWord(t.word)} data-testid={`inn-trait-${t.code}`}>
+                  <span className="block text-t-body text-success">{traitLines(t.lines)}</span>
                 </Row>
               ))}
-              {open.speaks && <Row label={open.speaks} tone="muted" data-testid="inn-speaks" />}
+              {speaksWords(open) && <Row label={speaksWords(open)} tone="muted" data-testid="inn-speaks" />}
             </>
           ) : (
             <Row label={t('inn.job')} value={open.specialty.toLowerCase()} />
@@ -427,7 +428,8 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
             <Row label={fleet ? t('inn.joins', { fleet: fleet.name }) : t('inn.ashore')} tone="muted" data-testid="inn-joins" />
           )}
           {open.signed && <Row label={t('inn.already')} tone="muted" hairline={false} />}
-          <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
+          {/* her bio is the server's English prose: on a Korean glass it is not printed (2026-11-23 play-test, half-English sheet) */}
+          {locale === 'en' && <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>}
           {refusal && (
             <Note tone="danger" code={refusal.code} figures={refusal.figures}>
               {refusal.sentence}

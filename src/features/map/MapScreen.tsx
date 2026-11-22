@@ -676,6 +676,8 @@ function Chart({
       // How close it lands is chartView.ts `goToSpan`'s, the one rule (a readable band).
       surface.glideTo(at, (current) => goToSpan(current, clearShare), u)
       setMark({ at, seq: request.seq })
+      // a go-to that asks for the harbour's tray (the goal card's press to the yard's city) selects it, so its Sail press is up
+      if (request.target.kind === 'port' && request.target.open) setSelection({ kind: 'port', code: request.target.code })
     }
   })
   const measured = surface.view !== null

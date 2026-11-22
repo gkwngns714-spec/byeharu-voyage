@@ -22,10 +22,10 @@ import { COIN, formatInt, formatPctPoints } from '../../lib/format'
 import type { Officer } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
-import { jobWord, roleKeyWord, roleOf, roleRank, roleWord } from '../../live/captainWords'
+import { jobWord, roleKeyWord, roleOf, roleRank, roleWord, speaksWords, traitIdle, traitLines } from '../../live/captainWords'
 import { optionsOf } from './codexFilters'
 import { NoAnswer } from './NoAnswer'
-import { useT, t as tNow } from '../../lib/i18n'
+import { useLocale, useT, t as tNow } from '../../lib/i18n'
 
 // THE CAPTAINS FACE — every captain in the world, signed or not, ON THE PAGE (2026-11-02, owner row 267; the pattern is
 // Stats', docs/dev-log/2026-11-02-stats-design.md). MAIN | SIDE: MAIN is ONE list card — a row a captain, the three filters one
@@ -69,6 +69,7 @@ function countBy(rows: readonly Officer[], key: (o: Officer) => string | undefin
 
 export function CaptainsFace({ query, search, answered }: { query: string; search: ReactNode; answered: boolean }) {
   const t = useT()
+  const locale = useLocale()
   const roster = useWorld((s) => s.officers)
   const portByCode = useWorld((s) => s.portByCode)
   const nationByCode = useWorld((s) => s.nationByCode)
@@ -229,11 +230,11 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
               under its label and the row is as wide as the tray. The row's tone and the served `in_use` still colour it. */}
           {(open.traits ?? []).map((t) => (
             <Row key={t.code} label={jobWord(t.word)} tone={t.in_use ? 'default' : 'muted'} data-testid={`captain-trait-${t.code}`}>
-              <span className={`block text-t-body ${t.in_use ? 'text-success' : ''}`}>{t.lines.join(' · ')}</span>
-              {t.note && <Hint>{t.note}</Hint>}
+              <span className={`block text-t-body ${t.in_use ? 'text-success' : ''}`}>{traitLines(t.lines)}</span>
+              {traitIdle(t.note) && <Hint>{traitIdle(t.note)}</Hint>}
             </Row>
           ))}
-          {open.speaks && <Row label={open.speaks} tone="muted" data-testid="captain-speaks" />}
+          {speaksWords(open) && <Row label={speaksWords(open)} tone="muted" data-testid="captain-speaks" />}
           {/* "signs for" is the server's own phrase (0015's refusal says it word for word). */}
           <Row label={t('codex.wage')} value={<Figure value={formatInt(open.wage)} unit={t('codex.perVoyage', { coin: COIN })} />} />
           <Row
@@ -245,7 +246,8 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
           {open.hired && (
             <Row label={t('codex.workingFor')} value={open.fleet ?? t('codex.nobody')} tone="accent" hairline={false} />
           )}
-          <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
+          {/* her bio is the server's English prose: on a Korean glass it is not printed (2026-11-23 play-test) */}
+          {locale === 'en' && <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>}
           {!open.takes_effect && (
             <Note tone="neutral" className="mt-2">
               {t('codex.noEffect')}
