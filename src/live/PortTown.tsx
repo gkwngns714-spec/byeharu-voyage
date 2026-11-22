@@ -1,11 +1,13 @@
 import { useMemo } from 'react'
-import { Figure, Row } from '../components/ui'
+import { Figure, Icon, Row } from '../components/ui'
+import { FROM, type LevelGate } from './levelGate'
+import { levelName } from './levelWords'
 import { buildingsOf } from '../domain/port'
 import { formatPct } from '../lib/format'
 import { useWorld } from './worldStore'
 import type { SnapshotPort } from '../lib/rpc'
 import { PORT_FACES, type PortFace } from './cityFaces'
-import { useT } from '../lib/i18n'
+import { useLocale, useT } from '../lib/i18n'
 
 // THE TOWN — what this city costs you, and what it keeps. §6: *"Town face = rows: Tax 3 %, Port's
 // cut 2 %, … then building rows"*.
@@ -37,12 +39,16 @@ import { useT } from '../lib/i18n'
 export function PortTown({
   port,
   onOpenFace,
+  gate,
 }: {
   port: SnapshotPort
   /** Turn to the face a building keeps. The chevron on a building row is this. */
   onOpenFace: (face: PortFace) => void
+  /** X6 (./levelGate.ts): a building the level gate holds is a row with no door, its figure the level that opens it. */
+  gate?: LevelGate
 }) {
   const t = useT()
+  const locale = useLocale()
   // READ AT THE LEAF (worldStore rule 4): the spread is the market's own figure, and this is the
   // only place it is printed — PortFair deliberately prints neither it nor a before/after pair.
   const spread = useWorld((s) => s.markets[port.id]?.port?.spread ?? null)
@@ -69,12 +75,22 @@ export function PortTown({
 
       {buildings.map((b, i) => {
         const face = PORT_FACES.find((f) => f.building === b.kind)
+        const held = face !== undefined && gate !== undefined && gate.shut(face.id)
+        const door = face !== undefined && !held
         return (
           <Row
             key={b.kind}
             label={face?.label ?? nameOfKind[b.kind] ?? b.kind}
-            chevron={face !== undefined}
-            onClick={face ? () => onOpenFace(face.id) : undefined}
+            value={
+              held ? (
+                <span className="inline-flex items-center gap-1 text-t-caption text-ink-faint" data-testid={`town-${b.kind}-opens`}>
+                  <Icon name="levelUp" size={14} />
+                  {`${levelName(locale, FROM.track)} ${FROM.level}`}
+                </span>
+              ) : undefined
+            }
+            chevron={door}
+            onClick={face && !held ? () => onOpenFace(face.id) : undefined}
             hairline={i < buildings.length - 1}
             data-testid={`town-${b.kind}`}
           />

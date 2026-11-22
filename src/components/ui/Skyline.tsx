@@ -14,8 +14,8 @@ import type { SkylineKind } from './skylineKinds'
 //              pictures. THIS TABLE IS THE ONE AUTHORITY for which place looks like what; a caller hands the culture
 //              and never picks a picture itself. A culture the table does not name is drawn as the latin harbour.
 // WHERE        the design system, pure props, like `Flag`: it is handed the kind and draws it, and reads no store.
-//              Its callers today: the Map's harbour tray (features/map/SendFleet.tsx). HQ, the yard and the Land
-//              site are the overhaul's later slices.
+//              Its callers today: the Map's harbour tray (features/map/SendFleet.tsx) and HQ's title bar (slice 7,
+//              features/city/CityScreen.tsx, `Sheet backdrop`). The yard and the Land site are the overhaul's later slices.
 // IT SAYS NOTHING. The picture is decoration (`aria-hidden`): the place's name and flag are the tray's head.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
