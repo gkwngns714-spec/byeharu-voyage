@@ -34,6 +34,7 @@ import { asWorldImageFile } from '../src/lib/db/worldImage'
 import { NEWS_HIT_PX } from '../src/components/ui/newsMarksModel'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { openCityPanel } from './openCity.fixture'
+import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 
 const WIDE = { width: 1280, height: 800 }
 /** The probe's headlines: seconds before the seed. The last two are 5 s apart: one dot on any chart. */
@@ -273,16 +274,19 @@ for (const glass of [PHONE, WIDE]) {
 
     // THE QUAY'S TRADE TRAY (PriceRows in TradeTray; owner row 216): the same city's market, a good's Buy, More, then the Trend row
     // unfolds the chart. Its dots are the same dots; the card a press opens is a tray of its own.
-    await page.getByTestId('trade-buy').first().click()
-    const quayTray = page.getByTestId('trade-tray')
-    await expect(quayTray).toBeVisible({ timeout: 60_000 })
-    await quayTray.getByTestId('trade-tray-more').click()
-    const trend = quayTray.getByTestId('trend-row')
-    await expect(trend).toHaveAttribute('aria-expanded', 'false', { timeout: 60_000 })
-    // the row's own corner: its middle is the span picker, whose press picks a span and does not unfold the row
-    await trend.click({ position: { x: 12, y: 12 } })
-    await expect(quayTray.getByTestId('price-chart')).toBeVisible({ timeout: 60_000 })
-    bad.push(...(await measure(page, at('quay tray'), '[data-testid="trade-tray"]', all)))
+    // X1 (src/live/tradeOnDesk.ts): while TRADE_ON_DESK stands a Buy on the HQ Market opens the Trade desk (its chart is measured below)
+    if (!TRADE_ON_DESK) {
+      await page.getByTestId('trade-buy').first().click()
+      const quayTray = page.getByTestId('trade-tray')
+      await expect(quayTray).toBeVisible({ timeout: 60_000 })
+      await quayTray.getByTestId('trade-tray-more').click()
+      const trend = quayTray.getByTestId('trend-row')
+      await expect(trend).toHaveAttribute('aria-expanded', 'false', { timeout: 60_000 })
+      // the row's own corner: its middle is the span picker, whose press picks a span and does not unfold the row
+      await trend.click({ position: { x: 12, y: 12 } })
+      await expect(quayTray.getByTestId('price-chart')).toBeVisible({ timeout: 60_000 })
+      bad.push(...(await measure(page, at('quay tray'), '[data-testid="trade-tray"]', all)))
+    }
 
     // THE MAP'S GOOD PANEL (PriceRows in PriceTray; owner row 216): Map, Lisbon, Market, a good: its chart stands unfolded
     await page.goto('map')

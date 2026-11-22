@@ -17,8 +17,10 @@ export interface DeskGoodState {
   code: string | null
   /** The port CODE the desk reads, or null for "where she lies, else her next port". */
   focus: string | null
-  /** From outside the desk: read this good at this city. */
-  open: (code: string, focus?: string | null) => void
+  /** The side the desk's panel opens on for a good handed over (X1: a Sell pressed on the HQ Market opens the desk on Sell). */
+  side: 'buy' | 'sell'
+  /** From outside the desk: read this good at this city (on Buy unless a side is named). */
+  open: (code: string, focus?: string | null, side?: 'buy' | 'sell') => void
   /** A good pressed (null: none). */
   pick: (code: string | null) => void
   /** A city pressed: the good pressed belongs to the city it was pressed at, so it is let go. */
@@ -31,7 +33,8 @@ export const useDeskGood = create<DeskGoodState>()(
     (set) => ({
       code: null,
       focus: null,
-      open: (code, focus = null) => set({ code, focus }),
+      side: 'buy',
+      open: (code, focus = null, side = 'buy') => set({ code, focus, side }),
       pick: (code) => set({ code }),
       setFocus: (focus) => set((s) => (s.focus === focus ? s : { focus, code: null })),
       close: () => set({ code: null, focus: null }),

@@ -14,6 +14,7 @@ import { PortPrices } from '../../../live/PortPrices'
 import { PortShipyard } from '../../../live/PortShipyard'
 import { PortTown } from '../../../live/PortTown'
 import { PortTrade } from '../../../live/PortTrade'
+import { TRADE_ON_DESK, useOpenOnDesk } from '../../../live/tradeOnDesk'
 import { PortWorkstation } from '../../../live/PortWorkstation'
 import { PortYard } from '../../../live/PortYard'
 import { TowNote } from '../../../live/TowNote'
@@ -53,6 +54,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
   const face = useOfficeView((s) => s.cityFace)
   const setFace = useOfficeView((s) => s.setCityFace)
   const gate = useLevelGate()
+  const openOnDesk = useOpenOnDesk()
 
   const where = whereabouts(fleet)
   const code = fleetPortCode(fleet)
@@ -174,7 +176,13 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
               <Skeleton className="h-28 w-full" />
             )
           ) : here ? (
-            <PortTrade goods={quay.market.goods} fleet={fleet} port={port} />
+            <PortTrade
+              goods={quay.market.goods}
+              fleet={fleet}
+              port={port}
+              // X1 (live/tradeOnDesk.ts): a price pressed opens the Trade desk; supplies, Requests and the reading stay here
+              onTrade={TRADE_ON_DESK ? (good, side) => openOnDesk(good.code, port.code, side, fleet.id) : undefined}
+            />
           ) : (
             <PortPrices goods={quay.market.goods} port={port} reader={fleet} />
           ))}

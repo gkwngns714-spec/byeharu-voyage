@@ -49,7 +49,6 @@ export const yardDict = defineDict({
     /** 2026-11-23 third play-test: while the yard takes orders, her purse against the Order's price (and its bar's name) */
     secondShipSave: 'Second ship · {have} / {price}',
     secondShipSaveAt: 'Second ship · {city} · {have} / {price}',
-    secondShipBar: 'Saved toward the order',
     type: 'Type',
     crownNote: 'You pay crew and supplies',
     building: 'Building…',
@@ -143,7 +142,6 @@ export const yardDict = defineDict({
     secondShipOrderReady: '두 번째 배 · {name} 완성',
     secondShipSave: '두 번째 배 · {have} / {price}',
     secondShipSaveAt: '두 번째 배 · {city} · {have} / {price}',
-    secondShipBar: '주문까지 모은 돈',
     type: '종류',
     crownNote: '선원·보급은 내 부담',
     building: '건조하는 중…',

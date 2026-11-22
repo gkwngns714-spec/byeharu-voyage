@@ -1,38 +1,39 @@
 // WHO BOUGHT WHAT (0227, owner row 211, 2026-10-26): *"i want to see who bought what when pressed a city -
-// clicking trade goods."* Press a city's good → the tray lists that city's recent trades of it: who,
-// Bought or Sold, units, price each, when. Here, in the in-tab (PGlite) canary world: buy a good on the
-// quay, press the same good again, and the list carries the buy as yours — on a phone and on a wide
-// glass, with no sideways scroll.
+// clicking trade goods."* Press a city's good → its panel lists that city's recent trades of it: who,
+// Bought or Sold, units, price each, when. Here, in the in-tab (PGlite) canary world: buy a good, press the
+// same good again, and the list carries the buy as yours — on a phone and on a wide glass, with no sideways scroll.
+//
+// SINCE X1 (2026-11-23, src/live/tradeOnDesk.ts; the visual overhaul's slice 3) the trade runs on the Trade desk: a price pressed on
+// Office > City > Market opens the desk on that good, so the list is read where the trade is, in the desk's panel (TradePanel.tsx
+// draws the same CityGoodTrades the quay's tray drew).
 //
 // The build under test must be served: `npm run build && npx vite preview --port <n>`, then
 // PLAYWRIGHT_BASE_URL=http://localhost:<n>/byeharu-voyage/ (localhost, not 127.0.0.1).
 
 import { test, expect, type Page } from '@playwright/test'
 import { PHONE, ready, reachable } from './appReady.fixture'
-import { openCityFace } from './desk.fixture'
+import { openCityFace, tradeOnDesk } from './desk.fixture'
 
 test.use({ viewport: PHONE })
 
-/** Press the live `buy` cell of the row named `name` (or the first live one); returns the row's name. */
-async function pressBuy(page: Page, name?: string): Promise<string> {
-  const got = await page.evaluate((want) => {
-    const cells = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].filter((b) =>
+/** Press the live `buy` cell of the Market face's first live row; it opens the Trade desk on that good (X1). Returns the good's code. */
+async function pressBuy(page: Page): Promise<string> {
+  const got = await page.evaluate(() => {
+    const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) =>
       /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()),
-    ) as HTMLButtonElement[]
-    const nameOf = (b: HTMLElement) => {
-      const row = b.closest('[data-testid="trade-row"]') as HTMLElement | null
-      return row ? (row.innerText || '').split('\n')[0].trim() : ''
-    }
-    const cell = want ? cells.find((b) => nameOf(b) === want) : cells[0]
-    if (!cell) return ''
-    const n = nameOf(cell)
-    cell.click()
-    return n
-  }, name ?? null)
-  expect(got, 'no live buy cell to press').not.toBe('')
-  await expect(page.locator('[data-testid="trade-tray"]')).toBeVisible()
-  return got
+    ) as HTMLButtonElement | undefined
+    cell?.click()
+    return cell !== undefined
+  })
+  expect(got, 'no live buy cell to press').toBe(true)
+  await expect(page).toHaveURL(/\/command$/, { timeout: 30_000 })
+  const card = page.locator('[data-testid="trade-good"].ring-1')
+  await expect(card, 'the desk did not open on the good pressed').toHaveCount(1, { timeout: 60_000 })
+  return (await card.getAttribute('data-good')) ?? ''
 }
+
+/** The desk's card of `code`: its Buy opens the good's panel. */
+const deskBuy = (page: Page, code: string) => page.locator(`[data-testid="trade-good"][data-good="${code}"]`).getByTestId('trade-buy')
 
 const noSideways = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
@@ -45,22 +46,14 @@ test('City › a good pressed lists who bought it: my buy shows as mine, Bought,
   await openCityFace(page)
   expect(await page.locator('[data-testid="trade-row"]').count(), 'no ledger rows — is a fleet docked?').toBeGreaterThan(1)
 
-  // BUY ONE LOT
+  // BUY ONE LOT, on the desk the Market face's price opens
   const good = await pressBuy(page)
-  const tray = page.locator('[data-testid="trade-tray"]')
-  await expect(tray.locator('[data-testid="trade-tray-send"]')).toBeEnabled({ timeout: 30_000 })
-  await tray.locator('[data-testid="trade-tray-send"]').click()
-  await expect(tray).toHaveCount(0, { timeout: 30_000 })
+  expect(good, 'the open card has no good').not.toBe('')
+  await tradeOnDesk(page)
 
-  // PRESS THE SAME GOOD: the list carries the buy, as mine
-  await pressBuy(page, good)
-  // the city's trades stand under the tray's More (S5, 2026-11-11: the short tray)
-  const more = async () => {
-    // BOUNDED: a press with no timeout waits the whole test out for a tray that has closed, and a retry block cannot interrupt it
-    if ((await tray.locator('[data-testid="trade-tray-detail"]').count()) === 0) await tray.locator('[data-testid="trade-tray-more"]').click({ timeout: 5_000 })
-  }
-  await more()
-  const list = tray.locator('[data-testid="city-good-trades"]')
+  // PRESS THE SAME GOOD: its panel's list carries the buy, as mine
+  await deskBuy(page, good).click()
+  const list = page.getByTestId('city-good-trades')
   await expect(list).toBeVisible({ timeout: 30_000 })
   const first = list.locator('[data-testid="city-good-trade"]').first()
   await expect(first).toBeVisible({ timeout: 30_000 })
@@ -77,22 +70,11 @@ test('City › a good pressed lists who bought it: my buy shows as mine, Bought,
   await list.scrollIntoViewIfNeeded()
   await page.screenshot({ path: testInfo.outputPath('trades-phone.png') })
 
-  // WIDE GLASS: the desk re-lays out (the tray closes with the swap); the same press opens the same
-  // list beside the ledger, with no sideways scroll
+  // WIDE GLASS: the desk re-lays out as the terminal; the same press opens the same list in the panel's pane, with no sideways scroll
   await page.setViewportSize({ width: 1280, height: 900 })
-  // WAIT FOR THE SWAP ITSELF, NOT FOR A BEAT (2026-11-12). The swap lands AFTER the resize returns (matchMedia -> React -> the
-  // desk remounts and the tray closes with it): measured 33 ms later on an idle machine, 204 ms with the CPU slowed 6x, 1.4 s
-  // at 20x. The old wait asked "is the tray there?" and "is it unfolded?" as two reads, and beside two busy workers the swap
-  // fell between them: the tray was counted, then gone, and the press on its More (no timeout) waited for a tray that had
-  // closed until the retry block's 30 s ran out — the block never retried (the red: "Timeout 30000ms exceeded while waiting
-  // on the predicate", with the press still unfinished in the trace). The desk says when it is the wide one
-  // (`data-desk="terminal"`, DeskShell.tsx; the City face is the Office tab's since 2026-11-16), and the phone's tray is gone with it: wait for both, then press.
-  await expect(page.locator('[data-testid="office"][data-desk="terminal"]'), 'the desk did not re-lay out for the wide glass').toBeVisible({ timeout: 60_000 })
-  await expect(tray, "the phone's tray outlived the swap to the wide desk").toHaveCount(0, { timeout: 30_000 })
-  // the wide desk's ledger is a fresh mount: press when its row is live (every step inside is bounded, so a miss is retried)
+  await expect(page.locator('[data-testid="command"][data-desk="terminal"]'), 'the desk did not re-lay out for the wide glass').toBeVisible({ timeout: 60_000 })
   await expect(async () => {
-    if ((await tray.count()) === 0) await pressBuy(page, good)
-    await more()
+    if ((await list.count()) === 0) await deskBuy(page, good).click({ timeout: 2_000 })
     await expect(first).toBeVisible({ timeout: 2_000 })
   }).toPass({ timeout: 60_000 })
   await expect(first).toContainText(/you/i)

@@ -70,6 +70,9 @@ export const ICON_NAMES = [
   // The Map's filter chips (slice 4)
   'layers',
   'waves',
+  // A price's side on the goods card (slice 3): bought into the hold, sold out of it
+  'buyIn',
+  'sellOut',
   // The seven trade-good CATEGORIES. Not a good's own mark any more — the fallback, for a good
   // that arrives from a migration before anyone has drawn it. See goodIcons.ts.
   'spice',
@@ -341,6 +344,11 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   layers: ['M12 4 3 8.5l9 4.5 9-4.5L12 4Z', 'M3 12.5l9 4.5 9-4.5', 'M3 16.5l9 4.5 9-4.5'],
   // Three swells — the Seas chip (the sea zones, their waves and what each asks to pass). Not `route`, not the chart.
   waves: ['M3 8c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0', 'M3 13c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0', 'M3 18c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0'],
+  // ── A PRICE'S SIDE ON THE GOODS CARD (2026-11-23, the visual overhaul's slice 3: the card's two prices read Buy / Sell by tone and
+  // arrow, not by word). An arrow down into an open tray — BUY (what the city asks: goods come into your hold). An arrow up out of
+  // it — SELL (what the city bids: goods go out, coin comes in). Not the chevron, not levelUp: those are a door and the Levels.
+  buyIn: ['M12 3.5v11', 'm7.5 10 4.5 4.5 4.5-4.5', 'M4 15.5v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3'],
+  sellOut: ['M12 14.5v-11', 'm7.5 8 4.5-4.5 4.5 4.5', 'M4 15.5v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3'],
 
   // ── THE SEVEN CATEGORY MARKS — now the FALLBACK, not the answer ───────────────────────────────
   // Every good in `data/goods.json` has its own mark below. These seven remain because a good can

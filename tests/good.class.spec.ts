@@ -33,6 +33,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { ready, reachable } from './appReady.fixture'
 import { openCityFace } from './desk.fixture'
+import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 import { GOOD_CLASSES, GOOD_CLASS_BARS, GOOD_CLASS_BAR_HEIGHTS, GOOD_CLASS_LOOK, goodClassRow } from '../src/components/ui/goodClassTiers'
 import { RARITY_TIER_LOOK } from '../src/components/ui/rarityTiers'
 import { DICT } from '../src/lib/i18n'
@@ -403,22 +404,25 @@ for (const vp of [
     expectList(`${vp.name} · desk Buy`, await page.evaluate(inspectRows, '[data-testid="trade-row"]'), colours)
 
     // …and the press that opens a good spells the class out: the City face's tray (TradeTray →
-    // PriceRows) says it in its Kind row, beside the kind and the rarity
-    const row = page.getByTestId('trade-row').first()
-    const rowClass = Number(await row.getAttribute('data-good-class'))
-    await row.getByRole('button').first().click()
-    const tray = page.getByTestId('trade-tray')
-    await expect(tray).toBeVisible()
-    // the Kind row stands under the tray's More (S5, 2026-11-11: the short tray)
-    await tray.getByTestId('trade-tray-more').click()
-    const spoken = tray.getByTestId('good-kind-row').locator('[data-good-class-mark]')
-    await expect(spoken, "the trade tray names the good's class").toHaveCount(1)
-    await expect(spoken).toHaveAttribute('data-good-class-mark', String(rowClass))
-    await expect(spoken).toHaveText(EN_WORDS[rowClass - 1])
-    // the three words stand in the Kind row without pushing it sideways (at 390 it is the tray's whole width)
-    const kind = await tray.getByTestId('good-kind-row').evaluate((el) => ({ spill: el.scrollWidth - el.clientWidth, over: el.getBoundingClientRect().right - el.closest('[data-testid="trade-tray"]')!.getBoundingClientRect().right }))
-    expect(kind.spill, 'the Kind row scrolls sideways').toBeLessThanOrEqual(1)
-    expect(kind.over, 'the Kind row runs past the tray').toBeLessThanOrEqual(1)
+    // PriceRows) says it in its Kind row, beside the kind and the rarity. X1 (src/live/tradeOnDesk.ts): while TRADE_ON_DESK stands the
+    // press opens the Trade desk instead, whose panel says the class (1b below), so the tray's Kind row is read only with the switch off.
+    if (!TRADE_ON_DESK) {
+      const row = page.getByTestId('trade-row').first()
+      const rowClass = Number(await row.getAttribute('data-good-class'))
+      await row.getByRole('button').first().click()
+      const tray = page.getByTestId('trade-tray')
+      await expect(tray).toBeVisible()
+      // the Kind row stands under the tray's More (S5, 2026-11-11: the short tray)
+      await tray.getByTestId('trade-tray-more').click()
+      const spoken = tray.getByTestId('good-kind-row').locator('[data-good-class-mark]')
+      await expect(spoken, "the trade tray names the good's class").toHaveCount(1)
+      await expect(spoken).toHaveAttribute('data-good-class-mark', String(rowClass))
+      await expect(spoken).toHaveText(EN_WORDS[rowClass - 1])
+      // the three words stand in the Kind row without pushing it sideways (at 390 it is the tray's whole width)
+      const kind = await tray.getByTestId('good-kind-row').evaluate((el) => ({ spill: el.scrollWidth - el.clientWidth, over: el.getBoundingClientRect().right - el.closest('[data-testid="trade-tray"]')!.getBoundingClientRect().right }))
+      expect(kind.spill, 'the Kind row scrolls sideways').toBeLessThanOrEqual(1)
+      expect(kind.over, 'the Kind row runs past the tray').toBeLessThanOrEqual(1)
+    }
 
     // 1b. THE TRADE FACE — the one a player lands on: a Buy press opens TradePanel, whose header says it too
     await page.goto('command')

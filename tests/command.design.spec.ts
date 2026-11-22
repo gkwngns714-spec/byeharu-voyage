@@ -19,7 +19,7 @@ import { phoneLaws, readGlass } from './unfold.fixture'
 // THE LAWS, from 1,024 px (the terminal; a phone keeps its Sheet, which is why it is only a guard here):
 //   (a) THE PANES ARE CARDS: the three panes stand in `[data-card]` surfaces, at least 12 px apart from one another, none touching
 //       the glass's edge (a margin of at least 12 px at the left and the right).
-//   (c) THE HIERARCHY: the desk's title is at least 18 px, the key figures (supplies, cargo) at least 24 px, their labels at least 14.
+//   (c) THE HIERARCHY: the desk's title is at least 18 px, the key figures (supplies, cargo) at least 24 px, their marks (the cask, the hold; slice 3) at least 20.
 //   (b) THE DEFECT RULES STAND (the unfold apparatus), from 1,024: no overlap, no one-letter wrap, no cut text without a way to read it, no
 //       sideways scroll.
 //   (g) A PHONE IS UNCHANGED: no sideways scroll and the desk still stands in its Sheet (`data-desk` absent).
@@ -53,7 +53,8 @@ const READ = () => {
   })
   const line = document.querySelector('[data-testid="command-line"]')
   const figures = [...(line?.querySelectorAll('.tabular-nums') ?? [])].map(px)
-  const labels = [...(line?.querySelectorAll('[data-desk-label]') ?? [])].map(px)
+  // since slice 3 (2026-11-23) a key figure's label is its MARK (the cask, the hold), its word the mark's accessible name: its size is the glyph's
+  const labels = [...(line?.querySelectorAll('[data-desk-mark] svg') ?? [])].map((e) => e.getBoundingClientRect().height)
   return {
     glass: innerWidth,
     title: px(document.querySelector('[data-testid="desk-header"] h1')),
@@ -109,7 +110,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         // (c) THE HIERARCHY
         if (d.title < 17.5) failures.push(`${where}: (c) the desk's title is ${d.title} px — the card title is 18`)
         if (d.figures.length === 0 || Math.min(...d.figures) < 23.5) failures.push(`${where}: (c) a key figure is ${d.figures.join('/')} px — the law is 24`)
-        if (d.labels.length === 0 || Math.min(...d.labels) < 13.5) failures.push(`${where}: (c) a label over a key figure is ${d.labels.join('/')} px — the law is 14`)
+        if (d.labels.length === 0 || Math.min(...d.labels) < 19.5) failures.push(`${where}: (c) a mark beside a key figure is ${d.labels.join('/')} px — the law is 20`)
 
         // (b) THE DEFECT RULES
         // From 1,024, the terminal's smallest glass: the centre pane must keep its names and its Buy and Sell readable (2026-11-05: at 1,024 the
