@@ -50,13 +50,9 @@ function Ladder({ kind, label, ladder, on }: { kind: 'FLEET' | 'SHIP'; label: st
       />
       {(levelWord || priceWord) && (
         <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-t-caption text-ink-muted" data-testid="fleet-room-next">
+          {/* one text: "Next:" and its step wrap as one line of words (two nodes read as one standing on the other) */}
           <span className="tabular-nums">
-            {t('fleets.roomNext')}{' '}
-            {levelWord && priceWord ? (
-              t('fleets.roomEither', { a: levelWord, b: priceWord })
-            ) : (
-              levelWord ?? priceWord
-            )}
+            {`${t('fleets.roomNext')} ${levelWord && priceWord ? t('fleets.roomEither', { a: levelWord, b: priceWord }) : (levelWord ?? priceWord)}`}
           </span>
           {on && price?.next && price.can_pay && (
             <Button variant="secondary" busy={busy} onClick={buy} data-testid="fleet-room-buy">
