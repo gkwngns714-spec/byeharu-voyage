@@ -1,4 +1,4 @@
-import { Card, CardMark, Clip, Facts, Figure, Icon, ListPanel, PageSplit, Row, Sheet } from '../../components/ui'
+import { Card, CardMark, Clip, Facts, Icon, ListPanel, PageSplit, Ring, Row, Sheet } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import type { FleetView, PlayerHouse } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -8,10 +8,12 @@ import { useYourCaptains } from '../../live/useYourCaptains'
 import { tabHref, tabWord } from '../../app/navTabs'
 import { properName, useLocale, useT } from '../../lib/i18n'
 import { Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { companyRoom, useHouseRoom } from '../../live/houseRoom'
 import { YouLevelTray, YouLevels } from './Levels'
 import { useLevels } from './useLevels'
+import { HullCountry } from '../../live/HullCountry'
+import { seasOpened } from '../../live/levelWords'
 
 // YOU — the owner, row 181 (2026-10-20): *"Create a tab for personal info, such as my level, my
 // ships, captains, achievements, levels etc."*
@@ -73,12 +75,14 @@ function YouBody({ title }: { title: string }) {
     // THE PAGE (2026-11-05, owner row 267): MAIN the ships and the captains as two card lists, SIDE (the tray's column) the levels. The page
     // scrolls; nothing inside it does. On a phone the side stands AFTER the lists, so the first ship is on the first glass.
     <Sheet title={title} layout="page" data-testid="you">
+      {/* THE HOUSE'S PLATE (visual slice 9): her flag and name, her title and her Reputation as rings, the room line at its foot */}
+      {player !== null && <HousePlate player={player} />}
       <PageSplit
         data-testid="you-page"
         stickySide
         main={
           <>
-            <RoomLine />
+            {player === null && <RoomLine />}
             <Ships fleets={fleets} />
             <ListPanel
               look="card"
@@ -98,10 +102,7 @@ function YouBody({ title }: { title: string }) {
               <Row label={t('you.noCompany')} tone="muted" hairline={false} data-testid="you-no-company" />
             </Card>
           ) : (
-            <>
-              <Reputation player={player} />
-              <YouLevels picked={level} onPick={setLevel} />
-            </>
+            <YouLevels picked={level} onPick={setLevel} />
           )
         }
       />
@@ -140,12 +141,12 @@ function AccountRow() {
 
 /** THE ROOM THE COMPANY HAS, ONE LINE (F5, 2026-11-11; docs/FLEETS_AND_SLOTS.md 2.7): fleets she has of the fleets she may have, ships of the ships she may have, as
  *  `world.house_room` serves them (the caps the server enforces now, lit or dark). The line is the link to Fleets, where the room is used and opened. */
-function RoomLine() {
+function RoomLine({ className = 'mb-4' }: { className?: string }) {
   const t = useT()
   const room = companyRoom(useHouseRoom())
   if (!room) return null
   return (
-    <Link to="/fleets" className="mb-4 flex min-h-11 flex-wrap items-center gap-x-2 rounded-control text-t-body text-ink hover:text-accent" data-testid="you-room">
+    <Link to="/fleets" className={`${className} flex min-h-11 flex-wrap items-center gap-x-2 rounded-control text-t-body text-ink hover:text-accent`} data-testid="you-room">
       <span className="tabular-nums">
         {t('you.room', {
           a: formatInt(room.fleets.used),
@@ -159,21 +160,137 @@ function RoomLine() {
   )
 }
 
+/** THE HOUSE'S PLATE (2026-11-23, the visual overhaul's slice 9; RuneScape's and Melvor's character header): the company's flag
+ *  on a disc and its name whole, then its two house figures as rings, the title and the Reputation, and the room line at its foot.
+ *  Nothing here is read twice: the title is the levels read's (moved from the levels card, which no longer says it), the
+ *  Reputation the house read's (moved from its own card), the room `world.house_room`'s. */
+function HousePlate({ player }: { player: PlayerHouse }) {
+  return (
+    <Card className="mb-4" data-testid="you-plate">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-[1_1_14rem] items-center gap-3">
+          {player.nation && (
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-2 ring-1 ring-edge" data-testid="you-plate-flag">
+              <HullCountry nation={player.nation} compact size="title" />
+            </span>
+          )}
+          {/* the name whole (names.whole): it wraps, never clips */}
+          <h2 className="min-w-0 text-t-card text-ink">
+            <Clip data-testid="you-plate-name">{player.company_name}</Clip>
+          </h2>
+        </div>
+        <div className="grid min-w-0 flex-[1_1_18rem] grid-cols-2 gap-3">
+          <HouseTitle />
+          <Reputation player={player} />
+        </div>
+      </div>
+      <TitleNext />
+      <div className="mt-2 border-t border-edge pt-1">
+        <RoomLine className="" />
+      </div>
+    </Card>
+  )
+}
+
+/** A house figure: its mark in a ring, the figure, one quiet word under it. */
+function RingFigure({
+  ring,
+  figure,
+  word,
+}: {
+  ring: ReactNode
+  figure: ReactNode
+  word: ReactNode
+}) {
+  return (
+    <>
+      {ring}
+      <span className="min-w-0">
+        {figure}
+        <span className="block break-words text-t-caption text-ink-muted">{word}</span>
+      </span>
+    </>
+  )
+}
+
+/** THE TITLE (0215; moved here from the levels card, slice 9): her title's name and level in a ring that fills toward the next
+ *  title, by the lower of her Trading and Exploration levels against the level it asks (the served figures; nothing summed). */
+function HouseTitle() {
+  const t = useT()
+  const v = useLevels().view
+  if (!v || !v.company) return <span />
+  const name = v.title.name ? properName('title', v.title.name, v.title.name) : t('command.lvTitle')
+  const next = v.title.next
+  const pct = next ? (Math.min(v.tracks.trading.level, v.tracks.exploration.level) / next.level) * 100 : 100
+  return (
+    <div className="flex min-w-0 items-center gap-2" data-testid="levels-title" data-level={v.title.level}>
+      <RingFigure
+        ring={
+          <Ring pct={pct} size={44} label={`${t('command.lvTitle')} · ${name} · ${t('command.lvLevel', { n: v.title.level })}`}>
+            <span className="text-accent">
+              <Icon name="coronet" size={22} />
+            </span>
+          </Ring>
+        }
+        figure={<span className="block break-words text-t-body font-semibold text-ink">{name}</span>}
+        word={t('command.lvLevel', { n: v.title.level })}
+      />
+    </div>
+  )
+}
+
+/** The next title, as the title ring's target: its name and the two levels it asks, and what it opens while sea limits are on. */
+function TitleNext() {
+  const t = useT()
+  const locale = useLocale()
+  const v = useLevels().view
+  if (!v || !v.company) return null
+  const next = v.title.next
+  return (
+    <span className="mt-2 block text-t-caption text-ink-faint" data-testid="levels-title-next">
+      {next
+        ? t('command.lvTitleNext', {
+            name: properName('title', next.name, next.name),
+            tracks: t('command.goalTracks', { a: v.tracks.trading.level, b: v.tracks.exploration.level, n: next.level }),
+          })
+        : t('command.lvTitleTop')}
+      {/* what the title opens, only while sea limits are on (2026-11-23, finding 14) */}
+      {next && v.title.seas_bite && next.opens.length > 0 && (
+        <span className="block text-ink-muted" data-testid="levels-opens">
+          {t('command.lvOpens', { what: seasOpened(locale, next.opens) })}
+        </span>
+      )}
+    </span>
+  )
+}
+
 /** REPUTATION (0352, owner row 317): the served balance, and what today's capped earnings stand at against the day's cap
- *  (`public.reputation_card`). Nothing is computed here. A server before 0352 serves none, and the card is not drawn. */
+ *  (`public.reputation_card`), the cap drawn as the ring round the laurel. Nothing is computed here. A server before 0352
+ *  serves none, and the figure is not drawn. */
 function Reputation({ player }: { player: PlayerHouse }) {
   const t = useT()
   const rep = player.reputation
   if (!rep) return null
+  const today = t('shell.repToday', { a: formatInt(rep.today), b: formatInt(rep.cap) })
   return (
-    <Card icon="laurel" title={t('shell.reputation')} data-testid="you-reputation">
-      <span data-testid="you-reputation-balance" data-value={rep.balance}>
-        <Figure value={formatInt(rep.balance)} size="figure" />
-      </span>
-      <p className="mt-1 text-t-caption text-ink-muted" data-testid="you-reputation-today">
-        {t('shell.repToday', { a: formatInt(rep.today), b: formatInt(rep.cap) })}
-      </p>
-    </Card>
+    <div className="flex min-w-0 items-center gap-2" data-testid="you-reputation">
+      <RingFigure
+        ring={
+          <Ring pct={rep.cap > 0 ? (rep.today / rep.cap) * 100 : 0} size={44} label={`${t('shell.reputation')} · ${today}`} data-testid="you-reputation-ring">
+            <span className="text-accent">
+              <Icon name="laurel" size={22} />
+            </span>
+          </Ring>
+        }
+        figure={
+          <span className="flex flex-wrap items-baseline gap-x-1.5" data-testid="you-reputation-balance" data-value={rep.balance}>
+            <span className="text-t-title tabular-nums text-ink">{formatInt(rep.balance)}</span>
+            <span className="text-t-caption text-ink-muted">{t('shell.reputation')}</span>
+          </span>
+        }
+        word={<span data-testid="you-reputation-today">{today}</span>}
+      />
+    </div>
   )
 }
 

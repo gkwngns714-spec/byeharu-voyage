@@ -918,6 +918,71 @@ html:lang(ko) body {
   animation: bv-fight-ring 2.4s ease-in-out infinite;
 }
 
+/* THE LEVEL-UP MOMENT (src/live/LevelTiles.tsx, the visual overhaul's slice 9): when a level rises, its tile glows gold once,
+   its mark and figure pop, and a chevron rises off the ring — 1.4 s, then still. Every stop ends at rest, and no tile moves
+   (the glow is a shadow, the pop scales only the mark and the figure inside it). Reduced motion: not played at all. */
+@keyframes bv-level-glow {
+  0% {
+    box-shadow: 0 0 0 0 var(--color-accent);
+    opacity: 1;
+  }
+  35% {
+    box-shadow: 0 0 0 3px var(--color-accent), 0 0 18px 2px var(--color-accent-soft);
+    opacity: 1;
+  }
+  100% {
+    box-shadow: 0 0 0 0 var(--color-accent);
+    opacity: 0;
+  }
+}
+@keyframes bv-level-pop {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.35);
+  }
+  60% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes bv-level-up {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+.bv-level-glow {
+  animation: bv-level-glow 1.4s ease-out forwards;
+}
+.bv-level-pop {
+  display: inline-block;
+  animation: bv-level-pop 0.7s var(--ease-sheet) both;
+}
+.bv-level-up {
+  opacity: 0;
+  animation: bv-level-up 1.2s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bv-level-glow,
+  .bv-level-up {
+    display: none;
+  }
+  .bv-level-pop {
+    animation: none;
+  }
+}
+
 /* THE BATTLE SCREEN'S EFFECTS (src/live/battle/BattleStage.tsx, 0435). Each is mounted for two ticks (1.2 s) at its
    event and plays once: a flash and smoke at the gun, a tracer, a splash at a miss, the hit number rising (a crit larger),
    an ability's name, a struck ship heeling and settling low. Under reduced motion the effects stand still for their two
