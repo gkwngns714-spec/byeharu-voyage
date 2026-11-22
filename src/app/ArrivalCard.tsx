@@ -17,7 +17,9 @@ import { HOME_TAB, tabWord } from './navTabs'
 // THE ARRIVAL CARD (owner row 307, the remaster's S3): a fleet comes in, sells, and the player was told nothing. One
 // card, over whatever tab is open, says what the arrival did. It reads FACTS THE SERVER ALREADY REPORTS and adds none:
 //   - an arrival is a new VOYAGE_REPORT event (the player's OWN ledger, so another player's fleet is never in it);
-//   - its sales are the new SOLD events of that fleet at that port: qty, good and the server's own `profit` (0081);
+//   - its sales are the new SOLD events of that fleet at that port: qty, good and the server's own `trip_net` (0474: the sale's profit
+//     less its profit tax, the wages it paid and the dock fee of this call: what her purse moved for the trip, the Buy & sell sheet's
+//     figure; an event before 0474 has none, and its `profit` (0081) is printed as before);
 //   - a level-up is a LEVEL_UP event (0356: `public.level_marks_settle` writes one a level crossed, with the Reputation it
 //     gave): the ones on the read that brings the arrival, the ones that land while the card is open, and the ones that came
 //     since the last card (a level crossed at the quay has no card of its own);
@@ -40,8 +42,10 @@ interface Sale {
   id: string
   good: string
   qty: number | null
-  /** The server's profit for the sale, or its total when no profit was on record. */
+  /** The server's net for the trip (`trip_net`, 0474), else its profit (an event before 0474), or its total when no profit was on record. */
   figure: number | null
+  /** The sale's own margin as served (`profit`: its money less what the goods cost; what Reputation counts, 0352). */
+  profit: number | null
   /** Which of the two the figure is, so it is printed with its word: Profit / Loss, or Total. */
   kind: MoneyKind
 }
@@ -96,7 +100,8 @@ function levelLines(events: LedgerEvent[], into: LevelLine[] = []): LevelLine[] 
 
 function saleOf(e: LedgerEvent): Sale {
   const profit = num(e.payload, 'profit')
-  return { id: e.id, good: str(e.payload, 'good') ?? '', qty: num(e.payload, 'qty'), figure: profit ?? num(e.payload, 'total'), kind: profit === null ? 'total' : 'profit' }
+  const net = num(e.payload, 'trip_net') ?? profit
+  return { id: e.id, good: str(e.payload, 'good') ?? '', qty: num(e.payload, 'qty'), figure: net ?? num(e.payload, 'total'), kind: net === null ? 'total' : 'profit', profit }
 }
 
 /** The facts of one read: the events not seen before, against the house as it stood on the read before. */
@@ -223,10 +228,11 @@ export function ArrivalCard() {
           {card.arrivals.length === 0 ? t('bounty.title') : port ? t('feed.arrivedAt', { port }) : t('feed.arrived')}
         </p>
         {sales.map((s) => (
-          <p key={s.id} className="mt-1 flex justify-between gap-3 text-t-body" data-testid="arrival-sale">
+          <p key={s.id} className="mt-1 flex justify-between gap-3 text-t-body" data-testid="arrival-sale" data-profit={s.profit ?? undefined}>
             <span className="min-w-0 break-words">{t('feed.arrSold', { n: s.qty === null ? '' : formatInt(s.qty), good: goodWordOf(s.good) })}</span>
-            {/* THE FIGURE HAS ITS WORD (2026-11-11, the trade-flow slice): "−1,182" stood bare. It is the sale's served profit
-                ("Profit" / "Loss": the sale's money less what the goods cost, before the voyage's wages), or its total. */}
+            {/* THE FIGURE HAS ITS WORD (2026-11-11, the trade-flow slice): "−1,182" stood bare. It is the trip's served net (0474:
+                "Profit" / "Loss": the sale's money less what the goods cost, the profit tax, the wages and the dock fee; the sheet's
+                figure and what the purse moved), or its total. */}
             {s.figure !== null && (
               <span className="flex shrink-0 items-baseline gap-2" data-testid="arrival-figure" data-kind={s.kind}>
                 <span className="text-t-caption text-ink-muted" data-testid="arrival-figure-word">
