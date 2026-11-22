@@ -23,6 +23,8 @@ const BY_KIND: Readonly<Record<string, Sector>> = {
   FINE: 'fees',
   SLOT: 'fees',
   CAPITAL_GIFT: 'gifts',
+  // 0476: a starter step's reward, paid by her capital
+  VOYAGE_REWARD: 'gifts',
   DONATION: 'gifts',
   GRANT: 'gifts',
   CROWN_AID: 'gifts',

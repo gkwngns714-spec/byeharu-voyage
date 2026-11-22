@@ -91,6 +91,17 @@ export const tradeDict = defineDict({
     // 0473: where a hold job's good is sold, and a Barca's sailing time there (both served)
     holdFrom: 'Buy at {city} · {time}',
     holdFromCity: 'Buy at {city}',
+    // 0476: the starter chain's line under the goal card (src/live/FirstVoyageLine.tsx): the step, the job, the pay
+    fvStep: 'Voyage {n}/{of}',
+    fvDeliver: 'Deliver {qty} {good} to {city}',
+    fvDeliverAny: 'Deliver a ship job',
+    fvProfit: 'Trade profit {have} / {need}',
+    fvTrading: 'Reach Trading {n}',
+    fvCaptain: 'Hire a captain',
+    fvHull: 'Order a second ship',
+    fvPays: '+{ducats}',
+    fvWaiting: 'Pay waits',
+    fvPaid: 'Done +{ducats}',
   },
   ko: {
     supplies: '보급',
@@ -178,5 +189,15 @@ export const tradeDict = defineDict({
     holdPays: '보수 {total}',
     holdFrom: '{city}에서 구매 · {time}',
     holdFromCity: '{city}에서 구매',
+    fvStep: '항해 {n}/{of}',
+    fvDeliver: '{good} {qty}개를 {city}에 납품',
+    fvDeliverAny: '배 의뢰 하나 납품',
+    fvProfit: '교역 이익 {have} / {need}',
+    fvTrading: '교역 {n} 달성',
+    fvCaptain: '선장 고용',
+    fvHull: '두 번째 배 주문',
+    fvPays: '+{ducats}',
+    fvWaiting: '지급 대기',
+    fvPaid: '완료 +{ducats}',
   },
 })

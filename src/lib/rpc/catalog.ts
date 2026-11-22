@@ -414,6 +414,9 @@ const TABLE = {
   worldPirateShipCard: { schema: 'world', fn: 'pirate_ship_card', args: [{ name: 'p_fleet', type: 'uuid' }] },
   // 0471 — THE NAMED PIRATES and their bounties (dark: {on: false}). A READ, no argument, no player id.
   worldPirateBounties: { schema: 'world', fn: 'pirate_bounties', args: [] },
+  // 0476 — THE STARTER CHAIN (dark: {on: false}). A read that pays a step met, once (as world.contracts winds its board); no argument,
+  // no player id. NOT `mutates`: the purse it may move is the shell's own read, re-asked when a step was paid (FirstVoyageLine.tsx).
+  worldFirstVoyages: { schema: 'world', fn: 'first_voyages', args: [] },
   // 0213 — INSURANCE: the caller's insured voyages under way and the last ones the insurance paid on.
   // A READ at a face (the desk's Plans), never on the beat. The price itself is `cmd.preview`'s: a SAIL's
   // estimate carries `insurance` (quoted unasked, charged with the word INSURED).
