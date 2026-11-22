@@ -214,6 +214,17 @@ player sees.
 - Before: the yard shows four prices in words; the Land site is a form; the welcome is four sentences.
 - After: the yard is hull silhouettes with one price and the press she can make; Land shows the site's peak and the party as marks with
   a trip bar; the welcome is a picture (Lisbon's skyline, your ship) with one line and the goal ring.
+- Built (decided by default, the owner may reverse each): a hull's tile leads with her picture (`ShipPicture`, slice 5's) and keeps
+  its ONE figure, Labour; her sheet opens on her picture (`ShipPicture` hero) and carries one price a road, Total (build her yourself)
+  and the Order press, with Labour under Total and the order's fee (Order fee, or #800's First-ship fee) under Wait as small print, not
+  rows of their own; #800's rule (the Order is gold while materials are short) stands. Each material is its mark (`goodIcon`; a part
+  the workshop's mallet), its need, and a 6-px bar of what is stored here with what is on board washed on, the words ("12 in storage ·
+  3 on board") under the bar, the "Materials" / "Parts" prefixes a heading over the lines. Land's Party card opens on a drawn site
+  (`LandSite`: the home town, the road, the mountains and the mine's lit mouth, the sea across the road for a far land) with the
+  party a gold mark on the road as far along as the trip bar; the Storage leads each good with its mark; a skill's jobs are a field of
+  tiles (mark, name, where, one figure, a bar of the skill's level against the job's). The welcome opens on her city's skyline with
+  her ship on its water, then one line ("Your trading house · Lisbon, 1507"), the goal as a `Ring` around a ship with the goal card's
+  own line ("Second ship · 40,000 / 52,000"; the two cards read one hook, `useSecondShipGoal`), and the first press; "Welcome" went.
 
 ## 4. How we will know
 

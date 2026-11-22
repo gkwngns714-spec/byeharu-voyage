@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bar, Button, Card, Note, Row, Tray, type TrayDetent } from '../../components/ui'
+import { Bar, Button, Card, GroupHeading, Icon, Note, Row, Tile, TileField, Tray, goodIcon, type TrayDetent } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import { properName, translate, useLocale, useT } from '../../lib/i18n'
 import { cmdLandSend, type LandJob, type LandView, type Refusal } from '../../lib/rpc'
@@ -15,6 +15,10 @@ type Lit = Extract<LandView, { company: true }>
 // the terms public.land_terms gives, and Send. A new skill is new rows on the server, not a new face here.
 // 0461: a MAKE job (the smith) is done at home from the home Storage: its row says what one unit uses, its tray what Storage holds of
 // each, how many it can make and how long all of them take; Send makes as many as the inputs allow (the server's `make.can`).
+// 2026-11-23 (the visual overhaul's slice 10): THE JOBS ARE TILES, not a list of rows: each is the good's mark, its name, where it is
+// worked (the quiet line), one figure (the experience, or "Mining 1 / 96" while short of its level) and a bar of the skill's level
+// against the level the job asks (full and gold once she may take it; the served have / need while short). A press opens the same
+// Send tray over the field, which moves nothing.
 
 export function SkillFace({ v }: { v: Lit }) {
   const t = useT()
@@ -38,40 +42,51 @@ export function SkillFace({ v }: { v: Lit }) {
         </div>
         <Bar pct={levelFill(v.skill)} label={name} tone="accent" className="mt-1" />
       </Card>
-      <Card title={t('land.jobs')} className="mt-3" data-testid="land-jobs">
-        {v.jobs.map((j, i) => (
-          <Row
-            key={j.code}
-            label={goodName(j.good)}
-            wholeName
-            chevron
-            tone={j.open ? undefined : 'muted'}
-            hairline={i < v.jobs.length - 1}
-            onClick={() => {
-              setDetent('half')
-              setOpen(j)
-            }}
-            value={
-              <span className={`text-t-label tabular-nums ${j.open ? 'text-ink' : 'text-ink-faint'}`} data-testid="land-job-level">
-                {j.short?.code === 'E_NEEDS_SKILL'
-                  ? t('land.levelOf', { name, a: formatInt(v.skill.level), b: formatInt(j.level) })
-                  : t('land.xpN', { n: formatInt(j.xp) })}
-              </span>
-            }
-            data-testid="land-job"
-            data-job={j.code}
-            data-open={j.open}
-          >
-            <span className="block break-words text-t-caption text-ink-faint" data-testid="land-job-land">
-              {j.make
-                ? `${t('land.uses')} ${inputsWord(j.make.inputs, goodName)} · ${t('land.turn')} ${spanWord(j.a)}`
-                : j.home
-                  ? `${t('land.atHome')} · ${t('land.turn')} ${spanWord(j.a)}`
-                  : `${t('land.far')} · ${regionWord(locale, j.region, v.regions)} · ${t('land.trip')} ${spanWord(j.trip)}`}
-            </span>
-          </Row>
-        ))}
-      </Card>
+      {/* the field stands on the page, not in a card: a card's own margin left a phone one tile across */}
+      <div className="mt-4" data-testid="land-jobs">
+        <GroupHeading>{t('land.jobs')}</GroupHeading>
+        <TileField>
+          {v.jobs.map((j) => (
+            <Tile
+              key={j.code}
+              tap="whole"
+              state={j.open ? 'rest' : 'muted'}
+              mark={<Icon name={goodIcon(j.good, goods[j.good]?.category ?? '')} size={22} className={j.open ? 'text-accent' : 'text-ink-faint'} />}
+              name={goodName(j.good)}
+              meta={
+                <span data-testid="land-job-land">
+                  {j.make
+                    ? `${t('land.uses')} ${inputsWord(j.make.inputs, goodName)} · ${t('land.turn')} ${spanWord(j.a)}`
+                    : j.home
+                      ? `${t('land.atHome')} · ${t('land.turn')} ${spanWord(j.a)}`
+                      : `${t('land.far')} · ${regionWord(locale, j.region, v.regions)} · ${t('land.trip')} ${spanWord(j.trip)}`}
+                </span>
+              }
+              figure={
+                <span className={`text-t-label tabular-nums ${j.open ? 'text-ink' : 'text-ink-faint'}`} data-testid="land-job-level">
+                  {j.short?.code === 'E_NEEDS_SKILL'
+                    ? t('land.levelOf', { name, a: formatInt(v.skill.level), b: formatInt(j.level) })
+                    : t('land.xpN', { n: formatInt(j.xp) })}
+                </span>
+              }
+              bar={
+                <Bar
+                  pct={j.level > 0 ? (v.skill.level / j.level) * 100 : 100}
+                  tone={j.open ? 'accent' : 'neutral'}
+                  label={t('land.levelOf', { name, a: formatInt(v.skill.level), b: formatInt(j.level) })}
+                />
+              }
+              onClick={() => {
+                setDetent('half')
+                setOpen(j)
+              }}
+              data-testid="land-job"
+              data-job={j.code}
+              data-open={j.open}
+            />
+          ))}
+        </TileField>
+      </div>
       <Tray
         detent={open ? detent : 'closed'}
         onDetentChange={(next) => (next === 'closed' ? setOpen(null) : setDetent(next))}

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  Bar,
   Button,
   Field,
   Figure,
+  GroupHeading,
   Hint,
   Icon,
   KEEP_WORDS_CLASS,
@@ -12,8 +14,10 @@ import {
   Tile,
   TileField,
   Tray,
+  goodIcon,
   type TrayDetent,
 } from '../components/ui'
+import { ShipPicture } from '../features/fleets/ShipPicture'
 import { HullCountry } from './HullCountry'
 import { HullCrown } from './HullCrown'
 import { HullTech } from './HullTech'
@@ -108,6 +112,14 @@ import { properName, useLocale, useT, t as tNow } from '../lib/i18n'
 // the nearest seller's ask, and the fee: world.hull_quote, the one reading) with the wait beside the totals. The order then stands
 // at the top of the yard with its countdown; once ready, a name and "Launch" put her into the fleet lying here (cmd.launch_hull).
 // Your orders at other yards stand under it. The materials route is untouched and stays the cheaper, instant way.
+//
+// ── HULLS AS PICTURES, ONE PRICE, MATERIALS AS BARS (2026-11-23, the visual overhaul's slice 10) ──────────────────────────────
+// The play-test read four prices on one hull (the tile's labour, Labour, Total, the Order and its fee). #800 made the Order the gold
+// press while materials are short and named Labour and the First-ship fee; that logic stands. The look is simpler: a hull's tile leads
+// with her picture (`ShipPicture`, the Fleets tab's own: the one drawing of a ship, at the class's served tier) and carries ONE
+// figure, her labour; the sheet opens on her picture and carries two prices, one a road: Total (build her yourself) and the Order
+// press. Labour and the order's fee are the small print under them, not rows of their own. Each material is its mark, its need, and a
+// bar of what is stored here (what is on board washed on: it counts once stored), with the words under the bar.
 //
 // ── WHAT THIS FILE DOES NOT KNOW ───────────────────────────────────────────────────────────────
 // Whether a hull can be built here. All of that is `cmd.do_build`'s and arrives answered.
@@ -285,7 +297,7 @@ export function PortYard({
   const tile = (hull: YardHull) => (
     <Tile
       key={hull.class}
-      mark={<Icon name="ship" size={20} />}
+      mark={<ShipPicture code={hull.class} />}
       name={hullName(hull.name)}
       meta={
         <>
@@ -513,6 +525,10 @@ export function PortYard({
             ) : undefined
           }
         >
+          {/* her picture across the top of her sheet (slice 10): the hull you are about to lay down */}
+          <div className="mb-3" data-testid="yard-hull-picture">
+            <ShipPicture code={hull.class} size="hero" />
+          </div>
           {/* S1: a full fleet is said FIRST, before she fetches anything */}
           {full && hull.buildable && (
             <Note tone="warning" className="mb-2" data-testid="yard-fleet-full">
@@ -552,14 +568,18 @@ export function PortYard({
           )}
           {/* S1 — THE TOTALS, above the lines so a part unfolding moves neither: what is still to buy at the sellers'
               prices now plus the yard's labour, and the weight of what is still to fetch against her free hold. */}
-          {/* the labour, so Total reads as labour + the goods still to buy (the card's figure is this one) */}
-          <Row label={t('yard.labour')} value={<Figure value={formatDucats(hull.ducats)} />} data-testid="yard-labour" />
+          {/* ONE PRICE A ROAD (slice 10): Total is the road of building her yourself; the labour in it (the tile's one figure) is its
+              small print, so Total still reads as labour + the goods still to buy */}
           <Row
             label={t('yard.total')}
             value={<Figure value={plan.goodsCost === null ? '…' : formatDucats(Math.round(plan.goodsCost) + hull.ducats)} />}
             data-testid="yard-total"
             data-cost={plan.goodsCost === null ? undefined : Math.round(plan.goodsCost) + hull.ducats}
-          />
+          >
+            <span className="block text-t-caption tabular-nums text-ink-faint" data-testid="yard-labour" data-labour={hull.ducats}>
+              {`${t('yard.labour')} ${formatDucats(hull.ducats)}`}
+            </span>
+          </Row>
           <Row
             label={t('yard.weight')}
             value={
@@ -572,20 +592,28 @@ export function PortYard({
             data-testid="yard-weight"
             data-fits={plan.weight === null || !fleet ? undefined : plan.weight <= fleet.free_hold}
           />
-          {/* 0465: an order's wait, beside the totals */}
+          {/* 0465: an order's wait, beside the totals; the order's price is its press, under the one button */}
           {offerOrder && (
             <Row
               label={t('yard.wait')}
               value={<Figure value={quoted && typeof quoted.minutes === 'number' ? formatRealShort(quoted.minutes * 60_000) : '…'} />}
               data-testid="yard-order-wait"
-            />
-          )}
-          {/* an order's fee (world.hull_quote): what the order adds over labour and every good bought at the nearest ask. 0472: on her
-              second hull the fee is raised to the floor (served `first`, absent dark), and the row says "First order" so the price says why */}
-          {offerOrder && quoted && typeof quoted.fee === 'number' && (
-            quoted.first === true
-              ? <Row label={t('yard.firstOrder')} value={<Figure value={formatDucats(quoted.fee)} />} data-testid="yard-order-first" data-fee={quoted.fee} />
-              : <Row label={t('yard.orderFee')} value={<Figure value={formatDucats(quoted.fee)} />} data-testid="yard-order-fee" />
+            >
+              {/* an order's fee (world.hull_quote): what the order adds over labour and every good bought at the nearest ask, the
+                  Order's small print. 0472: on her second hull the fee is raised to the floor (served `first`, absent dark), and it says
+                  "First-ship fee" so the price says why */}
+              {quoted && typeof quoted.fee === 'number' ? (
+                quoted.first === true ? (
+                  <span className="block text-t-caption tabular-nums text-ink-faint" data-testid="yard-order-first" data-fee={quoted.fee}>
+                    {`${t('yard.firstOrder')} ${formatDucats(quoted.fee)}`}
+                  </span>
+                ) : (
+                  <span className="block text-t-caption tabular-nums text-ink-faint" data-testid="yard-order-fee" data-fee={quoted.fee}>
+                    {`${t('yard.orderFee')} ${formatDucats(quoted.fee)}`}
+                  </span>
+                )
+              ) : null}
+            </Row>
           )}
           {/* S3: one press from the totals to the trip that fetches what is short. It stands above the lines, with the
               totals, so a part unfolding does not move it; it goes when nothing is left to fetch by sea. */}
@@ -599,20 +627,22 @@ export function PortYard({
               data-stops={trip.join(' ')}
             />
           )}
-          {plan.goods.map((g, i) => (
+          {plan.goods.length > 0 && <GroupHeading className="mt-3">{t('yard.materials')}</GroupHeading>}
+          {plan.goods.map((g) => (
             <GoodLine
               key={g.code}
               good={g}
-              label={i === 0 ? `${t('yard.materials')} · ${properName('good', g.code, g.name)}` : properName('good', g.code, g.name)}
+              label={properName('good', g.code, g.name)}
               speed={fleet?.speed_kn ?? null}
               id={g.code}
             />
           ))}
-          {plan.parts.map((p, i) => (
+          {plan.parts.length > 0 && <GroupHeading className="mt-3">{t('yard.parts')}</GroupHeading>}
+          {plan.parts.map((p) => (
             <PartLine
               key={p.code}
               part={p}
-              label={i === 0 ? `${t('yard.parts')} · ${p.name}` : p.name}
+              label={p.name}
               speed={fleet?.speed_kn ?? null}
               open={unfolded.has(p.code)}
               onToggle={() =>
@@ -703,25 +733,33 @@ function GoodLine({
 }) {
   const source = good.short > 0 ? good.source : undefined
   const testid = part ? `yard-input-${part}-${id}` : `yard-good-${id}`
+  const category = useWorld((s) => s.goodByCode[good.code]?.category ?? '')
+  // the bar: what counts toward her need. A hull's good counts once STORED here, so storage is the fill and what is on board the
+  // wash it would add (Bar's `pending`); a part's input is made from the hold, so what is on board is the fill.
+  const have = part ? good.aboard : good.stored
+  const of = Math.max(1, good.need)
   return (
     <div className={part ? 'pl-4' : undefined}>
       <Row
+        mark={<Icon name={goodIcon(good.code, category)} size={20} className={good.short > 0 ? 'text-ink-muted' : 'text-accent'} />}
         label={<span className={KEEP_WORDS_CLASS}>{label}</span>}
         hairline={!source}
-        value={
-          <Figure
-            value={formatInt(good.need)}
-            unit={
-              part
-                ? tNow('yard.onBoardN', { n: formatInt(good.aboard) })
-                : `${tNow('yard.inStorageN', { n: formatInt(good.stored) })} ${tNow('yard.onBoardN', { n: formatInt(good.aboard) })}`
-            }
-            tone={good.short > 0 ? 'warning' : 'ink'}
-          />
-        }
+        value={<Figure value={formatInt(good.need)} tone={good.short > 0 ? 'warning' : 'ink'} />}
         data-testid={testid}
         data-short={good.short}
-      />
+      >
+        <Bar
+          pct={(have / of) * 100}
+          pending={part ? undefined : (Math.min(good.aboard, Math.max(0, good.need - good.stored)) / of) * 100}
+          label={label}
+          className="mt-1"
+        />
+        <span className="mt-0.5 block text-t-caption tabular-nums text-ink-faint">
+          {part
+            ? tNow('yard.onBoard', { n: formatInt(good.aboard) })
+            : `${tNow('yard.inStorage', { n: formatInt(good.stored) })} · ${tNow('yard.onBoard', { n: formatInt(good.aboard) })}`}
+        </span>
+      </Row>
       {source && <SourceRow source={source} kind="good" speed={speed} units={good.short} testid={part ? `yard-input-source-${part}-${id}` : undefined} />}
     </div>
   )
@@ -747,20 +785,18 @@ function PartLine({
   return (
     <div>
       <Row
+        mark={<Icon name="mallet" size={20} className={short ? 'text-ink-muted' : 'text-accent'} />}
         label={<span className={KEEP_WORDS_CLASS}>{label}</span>}
         hairline={!(short && part.source) && !open}
         chevron={folds && !open}
         onClick={folds ? onToggle : undefined}
         aria-expanded={folds ? open : undefined}
-        value={
-          <Figure
-            value={formatInt(part.need)}
-            unit={tNow('yard.inStorageN', { n: formatInt(part.have) })}
-            tone={short ? 'warning' : 'ink'}
-          />
-        }
+        value={<Figure value={formatInt(part.need)} tone={short ? 'warning' : 'ink'} />}
         data-testid={`yard-part-${part.code}`}
-      />
+      >
+        <Bar pct={(part.have / Math.max(1, part.need)) * 100} label={label} className="mt-1" />
+        <span className="mt-0.5 block text-t-caption tabular-nums text-ink-faint">{tNow('yard.inStorage', { n: formatInt(part.have) })}</span>
+      </Row>
       {short && part.source && <SourceRow source={part.source} kind="item" speed={speed} />}
       {open && (
         <div data-testid={`yard-inputs-${part.code}`}>

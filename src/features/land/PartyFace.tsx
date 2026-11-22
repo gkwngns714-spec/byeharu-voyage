@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Bar, Button, Card, Countdown, Figure, Note, PageSplit, Row, Segmented } from '../../components/ui'
+import { Bar, Button, Card, Countdown, Figure, Icon, Note, PageSplit, Row, Segmented, goodIcon } from '../../components/ui'
 import { formatDucats, formatInt } from '../../lib/format'
 import { properName, useLocale, useT } from '../../lib/i18n'
 import { cmdLandCollect, cmdLandHome, cmdLandPack, cmdLandRepeat, cmdLandTool, type LandDone, type LandView, type Refusal } from '../../lib/rpc'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { foundWord, phaseWord, regionWord, siteWord } from './landWords'
+import { LandSite } from './LandSite'
 
 type Lit = Extract<LandView, { company: true }>
 
@@ -15,6 +16,8 @@ type Lit = Extract<LandView, { company: true }>
 // what a Collect found is said in the slot that is always there under the buttons, so nothing below it moves.
 // 0461: a MAKE job (the smith) works at home: the card says the home city, "Making", and how many of the units it was sent for are
 // made; what a Collect gave back of a make's inputs is said in the same slot.
+// 2026-11-23 (the visual overhaul's slice 10): the card opens on a drawing of the site (./LandSite.tsx), the party on its road as far
+// along as the trip bar under it; the Storage lists each good by its mark.
 
 /** A good's name in the reader's language: the catalogue's (the snapshot's English, names/goods.ts in Korean), else the code. */
 function useGoodName(): (code: string | null) => string {
@@ -29,6 +32,7 @@ export function PartyFace({ v }: { v: Lit }) {
   const goodName = useGoodName()
   const refresh = useWorld((s) => s.refresh)
   const ports = useWorld((s) => s.portByCode)
+  const goods = useWorld((s) => s.goodByCode)
   const [busy, setBusy] = useState<'collect' | 'home' | 'tool' | 'pack' | 'repeat' | null>(null)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   // what the last Collect found (0458), said in the refusal's slot
@@ -71,6 +75,9 @@ export function PartyFace({ v }: { v: Lit }) {
 
   const main = (
     <Card title={`${t('land.party')} · ${site}`} data-testid="land-party">
+      <div className="mb-2 overflow-hidden rounded-tile border border-edge">
+        <LandSite at={fill} out={out} far={out && terms !== null && !terms.home} make={make} />
+      </div>
       <Row
         label={<span data-testid="land-phase" data-phase={pr.phase}>{pr.stopped ? t('land.stopped') : phaseWord(locale, pr.phase, make)}</span>}
         value={out ? <span className="text-t-body text-ink">{goodName(p.good)}</span> : undefined}
@@ -179,7 +186,13 @@ export function PartyFace({ v }: { v: Lit }) {
           <Row label={<span className="text-ink-muted">0</span>} hairline={false} />
         ) : (
           stored.map(([code, n], i) => (
-            <Row key={code} label={goodName(code)} value={<span className="tabular-nums">{formatInt(n)}</span>} hairline={i < stored.length - 1} />
+            <Row
+              key={code}
+              mark={<Icon name={goodIcon(code, goods[code]?.category ?? '')} size={20} className="text-accent" />}
+              label={goodName(code)}
+              value={<span className="tabular-nums">{formatInt(n)}</span>}
+              hairline={i < stored.length - 1}
+            />
           ))
         )}
         <p className="mt-1 text-t-caption text-ink-faint">{`${v.home.name} · ${t('land.awayHours', { n: v.away_hours })}`}</p>
