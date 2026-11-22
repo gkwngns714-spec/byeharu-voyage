@@ -6,7 +6,7 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CaptainRows, CaptainTray } from '../../live/YourCaptains'
 import { useYourCaptains } from '../../live/useYourCaptains'
 import { tabWord } from '../../app/navTabs'
-import { useLocale, useT } from '../../lib/i18n'
+import { properName, useLocale, useT } from '../../lib/i18n'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { companyRoom, useHouseRoom } from '../../live/houseRoom'
@@ -191,8 +191,8 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
             hairline={i < ships.length - 1}
             data-testid="you-ship"
           >
-            <Facts className="block text-t-caption text-ink-faint pair:hidden" items={[ship.class, levelWord(ship.id), ship.is_flagship ? t('you.flagship') : null]} />
-            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name === ship.name ? null : fleet.name, ship.class, levelWord(ship.id), ship.is_flagship ? t('you.flagship') : null]} />
+            <Facts className="block text-t-caption text-ink-faint pair:hidden" items={[properName('hull', ship.class, ship.class), levelWord(ship.id), ship.is_flagship ? t('you.flagship') : null]} />
+            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name === ship.name ? null : fleet.name, properName('hull', ship.class, ship.class), levelWord(ship.id), ship.is_flagship ? t('you.flagship') : null]} />
           </Row>
         ))
       )}

@@ -160,6 +160,14 @@ export function formatCountdown(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+/** A DEADLINE'S TIME LEFT: the live countdown, with whole days in front from two days on (2026-11-22 second play-test: a city's request
+ *  read "Time left 5756:05:26", hours no one can read; now "239 d 20:05:26"). It still ticks every second. */
+export function formatTimeLeft(ms: number): string {
+  if (!Number.isFinite(ms)) return '—'
+  const days = Math.floor(Math.max(0, ms) / 86_400_000)
+  return days >= 2 ? `${t('format.relDays', { n: days })} ${formatCountdown(ms - days * 86_400_000)}` : formatCountdown(ms)
+}
+
 /** THE IDIOM that keeps the two clocks honest: "1.6 voyage-days · 4.7 min real". */
 export function formatTwoClocks(voyageDays: number): string {
   return t('format.twoClocks', {

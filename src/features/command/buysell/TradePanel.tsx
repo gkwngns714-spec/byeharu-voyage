@@ -198,7 +198,9 @@ function Frame({
               in the estimate, under the chart: under the fold of a 390 × 844 sheet, so the number a trip is chosen by was never seen
               before the press. One line, not a row of its own, so the half-raised sheet still shows the units. */}
           <Row
-            label={total === null ? t('desk.total') : moneyWord(side === 'buy' ? 'cost' : 'total', total)}
+            // the word whole (2026-11-22 second play-test: in the 1,280 desk's pane the figure and the profit left "Cost" 16 px, and it
+            // stood as "Co / st"); whole, the line still fits that pane (measured 286 of 286 px, nothing past the row)
+            label={<span className="whitespace-nowrap">{total === null ? t('desk.total') : moneyWord(side === 'buy' ? 'cost' : 'total', total)}</span>}
             value={
               <span className="inline-flex items-baseline gap-2">
                 <Figure value={total === null ? '—' : moneyFigure(side === 'buy' ? 'cost' : 'total', total)} size="figure" tone={total === null ? 'faint' : total >= 0 ? 'success' : 'ink'} />

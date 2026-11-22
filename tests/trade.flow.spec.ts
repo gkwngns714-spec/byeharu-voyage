@@ -111,7 +111,7 @@ const WORDS = {
     avg: '평균',
     cost: '비용',
     days: /^\d[\d.,]*일 · \d+\S*$/,
-    bought: /^.+ \d[\d,]*개 삼 · 비용 \d[\d,.]*/,
+    bought: /^.+ \d[\d,]*개 구매 · 비용 \d[\d,.]*/,
     sailed: /^.+\(으\)로 출항 · (이익|손실|합계|비용) [+−]?\d[\d,.]*/,
     arrives: /^\d\d:\d\d · \d+\S* 도착$/,
     nextStop: /^다음 기항 .+ \d\d:\d\d · \d+\S*$/,

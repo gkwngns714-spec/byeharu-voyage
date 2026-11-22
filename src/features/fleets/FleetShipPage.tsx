@@ -6,7 +6,7 @@ import { FleetStores } from './FleetStores'
 import { HullGauge } from './HullGauge'
 import { MoveShip } from './MoveShip'
 import { useShipMoves } from './useShipMoves'
-import { useT } from '../../lib/i18n'
+import { properName, useT } from '../../lib/i18n'
 
 // ONE SHIP'S PAGE: HER CARGO AND HER SUPPLIES — the owner, 2026-11-14: *"in fleets, when pressed a fleet, show only ships, then when i
 // press the ship, show cargo and supplies."*
@@ -36,7 +36,7 @@ function ShipPage({ fleet, ship, onOpenStats, onClose }: { fleet: FleetView; shi
   const moves = useShipMoves(fleet.id)
   const one = { ships: [ship] }
   return (
-    <DetailPage title={ship.name} word={ship.class} onClose={onClose} data-testid="fleet-ship-page">
+    <DetailPage title={ship.name} word={properName('hull', ship.class, ship.class)} onClose={onClose} data-testid="fleet-ship-page">
       <div className="flex flex-col pb-4">
         {/* how sound she is and how full, the two figures her row carried, before the lists that spell the second one out */}
         <FactsLine className="mb-1" data-testid="fleet-ship-gauges">
