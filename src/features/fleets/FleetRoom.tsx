@@ -1,7 +1,7 @@
 import { Button, Card, Note, Row } from '../../components/ui'
-import { formatOfTotal } from '../../lib/format'
+import { formatInt, formatOfTotal } from '../../lib/format'
 import type { RoomLadder } from '../../lib/rpc'
-import { roomStepWord, useBuyRoom, useHouseRoom } from '../../live/houseRoom'
+import { lockedSteps, roomStepWord, useBuyRoom, useHouseRoom } from '../../live/houseRoom'
 import { useT } from '../../lib/i18n'
 
 // THE ROOM A COMPANY HAS, AND HOW MORE OPENS (0354, docs/FLEETS_AND_SLOTS.md section 2.2; owner row 180: "unlock slots by purchasing with gold, and some with levels").
@@ -9,6 +9,10 @@ import { useT } from '../../lib/i18n'
 // WHILE FLEET ROOM IS NOT LIT (`on` false) the card says so in plain words and draws NO button: a press would only be refused. Lit, the one price a press would buy carries Buy,
 // and only when the purse covers it. Nothing here decides a price, a level or whether she can pay. The read, the press and the step's words are houseRoom.ts's, shared with
 // the fleet's locked tiles and the New fleet page (F5).
+//
+// TWO LINES A KIND, NOT THE LADDER (2026-11-22 second play-test: the card was a list of every rung, "Trading level 1 / 3", "Trading level 1 / 6",
+// "Price 60,000", "Price 1,000,000", and read as raw data). Each kind is what she has against what she may have and the most there is ("1 / 2 · max 6"), then
+// the NEXT place only: the level that opens it or the price that buys it (`lockedSteps`, the same reading the locked tiles and New fleet use), with Buy on the price.
 
 export function FleetRoom() {
   const t = useT()
@@ -30,25 +34,37 @@ export function FleetRoom() {
 function Ladder({ kind, label, ladder, on }: { kind: 'FLEET' | 'SHIP'; label: string; ladder: RoomLadder; on: boolean }) {
   const t = useT()
   const { busy, refusal, buy } = useBuyRoom(kind)
+  const { levels, prices } = lockedSteps(ladder)
+  const level = levels[0]
+  const price = prices[0]
+  const levelWord = level ? roomStepWord(t, level, ladder.level) : null
+  const priceWord = price ? roomStepWord(t, price) : null
 
   return (
     <div className="mt-3" data-testid={`fleet-room-${kind.toLowerCase()}`}>
-      <Row label={label} value={formatOfTotal(ladder.used, ladder.have)} hairline={false} data-testid="fleet-room-have" />
-      {/* one short line a step: the list is the whole ladder, and a company's side card is not the place for fourteen tall rows */}
-      <ul className="mt-1 flex flex-col gap-1 text-t-caption">
-        {ladder.steps.map((s, i) => (
-          <li key={i} className={`flex flex-wrap items-center justify-between gap-x-3 ${s.open ? 'text-ink' : 'text-ink-faint'}`} data-testid="fleet-room-step">
-            <span className="tabular-nums">{roomStepWord(t, s, ladder.level)}</span>
-            {on && s.how === 'gold' && s.next && s.can_pay ? (
-              <Button variant="secondary" busy={busy} onClick={buy} data-testid="fleet-room-buy">
-                {t('fleets.roomBuy')}
-              </Button>
-            ) : s.open ? (
-              <span className="text-success">{t('fleets.roomOpen')}</span>
-            ) : null /* 2026-11-15 owner: shorter words. A locked rung is the faint row; "Locked" ten times over said nothing new. */}
-          </li>
-        ))}
-      </ul>
+      <Row
+        label={label}
+        value={`${formatOfTotal(ladder.used, ladder.have)} · ${t('fleets.roomTop', { n: formatInt(ladder.top) })}`}
+        hairline={false}
+        data-testid="fleet-room-have"
+      />
+      {(levelWord || priceWord) && (
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-t-caption text-ink-muted" data-testid="fleet-room-next">
+          <span className="tabular-nums">
+            {t('fleets.roomNext')}{' '}
+            {levelWord && priceWord ? (
+              t('fleets.roomEither', { a: levelWord, b: priceWord })
+            ) : (
+              levelWord ?? priceWord
+            )}
+          </span>
+          {on && price?.next && price.can_pay && (
+            <Button variant="secondary" busy={busy} onClick={buy} data-testid="fleet-room-buy">
+              {t('fleets.roomBuy')}
+            </Button>
+          )}
+        </div>
+      )}
       {refusal && (
         <Note tone="danger" code={refusal.code} figures={refusal.figures}>
           {refusal.sentence}

@@ -45,6 +45,9 @@ export const fleetsDict = defineDict({
     roomEither: '{a} or {b}',
     /** 2026-11-22 (P0): a bought step's price had no word ("60,000" alone). */
     roomPrice: 'Price {price}',
+    /** 2026-11-22 second play-test: the room card says the next place only, and the most there is. */
+    roomNext: 'Next:',
+    roomTop: 'max {n}',
     track_trading: 'Trading',
     track_seamanship: 'Seamanship',
     track_command: 'Command',
@@ -141,6 +144,8 @@ export const fleetsDict = defineDict({
     roomLevelHave: '{track} 레벨 {have} / {need}',
     roomEither: '{a} 또는 {b}',
     roomPrice: '가격 {price}',
+    roomNext: '다음:',
+    roomTop: '최대 {n}',
     track_trading: '교역',
     track_seamanship: '항해술',
     track_command: '지휘',
