@@ -58,7 +58,8 @@
 --   new migration reversing the five hunks (OLD texts below verbatim), dropping the helper and deleting the nine knobs.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants, volatility, definer, search path, owner
 --   unmoved; no other world_config row moved; the switch false. THE PROBE (rolled back): a fresh Lisbon company. DARK every card (with
---   first_hour_enabled off and on) and her near horizon equal their pre-images' (copies in pg_temp); LIT no harbour holds more cards than
+--   first_hour_enabled off and on) and her near horizon equal their pre-images' (copies in pg_temp), read in ONE statement (one snapshot)
+--   and compared good by good: a call cut by world.best_sales' own 2.5 s budget (its only clock_timestamp input) compares as a prefix; LIT no harbour holds more cards than
 --   the knob where another was within reach, every moved card is one of its good's paying sales within the knob of its best, every top-up
 --   is another good with a profit above nought within the coin and the room, and a Trading 5 newcomer still has her horizon while a
 --   company founded three hours ago has none. Proof 178 plays the doors.
@@ -93,6 +94,10 @@ declare
   v_moved     int := 0;
   v_tops      int := 0;
   v_note      text := '';
+  v_cut       int := 0;   -- comparisons where a call ran out of its 2.5 s budget (its goods compared as a prefix of the other's)
+  v_cmp       int := 0;   -- goods compared dark, both calls answered
+  v_hz_new    numeric;
+  v_hz_old    numeric;
 begin
   perform set_config('statement_timeout', '45s', true);
   perform set_config('lock_timeout', '5s', true);
@@ -395,20 +400,49 @@ $h$);
     perform cmd.assume_identity(c_uid);
     select p.ducats into v_purse from public.players p where p.id = v_pl;
 
-    -- (a) DARK: every card and her horizon are their pre-images', with the first hour off and on
+    -- (a) DARK: every card and her horizon are their pre-images', with the first hour off and on.
+    -- DETERMINISTIC (the deploy of 2026-11-23 was refused here on prod, not on any local world): every function the card read runs is
+    -- STABLE and reads now(), so two calls in ONE statement see one snapshot and one time; the one input that is not is world.best_sales'
+    -- own 2.5 s budget (clock_timestamp: `cut`, the goods after it not answered). So both answers are read in one statement, the read is
+    -- warmed first, and the goods BOTH calls answered are compared in order, to the byte; a cut answer must be a prefix of the other;
+    -- with neither cut, the whole answer is compared.
+    perform world.best_sales(v_fl, v_lis);   -- warm (its answer is not read)
     for v_n in 0 .. 1 loop
       update public.world_config set value = to_jsonb(v_n = 1) where key = 'first_hour_enabled';
-      if world.best_sales(v_fl, v_lis) - 'clock' is distinct from pg_temp.best_sales_old_0475(v_fl, v_lis) - 'clock'
-         or public.first_hour_near_seconds(v_pl) is distinct from pg_temp.near_old_0475(v_pl) then
-        raise exception '0475 self-assert FAIL: dark (first hour %), a card or her horizon moved', v_n = 1;
+      select world.best_sales(v_fl, v_lis), pg_temp.best_sales_old_0475(v_fl, v_lis), public.first_hour_near_seconds(v_pl), pg_temp.near_old_0475(v_pl)
+        into v_new, v_old, v_hz_new, v_hz_old;
+      if v_hz_new is distinct from v_hz_old then
+        raise exception '0475 self-assert FAIL: dark (first hour %), her horizon moved: % against %', v_n = 1, v_hz_new, v_hz_old;
       end if;
+      if not (v_new ->> 'cut')::boolean and not (v_old ->> 'cut')::boolean then
+        if v_new - 'clock' is distinct from v_old - 'clock' then
+          raise exception '0475 self-assert FAIL: dark (first hour %), a card moved: % against %', v_n = 1, v_new - 'clock', v_old - 'clock';
+        end if;
+      else
+        v_cut := v_cut + 1;
+        if v_new - 'clock' - 'goods' - 'cut' is distinct from v_old - 'clock' - 'goods' - 'cut'
+           or ((v_new ->> 'cut')::boolean and not (v_old ->> 'cut')::boolean and jsonb_array_length(v_new -> 'goods') > jsonb_array_length(v_old -> 'goods'))
+           or ((v_old ->> 'cut')::boolean and not (v_new ->> 'cut')::boolean and jsonb_array_length(v_old -> 'goods') > jsonb_array_length(v_new -> 'goods')) then
+          raise exception '0475 self-assert FAIL: dark (first hour %), cut answers that are not one another''s prefix: % against %', v_n = 1, v_new - 'clock', v_old - 'clock';
+        end if;
+      end if;
+      for x in
+        select a.e as now, b.e as was, a.i
+          from jsonb_array_elements(v_new -> 'goods') with ordinality a(e, i)
+          join jsonb_array_elements(v_old -> 'goods') with ordinality b(e, i) on b.i = a.i
+      loop
+        v_cmp := v_cmp + 1;
+        if x.now is distinct from x.was then
+          raise exception '0475 self-assert FAIL: dark (first hour %), card % moved: % against %', v_n = 1, x.i, x.now, x.was;
+        end if;
+      end loop;
     end loop;
 
     -- (b) LIT (the first hour on): the spread, the top-up, the mark
     update public.world_config set value = 'true'::jsonb where key = 'near_choice_enabled';
     v_per := public.wc_int('near_choice_per_harbour');
-    v_old := pg_temp.best_sales_old_0475(v_fl, v_lis);
-    v_new := world.best_sales(v_fl, v_lis);
+    -- both in ONE statement: one snapshot (a beat's write between two statements would move an unmoved card)
+    select pg_temp.best_sales_old_0475(v_fl, v_lis), world.best_sales(v_fl, v_lis) into v_old, v_new;
     if not (v_old ->> 'cut')::boolean and not (v_new ->> 'cut')::boolean then
       for x in
         select o.e as was, n.e as now
@@ -447,7 +481,7 @@ $h$);
                        (select count(distinct e ->> 'port') from jsonb_array_elements(v_old -> 'goods') e where e ->> 'port' is not null),
                        (select count(distinct e ->> 'port') from jsonb_array_elements(v_new -> 'goods') e where e ->> 'port' is not null));
     else
-      v_note := 'the cards were NOT COMPARED HERE (the 2.5 s budget ran out; proof 178 holds them)';
+      v_note := 'the lit cards were NOT COMPARED HERE (the 2.5 s budget ran out; proof 178 holds them)';
     end if;
 
     -- (c) LIT, the near rule's end: a Trading 5 newcomer keeps her horizon; founded three hours ago, none
@@ -478,6 +512,6 @@ $h$);
   if clock_timestamp() - v_t0 > interval '30 seconds' then
     raise exception '0475 self-assert FAIL: the file took % (budget 30 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0475 self-assert ok: A REAL CHOICE AND A FULL HOLD (dark). % hunks once each and reversing; grants and volatility unmoved; no other function or knob moved; near_choice_enabled false. Probe (rolled back), a fresh Lisbon company: dark every card and her horizon their pre-image''s (first hour off and on); lit %; a Trading 5 newcomer keeps her horizon, one founded three hours ago has none. % ms.',
-    (select count(*) from hunks_0475), v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
+  raise notice '0475 self-assert ok: A REAL CHOICE AND A FULL HOLD (dark). % hunks once each and reversing; grants and volatility unmoved; no other function or knob moved; near_choice_enabled false. Probe (rolled back), a fresh Lisbon company: dark % cards and her horizon their pre-image''s to the byte (first hour off and on; % of 2 comparisons cut by the 2.5 s budget, compared as a prefix); lit %; a Trading 5 newcomer keeps her horizon, one founded three hours ago has none. % ms.',
+    (select count(*) from hunks_0475), v_cmp, v_cut, v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;

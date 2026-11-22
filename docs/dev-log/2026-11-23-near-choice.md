@@ -59,3 +59,16 @@ past it no second good is offered.
 The migration's self-assert (dark = the pre-images on copies, first hour off and on; lit moved cards, second goods, the near rule's end)
 and proof 178 (NC_DARK, NC_SPREAD, NC_MARK, NC_TOPUP: the one press buys both, NC_END). `tests/insurance.spec.ts` (the plan builder) writes
 the two extra lines only ticked and only at the served units. Harness: `scripts/ops/harness/near-choice/before-0475.sql`, `after-0475.sql`.
+
+## The refused deploy (2026-11-23) and its cause
+
+Prod refused the first push: `0475 self-assert FAIL: dark (first hour f), a card or her horizon moved` (head stayed 0474). Not reproduced
+with every one of prod's 49 lit switches set locally (the file applied). Cause, by measurement: a dark `world.best_sales` call runs 108
+functions (`track_functions`), every one STABLE or IMMUTABLE and none reading the wall clock but `world.best_sales` itself, for its 2.5 s
+budget (`cut`: the goods after it are not answered). So two calls in one statement see one snapshot and one `now()`, and can differ only
+when one of them runs out of its budget and the other does not. Locally the call takes 0.42 s; with the budget lowered to 0.3 s the
+refused file fails with prod's exact message. The fix reads both answers in one statement after a warm-up call, compares the goods both
+calls answered to the byte, in order (a cut answer must be a prefix of the other), and the whole answer when neither is cut; the lit
+comparison reads its two answers in one statement too (two statements are two snapshots: a beat's write between them would move a card).
+With the budget at 0.3 s the fixed file passes (12 cards compared as a prefix, 2 of 2 comparisons cut); at 2.5 s, 20 cards whole.
+A Lisbon card read near 2.5 s on prod for a new company is itself worth reading before `near_choice_enabled` is lit (the after-check's beat).
