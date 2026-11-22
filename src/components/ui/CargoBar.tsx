@@ -1,4 +1,6 @@
 import { Bar } from './Bar'
+import { Icon } from './Icon'
+import type { IconName } from './icons'
 import { formatInt, formatOfTotal, tonsWord } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 
@@ -30,6 +32,7 @@ export function CargoBar({
   free,
   after = null,
   bare = false,
+  icon,
   className = '',
 }: {
   /** Tons on board today — cargo and supplies, the caller's fold (`fleetHoldUsed`). */
@@ -43,6 +46,8 @@ export function CargoBar({
   after?: number | null
   /** No leading "Cargo" word: for a card whose own title already says Cargo. */
   bare?: boolean
+  /** The MARK in place of the leading word (the visual overhaul's slice 5: a ship's figures are a glyph and a number). The word stays the bar's name. */
+  icon?: IconName
   className?: string
 }) {
   const t = useT()
@@ -57,7 +62,7 @@ export function CargoBar({
       : t('ui.cargoOf', { of: formatOfTotal(used, total), word: tonsWord(total) })
   return (
     <span className={`flex items-center gap-3 text-t-caption text-ink-faint ${className}`} data-testid="cargo-bar">
-      {!bare && <span className="shrink-0">{t('ui.cargo')}</span>}
+      {icon !== undefined ? <Icon name={icon} size={16} className="shrink-0 text-ink-muted" /> : !bare && <span className="shrink-0">{t('ui.cargo')}</span>}
       <Bar
         pct={pct}
         pending={pending}

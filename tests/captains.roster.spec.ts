@@ -49,7 +49,10 @@ test("You → a hired captain's tray keeps every trait's name on one line and th
   await page.getByTestId('city-inn-captains').click()
   const guests = page.locator('[data-testid^="guest-"]')
   await expect(guests.first(), 'the Inn seats no captain — nobody to hire').toBeVisible({ timeout: 60_000 })
-  await guests.first().click()
+  // a guest whose job works (her card's figure is lit): a trait that does nothing is not drawn (X7), so she has a chip to measure
+  const working = guests.filter({ has: page.locator('[data-testid="guest-job-figure"][data-works="true"]') })
+  await expect(working.first(), 'no guest in the room has a job that works — nobody whose traits draw').toBeVisible()
+  await working.first().click()
   const inn = page.getByTestId('inn-tray')
   await inn.locator('[data-testid^="sign-"]').click()
   await expect(inn, "the hire did not land: the Inn's tray is still open").toHaveCount(0, { timeout: 60_000 })
@@ -68,13 +71,24 @@ test("You → a hired captain's tray keeps every trait's name on one line and th
     const tray = page.getByTestId('your-captain-tray')
     await expect(tray.locator('[data-testid^="captain-trait-"]').first()).toBeVisible()
     const read = await readTray(page, 'your-captain-tray')
-    // her trait rows and her level rows are the rows with a name and a figure; the rest (the homesick line, the promotion's
-    // sentence) are SENTENCES in the label slot, which wrap by design — but nothing may stand past the tray's edge.
+    // her level rows are the rows with a name and a figure; the rest (the homesick line, the promotion's sentence) are SENTENCES in
+    // the label slot, which wrap by design — but nothing may stand past the tray's edge.
     broken.push(...trayViolations(read, `${glass.width}×${glass.height}`, (r) => !/^captain-(trait|level)-/.test(r.id)))
-    traitRows += read.rows.filter((r) => r.id.startsWith('captain-trait-')).length
+    // VISUAL SLICE 6 (2026-11-23): her traits are CHIPS now (a glyph and a figure a line, its name the chip's accessible name), not
+    // rows with a name on line 1. The law is the same: every chip stands inside the tray's content edge, and no word in it is broken.
+    const chips = await tray.locator('[data-testid^="captain-trait-"]').evaluateAll((els) => {
+      const scroller = ([...document.querySelectorAll('[data-testid="your-captain-tray"] *')] as HTMLElement[]).find((el) => /auto|scroll/.test(getComputedStyle(el).overflowY))
+      const edge = scroller ? scroller.getBoundingClientRect().right - parseFloat(getComputedStyle(scroller).paddingRight || '0') : innerWidth
+      return els.map((e) => ({ id: e.getAttribute('data-testid'), past: Math.round(e.getBoundingClientRect().right - edge), cut: e.scrollWidth > e.clientWidth + 1 }))
+    })
+    for (const c of chips) {
+      if (c.past > 0) broken.push(`${glass.width}×${glass.height}: chip ${c.id} stands ${c.past}px past the tray's edge`)
+      if (c.cut) broken.push(`${glass.width}×${glass.height}: chip ${c.id} is cut`)
+    }
+    traitRows += chips.length
     await tray.getByTestId('tray-close').click()
     await expect(tray).toHaveCount(0)
   }
-  expect(traitRows, 'no trait row was measured — the tray draws none, so nothing was proved').toBeGreaterThan(0)
+  expect(traitRows, 'no trait chip was measured — the tray draws none, so nothing was proved').toBeGreaterThan(0)
   expect(broken, `a hired captain's tray is wider than itself, or a trait's name wrapped:\n${broken.join('\n')}`).toEqual([])
 })

@@ -92,9 +92,9 @@ for (const locale of ['en', 'ko'] as const) {
       // ROLE: the Boarder's card
       await page.getByTestId('your-captain').filter({ hasText: 'Turgut' }).click()
       const tray = page.getByTestId('your-captain-tray')
+      // visual slice 6 (2026-11-23): her role stands on her plate under her job, without the word "Role" beside it
       const role = tray.getByTestId('captain-role-word')
-      await expect(role, at).toContainText(w.role)
-      await expect(role, at).toContainText(w.roles[3])
+      await expect(role, at).toHaveText(w.roles[3])
       await expect(tray.getByTestId('captain-sheet'), at).toContainText(w.boarder)
       const read = await readTray(page, 'your-captain-tray')
       expect(trayViolations(read, at, (r) => !/^captain-(trait|level|role)-/.test(r.id)), `${at}: the tray broke its width law`).toEqual([])

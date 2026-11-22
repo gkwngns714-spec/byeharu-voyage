@@ -106,6 +106,9 @@ begin
 
   -- ── FH_NEAR ──
   update public.world_config set value = '0.04'::jsonb where key = 'first_hour_trip_hours';
+  -- her hull sails at her class's figure: commission_ship rolls a new hull's speed from a random id (0276), and a rolled speed moved
+  -- a trip onto the horizon itself (Bruges from Amsterdam at 144 s); pinned here, the trip times are the same on every run
+  update public.ships s set roll_speed = 1 where s.fleet_id = v_fa;
   v_n := 0;
   for p in select pt.id, pt.code from public.ports pt where pt.kind = 'HARBOUR' and pt.code in ('LIS', 'LON', 'GOA', 'VEN', 'AMS') order by pt.code loop
     -- ONE company, her mark moved (two companies sail different rolled hulls, so their cards differ for that alone)
@@ -122,8 +125,10 @@ begin
         join jsonb_array_elements(v_d -> 'goods') b(e) on b.e ->> 'good' = a.e ->> 'good'
        where a.e ->> 'port' is distinct from b.e ->> 'port'
     loop
+      -- a card's seconds are rounded to the whole second (0351) while the preference reads the exact time: a sale just beyond the
+      -- horizon (144.3 s) shows 144, so the farther card is held to at least the horizon, the nearer to at most it
       if not (x.near ->> 'pays')::boolean or (x.near ->> 'seconds')::numeric > 0.04 * 3600
-         or (x.far ->> 'seconds')::numeric <= 0.04 * 3600 then
+         or (x.far ->> 'seconds')::numeric < 0.04 * 3600 then
         raise exception 'PROOF 175 FAILED: at %, Trading 1 is offered % and Trading 5 % (horizon 0.04 h)', p.code, x.near, x.far;
       end if;
       v_n := v_n + 1;

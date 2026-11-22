@@ -34,8 +34,15 @@ test('dark: the room says it is not open and offers no press; the fleet shows he
   await expect(room.getByTestId('fleet-room-buy')).toHaveCount(0)
   await expect(room.locator('button')).toHaveCount(0)
   // 2026-11-22 second play-test: the next place only, by level or by price, not the whole ladder
-  await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-next')).toContainText('Next: Trading level 1 / 3 or Price 60,000')
-  await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-have')).toContainText('1 / 2 · max 6')
+  // slice 5 (2026-11-23): the room is two bars; the next step is its marks, the level and the price ("Next:", "or", "Price" and "max 6" left the glass)
+  await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-next')).toContainText('Trading level 1 / 3')
+  await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-next')).toContainText('60,000')
+  await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-have')).toContainText('1 / 2')
+  // the most there is is the bar's length: one segment a place, six of them, two lit (the bar's name still says "max 6")
+  const fleetBar = room.getByTestId('fleet-room-fleet').getByRole('meter')
+  await expect(fleetBar).toHaveAttribute('aria-valuemax', '6')
+  await expect(fleetBar).toHaveAttribute('aria-valuenow', '2')
+  await expect(fleetBar).toHaveAttribute('aria-label', /max 6/)
   await expect(room.getByTestId('fleet-room-ship')).toContainText('Seamanship or Command level 0 / 1')   // have / need (2026-11-15): a new company has neither level yet
   await expect(room.getByTestId('fleet-room-next')).toHaveCount(2)
   // nothing in the card shears sideways on a phone
@@ -91,8 +98,9 @@ test('lit: one Buy stands on the price she can pay, and a press opens room for a
 // has, the most there is, and the NEXT place only: the level or the price that opens it. A locked level step reads HAVE / NEED (2026-11-15, owner: requirements as
 // have / need): a new company's Trading is 1, so "Trading level 1 / 3".
 const ROOM_WORDS = {
-  en: { have: '1 / 2 · max 6', next: 'Next: Trading level 1 / 3 or Price 60,000', notOpen: 'Not open yet', buy: 'Buy' },
-  ko: { have: '1 / 2 · 최대 6', next: '다음: 교역 레벨 1 / 3 또는 가격 60,000', notOpen: '아직 안 열림', buy: '구매' },
+  // slice 5 (2026-11-23): the have is the bar's figure and the most is the bar's length (its name says it); the next step is a level and a price as marks
+  en: { have: '1 / 2', top: 'max 6', next: 'Trading level 1 / 3', price: '60,000', notOpen: 'Not open yet', buy: 'Buy' },
+  ko: { have: '1 / 2', top: '최대 6', next: '교역 레벨 1 / 3', price: '60,000', notOpen: '아직 안 열림', buy: '구매' },
 } as const
 
 for (const glass of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
@@ -110,7 +118,10 @@ for (const glass of [{ width: 390, height: 844 }, { width: 1280, height: 800 }])
         await expect(room.getByTestId('fleet-room-dark')).toHaveCount(0)
         await expect(room).not.toContainText(w.notOpen)
         await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-next')).toContainText(w.next)
+        await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-next')).toContainText(w.price)
         await expect(room.getByTestId('fleet-room-fleet').getByTestId('fleet-room-have')).toContainText(w.have)
+        await expect(room.getByTestId('fleet-room-fleet').getByRole('meter')).toHaveAttribute('aria-label', new RegExp(w.top))
+        await expect(room.getByTestId('fleet-room-fleet').getByRole('meter')).toHaveAttribute('aria-valuemax', '6')
         // a founding purse pays the first ship step only: one Buy on the card, in her language
         await expect(room.getByTestId('fleet-room-buy')).toHaveCount(1)
         await expect(room.getByTestId('fleet-room-buy')).toHaveText(w.buy)

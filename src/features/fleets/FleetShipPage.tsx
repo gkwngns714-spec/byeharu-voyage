@@ -1,4 +1,5 @@
-import { Button, CargoBar, DetailPage, FactsLine, SectionColumns, SheetSection, ShipPowerLine } from '../../components/ui'
+import { Button, CargoBar, DetailPage, Icon, SectionColumns, SheetSection, ShipPowerLine } from '../../components/ui'
+import { formatKnots, formatOfTotal } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
 import { hullFraction, shipHoldFree, shipHoldUsed } from '../../domain/fleet'
 import { FleetCargo } from './FleetCargo'
@@ -6,6 +7,7 @@ import { FleetStores } from './FleetStores'
 import { HullGauge } from './HullGauge'
 import { MoveShip } from './MoveShip'
 import { useShipMoves } from './useShipMoves'
+import { ShipPicture } from './ShipPicture'
 import { properName, useT } from '../../lib/i18n'
 
 // ONE SHIP'S PAGE: HER CARGO AND HER SUPPLIES — the owner, 2026-11-14: *"in fleets, when pressed a fleet, show only ships, then when i
@@ -38,11 +40,30 @@ function ShipPage({ fleet, ship, onOpenStats, onClose }: { fleet: FleetView; shi
   return (
     <DetailPage title={ship.name} word={properName('hull', ship.class, ship.class)} onClose={onClose} data-testid="fleet-ship-page">
       <div className="flex flex-col pb-4">
-        {/* how sound she is and how full, the two figures her row carried, before the lists that spell the second one out */}
-        <FactsLine className="mb-1" data-testid="fleet-ship-gauges">
-          <HullGauge fraction={hullFraction(ship)} label={t('ui.hullOf', { name: ship.name })} />
-          <CargoBar used={shipHoldUsed(ship)} total={ship.hold} free={shipHoldFree(ship)} className="min-w-48 grow basis-full sm:basis-auto" />
-        </FactsLine>
+        {/* HER PICTURE AND HER FOUR FIGURES FIRST (2026-11-23, the visual overhaul's slice 5: "a ship sheet led by its picture and 3-4 key figures").
+            Her picture is the battle stage's own at her served tier (ShipPicture.tsx); under it how sound she is and how full (the two bars her row
+            carried), then her hands and her speed as a mark and a number. The lists below spell the hold and the stores out. */}
+        <div className="mb-2 flex flex-col items-center gap-4 sm:flex-row sm:items-center" data-testid="fleet-ship-hero">
+          <ShipPicture code={ship.class_code} size="hero" tone={ship.is_flagship ? 'var(--color-accent)' : undefined} label={properName('hull', ship.class, ship.class)} data-testid="fleet-ship-picture" />
+          <div className="flex w-full min-w-0 flex-col gap-3 text-t-caption text-ink-faint" data-testid="fleet-ship-gauges">
+            <HullGauge fraction={hullFraction(ship)} label={t('ui.hullOf', { name: ship.name })} />
+            <CargoBar used={shipHoldUsed(ship)} total={ship.hold} free={shipHoldFree(ship)} icon="hold" />
+            <span className="flex flex-wrap items-center gap-x-6 gap-y-2 text-t-body text-ink">
+              <span className="flex items-center gap-2" title={t('ship.crew')} data-testid="fleet-ship-crew">
+                <span role="img" aria-label={t('ship.crew')} className="flex shrink-0">
+                  <Icon name="crew" size={18} className="text-ink-muted" />
+                </span>
+                <span className="tabular-nums font-semibold">{formatOfTotal(ship.crew, ship.crew_max)}</span>
+              </span>
+              <span className="flex items-center gap-2" title={t('ship.speed')} data-testid="fleet-ship-speed">
+                <span role="img" aria-label={t('ship.speed')} className="flex shrink-0">
+                  <Icon name="knots" size={18} className="text-ink-muted" />
+                </span>
+                <span className="tabular-nums font-semibold">{formatKnots(ship.speed)}</span>
+              </span>
+            </span>
+          </div>
+        </div>
         <SectionColumns count={2}>
           <SheetSection heading={t('fleets.cargo')} data-testid="fleet-fold-section">
             <FleetCargo fleet={one} />

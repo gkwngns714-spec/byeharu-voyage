@@ -84,6 +84,9 @@ begin
   perform public.commission_ship(v_pp, v_fp, public.wc_text('pirate_ship_class'), 'Proof 119 pirate ship', true, false);
   insert into public.pirate_ships (fleet_id, player_id, ord, home_port, last_port) values (v_fp, v_pp, 2000000119, v_lis, v_lis);
   perform public.fleet_hands(v_fp, v_lis);
+  -- both hulls sail at their class's figure: commission_ship rolls a new hull's speed from a random id (0276), and a navy galion rolled
+  -- 54 kn (her class's 64.8 at the knob) and missed the third by 0.9 s; pinned here, the bound is measured on the class every run (the knob is what is proved)
+  update public.ships s set roll_speed = 1 where s.fleet_id in (v_fn, v_fp);
   v_ha := public.new_house('00000000-0000-4000-8000-000000000119'::uuid, 'Casa Prova', 'PRT');
   select f.id into v_fa from public.fleets f where f.player_id = v_ha limit 1;
   if public.fleet_kind(v_fn) <> 'NAVY' or public.fleet_kind(v_fp) <> 'PIRATE' or public.fleet_kind(v_fa) <> 'COMPANY' then

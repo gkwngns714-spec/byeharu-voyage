@@ -35,6 +35,16 @@ export const ICON_NAMES = [
   'crew',
   'mallet',
   'pick',
+  // A captain's trait, by what it does (visual slice 6): the chips on her sheet and the Inn's cards
+  'speed',
+  'crate',
+  'tag',
+  'shield',
+  'heart',
+  'storm',
+  'target',
+  'cannon',
+  'cutlass',
   // ── ONE GLYPH PER DESTINATION (2026-11-23, the visual overhaul's slice 1) ─────────────────────
   'fort',
   'scales',
@@ -50,6 +60,11 @@ export const ICON_NAMES = [
   // The Office's doors on HQ (slice 2)
   'invest',
   'report',
+  // A ship's three figures (slice 5): her hold, her hull, her speed; and a fleet under way
+  'hold',
+  'hull',
+  'knots',
+  'sailing',
   // The Map's filter chips (slice 4)
   'layers',
   'waves',
@@ -237,6 +252,28 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   // 0455: a miner's pick, the Land tab's mark (docs/design/land-2026-11.md 6.7): the head's arc and the haft
   pick: ['M3.5 9.5C7.5 5.2 14.5 4.2 20.5 7', 'M12.4 5.6 8.5 20.5'],
 
+  // ── WHAT A CAPTAIN'S TRAIT DOES (2026-11-23, the visual overhaul's slice 6) ──────────────────────
+  // One glyph an effect of data/captains.json `effects` (captainWords.ts `traitEffect` reads it from the served line), so a trait
+  // is a chip of mark and figure, not a sentence. Days of supplies wear the `cask` they wear everywhere; nothing here is a place's.
+  // Three lines streaming behind a point — speed.
+  speed: ['M3 8h8.5', 'M1.5 12h11', 'M3 16h8.5', 'M14.5 6.5 20 12l-5.5 5.5'],
+  // A crate on its corner — cargo space (the hold).
+  crate: ['M4 8 12 4l8 4v8.5L12 20.5 4 16.5V8Z', 'M4 8l8 4 8-4', 'M12 12v8.5'],
+  // A price tag with its eyelet — better prices.
+  tag: ['M3.5 4h8.2l8.8 8.8-7.7 7.7L4 11.7V4Z', 'M8 7.2a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z'],
+  // A shield — fewer crew lost to pirates.
+  shield: ['M12 3 19.5 6v5.5c0 4.5-3.2 8-7.5 9.5-4.3-1.5-7.5-5-7.5-9.5V6L12 3Z'],
+  // A heart — homesickness eased.
+  heart: ['M12 20s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10Z'],
+  // A bolt — less storm damage.
+  storm: ['M13.5 2.5 5.5 13.5h6l-1 8 8-11h-6l1-8Z'],
+  // Rings and a bead — accuracy. Not `locate`: that is the chart's find control.
+  target: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z', 'M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z', 'M12 11.2a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6Z'],
+  // A gun on its wheel — reach.
+  cannon: ['M2.5 11.5 15 7l1.6 4.4L4 16Z', 'M16.4 9.2h4.6', 'M8.5 14.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z'],
+  // One blade with its guard — attack. The crossed blades are the Combat level's (levelWords.ts).
+  cutlass: ['M5 19 17 5.5c1.6 1.4 2 3.2 1.2 5L8 20.5', 'M3.5 16.5l4 4', 'M4.5 19.5 3 21'],
+
   // ── ONE GLYPH PER DESTINATION (2026-11-23, docs/design/visual-overhaul-2026-11-23.md, slice 1) ──
   // The bar and the Menu drew HQ and Rank with the same wreath, Map and Routes with the same chart, Office with the coin that
   // is also the Trading level's mark, and Trade with the compass that is also Exploration's. A glyph that means two places
@@ -272,6 +309,15 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   invest: ['M3.5 20h10', 'M3.5 16.5h10', 'M4.5 13h8', 'M3.5 20v-3.5', 'M13.5 20v-3.5', 'M15 12.5 20.5 7', 'M16.5 7h4v4'],
   // A page with a folded corner and its lines — Report (the company's book of results). Not the open book: that is History.
   report: ['M6 3h8.5L19 7.5V21H6V3Z', 'M14.5 3v4.5H19', 'M9 12h7', 'M9 15.5h7', 'M9 19h4'],
+  // ── A SHIP'S FIGURES AS MARKS (2026-11-23, the visual overhaul's slice 5: "[hold] 0 / 194", never "Cargo 0 / 194 tons" in words) ──────────
+  // A crate seen from a corner — the Hold (what she carries, against what she can). Not the cask: that is her supplies.
+  hold: ['M12 3.5 20 7.5v9L12 20.5 4 16.5v-9L12 3.5Z', 'M4 7.5 12 11.5l8-4', 'M12 11.5v9', 'M8 5.5l8 4'],
+  // A hull from the side, her planking and her keel, no mast — the Hull (how sound she is). Not the ship: that is the Fleets tab.
+  hull: ['M2.5 9.5h19l-2.6 7.2a2 2 0 0 1-1.9 1.3H7a2 2 0 0 1-1.9-1.3L2.5 9.5Z', 'M3.9 13.4h16.2', 'M12 18v2.5'],
+  // Three lines of wind, two curling — her Speed in knots. Not the compass: that is the Exploration level.
+  knots: ['M3 8.5h10.5a2.5 2.5 0 1 0-2.5-2.5', 'M3 12.5h16', 'M3 16.5h8.5a2.5 2.5 0 1 1-2.5 2.5'],
+  // A sail full of wind over a wave — Under way (how many of your fleets are sailing). Not the ship: that is the Fleets tab.
+  sailing: ['M7 3.5v13', 'M7 3.5c5 1.6 8.2 5.3 8.8 10.5H7', 'M3 20c2-1.3 4-1.3 6 0s4 1.3 6 0 4-1.3 6 0'],
   // ── THE MAP'S FILTER CHIPS (2026-11-23, the visual overhaul's slice 4) ──
   // Three sheets stacked — the chart's filter itself, and its "Off" chip (the plain chart). `regions` stays the Regions chip.
   layers: ['M12 4 3 8.5l9 4.5 9-4.5L12 4Z', 'M3 12.5l9 4.5 9-4.5', 'M3 16.5l9 4.5 9-4.5'],

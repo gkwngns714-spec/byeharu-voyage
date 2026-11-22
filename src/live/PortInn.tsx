@@ -22,12 +22,15 @@ import { fleetCrew } from '../domain/fleet'
 import { useCrewCost } from './useCrewCost'
 import { useInn } from './useInn'
 import { nationWordOf, useWorld } from './worldStore'
-import { jobWord, roleWord, speaksWords, traitLines } from './captainWords'
+import { jobWord, roleWord, speaksWords, traitWorks } from './captainWords'
+import { CaptainPortrait, TraitChips } from './captainLook'
+import { effectIcon } from './captainMarks'
 import { cmdHireOfficer } from '../lib/rpc'
 import {
   formatDucats,
   formatInt,
   formatOfTotal,
+  formatPctPoints,
   formatPrice,
   formatRealDuration,
   formatVoyageDays,
@@ -91,10 +94,22 @@ import { properName, t as tNow, useLocale, useT } from '../lib/i18n'
 // server's — world.captain_card, composed onto every guest by world.inn. This screen prints them and
 // writes no word of its own about what a job does (the client's old SPECIALTY_DOES table is gone).
 
-/** The tile's line: `S · Navigator`. A server before 0156 sends no card, and the job code is all
- *  there is to say. */
+/** The card's line: her job (`Navigator`; the grade is the letter on her plate). A server before 0156 sends no card, and the job
+ *  code is all there is to say. */
 function guestMeta(guest: InnGuest): string {
-  return guest.grade && guest.job_word ? `${guest.grade} · ${jobWord(guest.job_word)}` : guest.specialty.toLowerCase()
+  return (guest.job_word && jobWord(guest.job_word)) || guest.specialty.toLowerCase()
+}
+
+/** HER JOB'S FIGURE on the card: what it does, as its glyph, and by how much — muted for a job nothing reads yet (X7). */
+function JobFigure({ guest }: { guest: InnGuest }) {
+  const job = guest.traits?.[0]
+  const works = job ? traitWorks(job) : true
+  return (
+    <span className={`inline-flex items-center gap-1 ${works ? 'text-ink' : 'text-ink-faint'}`} data-testid="guest-job-figure" data-works={works}>
+      {job?.lines[0] && <Icon name={effectIcon(job.lines[0])} size={16} className={works ? 'text-accent' : ''} />}
+      <Figure value={`+${formatPctPoints(guest.bonus_pct)}`} tone={works ? 'ink' : 'faint'} />
+    </span>
+  )
 }
 
 /** Her nation and home port — the port a go-to link when the world names it (the inn serves the
@@ -360,9 +375,10 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
       ) : (
         <TileField>
           {view.present.map((guest) => (
+            // A GUEST IS A CARD (visual slice 6): her plate, her name and job, then two figures — what her job adds and her wage.
             <Tile
               key={guest.code}
-              mark={<Icon name="crew" size={20} />}
+              mark={<CaptainPortrait captain={guest} size={44} />}
               name={guest.name}
               meta={guestMeta(guest)}
               state={guest.signed ? 'muted' : 'rest'}
@@ -372,7 +388,8 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
                 setDetent('half')
                 setOpen(guest)
               }}
-              figure={<Figure value={formatDucats(guest.wage)} unit={t('inn.perVoyage')} />}
+              figure={<JobFigure guest={guest} />}
+              second={<Figure value={formatDucats(guest.wage)} />}
               data-testid={`guest-${guest.code}`}
             />
           ))}
@@ -403,20 +420,17 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
         >
           {open.grade && open.job_word ? (
             <>
-              <Row label={t('inn.grade')} value={open.grade} data-testid="inn-grade" />
-              <Row label={t('inn.job')} value={jobWord(open.job_word)} data-testid="inn-job" />
-              <Row label={t('codex.role')} value={roleWord(open) ?? ''} data-testid="inn-role" />
-              {/* A TRAIT IS ITS NAME ON LINE 1 AND ITS SENTENCE ON LINE 2 (2026-11-02, the same pattern as the captain tray's — CaptainsFace). The sentence is a clause
-                  or two of prose ("−4.2% crew lost to pirates · −4.2 points of homesickness", 436 px) and `Row` keeps a `value` on one line, so as the value it
-                  shoved the tray sideways and left the trait's name one letter wide; on line 2 it wraps under its label and the row is as wide as the tray. The
-                  row's tone and the served `in_use` still colour it. */}
-              {/* 2026-11-23 (third play-test): the hire sheet shows the traits that work; one that does nothing yet stood under a
-                  builder's "Not in use yet." (the Codex keeps every trait, with its idle word) */}
-              {(open.traits ?? []).filter((t) => t.in_use).map((t) => (
-                <Row key={t.code} label={jobWord(t.word)} data-testid={`inn-trait-${t.code}`}>
-                  <span className="block text-t-body text-success">{traitLines(t.lines)}</span>
-                </Row>
-              ))}
+              {/* HER PLATE (visual slice 6): the portrait with her grade, her job and her role, in place of three label-and-value rows */}
+              <div className="flex items-center gap-3 pb-2 pt-1" data-testid="inn-plate">
+                <CaptainPortrait captain={open} size={64} />
+                <div className="min-w-0 flex-1">
+                  <span className="block break-words text-t-body" data-testid="inn-job">{jobWord(open.job_word)}</span>
+                  <span className="block break-words text-t-label text-ink-muted" data-testid="inn-role">{roleWord(open)}</span>
+                </div>
+              </div>
+              {/* THE TRAITS THAT WORK, AS CHIPS (2026-11-23: the third play-test hid the idle ones here, #800; slice 6 draws the rest as
+                  a glyph and a figure each, by the one test `traitWorks`). The Codex keeps every trait, with its idle word. */}
+              <TraitChips traits={open.traits} testPrefix="inn-trait" />
               {speaksWords(open) && <Row label={speaksWords(open)} tone="muted" data-testid="inn-speaks" />}
             </>
           ) : (
