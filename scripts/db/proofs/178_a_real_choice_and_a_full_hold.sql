@@ -10,7 +10,7 @@
 -- @pass NC_DARK    dark: no card carries `spread`, `top` or `near`; a Trading 5 newcomer has no near horizon (0472's rule)
 -- @pass NC_SPREAD  lit: at Lisbon and Amsterdam a card moved off a harbour holding the knob's count, to a paying harbour of its good
 --                  within the knob of its best an hour of play; the moved card is the trip board's own row (profit and cost to the
---                  coin); the cards name more harbours than dark
+--                  coin); the cards name no fewer harbours than dark (a move may land on a harbour already named)
 -- @pass NC_MARK    lit: a paying card bought here says `near`; at Lisbon one is near and one is far (a far sale is marked, not hidden)
 -- @pass NC_TOPUP   lit: a card's second good is another good, within a quarter of her purse and the room left, its cost world.quote's
 --                  to the coin, its sale there above its cost; the one press (BUY, BUY) puts both in her hold
@@ -108,7 +108,7 @@ begin
       end if;
     end loop;
   end loop;
-  if v_n = 0 or v_m = 0 or v_hl <= v_hd then
+  if v_n = 0 or v_m = 0 or v_hl < v_hd then
     raise exception 'PROOF 178 FAILED: lit, % cards moved, % held to the board, harbours % dark against % lit: nothing was proved', v_n, v_m, v_hd, v_hl;
   end if;
   raise notice 'PASS: NC_SPREAD — lit: % cards moved off a harbour holding % cards, % held to the trip board''s row to the coin; harbours named % dark, % lit (Lisbon and Amsterdam).', v_n, v_per, v_m, v_hd, v_hl;
