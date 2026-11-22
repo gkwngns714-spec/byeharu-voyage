@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { Card, Figure, ListPanel, PageSplit, RankBars, Row, Skeleton, StackedBar, StatCell, type RankRow } from '../../components/ui'
+import { Card, ListPanel, PageSplit, RankBars, Row, Skeleton, StackedBar, StatCell, type RankRow } from '../../components/ui'
+import { BoardRow, Pinned, Podium } from './Podium'
 import { formatInt } from '../../lib/format'
 import { worldNationStandings } from '../../lib/rpc'
 import { HullCountry } from '../../live/HullCountry'
@@ -46,6 +47,31 @@ export function CountriesBoard() {
     tone: c.nation === mine?.nation ? 'accent' : 'neutral',
   }))
 
+  // A COUNTRY'S LINE (slice 8, Podium.tsx): its flag and name, the cities it holds, a bar against the first; home and won under it (the
+  // words a spec reads, tests/rank.countries.spec.ts), this week's and its givers after them. Every country is a `rank-country`, yours too.
+  const widest = Math.abs(board.countries[0]?.held ?? 0)
+  const row = (c: (typeof board.countries)[number], pinned = false) => (
+    <BoardRow
+      key={`${pinned ? 'pin' : 'row'}-${c.nation}`}
+      place={null}
+      name={nationNameOf(nationByCode, c.nation)}
+      nation={c.nation}
+      value={c.held}
+      text={formatInt(c.held)}
+      widest={widest}
+      mine={c.nation === mine?.nation}
+      pinned={pinned}
+      caption={[
+        t('rank.homeWon', { home: formatInt(c.home), won: formatInt(c.won) }),
+        c.won_week > 0 ? t('rank.thisWeek', { n: formatInt(c.won_week) }) : null,
+        c.top.length > 0 ? c.top.map((g) => g.name).join(', ') : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+      data-testid="rank-country"
+    />
+  )
+
   return (
     <PageSplit
       data-testid="rank-countries-page"
@@ -53,26 +79,22 @@ export function CountriesBoard() {
       stickySide
       main={
         <ListPanel look="card" columns="fit" title={t('rank.countries')} count={formatInt(board.countries.length)} data-testid="rank-countries">
-          {board.countries.map((c) => (
-            <Row
-              key={c.nation}
-              label={<HullCountry nation={c.nation} />}
-              value={<Figure value={formatInt(c.held)} tone={c.nation === mine?.nation ? 'accent' : 'ink'} />}
-              tone={c.nation === mine?.nation ? 'accent' : 'default'}
-              hairline={false}
-              data-testid="rank-country"
-            >
-              <span className="block text-t-caption text-ink-faint">
-                {[
-                  t('rank.homeWon', { home: formatInt(c.home), won: formatInt(c.won) }),
-                  c.won_week > 0 ? t('rank.thisWeek', { n: formatInt(c.won_week) }) : null,
-                  c.top.length > 0 ? c.top.map((g) => g.name).join(', ') : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-            </Row>
-          ))}
+          <Podium
+            label={t('rank.podium')}
+            steps={board.countries.slice(0, 3).map((c) => ({
+              key: c.nation,
+              // the countries' board serves its order and no place, so the steps carry none (a tie would read as a second place)
+              place: null,
+              name: nationNameOf(nationByCode, c.nation),
+              nation: c.nation,
+              value: c.held,
+              text: formatInt(c.held),
+              mine: c.nation === mine?.nation,
+            }))}
+          />
+          {/* YOUR COUNTRY, PINNED at the head of the list and lit (slice 8); the others follow in the served order */}
+          {mine !== null && <Pinned>{row(mine, true)}</Pinned>}
+          {board.countries.filter((c) => c.nation !== mine?.nation).map((c) => row(c))}
         </ListPanel>
       }
       side={
