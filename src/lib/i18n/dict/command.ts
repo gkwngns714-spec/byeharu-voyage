@@ -127,7 +127,7 @@ export const commandDict = defineDict({
     lvPerk_run: 'Runs {n}% better',
     /** 0468: Trading's unlocks (lit: level_unlocks_enabled), the served running total */
     lvPerk_trade_routes: 'Routes +{n}',
-    lvPerk_fleet_ships: 'Ships a fleet +{n}',
+    lvPerk_fleet_ships: 'Ships per fleet +{n}',
     lvPerk_yard_fee: 'Yard fee −{n}%',
     lvAct_trade: 'Buy or sell goods',
     lvAct_give: 'Invest in or donate to a city',
@@ -164,8 +164,8 @@ export const commandDict = defineDict({
     /** 2026-11-22 (P0): the goal card's title is the NEXT one; bare, it read as a promotion. */
     goalNext: 'Next: {name}',
     goalTracks: 'Trading {a}/{n} · Exploration {b}/{n}',
-    /** 0468: the goal card names what the next level opens ("Trading 4: Ships a fleet +1") */
-    goalOpens: '{track} {n}: {what}',
+    /** 0468: the goal card names what the next level opens ("Trading 4 → Ships per fleet +1": the arrow says it is ahead; "Trading 4: …" read as a level she had) */
+    goalOpens: '{track} {n} → {what}',
     lvActsAs: 'acts as level {n}',
     lvLit: 'Ship and captain levels: on.',
     lvRegard: 'Countries',
@@ -328,7 +328,7 @@ export const commandDict = defineDict({
     lvTitleTop: '가장 높은 직함.',
     goalNext: '다음: {name}',
     goalTracks: '교역 {a}/{n} · 탐험 {b}/{n}',
-    goalOpens: '{track} {n}: {what}',
+    goalOpens: '{track} {n} → {what}',
     lvActsAs: '레벨 {n}로 작동',
     lvLit: '배·선장 레벨: 작동 중.',
     lvRegard: '나라',

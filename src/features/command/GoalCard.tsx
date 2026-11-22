@@ -5,7 +5,10 @@ import { worldLevels, type LevelsView } from '../../lib/rpc'
 import { useServedRead } from '../../live/useServedRead'
 import { useSecondShip } from '../../live/useSecondShip'
 import { useWorld } from '../../live/worldStore'
-import { formatInt } from '../../lib/format'
+import { formatInt, formatRealShort } from '../../lib/format'
+import { portNameOf } from '../../live/worldStore'
+import { useShellState } from '../../app/shellState'
+import type { SecondShip } from '../../live/useSecondShip'
 import { useNavigate } from 'react-router-dom'
 import { openOfficeCity } from './officeView'
 
@@ -55,6 +58,8 @@ export function GoalCard() {
   const v = read.view
   const reputation = useWorld((s) => s.player?.reputation?.balance ?? null)
   const second = useSecondShip()
+  const portByCode = useWorld((s) => s.portByCode)
+  const { nowMs } = useShellState()
   if (!v || !v.company) return <div className={`${CARD} ${place}`} data-testid="goal-card-hold" aria-hidden />
 
   const next = v.title.next
@@ -65,12 +70,15 @@ export function GoalCard() {
   const lit = trading?.benefits.some((b) => b.kind === 'perk') ?? false
   const ahead = lit && trading ? nextOpening(locale, v.tracks.trading.level, trading.benefits) : null
   const unlock = ahead ? t('command.goalOpens', { track: levelName(locale, 'trading'), n: ahead.level, what: ahead.what }) : null
+  // THE PRESS OPENS THE NEXT STEP (2026-11-22 second play-test): the yard where she lies; away from it the Map, where its city is
+  // (Office > City opens the city she lies in, and one with no yard fell back to its Market with no word why)
+  const next2 = !second ? 'you' : second.here ? 'yard' : 'map'
   return (
     // THE PRESS OPENS THE NEXT STEP (P0 of docs/design/playable-2026-11-22.md): while the second line is the second ship, the step
     // is the build yard's sheet (Office > City > Build yard: the materials stored, Plan trip, Build); otherwise the levels (You).
-    <button type="button" onClick={() => navigate(second ? openOfficeCity('building_yard') : '/you')} className={`${CARD} ${place} bg-surface-2`}
+    <button type="button" onClick={() => navigate(next2 === 'yard' ? openOfficeCity('building_yard') : next2 === 'map' ? '/map' : '/you')} className={`${CARD} ${place} bg-surface-2`}
       data-testid="goal-card"
-      data-next={second ? 'yard' : 'you'}
+      data-next={next2}
       // her two track levels stand on the card whatever its second line says (the second ship's count hides the words; a test reads these)
       data-trading={v.tracks.trading.level}
       data-exploration={v.tracks.exploration.level}
@@ -94,7 +102,7 @@ export function GoalCard() {
           data-ready={second.ready}
           data-of={second.of}
         >
-          {t('yard.secondShip', { n: formatInt(second.ready), of: formatInt(second.of) })}
+          {secondWords(t, second, second.port ? portNameOf(portByCode, second.port) : null, nowMs)}
         </span>
       ) : next && (
         <span className="col-span-2 min-w-0 break-words text-t-caption text-ink-faint" data-testid="goal-tracks">
@@ -106,4 +114,19 @@ export function GoalCard() {
       )}
     </button>
   )
+}
+
+/** The second ship's line: a hull on order (0465) says when she is ready; else the materials stored, with the yard's city when she is not
+ *  lying there (the count is of THAT yard, so the line says which). */
+function secondWords(t: ReturnType<typeof useT>, s: SecondShip, city: string | null, nowMs: number): string {
+  if (s.order) {
+    const left = Date.parse(s.order.readyAt) - nowMs
+    const name = properName('hull', s.order.name, s.order.name)
+    return s.order.ready || left <= 0
+      ? t('yard.secondShipOrderReady', { name })
+      : t('yard.secondShipOrdered', { name, time: formatRealShort(left) })
+  }
+  const n = formatInt(s.ready)
+  const of = formatInt(s.of)
+  return !s.here && city ? t('yard.secondShipAt', { city, n, of }) : t('yard.secondShip', { n, of })
 }

@@ -60,7 +60,8 @@ export function BountyBoard({ read }: { read: PirateBounties | null }) {
           columns="fit"
           title={t('bounty.wanted')}
           count={formatInt(read.bounties.length)}
-          footer={<Hint>{t('bounty.rule')}</Hint>}
+          // the rule speaks of "her": only under a pirate it can mean (2026-11-22 second play-test: it stood under "No bounties posted.")
+          footer={read.bounties.length > 0 ? <Hint>{t('bounty.rule')}</Hint> : undefined}
           data-testid="rank-bounties"
         >
           {read.bounties.length === 0 && <Row label={t('bounty.none')} tone="muted" hairline={false} />}

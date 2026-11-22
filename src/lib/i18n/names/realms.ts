@@ -48,6 +48,8 @@ export const KO_HULLS: Readonly<Record<string, string>> = {
   'Caravelão': '카라벨랑', Chalupa: '찰루파', Tartana: '타르타나', Boum: '붐', 'Şayka': '샤이카', Bezaisen: '벤자이센',
   Nao: '나오', Kogge: '코게', Byeongjoseon: '병조선', Kenminsen: '겐민센', Kotia: '코티아',
   Hoy: '호이', Holk: '홀크', Cocca: '코카', Caochuan: '조량선', Taforeia: '타포레이아', Hourque: '우르크', Jong: '종', 'Nave grossa': '나베 그로사',
+  // 2026-11-22 second play-test: the three hulls of the starting yard (Lisbon) and the starting ship were English on a Korean screen
+  Barca: '바르카', 'Caravela latina': '카라벨라 라티나', 'Nau / Carrack': '나우 / 캐랙',
 }
 
 // A COMPANY'S TITLE (`public.title_names`, eleven rungs), keyed by the served English name. They were the one English word on

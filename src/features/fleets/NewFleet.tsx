@@ -8,7 +8,7 @@ import { companyRoom, lockedSteps, roomStepWord, useBuyRoom, useHouseRoom, type 
 import { useWorld } from '../../live/worldStore'
 import { useShipMoves } from './useShipMoves'
 import { formatDucats, formatInt } from '../../lib/format'
-import { useT } from '../../lib/i18n'
+import { properName, useT } from '../../lib/i18n'
 
 // A NEW FLEET, FROM THE FLEETS PAGE ITSELF (F5, 2026-11-11; owner rows 180 and 316: "create multiple fleet... assign multiple ships"). Until now the only way to a second
 // fleet was inside a ship's Move pop-up. This is the same door (`cmd.move_ship` with a new name: no new server door), reached from the list: a row "New fleet" under her
@@ -214,7 +214,7 @@ function LeadChoices({ fleet, picked, onPick }: { fleet: FleetView; picked: stri
             key={ship.id}
             mark={<IconDisc name="ship" tone={picked === ship.id ? 'accent' : 'muted'} />}
             label={ship.name}
-            value={<span className="text-t-caption text-ink-muted">{ship.class}</span>}
+            value={<span className="text-t-caption text-ink-muted">{properName('hull', ship.class, ship.class)}</span>}
             tone={picked === ship.id ? 'accent' : 'default'}
             onClick={() => onPick(ship.id)}
             hairline={i < fleet.ships.length - 1}

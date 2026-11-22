@@ -75,7 +75,7 @@ for (const glass of GLASSES) {
         // 2026-11-15 owner: shorter words — what is on board against what is wanted (HAVE / NEED)
         expect(r.want, 'no quantity and no held figure').toMatch(/^On board [\d,]+ \/ [\d,]+$/)
         expect(r.budget, 'no bonus each and no budget left').toMatch(/^Bonus [\d,.]+ 🪙 each · [\d,]+ 🪙 left$/)
-        expect(r.time, 'no live time').toMatch(/^Time left (\d+:)?\d+:\d\d$/)
+        expect(r.time, 'no live time').toMatch(/^Time left (\d+ d )?(\d+:)?\d+:\d\d$/)
         expect(r.past, 'something runs past its row').toBe(0)
       }
 
