@@ -116,6 +116,11 @@ player sees.
   Navy, Cargo, Ships and Merchants stand under one "More" fold in the face list. X3 (Routes off the Menu) lands with roadmap slice 4,
   whose desk "From here" line replaces it (until then the ranking has no other home). nav.geometry, nav.rails, consistency and
   land.party are updated for the new cell list only; every geometry law stays.
+- Built (decided by default, the owner may reverse each): the three doors stand as a second row under HQ's five buildings
+  (office, a new coin-stack `invest` and a new page `report` glyph) and open the Office page on that face (`/office?face=`), with the
+  HQ cell lit there; the Profile page is worded "Account" (one word for the row and the page) and lights You; "More" is the sixth cell
+  of the Stats strip and opens the Overview with the folded faces as a second strip; Stats opens on News (`/stats?face=` names
+  another); "Gold in play" (and the funds at sea) stand in the live band only on the faces under More.
 
 **3. Trade desk (with roadmap X1, X8).**
 - Before: 34 presses on the first glass; word chips for eight cities; "Supplies 15.0 days / Cargo 0 / 194 tons" as words; a goal card in

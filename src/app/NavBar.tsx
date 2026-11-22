@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { MenuTile, NAV_TRAY_CEILING, Nav, TapAway, Tray, navTrayAnchorClass, useWide, type NavItem, type TrayDetent } from '../components/ui'
-import { navCells, navWord, tabHref, type LitSwitches, type ServedSwitch } from './navTabs'
+import { litRoute, navCells, navWord, tabHref, type LitSwitches, type ServedSwitch } from './navTabs'
 import { useT, useLocale } from '../lib/i18n'
 import { useWorld } from '../live/worldStore'
 
@@ -116,9 +116,9 @@ export function NavBar() {
   // THE LIT CELL ANSWERS "WHERE AM I", and an open tray is not an answer to that. A group cell is
   // lit while you are STANDING ON one of its members — it keeps its own name in every state, since
   // a cell whose word changes with the route is not a name, and the screen prints its own title.
-  const here = cells.find((c) =>
-    c.kind === 'tab' ? c.to === pathname : c.members.some((m) => m.to === pathname),
-  )
+  // A switched-off tab whose route still stands lights the cell it lives under (navTabs `litRoute`: the Office HQ, the Account You).
+  const at = litRoute(pathname)
+  const here = cells.find((c) => (c.kind === 'tab' ? c.to === at : c.members.some((m) => m.to === at)))
   const currentId = here === undefined ? undefined : here.kind === 'tab' ? here.to : here.id
 
   // A TAB'S CELL ID IS ITS ROUTE, which is what lets `onNavigate` hand back an item and this file

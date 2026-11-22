@@ -14,7 +14,8 @@ import { ready, reachable } from './appReady.fixture'
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-const EXPECTED = ['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'Menu']
+// 2026-11-23 (the visual overhaul's slice 2, X2): the Office cell is off; its faces are HQ's doors. Land is dark in this world.
+const EXPECTED = ['HQ', 'Trade', 'Fleets', 'Map', 'Menu']
 
 async function labels(page: Page, rail: string): Promise<string[]> {
   return page.getByTestId(rail).locator('[data-testid^="nav-label-"]').allInnerTexts()
@@ -32,7 +33,7 @@ async function noSideScroll(page: Page, where: string) {
   expect(s.w, `${where} scrolls sideways`).toBeLessThanOrEqual(s.cw)
 }
 
-test('HQ and Map draw the same six cells, from the one tab table', async ({ page, request, baseURL }) => {
+test('HQ and Map draw the same cells, from the one tab table', async ({ page, request, baseURL }) => {
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
 

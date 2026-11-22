@@ -304,7 +304,7 @@ for (const glass of [PHONE, WIDE]) {
     bad.push(...(await measure(page, at('desk good'), '[data-testid="trend-row"]', all)))
 
     // STATS → OVERVIEW (SeriesChart): the world's money, and whichever of sold / bought is drawn
-    await page.goto('stats')
+    await page.goto('stats?face=overview')
     await ready(page)
     await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 180_000 })
     bad.push(...(await measure(page, at('stats world'), '[data-testid="stats-chart-world"]', all)))

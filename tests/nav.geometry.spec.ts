@@ -161,8 +161,11 @@ test(`nav: one row, every cell reachable, no label shaved at ${PHONE.width}px`, 
   //     And 2026-11-16 (owner: "in trade, there are city invest report and levels … they should have separate tab like map you
   //     stats etc."): the OFFICE cell, the desk's old City · Invest · Report faces. SIX — HQ · Trade · Fleets · Map · Office · Menu.
   expect(report.cells.map((c) => c.label), 'a Command cell is on the bar; the desk is worded Trade').not.toContain('Command')
-  expect(report.cells.map((c) => c.label)).toEqual(['HQ', 'Trade', 'Fleets', 'Map', 'Office', 'Menu'])
-  expect(report.cells.length, `the bar draws ${report.cells.length} cells; six — HQ · Trade · Fleets · Map · Office · Menu (owner, 2026-11-16)`).toBe(6)
+  //     And 2026-11-23 (the visual overhaul's slice 2, roadmap X2): the Office cell is switched off in the tab table and its faces are
+  //     HQ's doors. FIVE while Land is dark (this world) — HQ · Trade · Fleets · Map · Menu; lit, Land stands before the Menu.
+  expect(report.cells.map((c) => c.label), "an Office cell is back on the bar; its faces are HQ's doors (X2)").not.toContain('Office')
+  expect(report.cells.map((c) => c.label)).toEqual(['HQ', 'Trade', 'Fleets', 'Map', 'Menu'])
+  expect(report.cells.length, `the bar draws ${report.cells.length} cells; five — HQ · Trade · Fleets · Map · Menu (slice 2, 2026-11-23)`).toBe(5)
 
   // 1. ONE ROW. The decision this file pins: at nine tabs the bar wrapped to 3×3 and ate 168px of
   //    an 844px screen. The cure was grouping, not a second row, so a second row is a failure.
@@ -353,7 +356,7 @@ test('nav: the Menu tray stands as tall as its rows — every member whole and r
   expect(broken, `the Menu tray is shorter than its rows:\n${broken.join('\n')}`).toEqual([])
 })
 
-test('nav: HQ leads, Trade follows; the City rail is the shell rail (HQ · Trade · Fleets · Map · Office · Menu); Market opens in place', async ({
+test('nav: HQ leads, Trade follows; the City rail is the shell rail (HQ · Trade · Fleets · Map · Menu); Market opens in place', async ({
   page,
   request,
   baseURL,
@@ -383,7 +386,7 @@ test('nav: HQ leads, Trade follows; the City rail is the shell rail (HQ · Trade
 
   // THE CITY RAIL'S OWN CELLS ARE REAL TAP TARGETS AT 390, and nothing scrolls sideways here.
   // #426: the City page renders the shell's own NavBar, so the cells live under city-rail too and
-  // BOTH rails are the six cells of the one tab table (Fleets and Office included).
+  // BOTH rails are the cells of the one tab table (Fleets included; the Office's faces are HQ's doors since slice 2).
   const railCells = await page
     .locator('[data-testid="city-rail"] [data-testid^="nav-cell-"]')
     .evaluateAll((es) =>
@@ -392,7 +395,7 @@ test('nav: HQ leads, Trade follows; the City rail is the shell rail (HQ · Trade
         return { label: (e.textContent ?? '').trim(), w: Math.round(r.width), h: Math.round(r.height) }
       }),
     )
-  expect(railCells.length, `the City rail draws ${railCells.length} cells; HQ · Trade · Fleets · Map · Office · Menu`).toBe(6)
+  expect(railCells.length, `the City rail draws ${railCells.length} cells; HQ · Trade · Fleets · Map · Menu`).toBe(5)
   for (const c of railCells) {
     expect(
       c.w,

@@ -19,7 +19,9 @@ import { useWorld } from '../../live/worldStore'
 // phone. Nothing about WHEN a figure moves changed. The world's money is nine digits and a coin — 188 px at 24 px —
 // which fits the narrowest card with its padding and, on a phone, a whole line (or drops under its label).
 
-export function LiveNow({ live }: { live: StatsNow | null }) {
+// THE WORLD'S MONEY IS A BUILDER'S FIGURE (2026-11-23, the visual overhaul's slice 2, roadmap X5): "Gold in play" and the funds at sea
+// stand on the faces under "More" (`world`), with the Overview whose subject they are; the faces up front keep the player's three.
+export function LiveNow({ live, world }: { live: StatsNow | null; world: boolean }) {
   const t = useT()
   // Selected as a primitive, one selector (worldStore's rule).
   const ducats = useWorld((s) => s.ducats)
@@ -48,15 +50,17 @@ export function LiveNow({ live }: { live: StatsNow | null }) {
         text={live === null ? '—' : undefined}
         data-testid="stats-live-trades"
       />
-      <StatCard
-        label={t('stats.money')}
-        value={live?.total ?? 0}
-        format={formatDucats}
-        text={live === null ? '—' : undefined}
-        data-testid="stats-live-world"
-      />
+      {world && (
+        <StatCard
+          label={t('stats.money')}
+          value={live?.total ?? 0}
+          format={formatDucats}
+          text={live === null ? '—' : undefined}
+          data-testid="stats-live-world"
+        />
+      )}
       {/* 0310: a part of Set aside, served only while a cargo ship exists. */}
-      {live?.funds_at_sea !== undefined && (
+      {world && live?.funds_at_sea !== undefined && (
         <StatCard label={t('stats.fundsAtSea')} value={live.funds_at_sea} format={formatDucats} data-testid="stats-live-funds" />
       )}
     </StatStrip>

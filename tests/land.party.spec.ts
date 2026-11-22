@@ -186,7 +186,8 @@ for (const glass of GLASSES) {
 
 test.describe('the bar, lit, on a phone', () => {
   for (const width of [320, 390]) {
-    test(`seven cells at ${width} px, each a real tap target, no label cut`, async ({ browser, request, baseURL }) => {
+    // SIX since 2026-11-23 (the visual overhaul's slice 2, X2): HQ · Trade · Fleets · Map · Land · Menu, the Office's faces HQ's doors
+    test(`six cells at ${width} px, each a real tap target, no label cut`, async ({ browser, request, baseURL }) => {
       test.setTimeout(480_000)
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
       const page = await browser.newPage({ viewport: { width, height: 700 } })
@@ -195,7 +196,7 @@ test.describe('the bar, lit, on a phone', () => {
       await ready(page)
       await expect(page.getByTestId('land-party')).toBeVisible({ timeout: 90_000 })
       const cells = page.locator('[data-testid="nav-bar"] > a, [data-testid="nav-bar"] > button')
-      await expect(cells).toHaveCount(7)
+      await expect(cells).toHaveCount(6)
       for (const c of await cells.all()) {
         const box = await c.boundingBox()
         expect(box?.width ?? 0, 'a cell under the 44-px reach floor').toBeGreaterThanOrEqual(44)

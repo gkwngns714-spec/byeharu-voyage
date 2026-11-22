@@ -47,6 +47,9 @@ export const ICON_NAMES = [
   'menu',
   'laurel',
   'levelUp',
+  // The Office's doors on HQ (slice 2)
+  'invest',
+  'report',
   // The seven trade-good CATEGORIES. Not a good's own mark any more — the fallback, for a good
   // that arrives from a migration before anyone has drawn it. See goodIcons.ts.
   'spice',
@@ -261,6 +264,11 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   laurel: ['M9 20.5c-3.4-1.6-5.5-5-5.5-8.7 0-3 1.2-5.6 3.2-7.3', 'M15 20.5c3.4-1.6 5.5-5 5.5-8.7 0-3-1.2-5.6-3.2-7.3', 'M4 9.6l2.4.6', 'M3.8 13.6l2.4-.2', 'M5.4 17.4l2-1', 'M20 9.6l-2.4.6', 'M20.2 13.6l-2.4-.2', 'M18.6 17.4l-2-1'],
   // Two chevrons climbing — Levels (the company's levels, a rank's stripes).
   levelUp: ['m6 12.5 6-6 6 6', 'm6 18.5 6-6 6 6'],
+  // ── THE OFFICE'S DOORS ON HQ (2026-11-23, the visual overhaul's slice 2): City wears the Office's counting house; these two are new.
+  // A stack of coins with a rising arrow — Invest (money put into a city). Not the coin: that is the purse and the Trading level.
+  invest: ['M3.5 20h10', 'M3.5 16.5h10', 'M4.5 13h8', 'M3.5 20v-3.5', 'M13.5 20v-3.5', 'M15 12.5 20.5 7', 'M16.5 7h4v4'],
+  // A page with a folded corner and its lines — Report (the company's book of results). Not the open book: that is History.
+  report: ['M6 3h8.5L19 7.5V21H6V3Z', 'M14.5 3v4.5H19', 'M9 12h7', 'M9 15.5h7', 'M9 19h4'],
 
   // ── THE SEVEN CATEGORY MARKS — now the FALLBACK, not the answer ───────────────────────────────
   // Every good in `data/goods.json` has its own mark below. These seven remain because a good can
