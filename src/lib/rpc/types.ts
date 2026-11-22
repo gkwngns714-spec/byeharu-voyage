@@ -1698,6 +1698,9 @@ export interface TradeRequest {
   size?: 'city' | 'hold'
   /** 0466 — a hold job's whole pay: the units left x (today's bid + the bonus), served as one figure; null on a city's request. */
   total?: number | null
+  /** 0473 — a hold job's harbour that sells the good (the nearest a Barca sails to and back in half the time the job stands), and a Barca's
+   *  real sailing seconds to it from this harbour, served; null on a city's request (and absent from a server before 0473). */
+  from?: { code: string; name: string; nm: number | null; sail_seconds: number | null } | null
   mid_at_post: number
   /** Calendar days (`world.game_day`): posted, and the first day it is no longer open. */
   posted_day: number
@@ -2282,6 +2285,8 @@ export interface HousesWeek {
     on_board: boolean
     /** The house just ahead of you and how far: null when you lead. */
     ahead: { name: string; gap: number } | null
+    /** 0473 — your figure is counted in the read (the other rows are the history job's, `through` / `age_seconds`). */
+    live?: boolean
   } | null
 }
 

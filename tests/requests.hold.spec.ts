@@ -30,3 +30,22 @@ test('the board prints the served total for a hold job and adds nothing itself',
   expect(src).toContain("t('trade.bonusLine'")
   expect(src).not.toMatch(/r\.qty\s*\*|\*\s*r\.price_each/)
 })
+
+// 0473 (docs/design/playable-2026-11-22.md section 5, row 6): a hold job says where its good is sold and how long a Barca sails there,
+// both served on the row (`from`); the client measures no distance and times no voyage of its own.
+test('a hold job names its harbour in both tongues, and prints the served time', () => {
+  for (const key of ['holdFrom', 'holdFromCity'] as const) {
+    for (const lang of ['en', 'ko'] as const) {
+      const w = tradeDict[lang][key]
+      expect(w, `no ${lang} word ${key}`).toContain('{city}')
+      const bare = w.replace('{city}', '').replace('{time}', '').replace('·', '').trim().split(/\s+/).filter(Boolean)
+      expect(bare.length, `${lang} ${key} is more than two words: ${w}`).toBeLessThanOrEqual(2)
+    }
+  }
+  expect(tradeDict.en.holdFrom).toContain('{time}')
+  expect(tradeDict.ko.holdFrom).toContain('{time}')
+  const src = readFileSync(path.resolve('src', 'live', 'RequestBoard.tsx'), 'utf8')
+  expect(src).toContain('hold && r.from')
+  expect(src).toMatch(/formatRealShort\(r\.from\.sail_seconds \* 1000\)/)
+  expect(src).not.toMatch(/gc_distance|haversine|\/\s*speed|nm\s*\//)
+})

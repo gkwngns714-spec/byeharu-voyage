@@ -1,6 +1,6 @@
 import { ActCell, Figure, GoodKind, goodClassRow, Row, Clip } from '../components/ui'
 import { useShellState } from '../app/shellState'
-import { formatDucats, formatInt, formatPrice, formatPriceFigure, formatTimeLeft } from '../lib/format'
+import { formatDucats, formatInt, formatPrice, formatPriceFigure, formatRealShort, formatTimeLeft } from '../lib/format'
 import type { TradeRequest } from '../lib/rpc'
 import { properName, useT } from '../lib/i18n'
 
@@ -106,6 +106,14 @@ export function RequestBoard({
                 ? t('trade.holdPays', { total: formatDucats(r.total) })
                 : t('trade.bonusLine', { price: formatPrice(r.premium_per_unit), left: formatDucats(r.premium_ducats) })}
             </span>
+            {/* 0473: where a hold job's good is sold, and a Barca's sailing time there: both served (world.contracts `from`) */}
+            {hold && r.from && (
+              <span className="block text-t-caption text-ink-faint" data-testid="request-from" data-from={r.from.code}>
+                {r.from.sail_seconds != null
+                  ? t('trade.holdFrom', { city: properName('port', r.from.name, r.from.name), time: formatRealShort(r.from.sail_seconds * 1000) })
+                  : t('trade.holdFromCity', { city: properName('port', r.from.name, r.from.name) })}
+              </span>
+            )}
             <span className="block text-t-caption tabular-nums text-ink-faint" data-testid="request-time">
               {t('trade.timeLeft', { time: formatTimeLeft(Date.parse(r.expires_at) - nowMs) })}
             </span>

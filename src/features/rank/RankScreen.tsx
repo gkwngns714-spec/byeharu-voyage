@@ -131,7 +131,8 @@ function RankBody() {
       layout="page"
       data-testid="rank"
       trailing={
-        settled === null ? undefined : (
+        // 0473: the Captains' photograph's age, on its own faces (the Week board says its own clock, the Bounties none)
+        settled === null || face === 'week' || face === 'bounties' ? undefined : (
           <span className="text-t-caption text-ink-faint">{t('rank.settled', { when: settled })}</span>
         )
       }
