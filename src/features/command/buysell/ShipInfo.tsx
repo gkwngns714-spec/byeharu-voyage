@@ -6,6 +6,7 @@ import { useT } from '../../../lib/i18n'
 import type { FleetView, SkillEffect } from '../../../lib/rpc'
 import { useCrewCost } from '../../../live/useCrewCost'
 import { useWorld } from '../../../live/worldStore'
+import { CrewHint } from '../../../live/CrewHint'
 
 // THE SHIP, UNDER THE ORDERS ON BUY (owner row 233, 2026-10-27: *"in command buy, below orders i want there to be a
 // ship info - cargo. crews, provision, buying related skills?"*).
@@ -68,6 +69,8 @@ export function ShipInfo({ fleet, aside = false }: { fleet: FleetView; aside?: b
         value={<Figure value={t('desk.crewRoom', { n: formatInt(crew.aboard), max: formatInt(crew.max) })} tone={crew.short > 0 ? 'danger' : 'ink'} />}
         data-testid="buy-ship-crew"
       />
+      {/* the red crew line's next step: the hands she lacks and the one press that hires them (2026-11-23, finding 26) */}
+      <CrewHint fleet={fleet} className="px-4" />
       {wages !== null && (
         <Row label={t('desk.wages')} value={<Figure value={formatPrice(wages.per_day)} unit={t('desk.perDay')} />} data-testid="buy-ship-wages" />
       )}

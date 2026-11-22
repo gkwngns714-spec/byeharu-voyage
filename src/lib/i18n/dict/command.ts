@@ -163,6 +163,11 @@ export const commandDict = defineDict({
     /** 2026-11-22 (P0): the goal card's title is the NEXT one; bare, it read as a promotion. */
     goalNext: 'Next: {name}',
     goalTracks: 'Trading {a}/{n} · Exploration {b}/{n}',
+    // 2026-11-23 (finding 26): a track at or past the next title's level reads "Trading 7 ✓", not "Trading 7/4"
+    goalTrading: 'Trading {a}/{n}',
+    goalTradingMet: 'Trading {a} ✓',
+    goalExploration: 'Exploration {a}/{n}',
+    goalExplorationMet: 'Exploration {a} ✓',
     /** 0468: the goal card names what the next level opens ("Trading 4 → Ships per fleet +1": the arrow says it is ahead; "Trading 4: …" read as a level she had) */
     goalOpens: '{track} {n} → {what}',
     lvActsAs: 'acts as level {n}',
@@ -325,6 +330,10 @@ export const commandDict = defineDict({
     lvTitleTop: '가장 높은 직함.',
     goalNext: '다음: {name}',
     goalTracks: '교역 {a}/{n} · 탐험 {b}/{n}',
+    goalTrading: '교역 {a}/{n}',
+    goalTradingMet: '교역 {a} ✓',
+    goalExploration: '탐험 {a}/{n}',
+    goalExplorationMet: '탐험 {a} ✓',
     goalOpens: '{track} {n} → {what}',
     lvActsAs: '레벨 {n}로 작동',
     lvRegard: '나라',

@@ -170,7 +170,15 @@ export function GoalCard() {
       ) : next && (
         <span className="col-span-2 min-w-0 break-words text-t-caption text-ink-faint" data-testid="goal-tracks">
           <span className="whitespace-nowrap">
-            {t('command.goalTracks', { a: v.tracks.trading.level, b: v.tracks.exploration.level, n: next.level })}
+            {/* a met requirement reads "Trading 7 ✓", not "Trading 7/4" (2026-11-23, finding 26) */}
+            {[
+              v.tracks.trading.level >= next.level
+                ? t('command.goalTradingMet', { a: v.tracks.trading.level })
+                : t('command.goalTrading', { a: v.tracks.trading.level, n: next.level }),
+              v.tracks.exploration.level >= next.level
+                ? t('command.goalExplorationMet', { a: v.tracks.exploration.level })
+                : t('command.goalExploration', { a: v.tracks.exploration.level, n: next.level }),
+            ].join(' · ')}
           </span>
           {opens ? ` · ${opens}` : unlock && ` · ${unlock}`}
         </span>
