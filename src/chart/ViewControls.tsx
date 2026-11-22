@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Button, cornerSlotClass, Icon, useDismiss } from '../components/ui'
+import { Button, cornerSlotClass, Icon, useDismiss, type IconName } from '../components/ui'
 import { zoomPercent } from './chartView'
 import { MAP_LAYERS, setMapLayer, useMapLayer, type MapLayer } from './regionsFilter'
 import { CHART_CHROME, type ChartSurface } from './useChartSurface'
@@ -42,6 +42,11 @@ import { useT } from '../lib/i18n'
 // ("Regions", "Seas") or "Filter" when none is, and is pressed (brass) while one is. The list hangs
 // under it, right-aligned to the column's edge, out of the flow, gone on a pick, a press outside or
 // Escape. A surface that draws no seas (`SmallChart`) offers Off and Regions only (`seas` false).
+//
+// ── 2026-11-23: THE FILTER IS A GLYPH AND ITS CHOICES ARE CHIPS (docs/design/visual-overhaul-2026-11-23.md, slice 4) ──────
+// The button lost its word: it is a 44-px square like the three above it, wearing the glyph of the layer that is on
+// (`LAYER_GLYPH`: stacked sheets for the plain chart, the parted globe for Regions, swells for Seas), its word kept as its
+// accessible name. The list is a column of chips, each a glyph on a disc and one word, the lit one in brass.
 //
 // ── WHY IT IS SAFE TO SIT ON THE GLASS ─────────────────────────────────────────────────────────
 // `CHART_CHROME` makes it invisible to every gesture (a press here never pans), the corner is
@@ -144,9 +149,20 @@ const CHOICE_WORD: Record<MapLayer, 'chart.layerOff' | 'chart.regions' | 'chart.
   regions: 'chart.regions',
   seas: 'chart.seas',
 }
+/** ONE GLYPH A LAYER (2026-11-23, the visual overhaul's slice 4: "filters are glyph chips"): the plain chart is the stacked
+ *  sheets, Regions the parted globe, Seas the swells. The button wears the glyph of the layer that is on. */
+const LAYER_GLYPH: Record<MapLayer, IconName> = {
+  off: 'layers',
+  regions: 'regions',
+  seas: 'waves',
+}
 
-/** The filter's one button and its list — its own component so the store subscription re-renders
- *  the button alone, not the column. */
+/** The filter's one button and its chips — its own component so the store subscription re-renders
+ *  the button alone, not the column.
+ *
+ *  2026-11-23 (slice 4): A GLYPH, NOT A WORD, ON THE GLASS. The button is the column's fourth 44-px square, wearing the glyph of the
+ *  layer that is on (brass while one is), with its word as the accessible name, as the find button does. The choices hang under it
+ *  as chips: each layer's glyph on a disc and its one word, the one that is on lit in brass and pressed. */
 function LayerFilter({ seas }: { seas: boolean }) {
   const t = useT()
   const stored = useMapLayer()
@@ -161,46 +177,52 @@ function LayerFilter({ seas }: { seas: boolean }) {
     <div ref={box} className="relative self-end">
       <Button
         variant="secondary"
-        size="sm"
+        size="icon"
+        aria-label={t(LAYER_WORD[layer])}
         aria-pressed={on}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`min-h-11 gap-1.5 bg-surface/90 backdrop-blur ${on ? 'border-accent text-accent' : ''}`}
+        className={`bg-surface/90 backdrop-blur ${on ? 'border-accent text-accent' : ''}`}
         data-testid="map-layer-filter"
         data-layer={layer}
       >
-        <Icon name="regions" size={16} />
-        {t(LAYER_WORD[layer])}
+        <Icon name={LAYER_GLYPH[layer]} size={18} />
       </Button>
       {open && (
         <div
           role="menu"
           aria-label={t('chart.filter')}
-          className="absolute right-0 top-full z-40 mt-1 flex min-w-full flex-col rounded-tile bg-surface-2 p-1 shadow-float"
+          className="absolute right-0 top-full z-40 mt-1 flex flex-col items-stretch gap-1 rounded-tile bg-surface-2 p-1 shadow-float"
           data-testid="map-layer-menu"
         >
-          {choices.map((l) => (
-            <button
-              key={l}
-              type="button"
-              role="menuitemradio"
-              aria-checked={l === layer}
-              onClick={() => {
-                setMapLayer(l)
-                setOpen(false)
-              }}
-              className={`flex min-h-11 items-center gap-2 whitespace-nowrap rounded-control px-3 text-left text-t-body ${
-                l === layer ? 'text-accent' : 'text-ink'
-              } hover:bg-surface`}
-              data-testid={`map-layer-${l}`}
-            >
-              <span aria-hidden="true" className="w-3 text-center">
-                {l === layer ? '●' : ''}
-              </span>
-              {t(CHOICE_WORD[l])}
-            </button>
-          ))}
+          {choices.map((l) => {
+            const lit = l === layer
+            return (
+              <button
+                key={l}
+                type="button"
+                role="menuitemradio"
+                aria-checked={lit}
+                onClick={() => {
+                  setMapLayer(l)
+                  setOpen(false)
+                }}
+                className={`flex min-h-11 items-center gap-2 whitespace-nowrap rounded-chip border py-1 pl-1 pr-3 text-left text-t-body ${
+                  lit ? 'border-accent bg-accent-soft text-accent' : 'border-transparent text-ink hover:bg-surface'
+                }`}
+                data-testid={`map-layer-${l}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-chip ${lit ? 'bg-accent text-bg' : 'bg-surface text-ink-muted'}`}
+                >
+                  <Icon name={LAYER_GLYPH[l]} size={18} />
+                </span>
+                {t(CHOICE_WORD[l])}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

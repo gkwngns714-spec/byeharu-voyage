@@ -61,13 +61,21 @@ function byInstant(a: number | null, b: number | null): number {
 }
 
 /**
- * THE CITY'S ONE LINE under its name: `27 merchants · 2 in port`, `1 merchant`, or '' when the
- * harbour concerns nobody. "In port" is `harbourSides`' — the same count the Port tab lists, so
- * the line and the list cannot disagree.
+ * HOW MANY MERCHANTS THE CITY CONCERNS, and how many of them lie here. "In port" is `harbourSides`' — the same count the
+ * Port tab lists, so the head and the list cannot disagree. The head draws these as two glyph-figures (slice 4 of the
+ * visual overhaul); `merchantsSummary` is the same two numbers as words, their accessible name.
+ */
+export function merchantsCount(rows: readonly PortMerchant[], portCode: string): { readonly all: number; readonly inPort: number } {
+  return { all: rows.length, inPort: rows.length === 0 ? 0 : harbourSides(rows, portCode).inPort.length }
+}
+
+/**
+ * THE CITY'S ONE LINE under its name, as words: `27 merchants · 2 in port`, `1 merchant`, or '' when the
+ * harbour concerns nobody.
  */
 export function merchantsSummary(rows: readonly PortMerchant[], portCode: string): string {
-  if (rows.length === 0) return ''
-  const inPort = harbourSides(rows, portCode).inPort.length
-  const all = t('town.merchants', { n: rows.length })
+  const { all: n, inPort } = merchantsCount(rows, portCode)
+  if (n === 0) return ''
+  const all = t('town.merchants', { n })
   return inPort > 0 ? t('town.inPort', { all, n: inPort }) : all
 }
