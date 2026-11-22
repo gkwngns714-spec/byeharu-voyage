@@ -286,9 +286,14 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
           })
         const reach = async () => {
           const last = page.getByTestId('trade-good').last()
-          await page.getByTestId('desk-pane-chart').evaluate((e) => { (e as HTMLElement).scrollTop = (e as HTMLElement).scrollHeight })
+          // SCROLLED AND MEASURED IN ONE STEP (main's Acceptance 44949997173, 2026-11-22: Buy 931 below a pane ending at 884, though the
+          // pane read 810 px in 730 exactly as on the runs that passed). Two round trips let the live desk re-render between the scroll
+          // and the measure (a beat's read lands, a card comes or goes), so the measure was of a pane no longer at its end. One
+          // synchronous step forces the layout once: the pane at its very end, and where the last card's Buy then stands in it.
           const box = await page.evaluate(() => {
-            const pane = document.querySelector('[data-testid="desk-pane-chart"]')!.getBoundingClientRect()
+            const el = document.querySelector('[data-testid="desk-pane-chart"]') as HTMLElement
+            el.scrollTop = el.scrollHeight
+            const pane = el.getBoundingClientRect()
             const buy = [...document.querySelectorAll('[data-testid="trade-good"]')].at(-1)!.querySelector('[data-testid="trade-buy"]')!.getBoundingClientRect()
             return { paneTop: pane.top, paneBottom: pane.bottom, buyTop: buy.top, buyBottom: buy.bottom }
           })

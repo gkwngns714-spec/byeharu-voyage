@@ -47,7 +47,7 @@
 // functions over an already-selected value for exactly that reason — they are not selectors.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { cutRosterRow } from './fightCuts'
+import { cutRosterRow, onFightCut } from './fightCuts'
 import { create } from 'zustand'
 import { useEffect } from 'react'
 import {
@@ -618,6 +618,10 @@ export const useWorld = create<LiveWorld>((set, get) => {
     const fleets = [...roster.values()].map((f) => trafficRowAt(cutRosterRow(f), now))
     set({ traffic: { enabled: true, at, fleets, total: fleets.length, omitted: 0 }, trafficReadAt: now })
   }
+  // a cut noted between two beats is placed at once, not on the next beat (./fightCuts.ts)
+  onFightCut(() => {
+    if (get().trafficWanted > 0 && rosterAt !== null && roster.size > 0) placeRoster(rosterAt)
+  })
   // THE LEDGER'S LAST READ: what moved the last time it was read, and when (see `refresh`).
   let ledgerSig = ''
   let ledgerReadAtMs = 0
