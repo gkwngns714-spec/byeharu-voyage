@@ -24,6 +24,7 @@ import {
 } from '../src/components/ui/screenLayout'
 import { reachable, ready } from './appReady.fixture'
 import { openCityFace } from './desk.fixture'
+import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 
 /** A readable row, in rem: the gulf between a name and its price stays shut. A law of the desk's panes, not a layout constant. */
 const ROW_MAX_REM = 48
@@ -94,6 +95,18 @@ test.describe('wide glass', () => {
       ROW_MAX_REM * remPx + 1,
     )
 
+    // X1 (src/live/tradeOnDesk.ts): a price pressed opens the Trade desk on that good, in the desk's own right pane; the quay's tray
+    // laws below return with the switch off
+    if (TRADE_ON_DESK) {
+      await page.evaluate(() => {
+        const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) => /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()))
+        ;(cell as HTMLButtonElement | undefined)?.click()
+      })
+      await expect(page).toHaveURL(/\/command$/, { timeout: 30_000 })
+      await expect(page.getByTestId('desk-pane-ticket').getByTestId('good-detail')).toBeVisible({ timeout: 60_000 })
+      return
+    }
+
     // 2. PRESS A PRICE. Nothing at or above the pressed row moves (row 15), and the tray opens.
     const before = await page.evaluate(() =>
       [...document.querySelectorAll('[data-testid="trade-row"]')].map((t) => {
@@ -142,6 +155,8 @@ test.describe('wide glass', () => {
     baseURL,
   }) => {
     test.setTimeout(420_000)
+    // X1 (src/live/tradeOnDesk.ts): the basket is the Trade desk's now; this law returns with the switch off
+    test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
     test.skip(
       !(await reachable(request, baseURL ?? '')),
       `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
@@ -252,7 +267,8 @@ test.describe('wide glass', () => {
     const faces = page.getByRole('tablist', { name: 'Trade faces' })
     await expect(faces).toBeVisible()
     const facesBox = (await faces.boundingBox())!
-    const basket = page.locator('[data-testid="basket-panel"]')
+    // X1: no basket stands in the slot (the Trade desk keeps the trade); the slot is the desk's right pane all the same
+    const basket = page.locator(TRADE_ON_DESK ? '[data-testid="desk-pane-ticket"]' : '[data-testid="basket-panel"]')
     await expect(basket).toBeVisible()
     const basketBox = (await basket.boundingBox())!
 

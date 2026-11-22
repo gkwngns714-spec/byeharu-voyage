@@ -129,6 +129,22 @@ player sees.
   card's prices read Buy / Sell by tone and arrow, not by word; HQ > Market's basket and Office > City > Market's trade face open
   the desk instead (X1, face list); world events farther than two hours' sail move to News (X8, one distance knob). The TradeCard's
   profit lines and the arrival card stay out of this slice while 0474 rewrites them.
+- Built (decided by default, the owner may reverse each): the fleet strip's two figures are glyph-figures, the cask and its days and
+  the hold (slice 5's marks) with its share and a bar, the words "Supplies" and "Cargo" kept as the marks' accessible names
+  (`FleetStrip.tsx`, both widths). The goal card leads with a 30-px `Ring` around the goal's mark (a ship for the second ship, the
+  coronet for a title), filled by the purse against the Order's price, else the materials stored, else the lower track against the
+  next title's level; the saving line's thin bar went into the ring, so the card's lines are no longer and its 44 px stand. The city
+  picker's eight cells are flag tiles: the flag at 20 px over the name in the caption voice (a free town keeps the flag's room
+  empty). The goods card's two prices are led by an arrow in a tone, not a word: Buy an arrow down into the hold (`buyIn`, blue,
+  goods moving aboard), Sell an arrow up out of it (`sellOut`, green, coin coming in); the word is each mark's accessible name, and
+  in the narrowest card (107 px inside) the figures stand alone as before. X1 is `live/tradeOnDesk.ts` (its one switch,
+  `TRADE_ON_DESK`, in `tradeOnDeskKnob.ts`): the HQ Market stands no basket row and its Buy / Sell open the Trade desk on that
+  city, good and side for the fleet docked there; Office > City > Market keeps its reading (Supplies, Buy · Sell · Requests, the
+  ledger) and its price cells open the desk the same way, with no basket in the slot. The quay's own trade tray, its bargain and
+  its basket are not reached while the switch is on (the desk's panel has no bargain; the specs of those trays stand skipped on the
+  switch and run again with it off). X8 is `live/eventReach.ts` (`DESK_EVENT_REACH_MS`, two hours): the desk lists a world event
+  only when it is at her place or the served sea miles from there (`world.reach`) at her served speed are two hours or less of real
+  sailing; Stats > News heads its list with every event, and a press there opens the desk on that harbour.
 
 **4. Map and its trays.**
 - Before: your ship is a small triangle; a harbour's tray is rows of words; the minimap and filter are text buttons.

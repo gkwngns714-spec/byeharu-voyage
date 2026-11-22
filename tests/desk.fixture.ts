@@ -46,3 +46,17 @@ export async function openCityFace(page: Page): Promise<void> {
   await settled(city)
   await expect(city, "the quay's fair read has not landed").toHaveAttribute('data-fair-loaded', '', { timeout: WORLD_BOOT_MS })
 }
+
+/** X1 (src/live/tradeOnDesk.ts, the visual overhaul's slice 3): a Buy or Sell pressed on the HQ Market or on Office > City > Market
+ *  opens the Trade desk on that city, that good and that side. This waits for the desk's panel and runs the trade there (`n` units),
+ *  the press a player makes: the count, the one big button, the toast. */
+export async function tradeOnDesk(page: Page, n = 1): Promise<void> {
+  await expect(page).toHaveURL(/\/command$/, { timeout: 30_000 })
+  const figure = page.getByTestId('good-detail').getByTestId('stepper-figure')
+  await expect(figure).toBeVisible({ timeout: 60_000 })
+  await figure.fill(String(n))
+  await figure.press('Enter')
+  await expect(page.getByTestId('trade-act')).toBeEnabled({ timeout: 60_000 })
+  await page.getByTestId('trade-act').click()
+  await expect(page.getByTestId('trade-toast')).toBeVisible({ timeout: 60_000 })
+}

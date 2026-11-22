@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DRIVE AUDIT, 2026-11-08 — THE MARKET, DRIVEN AS THE OWNER WOULD
@@ -107,6 +108,8 @@ test('Market: a capital lists 10 goods, every quay 4 to 10, and the Requests doo
 // ── ROW 257: THE CHART FOLLOWS THE GOOD; BUY LISTS THE GOODS; A PRESS OPENS NO PAGE ──────────────
 for (const size of [WIDE, PHONE]) {
   test(`Market @${size.width}: the chart follows the pressed good, a buy completes in the panel, SELL then lists the cargo, no page pops up`, async ({ page, request, baseURL }) => {
+    // X1 (src/live/tradeOnDesk.ts): the Market's own tray and basket are not reached while TRADE_ON_DESK stands (the law below, X1's)
+    test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
     await openCity(page, request, baseURL, size)
     const purseBefore = (await page.getByTestId('purse').innerText()).replace(/\s+/g, ' ')
     await openMarket(page)
@@ -172,6 +175,27 @@ for (const size of [WIDE, PHONE]) {
   })
 }
 
+// ── X1 (2026-11-23, src/live/tradeOnDesk.ts; the visual overhaul's slice 3): ONE PLACE TO TRADE ─────────────────────────────────
+// The Market keeps its reading (the goods, the chart), stands no basket row, and its Buy opens the Trade desk on this city and that
+// good, docked, with the panel up on Buy.
+for (const size of [WIDE, PHONE]) {
+  test(`Market @${size.width}: no basket, and a Buy opens the Trade desk on that good (X1)`, async ({ page, request, baseURL }) => {
+    test.skip(!TRADE_ON_DESK, 'X1 is switched off')
+    await openCity(page, request, baseURL, size)
+    await openMarket(page)
+    expect((await buyRows(page)).length).toBeGreaterThanOrEqual(2)
+    await expect(page.getByTestId('city-market-basket'), 'the Market still stands its own basket').toHaveCount(0)
+    const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]')
+    const code = await rows.nth(1).getAttribute('data-good')
+    await rows.nth(1).getByRole('button', { name: /^buy/i }).first().click()
+    await expect(page).toHaveURL(/\/command$/, { timeout: 30_000 })
+    await expect(page.getByTestId('trade-board')).toHaveAttribute('data-docked', 'true', { timeout: 60_000 })
+    await expect(page.locator(`[data-testid="trade-good"][data-good="${code}"]`), 'the desk did not open on the good pressed').toHaveClass(/ring-1/, { timeout: 60_000 })
+    await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'buy', { timeout: 60_000 })
+    await shot(page, `market-x1-desk-${size.width}@2x`)
+  })
+}
+
 // ── ROW 76, THE PHONE: THE BUTTON SAYS WHAT YOU PAY ──────────────────────────────────────────────
 // O7 of the drive audit read "Buy 10 units" at 390 where 1280 read "Buy 10 units · 5,748 🪙". The sum is the server's own for the
 // quantity (the dry run, src/live/useTrade.ts: a 200 ms settle plus the wire), and it reaches the phone too: replayed at both widths
@@ -183,6 +207,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
   test.describe(`in ${locale}`, () => {
     test.use({ locale })
     test('Market @390: the send button carries the sum once the price is served, and it fits (row 76, O7)', async ({ page, request, baseURL }) => {
+      test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
       await openCity(page, request, baseURL, PHONE)
       await openMarket(page)
       const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]')

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable, settled } from './appReady.fixture'
+import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY AUDIT ROWS + THE 2026-10-31 OWNER INSTRUCTIONS, RE-MEASURED AND HELD
@@ -415,6 +416,8 @@ test('city audit @320×568: the hall says what fits and what scrolls, and the pa
 
 test('city audit: the Market Basket opens in the panel — no page, no tray, nothing over the doors', async ({ page, request, baseURL }) => {
   test.setTimeout(900_000)
+  // X1 (src/live/tradeOnDesk.ts): the Market stands no basket while TRADE_ON_DESK stands (the Trade desk keeps the trade)
+  test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await openCity(page, { width: 390, height: 844 })
   await press(page, 'market')

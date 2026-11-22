@@ -79,7 +79,7 @@ for (const size of [WIDE, PHONE]) {
     await picker.click()
     await expect(page.getByTestId('fleet-list')).toHaveCount(0)
     // The two figures stand beside / under her as before.
-    await expect(page.getByTestId('command-line')).toContainText('Cargo')
+    await expect(page.getByTestId('command-line').getByRole('img', { name: 'Cargo' })).toBeVisible()
   })
 }
 
@@ -147,7 +147,7 @@ test.describe('several fleets', () => {
     await expect(picker).toContainText(SECOND_FLEET)
     await expect(picker.getByTestId('fleet-picker-dot')).toHaveAttribute('data-tone', 'danger')
     await expect(picker.getByTestId('fleet-picker-alert')).toHaveCount(0)
-    await expect(page.getByTestId('command-line')).toContainText('Cargo')
+    await expect(page.getByTestId('command-line').getByRole('img', { name: 'Cargo' })).toBeVisible()
 
     // ESCAPE CLOSES; A PRESS OUTSIDE CLOSES.
     await picker.click()

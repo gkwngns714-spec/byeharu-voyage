@@ -95,6 +95,7 @@ export function PortTrade({
   goods,
   fleet,
   port,
+  onTrade,
 }: {
   /** `world.market(port)`'s goods for THIS harbour — the read PortScreen already makes. */
   goods: readonly MarketGood[]
@@ -102,6 +103,8 @@ export function PortTrade({
   fleet: FleetView
   /** This harbour — its culture, printed only where it refuses a good (§6). */
   port: SnapshotPort
+  /** X1 (live/tradeOnDesk.ts): a price pressed opens the Trade desk instead of the tray here, and no basket stands. */
+  onTrade?: (good: MarketGood, intent: 'buy' | 'sell') => void
 }) {
   const t = useT()
   const [filter, setFilter] = useState('')
@@ -144,6 +147,10 @@ export function PortTrade({
     setQty(null)
   }
   const open = (good: MarketGood, intent: 'buy' | 'sell') => {
+    if (onTrade) {
+      onTrade(good, intent)
+      return
+    }
     setQty(null)
     setSlot({ kind: 'pick', pick: { good, intent } })
   }
@@ -271,7 +278,7 @@ export function PortTrade({
         />
       )}
 
-      {shown === 'basket' && (
+      {shown === 'basket' && !onTrade && (
         <ManifestPanel
           fleet={fleet}
           port={port}

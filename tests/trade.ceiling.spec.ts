@@ -30,11 +30,16 @@
 // PLAYWRIGHT_BASE_URL=http://localhost:<n>/byeharu-voyage/ (localhost, not 127.0.0.1 — the
 // preview binds IPv6 only and a v4 base URL makes every browser spec SKIP).
 
+import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 import { test, expect, type Page } from '@playwright/test'
 import { PHONE, ready, reachable } from './appReady.fixture'
 import { openCityFace } from './desk.fixture'
 
 test.use({ viewport: PHONE })
+
+// X1 (src/live/tradeOnDesk.ts, the visual overhaul's slice 3): the quay's trade tray these laws hold is not reached while TRADE_ON_DESK stands (a Buy or Sell
+// pressed there opens the Trade desk); these laws run again the day it is false.
+test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
 
 /**
  * HOW LONG "NOTHING MOVED" IS WATCHED FOR. These were 10.5 s and 7.5 s — three of the shell's 3-s

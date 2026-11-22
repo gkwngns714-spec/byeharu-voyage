@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
-import { Hint, Note, ScrollPane, Skeleton, TileChoice, TileGrid } from '../../../components/ui'
+import { FlagSlot, Hint, Note, ScrollPane, Skeleton, TileChoice, TileGrid } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { TradeCard } from '../../../live/TradeCard'
-import { portNameOf, useWorld } from '../../../live/worldStore'
+import { portNameOf, portNationOf, useWorld } from '../../../live/worldStore'
 import { haversineNm } from '../../../lib/geo/greatCircle'
 import { useT } from '../../../lib/i18n'
 import type { BestSale } from '../../../lib/rpc'
@@ -82,16 +82,23 @@ export function CityChips({ home, city, onCity }: { home: string | null; city: s
     // a name per cell, never a ragged strip.
     <TileGrid label={t('desk.cityChips')} words={3} wordsWide={2} className="mb-2" data-testid="city-chips">
       {chips.map((c) => (
-        <TileChoice key={c} on={c === city} onClick={() => onCity(c)} data-testid="city-chip" data-port={c}>
-          {/* one child: the flag and the name stay ONE group, centred. No `truncate` and no break inside a word: a long
-              harbour wraps at its spaces (tests/align.spec.ts's CUT rule, tests/trade.layout.spec.ts). */}
-          <span className="flex items-center gap-1">
-            <PortFlag code={c} /> <span data-testid="city-chip-name">{portNameOf(portByCode, c)}</span>
-          </span>
+        <TileChoice key={c} on={c === city} onClick={() => onCity(c)} className="flex-col gap-0.5 py-0.5!" data-testid="city-chip" data-port={c}>
+          {/* A FLAG TILE (2026-11-23, the visual overhaul's slice 3): the city's flag leads, 20 px, over its name in the caption
+              voice, so the eight cells read as eight flags before they read as words. A free town keeps the flag's room empty
+              (FlagSlot), so every name stands on one line across the grid. No `truncate` and no break inside a word: a long
+              harbour takes two columns or wraps at its spaces (tests/align.spec.ts's CUT rule, tests/trade.layout.spec.ts). */}
+          <CityFlag code={c} />
+          <span data-testid="city-chip-name">{portNameOf(portByCode, c)}</span>
         </TileChoice>
       ))}
     </TileGrid>
   )
+}
+
+/** A city tile's flag: the nation's, or the room it takes, empty (a free town). */
+function CityFlag({ code }: { code: string }) {
+  const allegiance = useWorld((s) => s.allegiance)
+  return portNationOf(allegiance, code)?.nation ? <PortFlag code={code} size="title" /> : <FlagSlot size="title" />
 }
 
 /** THE GOODS CARDS' GRID: two to a line on a phone; from lg as many 9.5-rem cards as the desk's centre pane holds.

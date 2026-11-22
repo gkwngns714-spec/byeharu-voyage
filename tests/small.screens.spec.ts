@@ -4,6 +4,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { KO_GOODS } from '../src/lib/i18n/names/goods'
 import { KO_PORTS } from '../src/lib/i18n/names/ports'
 import { ready, settled } from './appReady.fixture'
+import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE SMALL SCREENS' LEFTOVERS, MEASURED (2026-11-13; docs/dev-log/2026-11-13-small-screens.md)
@@ -167,6 +168,8 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
     })
 
     test("the HQ Market's buy button is one line", async ({ page }) => {
+      // X1 (src/live/tradeOnDesk.ts): the HQ Market's tray is not reached while TRADE_ON_DESK stands (its Buy opens the Trade desk)
+      test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
       await open(page, 'city')
       await page.getByTestId('city-building-market').click()
       const panel = page.getByTestId('city-face-panel')

@@ -26,6 +26,7 @@ import { useTradeCity } from './tradeCity'
 import { TradeStatus } from './TradeStatus'
 import { TradeToast } from './TradeToast'
 import { WorldEventsLine } from '../../../live/WorldEventLine'
+import { useNearEvent } from '../../../live/eventReach'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE — ONE SCREEN, BOTH SIDES, AND THE SMALL MAP AT THE BOTTOM (owner 2026-10-30)
@@ -83,6 +84,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
     if (focus !== null && focus !== docked) setFocus(null)
   }, [fleet.id, docked, focus, setFocus])
   const cityPort = city ? (portByCode[city] ?? null) : null
+  const nearEvent = useNearEvent(home, fleet.speed_kn)
   const quay = usePortMarket(cityPort?.id ?? null)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
 
@@ -101,7 +103,8 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
 
   // THE SIDE OF THE OPEN PANEL — the combined board's Buy and Sell buttons each open one; the same good pressed on
   // the side already open closes it.
-  const [side, setSide] = useState<'buy' | 'sell'>('buy')
+  // (X1: a good handed over from the HQ Market or Office > City > Market opens on the side pressed there, live/tradeOnDesk.ts)
+  const [side, setSide] = useState<'buy' | 'sell'>(() => useDeskGood.getState().side)
   // THE PAGES (the compact face, below) and the page a tray was opened from: closing that tray goes back to it
   const [page, setPage] = useState<'cargo' | 'map' | 'orders' | null>(null)
   const [backTo, setBackTo] = useState<'cargo' | null>(null)
@@ -230,7 +233,8 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   // THE CITY PICKER stands at the head of the board on a phone, and in the wide desk's left pane (the layout below)
   const chips = <CityChips home={home} city={city} onCity={pressCity} />
   // 0469: the world events (a famine, a festival, a blockade); a press puts the harbour in hand. Nothing while dark or none is on.
-  const events = <WorldEventsLine city={city} onCity={pressCity} />
+  // X8 (live/eventReach.ts): only the events within two hours' sail of her place; the far ones stand on Stats > News.
+  const events = <WorldEventsLine city={city} onCity={pressCity} near={nearEvent} />
   // WHERE SHE IS, at the head of the wide desk's left pane: in port, or under way to her destination (TradeStatus.tsx).
   // On a phone the same line stands beside her name (CommandScreen.tsx): the glass has no line to spare (tests/onepage.spec.ts).
   const status = <TradeStatus fleet={fleet} />

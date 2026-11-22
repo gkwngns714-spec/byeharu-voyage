@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Bar, Figure } from '../../components/ui'
+import { Bar, Figure, Icon } from '../../components/ui'
 import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
 import { formatOfTotal, formatVoyageDays, tonsWord } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
@@ -31,34 +31,11 @@ export function FleetStrip({
    *  buysell/TradeStatus.tsx): it costs the glass no line. */
   trailing?: ReactNode
 }) {
-  const t = useT()
   if (inline) {
     return (
       <div className="flex min-w-0 flex-1 items-center gap-6" data-testid="fleet-strip">
         <FleetPicker fleets={fleets} fleet={fleet} onSelect={onSelect} />
-        {fleet && (
-          <div className="flex shrink-0 items-center gap-6" data-testid="command-line">
-            {/* THE PAGE'S FIGURE SCALE on the terminal's header (row 267): the key figures are 24 px (they were 14), their labels 14 (they were 12) */}
-            <span className="flex items-baseline gap-2">
-              <span className="text-t-label text-ink-muted" data-desk-label="">
-                {t('command.supplies')}
-              </span>
-              <Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="text-t-label text-ink-muted" data-desk-label="">
-                {t('command.cargo')}
-              </span>
-              <Figure value={formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} unit={tonsWord(fleetHoldTotal(fleet))} size="figure" />
-              <Bar
-                pct={fleetHoldTotal(fleet) > 0 ? (fleetHoldUsed(fleet) / fleetHoldTotal(fleet)) * 100 : 0}
-                tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}
-                label={t('command.cargoBar', { of: formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet)), word: tonsWord(fleetHoldTotal(fleet)) })}
-                className="w-24"
-              />
-            </span>
-          </div>
-        )}
+        {fleet && <FleetFigures fleet={fleet} wide />}
       </div>
     )
   }
@@ -75,36 +52,41 @@ export function FleetStrip({
   )
 }
 
-/** The fleet's two deciding figures, side by side — a caption over each, the cargo share drawn as a
- *  bar beside its figure (warning once the served free hold is gone).
+/** The fleet's two deciding figures as GLYPH-FIGURES (the visual overhaul's slice 3: "[cask] 15.0 days", "[hold] 0 / 194 tons" with its bar,
+ *  never the words "Supplies" and "Cargo" over them). The cask and the hold are the two marks slice 5 gave these facts on Fleets
+ *  (`icons.ts`); each word stays the mark's accessible name and its tooltip.
  *
- *  EXACTLY THE ROW'S 52px, ON THE SHEET, NOT ON A PANEL. A first cut seated these on a `surface`
- *  panel with the figures at `t-figure` over a bar: 56px taller, and that was enough to push the
- *  route editor's port chips out of the glass, so a press there scrolled the sheet and the stops
- *  under the finger moved (tests/route.stopface.spec.ts, owner row 15). Caption 16 + figure 28 +
- *  8 of padding is the 52 the sentence stood in, so nothing below it moved by one pixel. */
-function FleetFigures({ fleet }: { fleet: FleetView }) {
+ *  EXACTLY THE ROW'S 52px ON A PHONE, ON THE SHEET, NOT ON A PANEL (tests/route.stopface.spec.ts, owner row 15): the line was a
+ *  caption over a 28-px figure; it is now one line of mark and figure, no taller. On the wide header the two stand beside the
+ *  picker, the figures at the page's 24-px figure (row 267) and each mark 20 px. */
+function FleetFigures({ fleet, wide = false }: { fleet: FleetView; wide?: boolean }) {
   const t = useT()
   const used = fleetHoldUsed(fleet)
   const total = fleetHoldTotal(fleet)
+  const of = formatOfTotal(used, total)
   return (
-    <div className="grid min-h-row grid-cols-2 gap-4 py-1" data-testid="command-line">
-      <div>
-        <span className="block text-t-caption text-ink-faint">{t('command.supplies')}</span>
-        <Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />
-      </div>
-      <div className="min-w-0">
-        <span className="block text-t-caption text-ink-faint">{t('command.cargo')}</span>
-        <span className="flex items-center gap-2">
-          <Figure value={formatOfTotal(used, total)} unit={tonsWord(total)} size="figure" />
-          <Bar
-            pct={total > 0 ? (used / total) * 100 : 0}
-            tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}
-            label={`cargo, ${formatOfTotal(used, total)} ${tonsWord(total)}`}
-            className="min-w-0 flex-1"
-          />
+    <div
+      className={wide ? 'flex shrink-0 items-center gap-6' : 'flex min-h-row min-w-0 items-center gap-4 py-1'}
+      data-testid="command-line"
+    >
+      <span className="flex shrink-0 items-center gap-1.5" title={t('command.supplies')} data-testid="command-supplies">
+        <span role="img" aria-label={t('command.supplies')} className="flex text-ink-muted" data-desk-mark="">
+          <Icon name="cask" size={20} />
         </span>
-      </div>
+        <Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />
+      </span>
+      <span className={`flex items-center gap-1.5 ${wide ? 'shrink-0' : 'min-w-0 flex-1'}`} title={t('command.cargo')} data-testid="command-cargo">
+        <span role="img" aria-label={t('command.cargo')} className="flex text-ink-muted" data-desk-mark="">
+          <Icon name="hold" size={20} />
+        </span>
+        <Figure value={of} unit={tonsWord(total)} size="figure" />
+        <Bar
+          pct={total > 0 ? (used / total) * 100 : 0}
+          tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}
+          label={t('command.cargoBar', { of, word: tonsWord(total) })}
+          className={wide ? 'ml-1 w-24' : 'ml-1 min-w-0 flex-1'}
+        />
+      </span>
     </div>
   )
 }

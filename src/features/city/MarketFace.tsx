@@ -30,6 +30,7 @@ import { TRADE_FACES, useTradeFace, type TradeFace } from '../../live/tradeFace'
 import { useWorld } from '../../live/worldStore'
 import { RequestsFace } from './RequestPage'
 import { TradeCard } from '../../live/TradeCard'
+import { TRADE_ON_DESK, useOpenOnDesk } from '../../live/tradeOnDesk'
 import { tradeRows, type TradeGoodRow } from '../../domain/market'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -62,6 +63,9 @@ import { tradeRows, type TradeGoodRow } from '../../domain/market'
 //
 // The BASKET stays (a summary in this panel, never an overlay): the staged lines and the served
 // basket total, with one row to the board.
+//
+// X1 (2026-11-23, live/tradeOnDesk.ts): while TRADE_ON_DESK stands, the basket row is not drawn and a Buy or Sell pressed on a card
+// opens the Trade desk on this city, this good and that side; the reading (the cards, the chart, Requests) stays here.
 
 type Slot = { kind: 'none' } | { kind: 'basket' } | { kind: 'pick'; pick: TradePick }
 
@@ -72,6 +76,7 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
   const face = useTradeFace((s) => s.face)
   const turnTo = useTradeFace((s) => s.turnTo)
   const pin = useMarketPick((s) => s.pick)
+  const openOnDesk = useOpenOnDesk()
   const [slot, setSlot] = useState<Slot>({ kind: 'none' })
   const [qty, setQty] = useState<number | null>(null)
 
@@ -122,6 +127,11 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
     if (!good) return
     pin(port.id, good)
     if (!fleet) return
+    // X1 (live/tradeOnDesk.ts): the press opens the Trade desk on this city, this good and this side, for the fleet docked here
+    if (TRADE_ON_DESK) {
+      openOnDesk(code, port.code, intent, fleet.id)
+      return
+    }
     setQty(null)
     setSlot({ kind: 'pick', pick: { good, intent } })
   }
@@ -154,7 +164,8 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
 
   return (
     <>
-      {fleet && (
+      {/* X1: the basket is the Trade desk's to keep now (one place to trade); this row returns with TRADE_ON_DESK false */}
+      {fleet && !TRADE_ON_DESK && (
         <Row
           label={t('trade.basket')}
           value={formatInt(staged)}

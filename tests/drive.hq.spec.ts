@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { arrivedAtEdge, ready, reachable } from './appReady.fixture'
 import { sampleWalkers, walkVerdict } from './cityWalk.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
+import { tradeOnDesk } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DRIVE AUDIT, 2026-11-08 — THE HQ (CITY PAGE), DRIVEN AS THE OWNER WOULD
@@ -394,21 +395,18 @@ test('HQ: with the purses lit, a purchase at the Market shows on the hall\'s Gol
   const purseBefore = (await page.getByTestId('purse').innerText()).replace(/\s+/g, ' ')
   console.log(`hall before: gold "${goldBefore}", your purse "${purseBefore}"`)
 
-  // buy ONE unit of the first good on the Buy face, through the City page's own Market face
+  // buy ONE unit of the first good on the Buy face, pressed on the City page's own Market face
   await page.getByTestId('city-building-market').click()
   await expect(page.getByTestId('city-market-buy')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 60_000 })
   const row = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]').first()
   const good = (await row.getByTestId('trade-good-name').innerText()).split('\n')[0].trim()
   await row.getByRole('button', { name: /^buy/i }).first().click()
-  const tray = page.getByTestId('trade-tray')
-  await expect(tray).toBeVisible({ timeout: 30_000 })
-  const send = page.getByTestId('trade-tray-send')
-  await expect(send).toBeEnabled({ timeout: 60_000 })
-  const sendWords = await send.innerText()
-  console.log(`buying: ${good} — ${sendWords.replace(/\s+/g, ' ')}`)
-  await send.click()
-  await expect(tray).toHaveCount(0, { timeout: 60_000 })
+  // X1 (src/live/tradeOnDesk.ts): the Buy opens the Trade desk on that good; the buy runs there, and Back is the way to the HQ again
+  console.log(`buying: ${good} on the Trade desk`)
+  await tradeOnDesk(page)
+  await page.goBack()
+  await expect(page.getByTestId('city-building-hall')).toBeVisible({ timeout: 60_000 })
 
   // back to the hall: the city's Gold must have moved on its own
   await page.getByTestId('city-building-hall').click()
