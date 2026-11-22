@@ -100,7 +100,9 @@ export function Sheet({
           data-pinned={pinned}
           className={pinned ? PINNED : AT_REST}
         >
-          <div className={`flex items-center justify-between gap-x-4 gap-y-2 ${pinned ? 'py-2' : 'pb-3 pt-5 lg:pb-4 lg:pt-8'} ${pageColumnClass()}`}>
+          {/* flex-wrap (2026-11-23, visual slice 5: Fleets' title carries its figures): a title too long to share its line with the trailing block keeps the
+              whole line and the block drops under it, so a name is never squeezed out of its own heading */}
+          <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${pinned ? 'py-2' : 'pb-3 pt-5 lg:pb-4 lg:pt-8'} ${pageColumnClass()}`}>
             <h1 className={pinned ? 'min-w-0 text-t-body' : 'min-w-0 text-t-figure md:text-t-page'}>
               <Clip>{title}</Clip>
             </h1>

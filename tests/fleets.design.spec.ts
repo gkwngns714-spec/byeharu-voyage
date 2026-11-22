@@ -24,7 +24,9 @@ import { serveVeteranWorld, VETERAN_HULLS } from './manyFleets.fixture'
 //       every control at least 44 × 44, the document flat.
 //   (c) THE HIERARCHY: the company's two key figures at least 24 px over labels of at least 13; a fleet's row at least 52 px, none
 //       wider than 36 rem.
-//   (e) THE SIDE IS USED: the company card stands in the side column from 1,024; the fleets stand in the main.
+//   (e) THE SIDE IS USED: the Room card stands in the side column from 1,024; the fleets stand in the main. (2026-11-23, the visual overhaul's
+//       slice 5: the company's figures fold into the page title's line, so they stand in the sheet's header at every width, and the side
+//       carries the Room.)
 //   (f) NO SCROLL TRAP: nothing but the sheet scrolls — the list never scrolls inside itself, however many fleets.
 //   (g) THE FLEETS COME FIRST ON A PHONE: below the split the first fleet's row begins on the first glass.
 //   (h) A PRESS ON A FLEET opens her page and moves nothing behind it; Back leaves the page as it was.
@@ -98,9 +100,11 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
 
         // (e) THE SIDE IS USED
         if (glass.width >= 1024 && d.side === null) failures.push(`${where}: (e) the page has no side column`)
-        for (const b of await page.evaluate(IN_SIDE, { ids: ['fleets-company', 'fleets-list'] })) {
+        for (const b of await page.evaluate(IN_SIDE, { ids: ['fleets-company', 'fleet-room', 'fleets-list'] })) {
           if (!b.found) failures.push(`${where}: (e) the screen has no ${b.id} block`)
-          else if (glass.width >= 1024 && b.id === 'fleets-company' && !b.inSide) failures.push(`${where}: (e) ${b.id} does not stand in the side column`)
+          else if (glass.width >= 1024 && b.id === 'fleet-room' && !b.inSide) failures.push(`${where}: (e) ${b.id} does not stand in the side column`)
+          else if (b.id === 'fleets-company' && !(await page.evaluate(() => !!document.querySelector('[data-testid="sheet-header"] [data-testid="fleets-company"]'))))
+            failures.push(`${where}: (e) the company's figures do not stand on the title's line`)
           else if (glass.width >= 1024 && b.id === 'fleets-list' && b.inSide) failures.push(`${where}: (e) the fleets stand in the side column`)
         }
 

@@ -1,9 +1,10 @@
-import { Button, CargoBar, Clip, FactsLine, IconDisc, Note, Row, Tile, TileField } from '../../components/ui'
+import { Button, CargoBar, Clip, FactsLine, Note, Row, Tile, TileField } from '../../components/ui'
 import { formatDucats, formatInt } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
 import { hullFraction, shipHoldFree, shipHoldUsed } from '../../domain/fleet'
 import { companyRoom, lockedSteps, roomStepWord, useBuyRoom, useHouseRoom, type CompanyRoom } from '../../live/houseRoom'
 import { HullGauge } from './HullGauge'
+import { ShipPicture } from './ShipPicture'
 import { properName, useT } from '../../lib/i18n'
 
 // HER SHIPS, ONE ROW EACH — the owner, 2026-11-14: *"in fleets, when pressed a fleet, show only ships, then when i press the ship, show
@@ -24,7 +25,8 @@ export function FleetShips({ fleet, openShipId, onOpenShip }: { fleet: FleetView
       {fleet.ships.map((ship, i) => (
         <Row
           key={ship.id}
-          mark={<IconDisc name="ship" tone={ship.is_flagship ? 'accent' : 'muted'} label={ship.is_flagship ? t('ui.flagship') : undefined} />}
+          /* slice 5 (2026-11-23): her own picture (ShipPicture.tsx), outlined in the accent when she leads the fleet */
+          mark={<ShipPicture code={ship.class_code} tone={ship.is_flagship ? 'var(--color-accent)' : undefined} label={ship.is_flagship ? t('ui.flagship') : undefined} />}
           /* THE NAME IS WHOLE (`Clip` without `cut` turns only at a space and never trims); her class drops under it when the two do not fit one line. */
           label={
             <span className="flex flex-wrap items-baseline justify-between gap-x-3">
@@ -41,7 +43,7 @@ export function FleetShips({ fleet, openShipId, onOpenShip }: { fleet: FleetView
           {/* the same line her fleet's row draws: the hull gauge, then the one cargo gauge of the game on its own line on a phone */}
           <FactsLine data-testid="fleet-ship-row-bars">
             <HullGauge fraction={hullFraction(ship)} label={t('ui.hullOf', { name: ship.name })} />
-            <CargoBar used={shipHoldUsed(ship)} total={ship.hold} free={shipHoldFree(ship)} className="min-w-48 grow basis-full sm:basis-auto" />
+            <CargoBar used={shipHoldUsed(ship)} total={ship.hold} free={shipHoldFree(ship)} icon="hold" className="min-w-48 grow basis-full sm:basis-auto" />
           </FactsLine>
         </Row>
       ))}
