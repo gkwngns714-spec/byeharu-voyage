@@ -8,7 +8,7 @@ import type { FleetView, GoodBoard, Refusal } from '../../../lib/rpc'
 import { armadaOf, useArmadas } from '../../../live/armadas'
 import { useT } from '../../../lib/i18n'
 import { useDeskPlan, type PlanDraft } from './planDraft'
-import { planLines, reachBoard, reachWords, tripRows } from './planLines'
+import { planAlso, planLines, reachBoard, reachWords, tripRows } from './planLines'
 
 // GO — THE ONE WAY A PLANNED TRIP IS QUEUED (moved 2026-10-26 out of the trade card, owner row 229: the Buy / Sell
 // panel's Sail & buy and Sail & sell press it). Two trips, one rule:
@@ -64,12 +64,14 @@ export function useTripGo({
   const rows = tripRows(b, plan)
   const { buyRow, sellRow, supplies } = rows
   const end = plan.sellAt ? sellRow : buyRow
-  const outlay = (buyRow?.cost ?? 0) + (supplies?.cost ?? 0)
+  // 0475: the second good (planAlso: the units it was served for, ticked) is paid for at the same quay
+  const alsoCost = planAlso({ ...plan, units: boardUnits }) && plan.also ? plan.also.cost : 0
+  const outlay = (buyRow?.cost ?? 0) + alsoCost + (supplies?.cost ?? 0)
   // 0241 (owner row 230): SHE SAILS ON CREDIT. While the server says credit is lit (world.player `on_credit`), the
   // supplies her purse cannot cover are owed to the city and paid from her next sale — they never stop Go. The
   // cargo itself is still bought with money she has.
   const onCredit = onCreditLit && ducats !== null && supplies ? Math.max(0, Math.min(supplies.cost, outlay - ducats)) : 0
-  const mustPay = onCreditLit ? (buyRow?.cost ?? 0) : outlay
+  const mustPay = onCreditLit ? (buyRow?.cost ?? 0) + alsoCost : outlay
 
   const buyCut = plan.buyAt !== null && buyRow?.sailable === false
   const kind: 'far' | 'holdFull' | 'shut' | 'holdEmpty' | 'noMoney' | null =
