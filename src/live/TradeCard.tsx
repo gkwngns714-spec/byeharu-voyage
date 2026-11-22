@@ -241,7 +241,15 @@ function SaleBlock({
       <div className={block}>
         <span className={top}>{prices}</span>
         {sale ? (
-          <span className={`${line} text-danger`} data-testid="best-sale" data-state="none" data-pays="false" data-short={sale.short ? 'true' : undefined}>
+          // RED ONLY FOR "No sale pays" (2026-11-22 second play-test): "Cargo full" and the purse against the load are facts about her
+          // hold and her coin, not a fault of the good; red on every card while she sailed full they read as nine errors
+          <span
+            className={`${line} ${sale.basis !== 'step' && !sale.short ? 'text-danger' : 'text-ink-faint'}`}
+            data-testid="best-sale"
+            data-state="none"
+            data-pays="false"
+            data-short={sale.short ? 'true' : undefined}
+          >
             {sale.basis !== 'step' && sale.short && money(sale) !== null
               ? t('desk.moneyHaveNeed', money(sale)!)
               : t(sale.basis === 'step' ? 'desk.holdFull' : sale.short ? 'desk.noMoney' : 'desk.noGain')}

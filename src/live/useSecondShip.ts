@@ -27,6 +27,13 @@ export interface SecondShip {
   /** Lines of the hull's recipe already stored at the yard, and how many lines there are. */
   ready: number
   of: number
+  /** The port CODE of the yard counted, and whether a fleet of hers lies there now (2026-11-22 play-test: away from it, the card
+   *  names its city, and its press cannot open a yard the city she lies in does not keep). */
+  port: string | null
+  here: boolean
+  /** 0465: a hull she has ON ORDER (at this yard, else the first elsewhere), as the yard's own read serves it; null when none. The
+   *  card says the order, not "materials 0 / 4": an ordered ship needs no materials. */
+  order: { name: string; readyAt: string; ready: boolean } | null
 }
 
 /** The yard she was last counted at. A per-browser convenience: without it the card simply waits for her next call at a yard. */
@@ -51,11 +58,14 @@ const useCountedYard = create<{ company: string | null; portId: string | null; k
 )
 
 /** The cheapest hull this yard lays down for her now, counted by the sheet's own fold; null when it builds her none. */
-function counted(view: BuildingYardView | null): SecondShip | null {
+function counted(view: BuildingYardView | null): Pick<SecondShip, 'ready' | 'of' | 'order'> | null {
   const hull = view?.hulls.filter((h) => h.buildable).reduce<BuildingYardView['hulls'][number] | null>((a, h) => (a === null || h.ducats < a.ducats ? h : a), null)
   if (!hull) return null
   const plan = yardPlan(hull, undefined, {})
-  return plan.of > 0 ? { ready: plan.ready, of: plan.of } : null
+  const o = view?.order?.open ?? null
+  const away = view?.order?.elsewhere[0] ?? null
+  const order = o ? { name: o.name, readyAt: o.ready_at, ready: o.ready } : away ? { name: away.name, readyAt: away.ready_at, ready: away.ready } : null
+  return plan.of > 0 ? { ready: plan.ready, of: plan.of, order } : null
 }
 
 export function useSecondShip(): SecondShip | null {
@@ -63,6 +73,7 @@ export function useSecondShip(): SecondShip | null {
   const one = useWorld((s) => s.player?.ships === 1)
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
+  const portById = useWorld((s) => s.portById)
   const keptAt = useCountedYard((s) => (company !== null && s.company === company ? s.portId : null))
   const keep = useCountedYard((s) => s.keep)
 
@@ -87,5 +98,6 @@ export function useSecondShip(): SecondShip | null {
     if (company !== null && at !== null && at !== keptAt) keep(company, at)
   }, [company, at, keptAt, keep])
 
-  return pick?.count ?? null
+  if (!pick) return null
+  return { ...pick.count, port: (pick.at !== null ? portById[pick.at]?.code : null) ?? null, here: pick.at !== null && pick.at === hereId }
 }

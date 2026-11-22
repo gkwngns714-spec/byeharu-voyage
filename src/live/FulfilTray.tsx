@@ -3,7 +3,7 @@ import { Button, CargoBar, Figure, Note, Row, Tray, type TrayDetent } from '../c
 import { ManifestTotals } from './ManifestTotals'
 import { useShellState } from '../app/shellState'
 import { fleetHoldTotal, fleetHoldUsed } from '../domain/fleet'
-import { formatCountdown, formatDucats, formatOfTotal, formatPrice, formatPriceFigure, formatUnitPrice, formatUnits } from '../lib/format'
+import { formatDucats, formatOfTotal, formatPrice, formatPriceFigure, formatUnitPrice, formatUnits, formatTimeLeft } from '../lib/format'
 import type { FleetView, ManifestReceipt, Refusal, TradeRequest } from '../lib/rpc'
 import { useFulfilPreview } from './useFulfilPreview'
 import { useWorld } from './worldStore'
@@ -104,7 +104,7 @@ export function FulfilTray({
       </Row>
       <Row label={t('trade.wanted')} value={<Figure value={formatUnits(request.qty)} />} data-testid="fulfil-wanted">
         <span className="block text-t-caption tabular-nums text-ink-faint" data-testid="fulfil-time">
-          {t('trade.timeLeft', { time: formatCountdown(Date.parse(request.expires_at) - nowMs) })}
+          {t('trade.timeLeft', { time: formatTimeLeft(Date.parse(request.expires_at) - nowMs) })}
         </span>
       </Row>
       <Row label={t('trade.onBoard')} value={<Figure value={formatOfTotal(aboard, request.qty)} unit={t('trade.units')} />} data-testid="fulfil-aboard" />

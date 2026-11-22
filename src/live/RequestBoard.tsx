@@ -1,6 +1,6 @@
 import { ActCell, Figure, GoodKind, goodClassRow, Row, Clip } from '../components/ui'
 import { useShellState } from '../app/shellState'
-import { formatCountdown, formatDucats, formatInt, formatPrice, formatPriceFigure } from '../lib/format'
+import { formatDucats, formatInt, formatPrice, formatPriceFigure, formatTimeLeft } from '../lib/format'
 import type { TradeRequest } from '../lib/rpc'
 import { properName, useT } from '../lib/i18n'
 
@@ -107,7 +107,7 @@ export function RequestBoard({
                 : t('trade.bonusLine', { price: formatPrice(r.premium_per_unit), left: formatDucats(r.premium_ducats) })}
             </span>
             <span className="block text-t-caption tabular-nums text-ink-faint" data-testid="request-time">
-              {t('trade.timeLeft', { time: formatCountdown(Date.parse(r.expires_at) - nowMs) })}
+              {t('trade.timeLeft', { time: formatTimeLeft(Date.parse(r.expires_at) - nowMs) })}
             </span>
           </Row>
         )

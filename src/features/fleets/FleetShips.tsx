@@ -4,7 +4,7 @@ import type { FleetView } from '../../lib/rpc'
 import { hullFraction, shipHoldFree, shipHoldUsed } from '../../domain/fleet'
 import { companyRoom, lockedSteps, roomStepWord, useBuyRoom, useHouseRoom, type CompanyRoom } from '../../live/houseRoom'
 import { HullGauge } from './HullGauge'
-import { useT } from '../../lib/i18n'
+import { properName, useT } from '../../lib/i18n'
 
 // HER SHIPS, ONE ROW EACH — the owner, 2026-11-14: *"in fleets, when pressed a fleet, show only ships, then when i press the ship, show
 // cargo and supplies."*
@@ -29,7 +29,7 @@ export function FleetShips({ fleet, openShipId, onOpenShip }: { fleet: FleetView
           label={
             <span className="flex flex-wrap items-baseline justify-between gap-x-3">
               <Clip className="max-w-full text-t-body font-semibold" data-testid="fleet-ship-name">{ship.name}</Clip>
-              <span className="min-w-0 max-w-full text-t-label text-ink-muted">{ship.class}</span>
+              <span className="min-w-0 max-w-full text-t-label text-ink-muted">{properName('hull', ship.class, ship.class)}</span>
             </span>
           }
           chevron

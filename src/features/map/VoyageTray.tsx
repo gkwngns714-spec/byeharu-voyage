@@ -32,7 +32,7 @@ import { TradeHistoryPanel, type TradePick } from '../../live/TradeHistoryPanel'
 
 
 import { WatersAhead } from './WatersAhead'
-import { useT, type TKey } from '../../lib/i18n'
+import { properName, useT, type TKey } from '../../lib/i18n'
 
 // THE FLEET TRAY — what the ship you tapped is doing, rising from the bottom edge.
 //
@@ -147,7 +147,7 @@ function ShipList({ ships, onOpen }: { ships: readonly FleetShip[]; onOpen: (id:
             <span className="min-w-0 flex-1">
               <Clip className="text-t-body">{ship.name}</Clip>
               <span className="block break-words text-t-caption text-ink-faint">
-                {ship.is_flagship ? t('map.flagshipOf', { cls: ship.class }) : ship.class}
+                {ship.is_flagship ? t('map.flagshipOf', { cls: properName('hull', ship.class, ship.class) }) : properName('hull', ship.class, ship.class)}
               </span>
             </span>
             <Icon name="chevron" size={18} className="shrink-0 text-ink-faint" />
