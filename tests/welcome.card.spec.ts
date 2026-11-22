@@ -5,6 +5,9 @@ import { ready, reachable } from './appReady.fixture'
 // meets one card on the Trade tab: who she is (a trading house in Lisbon, the world's year), the goal (the second ship) and the
 // first press (a good's green line, then Buy & sell: it buys, sails and sells). It is an overlay (nothing under it moves, nothing scrolls sideways), and Start closes it
 // for good in this browser. Every other spec starts with the mark set (playwright.config.ts); this one starts without it.
+// 2026-11-23 (the visual overhaul's slice 10, fewer words): the card opens on a picture (her city's skyline, her ship on its water),
+// then one short line (her house, the city, the year), the goal as a ring with the goal card's own line beside it (the second ship:
+// here, the yard taking no orders in the shipped world, the materials stored at Lisbon's yard, 0 / 4), and the first press.
 
 test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, storageState: { cookies: [], origins: [] } })
 
@@ -15,8 +18,12 @@ test('a new company is welcomed once: who, the goal, the first press; Start clos
   await ready(page)
   const card = page.getByTestId('welcome-card')
   await expect(card).toBeVisible({ timeout: 120_000 })
-  await expect(card.getByTestId('welcome-who')).toHaveText(/^You run a trading house in Lisbon, 1[5-6]\d\d\.$/)
-  await expect(card.getByTestId('welcome-goal')).toHaveText('Goal: earn your second ship.')
+  await expect(card.getByTestId('welcome-picture')).toBeVisible()
+  await expect(card.getByTestId('welcome-who')).toHaveText(/^Your trading house · Lisbon, 1[5-6]\d\d$/)
+  // the goal: the goal card's own line, and a ring that says the same to a screen reader
+  await expect(card.getByTestId('welcome-goal')).toHaveText('Second ship · materials 0 / 4', { timeout: 60_000 })
+  await expect(card.getByTestId('welcome-ring')).toHaveAttribute('aria-label', 'Second ship · materials 0 / 4')
+  await expect(page.getByTestId('goal-second-ship')).toHaveText('Second ship · materials 0 / 4')
   await expect(card.getByTestId('welcome-first')).toHaveText('First: press a good’s green line, then Buy & sell.')
   // an overlay: out of the flow (fixed), and the page does not scroll sideways
   expect(await page.getByTestId('welcome-card-wrap').evaluate((el) => getComputedStyle(el).position)).toBe('fixed')
