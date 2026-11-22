@@ -108,11 +108,14 @@ begin
   update public.world_config set value = '0.04'::jsonb where key = 'first_hour_trip_hours';
   v_n := 0;
   for p in select pt.id, pt.code from public.ports pt where pt.kind = 'HARBOUR' and pt.code in ('LIS', 'LON', 'GOA', 'VEN', 'AMS') order by pt.code loop
-    update public.fleets set port_id = p.id where id in (v_fa, v_fb);
+    -- ONE company, her mark moved (two companies sail different rolled hulls, so their cards differ for that alone)
+    update public.fleets set port_id = p.id where id = v_fa;
     perform cmd.assume_identity(c_a);
+    update public.house_level_marks set level = 1 where player_id = v_a and track = 'trading';
     v_s := world.best_sales(v_fa, p.id);
-    perform cmd.assume_identity(c_b);
-    v_d := world.best_sales(v_fb, p.id);
+    update public.house_level_marks set level = 5 where player_id = v_a and track = 'trading';
+    v_d := world.best_sales(v_fa, p.id);
+    update public.house_level_marks set level = 1 where player_id = v_a and track = 'trading';
     for x in
       select a.e as near, b.e as far
         from jsonb_array_elements(v_s -> 'goods') a(e)
@@ -130,7 +133,7 @@ begin
     raise exception 'PROOF 175 FAILED: no card differed between Trading 1 and Trading 5 at a 0.04 h horizon: the preference was not seen';
   end if;
   update public.world_config set value = '2'::jsonb where key = 'first_hour_trip_hours';
-  update public.fleets set port_id = v_lis where id in (v_fa, v_fb);
+  update public.fleets set port_id = v_lis where id = v_fa;
   raise notice 'PASS: FH_NEAR — lit, horizon 0.04 h: % cards where Trading 1 was offered a paying sale within it and Trading 5 a farther one.', v_n;
 
   -- ── FH_ORDER ──

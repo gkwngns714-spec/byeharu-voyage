@@ -256,8 +256,8 @@ begin
   -- 0468: public.level_perk reads the mark too, for a Trading step only (an unlock opens at the LEVEL_UP moment it is announced at). A mark
   -- never stands above the derived level (Trading never falls; the settle raises a mark only to it), so it can only open a step late, never
   -- early; the level itself stays derived (the checks above).
-  -- 0472: world.best_sales reads it too, only to order a newcomer's Trade card (a near sale first under Trading 5); no level is read from it.
-  if v_names is distinct from 'public.level_marks_settle,public.level_perk,public.reputation_card,world.best_sales' then
+  -- 0472: public.first_hour_near_seconds reads it too, only to order a newcomer's Trade card (a near sale first under Trading 5); no level is read from it.
+  if v_names is distinct from 'public.first_hour_near_seconds,public.level_marks_settle,public.level_perk,public.reputation_card' then
     raise exception 'PROOF 59 FAILED: the marks table is named by: %', v_names;
   end if;
   if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace

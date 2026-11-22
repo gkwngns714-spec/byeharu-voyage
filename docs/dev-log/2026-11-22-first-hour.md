@@ -35,6 +35,10 @@ each to a paying sale within the horizon. The play-test's world (Porto to Osaka,
 Prod (read-only, before): head 0471; all six hunks' old text once and no new text in the live bodies; 16 human companies hold at most
 one ship with none on order, so their next order would carry the floor once lit.
 
+The newcomer's horizon is read in one place, `public.first_hour_near_seconds(player)` (server only, stable): the switch, her Trading
+mark and the two knobs. `world.best_sales` calls it, so the card still reads no knob and no mark of its own (the 0351 rule in
+`tests/rpc.bestSales.spec.ts`; proof 59's list of the marks' readers names the helper).
+
 ## The client
 
 - No change for S1 and S3: the card, the sheet and the docked Buy already read the served units (`Trade.tsx` pressBest opens the plan

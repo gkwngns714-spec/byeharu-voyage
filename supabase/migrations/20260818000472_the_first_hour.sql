@@ -41,7 +41,8 @@
 -- ROWS: none, dark or lit; four world_config rows. -- budget: none (no table, no job, no cron, no index, no fillfactor or autovacuum
 --   setting). -- retention: none (no table). COST lit: world.best_sales asks world.price and one world.quote more a bought good (two
 --   index reads and a shelf walk), inside its 2.5 s budget; public.hull_order_price two counts by player (ships, hull_orders: indexed).
--- LOCKS: CREATE OR REPLACE x2 by hunks (world.best_sales, public.hull_order_price). TIME: a second. BUDGET: statement_timeout 45 s,
+-- LOCKS: CREATE OR REPLACE x2 by hunks (world.best_sales, public.hull_order_price); CREATE x1 (public.first_hour_near_seconds, server only:
+--   the one reading of a newcomer's near horizon, so the card reads no knob or mark of its own). TIME: a second. BUDGET: statement_timeout 45 s,
 --   lock_timeout 5 s; fails above 30 s.
 -- ROLLBACK (forward, owner only): QUICK, first_hour_enabled false (every figure is its pre-image's at once; an order placed lit keeps
 --   the price it was paid at). Full: a new migration reversing the six hunks (OLD texts below verbatim) and deleting the four knobs.
@@ -84,7 +85,7 @@ begin
   perform set_config('lock_timeout', '5s', true);
 
   -- ── 0. GUARD ──
-  if exists (select 1 from public.world_config c where c.key = any(c_knobs)) then
+  if exists (select 1 from public.world_config c where c.key = any(c_knobs)) or to_regprocedure('public.first_hour_near_seconds(uuid)') is not null then
     raise exception '0472 refuses: it has been applied once';
   end if;
   if exists (select 1 from unnest(c_hunked) f where to_regprocedure(f) is null)
@@ -121,6 +122,19 @@ begin
     ('first_hull_order_floor', '52000'::jsonb,
      '0472: the least an order of a company''s second hull costs before her Trading discount, in coins: the fee is raised to it (first_hour_enabled). 40,000 to start and about four to six good trips.');
 
+  -- THE ONE READING of a newcomer's near horizon (S3), so world.best_sales reads no knob and no mark of its own (0351: the card has no
+  -- knob of its own; proof 59: the marks are named by few). Server only.
+  create function public.first_hour_near_seconds(p_player uuid) returns numeric
+  language sql stable security definer set search_path = public, pg_temp as $f$
+    -- 0472: the real seconds within which a paying sale comes first on her Trade cards: first_hour_trip_hours while first_hour_enabled and
+    -- she was last paid for a Trading level under first_hour_trading_below (public.house_level_marks; none: 1). Null otherwise: no preference.
+    select case when public.wc('first_hour_enabled') = 'true'::jsonb and p_player is not null
+                     and coalesce((select m.level from public.house_level_marks m where m.player_id = p_player and m.track = 'trading'), 1)
+                         < public.wc_num('first_hour_trading_below')
+                then public.wc_num('first_hour_trip_hours') * 3600 end
+  $f$;
+  revoke all on function public.first_hour_near_seconds(uuid) from public, anon, authenticated;
+
   -- ── 3. THE HUNKS (each OLD text once in its live body; each reverses) ──
   create temp table hunks_0472 (fn text, ord int, old text, new text, primary key (fn, ord)) on commit drop;
   insert into hunks_0472 values
@@ -132,11 +146,7 @@ $h$  v_i       int;
   -- which a paying sale is preferred, for a company under Trading first_hour_trading_below (null: no preference, as before)
   v_first_hour boolean := public.wc('first_hour_enabled') = 'true'::jsonb;
   v_half    numeric;
-  v_near_s  numeric := case when public.wc('first_hour_enabled') = 'true'::jsonb
-                                 and coalesce((select m.level from public.house_level_marks m
-                                                where m.player_id = public.current_player_id() and m.track = 'trading'), 1)
-                                     < public.wc_num('first_hour_trading_below')
-                            then public.wc_num('first_hour_trip_hours') * 3600 end;
+  v_near_s  numeric := public.first_hour_near_seconds(public.current_player_id());
 $h$),
   ('world.best_sales(uuid,uuid)', 2,
 $h$    v_short := v_u is not null and v_u <= 0 and v_cap->>'bound_by' = 'purse';   -- her purse buys not one
@@ -217,7 +227,8 @@ $h$);
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')) || ':' || coalesce(p.proacl::text, ''), ',' order by p.oid::regprocedure::text))
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
-         and p.oid <> all (array(select u.q::regprocedure::oid from unnest(c_hunked) u(q)))) <> v_fn_before then
+         and p.oid <> all (array(select u.q::regprocedure::oid from unnest(c_hunked) u(q)))
+         and p.oid <> 'public.first_hour_near_seconds(uuid)'::regprocedure) <> v_fn_before then
     raise exception '0472 self-assert FAIL: another function moved';
   end if;
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text, ',' order by p.oid::regprocedure::text))
@@ -230,7 +241,9 @@ $h$);
      or public.wc_num('first_hull_order_floor') <= public.wc_num('starting_ducats') then
     raise exception '0472 self-assert FAIL: an existing world_config row moved, first_hour_enabled is not false, or the floor is not above the starting purse';
   end if;
-  if (select count(*) from public.client_write_grants()) <> 0 then
+  if (select count(*) from public.client_write_grants()) <> 0
+     or has_function_privilege('authenticated', 'public.first_hour_near_seconds(uuid)', 'execute')
+     or has_function_privilege('anon', 'public.first_hour_near_seconds(uuid)', 'execute') then
     raise exception '0472 self-assert FAIL: a client can write a table';
   end if;
 
