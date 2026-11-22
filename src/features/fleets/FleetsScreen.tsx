@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { CargoBar, Card, DetailPage, FactsLine, IconDisc, ListPanel, PageSplit, Row, Sheet, StatCell, type IconDiscTone, Clip } from '../../components/ui'
-import { formatInt, formatOfTotal, formatPct, formatVoyageDays, tonsWord } from '../../lib/format'
+import { useState, type ReactNode } from 'react'
+import { CargoBar, DetailPage, FactsLine, Icon, ListPanel, PageSplit, Row, Sheet, Clip } from '../../components/ui'
+import { formatInt, formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView } from '../../lib/rpc'
@@ -20,6 +20,7 @@ import { FleetRoom } from './FleetRoom'
 import { FleetShipPage } from './FleetShipPage'
 import { FleetShipSheet } from './FleetShipSheet'
 import { HullGauge } from './HullGauge'
+import { ShipPicture } from './ShipPicture'
 import { NewFleet, NewFleetPage } from './NewFleet'
 import { fleetDue } from './fleetLine'
 import { tabWord } from '../../app/navTabs'
@@ -134,15 +135,27 @@ function FleetsBody({ title }: { title: string }) {
   // The one authority for code → name (worldStore.portNameOf).
   const portName = (code: string) => portNameOf(portByCode, code)
 
-  // YOUR COMPANY, in figures: the fleets and hulls you own, those under way, and the hold's use across them. A count of the served list,
-  // and the existing folds (fleetHoldUsed / fleetHoldTotal) summed — no figure the server does not already stand behind.
+  // YOUR COMPANY, in figures: the fleets and hulls you own and those under way. A count of the served list — no figure the server does not
+  // already stand behind.
+  // THE TITLE'S FIGURES (2026-11-23, the visual overhaul's slice 5: "Your company folds into the page title's figures"). The side card
+  // "Your company" repeated the rows in words (Fleets 1, Ships 1, Under way 0, Cargo 0 / 187 tons); its three counts now stand on the
+  // title's line as marks and numbers, and its hold sum went (every fleet's own hold bar is on her row, one line below).
   const hulls = fleets.reduce((n, f) => n + f.ships.length, 0)
   const underway = fleets.filter((f) => f.status === 'SAILING').length
-  const holdUsed = fleets.reduce((n, f) => n + fleetHoldUsed(f), 0)
-  const holdTotal = fleets.reduce((n, f) => n + fleetHoldTotal(f), 0)
 
   return (
-    <Sheet title={title} layout="page" data-testid="fleets">
+    <Sheet
+      title={title}
+      layout="page"
+      trailing={
+        <span className="flex items-center gap-4" data-testid="fleets-company">
+          <TitleFigure mark={<Icon name="ship" size={20} />} word={title} value={fleets.length} data-testid="fleets-total" />
+          <TitleFigure mark={<ShipPicture code={null} size="mark" />} word={t('fleets.ships')} value={hulls} data-testid="fleets-hulls" />
+          <TitleFigure mark={<Icon name="sailing" size={20} />} word={t('fleets.underway')} value={underway} data-testid="fleets-underway" />
+        </span>
+      }
+      data-testid="fleets"
+    >
       <PageSplit
         data-testid="fleets-page"
         // no `sideFirst`: on a phone the company's figures stand AFTER the fleets — the screen's purpose is the list, and its first row is
@@ -183,20 +196,8 @@ function FleetsBody({ title }: { title: string }) {
           </>
         }
         side={
-          <>
-          <Card icon="office" title={t('fleets.company')} data-testid="fleets-company">
-            <div className="grid grid-cols-2 gap-4">
-              <StatCell look="stacked" label={title} value={fleets.length} format={formatInt} data-testid="fleets-total" />
-              <StatCell look="stacked" label={t('fleets.ships')} value={hulls} format={formatInt} data-testid="fleets-hulls" />
-            </div>
-            <div className="mt-3">
-              <StatCell look="line" label={t('fleets.underway')} value={underway} format={formatInt} data-testid="fleets-underway" />
-              <StatCell look="line" label={t('fleets.cargo')} text={`${formatOfTotal(holdUsed, holdTotal)} ${tonsWord(holdTotal)}`} data-testid="fleets-hold" />
-            </div>
-          </Card>
-          {/* 0354: the room she has and how more opens (world.house_room). Dark, it says "Not open yet" and offers no press. */}
+          /* 0354: the room she has and how more opens (world.house_room). Dark, it says "Not open yet" and offers no press. */
           <FleetRoom />
-          </>
         }
       />
       {openFleet !== null && (
@@ -214,12 +215,26 @@ function FleetsBody({ title }: { title: string }) {
  *  the design system's tones carry, so a section that knows no component can still say "trouble".
  *  Since 2026-10-01 the mark is a SHIP on a disc in that colour rather than a 10px dot: the same
  *  meaning, and a fleet now looks like a fleet ("it is like a text game"). */
-const MARK: Record<ReturnType<typeof fleetStatusTone>, IconDiscTone> = {
-  neutral: 'muted',
-  accent: 'accent',
-  success: 'success',
-  warning: 'warning',
-  danger: 'danger',
+// 2026-11-23 (the visual overhaul's slice 5): the mark is HER FLAGSHIP'S PICTURE (ShipPicture.tsx), outlined in that same colour.
+const MARK: Record<ReturnType<typeof fleetStatusTone>, string> = {
+  neutral: 'var(--color-ink-faint)',
+  accent: 'var(--color-accent)',
+  success: 'var(--color-success)',
+  warning: 'var(--color-warning)',
+  danger: 'var(--color-danger)',
+}
+
+/** ONE FIGURE ON THE TITLE'S LINE: a mark and a number at the figure size; its word is the mark's accessible name (and its title on a
+ *  hover), not painted. */
+function TitleFigure({ mark, word, value, 'data-testid': testId }: { mark: ReactNode; word: string; value: number; 'data-testid': string }) {
+  return (
+    <span className="flex items-center gap-1.5 text-ink-muted" title={word} data-testid={testId}>
+      <span role="img" aria-label={word} className="flex">
+        {mark}
+      </span>
+      <span className="tabular-nums text-t-figure text-ink">{formatInt(value)}</span>
+    </span>
+  )
 }
 
 function FleetRow({
@@ -244,7 +259,13 @@ function FleetRow({
 
   return (
     <Row
-      mark={<IconDisc name="ship" tone={fleet.ships.length === 0 ? 'muted' : MARK[fleetStatusTone(fleet.status)]} label={fleet.status.toLowerCase()} />}
+      mark={
+        <ShipPicture
+          code={(fleet.ships.find((s) => s.is_flagship) ?? fleet.ships[0])?.class_code}
+          tone={fleet.ships.length === 0 ? MARK.neutral : MARK[fleetStatusTone(fleet.status)]}
+          label={fleet.status.toLowerCase()}
+        />
+      }
       /* WHERE SHE IS RIDES ON THE NAME'S LINE, not in the row's value slot. The value slot stands
          beside the WHOLE band, so with it filled the caption line under the name was squeezed to
          the label's width and the bars measured 12px — a mood ring. Composed as a stack (Row's
@@ -279,12 +300,18 @@ function FleetRow({
           at 320 they are not, hull wraps under supplies as it always did. From `sm` all three share
           one line. The order is the order a phone reads them in; nothing is dropped. */}
       {fleet.ships.length > 0 && <FactsLine data-testid="fleet-row-bars">
-        <span className="shrink-0 tabular-nums">{t('fleets.ofSupplies', { days: formatVoyageDays(fleet.endurance_days) })}</span>
+        {/* slice 5: the cask and the days, not "Supplies 15.0 days" (the cask is the supplies' mark, as on the Supplies level) */}
+        <span className="flex shrink-0 items-center gap-1.5 tabular-nums" title={t('fleets.supplies')}>
+          <span role="img" aria-label={t('fleets.supplies')} className="flex">
+            <Icon name="cask" size={16} className="text-ink-muted" />
+          </span>
+          {formatVoyageDays(fleet.endurance_days)}
+        </span>
         {/* her WORST hull, on the one gauge a ship's own row draws too (HullGauge.tsx) */}
-        <HullGauge fraction={hull} label={t('fleets.worstHull', { pct: formatPct(hull) })} />
+        <HullGauge fraction={hull} label={`${t('fleets.hullSum')} ${t('fleets.worstHull', { pct: formatPct(hull) })}`} />
         {/* ONE cargo gauge for the game (CargoBar): the basket panel on PORT draws the same one
             with its staged change washed on. */}
-        <CargoBar used={used} total={total} free={fleet.free_hold} className="min-w-48 grow basis-full sm:basis-auto" />
+        <CargoBar used={used} total={total} free={fleet.free_hold} icon="hold" className="min-w-48 grow basis-full sm:basis-auto" />
       </FactsLine>}
     </Row>
   )

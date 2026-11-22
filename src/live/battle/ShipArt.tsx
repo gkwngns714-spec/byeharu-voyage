@@ -124,11 +124,16 @@ function Colours({ family, tone, y }: { family: ShipFamily; tone: string; y: num
   return <path data-ship-flag={family} d={`M0 ${y}L-6 ${y + 20}L0 ${y + 16}L6 ${y + 20}Z`} fill={tone} />
 }
 
-/** One ship as a small picture, bow to the right: the Codex key's tile. */
-export function ShipArtIcon({ family, tier, width = 72 }: { family: ShipFamily; tier: ShipTier; width?: number }) {
+/** One ship as a small picture, bow to the right: the Codex key's tile, and (2026-11-23, the visual overhaul's slice 5) a fleet's and a ship's
+ *  picture on the Fleets tab, where `tone` is her outline in the meaning her row already carries. */
+export function ShipArtIcon({ family, tier, width = 72, tone, fit = false }: { family: ShipFamily; tier: ShipTier; width?: number; tone?: string; fit?: boolean }) {
+  // `fit`: the frame drawn round HER length (the Fleets tab's pictures), so a sloop fills her plate as a flagship does; the key keeps one frame
+  // for every tier, where the difference in length is the point.
+  const k = fit ? LENGTH[tier - 1] : 1
+  const box = fit ? `${-96 * k} ${-48 * k} ${192 * k} ${96 * k}` : '-110 -66 220 132'
   return (
-    <svg width={width} height={width * 0.6} viewBox="-110 -66 220 132" aria-hidden data-testid="ship-art" data-family={family} data-tier={tier}>
-      <ShipArt family={family} tier={tier} />
+    <svg width={width} height={width * (fit ? 0.5 : 0.6)} viewBox={box} aria-hidden data-testid="ship-art" data-family={family} data-tier={tier}>
+      <ShipArt family={family} tier={tier} tone={tone} />
     </svg>
   )
 }

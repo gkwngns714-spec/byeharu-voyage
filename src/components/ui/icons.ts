@@ -50,6 +50,11 @@ export const ICON_NAMES = [
   // The Office's doors on HQ (slice 2)
   'invest',
   'report',
+  // A ship's three figures (slice 5): her hold, her hull, her speed; and a fleet under way
+  'hold',
+  'hull',
+  'knots',
+  'sailing',
   // The Map's filter chips (slice 4)
   'layers',
   'waves',
@@ -272,6 +277,15 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   invest: ['M3.5 20h10', 'M3.5 16.5h10', 'M4.5 13h8', 'M3.5 20v-3.5', 'M13.5 20v-3.5', 'M15 12.5 20.5 7', 'M16.5 7h4v4'],
   // A page with a folded corner and its lines — Report (the company's book of results). Not the open book: that is History.
   report: ['M6 3h8.5L19 7.5V21H6V3Z', 'M14.5 3v4.5H19', 'M9 12h7', 'M9 15.5h7', 'M9 19h4'],
+  // ── A SHIP'S FIGURES AS MARKS (2026-11-23, the visual overhaul's slice 5: "[hold] 0 / 194", never "Cargo 0 / 194 tons" in words) ──────────
+  // A crate seen from a corner — the Hold (what she carries, against what she can). Not the cask: that is her supplies.
+  hold: ['M12 3.5 20 7.5v9L12 20.5 4 16.5v-9L12 3.5Z', 'M4 7.5 12 11.5l8-4', 'M12 11.5v9', 'M8 5.5l8 4'],
+  // A hull from the side, her planking and her keel, no mast — the Hull (how sound she is). Not the ship: that is the Fleets tab.
+  hull: ['M2.5 9.5h19l-2.6 7.2a2 2 0 0 1-1.9 1.3H7a2 2 0 0 1-1.9-1.3L2.5 9.5Z', 'M3.9 13.4h16.2', 'M12 18v2.5'],
+  // Three lines of wind, two curling — her Speed in knots. Not the compass: that is the Exploration level.
+  knots: ['M3 8.5h10.5a2.5 2.5 0 1 0-2.5-2.5', 'M3 12.5h16', 'M3 16.5h8.5a2.5 2.5 0 1 1-2.5 2.5'],
+  // A sail full of wind over a wave — Under way (how many of your fleets are sailing). Not the ship: that is the Fleets tab.
+  sailing: ['M7 3.5v13', 'M7 3.5c5 1.6 8.2 5.3 8.8 10.5H7', 'M3 20c2-1.3 4-1.3 6 0s4 1.3 6 0 4-1.3 6 0'],
   // ── THE MAP'S FILTER CHIPS (2026-11-23, the visual overhaul's slice 4) ──
   // Three sheets stacked — the chart's filter itself, and its "Off" chip (the plain chart). `regions` stays the Regions chip.
   layers: ['M12 4 3 8.5l9 4.5 9-4.5L12 4Z', 'M3 12.5l9 4.5 9-4.5', 'M3 16.5l9 4.5 9-4.5'],
