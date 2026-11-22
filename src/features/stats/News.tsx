@@ -4,6 +4,7 @@ import { useShellState } from '../../app/shellState'
 import { useT } from '../../lib/i18n'
 import { worldNewsFeed, type NewsFilter, type NewsItem, type StatsNow } from '../../lib/rpc'
 import { NewsLine } from '../../live/NewsCard'
+import { newsAtMs } from '../../live/newsWords'
 
 // THE NEWS FACE (0347, owner row 216: *"major event, real time news-like feature"*; docs/NEWS_AND_MARKERS.md §4). Newest first, fifty
 // at a time; "Older" asks the fifty under the last. LIVE WITHOUT A SECOND POLL: the tab already asks world.stats_now every second
@@ -91,12 +92,55 @@ export function NewsFace({ live }: { live: StatsNow | null }) {
       ) : shown.items.length === 0 ? (
         <Empty data-testid="news-empty">{t('news.none')}</Empty>
       ) : (
-        <div data-testid="news-list">
-          {shown.items.map((item) => (
-            <NewsLine key={item.id} item={item} nowMs={nowMs} />
-          ))}
-        </div>
+        <>
+          <NewsTimeline items={shown.items} nowMs={nowMs} />
+          <div data-testid="news-list">
+            {shown.items.map((item) => (
+              <NewsLine key={item.id} item={item} nowMs={nowMs} />
+            ))}
+          </div>
+        </>
       )}
     </ListPanel>
+  )
+}
+
+
+/** The dots' side, px, by importance: a headline larger than a notable item, a notable item larger than a local one. */
+const DOT_PX = (importance: number) => (importance >= 3 ? 10 : importance >= 2 ? 8 : 6)
+
+/** THE FACE LEADS WITH A PICTURE (2026-11-23, the visual overhaul's slice 8): the happenings the list holds, on one line of time from the
+ *  oldest of them to now (the green dot, the tab's "right now") — a dot each at its own instant, the headlines larger and in full ink. It
+ *  counts nothing and is pressed nowhere: the list under it is the reading, and the picture says at a glance whether the world has been
+ *  quiet or busy, and when. The dots are boxes placed by percent on a line, so they stay round at any width. */
+function NewsTimeline({ items, nowMs }: { items: readonly NewsItem[]; nowMs: number }) {
+  const t = useT()
+  const marks = items.flatMap((i) => {
+    const atMs = newsAtMs(i)
+    return atMs === null ? [] : [{ id: String(i.id), atMs, importance: Number(i.importance) }]
+  })
+  if (marks.length < 2) return null
+  const fromMs = Math.min(...marks.map((m) => m.atMs))
+  const toMs = Math.max(nowMs, ...marks.map((m) => m.atMs))
+  const span = toMs - fromMs
+  if (!(span > 0)) return null
+  return (
+    <div role="img" aria-label={t('news.timeline')} className="relative mx-3 mb-3 mt-1 h-8" data-testid="news-timeline">
+      <span aria-hidden="true" className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-edge" />
+      {[...marks]
+        .sort((a, b) => a.importance - b.importance)
+        .map((m) => {
+          const side = DOT_PX(m.importance)
+          return (
+            <span
+              key={m.id}
+              aria-hidden="true"
+              className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-surface ${m.importance >= 3 ? 'bg-ink' : 'bg-ink-faint'}`}
+              style={{ left: `${((m.atMs - fromMs) / span) * 100}%`, width: side, height: side }}
+            />
+          )
+        })}
+      <span aria-hidden="true" className="absolute right-0 top-1/2 h-2 w-2 -translate-y-1/2 translate-x-1/2 rounded-full bg-success" />
+    </div>
   )
 }

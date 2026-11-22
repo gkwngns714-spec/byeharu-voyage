@@ -164,6 +164,19 @@ player sees.
 - Before: lists of names and zeros; Stats' figures as 24-px words with dots.
 - After: the top three on a podium (trophy, flags, bars of profit); your line pinned and lit; "tied" and the counted-ago lines gone
   where the figure says it; Stats' player faces lead with one chart each, holders as a stacked bar with marks.
+- Built (decided by default, the owner may reverse each): the three boards (Week, Captains, Countries) share one picture
+  (`src/features/rank/Podium.tsx`): the top three on a podium (second · first · third, the trophy over the first, each flag, the whole
+  name, the figure, and a step as tall as its figure against the first's; the countries' steps carry no place, since that board serves
+  none); your line pinned at the head of the list in a gold edge (your company or your country, whether placed or off the board's
+  end; the fame tray opens from it) and lit again in its place; every row the place, the flag picture and the whole name, the figure,
+  and a 6-px bar against the first row (the Week's green for a gain, red for a loss). "tied" left the rows and your standing (two houses
+  level wear the same place; the tray keeps it), the leaders' country caption became their flag, the companies' count stands under
+  your place ("of 846", a separate "Companies" line gone), your fame's lines wear coin, compass and anchor, and the Week no longer says
+  "You lead." for a shared first. Stats: the live strip's figures wear coin, ship and scales; News leads with a line of time (the
+  list's happenings as dots from the oldest to now, headlines larger; it counts nothing and adds no read); Markets' Up, Down and Most
+  traded are ranked bars, each good with its own drawn mark; Me's week shows sold and bought as one stacked bar and the trades as a
+  scales line (the "{n} trades" sentence gone). Markets and Cities already led with their two chart cards and kept them; Pirates was
+  left as it is (its states bar is the chart). No new read: every figure is the one the face already asked.
 
 **9. You and levels (and the Codex's marks).**
 - Before: Reputation a bare number; levels under the fold; the next title a sentence.

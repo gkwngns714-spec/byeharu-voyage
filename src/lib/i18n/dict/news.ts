@@ -9,6 +9,8 @@ export const newsDict = defineDict({
     cities: 'My cities',
     older: 'Older',
     none: 'No news yet.',
+    // slice 8: the face's picture, read aloud (its dots are the list's happenings on a line of time)
+    timeline: 'News timeline',
     dot: '{n} news',
     more: '+{n} more',
   },
@@ -18,6 +20,7 @@ export const newsDict = defineDict({
     cities: '내 도시',
     older: '이전',
     none: '아직 소식 없음.',
+    timeline: '소식 흐름',
     dot: '소식 {n}개',
     more: '외 {n}개',
   },

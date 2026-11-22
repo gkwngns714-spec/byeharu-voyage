@@ -1,18 +1,19 @@
-import { Card, Figure, Hint, ListHeading, ListPanel, PageSplit, Row, Skeleton, StatCell } from '../../components/ui'
+import { Card, Hint, ListPanel, PageSplit, Row, Skeleton, StatCell } from '../../components/ui'
 import { formatInt, formatRelative } from '../../lib/format'
 import type { HouseWeekRow, HousesWeek } from '../../lib/rpc'
-import { nationNameOf, useWorld } from '../../live/worldStore'
+import { useWorld } from '../../live/worldStore'
 import { useT } from '../../lib/i18n'
+import { BoardRow, Pinned, Podium } from './Podium'
 
 // RANK → WEEK (0467, docs/design/content-plan-2026-11.md 5.3 item 5): the merchant houses and the companies with a login, by THIS WEEK's
 // profit (earned less lost, public.history_company_day), counted by the history job's run. ONE read, `world.houses_week()`, asked by
 // RankScreen (it decides whether this face exists: dark, the server answers {on: false} and the face is not offered). Nothing is ranked
-// here: every place, tie, count and gap is served. The page is Captains' pattern: MAIN the board as one list card, your line in its place
-// or under its own heading after the board; SIDE your standing: the place "#37 of 874", the profit, and the house just ahead.
+// here: every place, tie, count and gap is served. The page is Captains' pattern (2026-11-23, slice 8: Podium.tsx): MAIN the board as
+// one list card — the top three on a podium, your line pinned at its head and lit, every row the place, the flag and the whole name,
+// the profit and a bar against the first (green a gain, red a loss); SIDE your standing: the place "of 874", the profit, the house ahead.
 
 export function WeekBoard({ read }: { read: HousesWeek | null }) {
   const t = useT()
-  const nationByCode = useWorld((s) => s.nationByCode)
   const house = useWorld((s) => s.player)
 
   if (!read || !read.on || !read.board) {
@@ -28,25 +29,40 @@ export function WeekBoard({ read }: { read: HousesWeek | null }) {
 
   const you = read.you ?? null
   const houses = read.houses ?? 0
-  const flag = (code: string | null) => (code === null ? null : nationNameOf(nationByCode, code))
   const settled =
     read.age_seconds !== null && read.age_seconds !== undefined ? formatRelative(-read.age_seconds * 1000, 0) : null
-  const row = (r: HouseWeekRow) => (
-    <Row
-      key={`${r.position}-${r.company_name}`}
-      mark={<Figure value={formatInt(r.position)} tone={r.is_you ? 'accent' : 'faint'} className="w-7 justify-end" />}
-      label={r.company_name}
-      value={<Figure value={formatInt(r.net)} tone={r.is_you ? 'accent' : 'ink'} />}
-      tone={r.is_you ? 'accent' : 'default'}
-      hairline={false}
-      data-testid={r.is_you ? 'rank-week-you' : 'rank-week-row'}
-    >
-      {(() => {
-        const text = [flag(r.nation), r.company ? t('rank.company') : null, r.tied ? t('rank.tied') : null].filter(Boolean).join(' · ')
-        return text === '' ? null : <span className="block text-t-caption text-ink-faint">{text}</span>
-      })()}
-    </Row>
+  const widest = Math.abs(read.board[0]?.net ?? 0)
+  const tone = (net: number) => (net > 0 ? ('success' as const) : net < 0 ? ('danger' as const) : ('neutral' as const))
+  const row = (r: HouseWeekRow, pinned = false) => (
+    <BoardRow
+      key={`${pinned ? 'pin' : 'row'}-${r.position}-${r.company_name}`}
+      place={r.position}
+      name={r.company_name}
+      nation={r.nation}
+      value={r.net}
+      text={formatInt(r.net)}
+      widest={widest}
+      mine={r.is_you}
+      pinned={pinned}
+      tone={r.is_you ? 'accent' : tone(r.net)}
+      // a company with a login beside the merchant houses: its one word stays (a fact no mark carries); the flag is a picture
+      caption={r.company && !r.is_you ? t('rank.company') : undefined}
+      data-testid={pinned ? 'rank-week-you' : 'rank-week-row'}
+    />
   )
+  // YOUR LINE, PINNED: the board's row when you placed, else the `you` the read carries off the board's end
+  const mine: HouseWeekRow | null =
+    you === null
+      ? null
+      : (read.board.find((r) => r.is_you) ?? {
+          position: you.position,
+          tied: you.tied,
+          company_name: house?.company_name ?? t('rank.yourCompany'),
+          nation: house?.nation ?? null,
+          company: true,
+          net: you.net,
+          is_you: true,
+        })
 
   return (
     <PageSplit
@@ -64,21 +80,20 @@ export function WeekBoard({ read }: { read: HousesWeek | null }) {
           data-testid="rank-week"
         >
           {read.board.length === 0 && <Row label={t('rank.empty')} tone="muted" hairline={false} />}
-          {read.board.map(row)}
-          {you !== null && !you.on_board && (
-            <>
-              <ListHeading data-testid="rank-week-you-heading">{t('rank.yourCompany')}</ListHeading>
-              {row({
-                position: you.position,
-                tied: you.tied,
-                company_name: house?.company_name ?? t('rank.yourCompany'),
-                nation: house?.nation ?? null,
-                company: true,
-                net: you.net,
-                is_you: true,
-              })}
-            </>
-          )}
+          <Podium
+            label={t('rank.podium')}
+            steps={read.board.slice(0, 3).map((r) => ({
+              key: `${r.position}-${r.company_name}`,
+              place: r.position,
+              name: r.company_name,
+              nation: r.nation,
+              value: r.net,
+              text: formatInt(r.net),
+              mine: r.is_you,
+            }))}
+          />
+          {mine !== null && <Pinned>{row(mine, true)}</Pinned>}
+          {read.board.map((r) => row(r))}
         </ListPanel>
       }
       side={
@@ -89,16 +104,17 @@ export function WeekBoard({ read }: { read: HousesWeek | null }) {
             <>
               <div className="grid grid-cols-2 gap-4">
                 <StatCell look="stacked" label={t('rank.place')} value={you.position} format={formatInt} tone="accent" data-testid="rank-week-place">
-                  <span className="block text-t-caption text-ink-faint">
-                    {t('rank.placeOf', { n: formatInt(you.position), of: formatInt(houses) })}
-                    {you.tied ? ` · ${t('rank.tied')}` : ''}
-                  </span>
+                  <span className="block text-t-caption text-ink-faint">{t('rank.ofN', { of: formatInt(houses) })}</span>
                 </StatCell>
-                <StatCell look="stacked" label={t('rank.profit')} value={you.net} format={formatInt} data-testid="rank-week-profit" />
+                <StatCell look="stacked" label={t('rank.profit')} value={you.net} format={formatInt} tone={you.net > 0 ? 'success' : you.net < 0 ? 'danger' : 'ink'} data-testid="rank-week-profit" />
               </div>
-              <p className="mt-3 text-t-caption text-ink-faint" data-testid="rank-week-ahead">
-                {you.ahead === null ? t('rank.leading') : t('rank.ahead', { name: you.ahead.name, gap: formatInt(you.ahead.gap) })}
-              </p>
+              {/* THE HOUSE AHEAD, when there is one; a first place that is shared leads no one, so it says nothing (the audit: "You
+                  lead." for a company with no trade) */}
+              {(you.ahead !== null || !you.tied) && (
+                <p className="mt-3 text-t-caption text-ink-faint" data-testid="rank-week-ahead">
+                  {you.ahead === null ? t('rank.leading') : t('rank.ahead', { name: you.ahead.name, gap: formatInt(you.ahead.gap) })}
+                </p>
+              )}
             </>
           )}
         </Card>

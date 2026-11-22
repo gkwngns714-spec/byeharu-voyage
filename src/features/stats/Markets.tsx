@@ -8,9 +8,11 @@ import {
   FilterBar,
   Figure,
   GoodKind,
+  Icon,
   ListPanel,
   Note,
   PageSplit,
+  RankBars,
   Row,
   Segmented,
   Skeleton,
@@ -18,6 +20,7 @@ import {
   StatCell,
   StockGauge,
   categoryLabel,
+  goodIcon,
   ALL,
   deltaTone,
   goodClassRow,
@@ -229,19 +232,19 @@ export function MarketsFace() {
             title={t('stats.risers')}
             testid="stats-risers"
             empty={t('stats.nothingRose')}
-            rows={risers.map((r) => ({ id: r.g.code, label: goodName(r.g), text: formatPctChange(r.move ?? 0), tone: 'success' as const }))}
+            rows={risers.map((r) => ({ id: r.g.code, g: r.g, value: r.move ?? 0, text: formatPctChange(r.move ?? 0), tone: 'success' as const }))}
           />
           <Board
             title={t('stats.fallers')}
             testid="stats-fallers"
             empty={t('stats.nothingFell')}
-            rows={fallers.map((r) => ({ id: r.g.code, label: goodName(r.g), text: formatPctChange(r.move ?? 0), tone: 'danger' as const }))}
+            rows={fallers.map((r) => ({ id: r.g.code, g: r.g, value: r.move ?? 0, text: formatPctChange(r.move ?? 0), tone: 'danger' as const }))}
           />
           <Board
             title={t('stats.mostTraded24')}
             testid="stats-most-traded"
             empty={t('stats.nothingTraded')}
-            rows={traded.map((r) => ({ id: r.g.code, label: goodName(r.g), text: formatInt(r.traded), tone: 'ink' as const }))}
+            rows={traded.map((r) => ({ id: r.g.code, g: r.g, value: r.traded, text: formatInt(r.traded), tone: 'neutral' as const }))}
           />
         </>
       }
@@ -251,20 +254,38 @@ export function MarketsFace() {
 
 interface BoardRow {
   id: string
-  label: string
+  g: StatsGood
+  /** The figure the bar is measured by (a move in points, or a count). */
+  value: number
   text: string
-  tone: 'success' | 'danger' | 'ink'
+  tone: 'success' | 'danger' | 'neutral'
 }
 
-/** A MOVERS CARD: three goods and their figures, one line each — the good at the left, its move or its count at the
- *  right, 52 px a line (a good's name wraps rather than being cut, so a long one is read whole). */
+/** A MOVERS CARD (2026-11-23, the visual overhaul's slice 8: a figure is a mark, a figure and a bar): three goods, each its own drawn
+ *  mark and its whole name, its move or its count at the right, and a bar against the card's biggest (`RankBars`, one recipe). A good's
+ *  name wraps rather than being cut, so a long one is read whole. */
 function Board({ title, rows, empty, testid }: { title: string; rows: readonly BoardRow[]; empty: string; testid: string }) {
   return (
     <Card title={title} data-testid={testid}>
       {rows.length === 0 ? (
         <span className="block text-t-label text-ink-muted">{empty}</span>
       ) : (
-        rows.map((r) => <StatCell key={r.id} look="line" label={r.label} text={r.text} tone={r.tone} />)
+        <RankBars
+          rules={false}
+          format={formatInt}
+          rows={rows.map((r) => ({
+            id: r.id,
+            label: (
+              <span className="flex min-w-0 items-center gap-2">
+                <Icon name={goodIcon(r.g.code, r.g.category)} size={18} className="shrink-0 text-ink-muted" aria-hidden="true" />
+                <span className="min-w-0 break-words">{goodName(r.g)}</span>
+              </span>
+            ),
+            value: r.value,
+            text: r.text,
+            tone: r.tone,
+          }))}
+        />
       )}
     </Card>
   )

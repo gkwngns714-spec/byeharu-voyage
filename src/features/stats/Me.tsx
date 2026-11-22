@@ -1,4 +1,4 @@
-import { Card, FilterBar, Hint, ListPanel, Note, PageSplit, RankBars, SignedBars, Skeleton, StatCell, oneOf, useFilterChoice, type RankRow } from '../../components/ui'
+import { Card, FilterBar, Hint, Icon, ListPanel, Note, PageSplit, RankBars, SignedBars, Skeleton, StackedBar, StatCell, oneOf, useFilterChoice, type IconName, type RankRow } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatRelative } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldReport, worldStatsMe, type Report, type StatsMe } from '../../lib/rpc'
@@ -24,6 +24,9 @@ import { reportBars } from '../../live/reportBars'
 // asked, and are asked again every second while the face is open.
 
 const SALE_SORTS = ['profit', 'newest', 'total'] as const
+
+/** A line's mark (2026-11-23, slice 8): the one glyph of its meaning before its word — money the coin, trades the scales. */
+const mark = (name: IconName) => <Icon name={name} size={18} className="shrink-0 text-ink-muted" aria-hidden="true" />
 
 export function MeFace() {
   const t = useT()
@@ -102,17 +105,35 @@ export function MeFace() {
           <div className="mt-3">
             <StatCell
               look="line"
+              mark={mark('coin')}
               label={t('stats.dayAverage')}
               value={perDay ?? 0}
               format={formatDucatsDelta}
               text={perDay === null ? '—' : undefined}
               tone={(perDay ?? 0) >= 0 ? 'success' : 'danger'}
             />
-            <StatCell look="line" label={t('stats.sold7')} value={v.sold_7d} format={formatDucats} />
-            <StatCell look="line" label={t('stats.bought7')} value={v.bought_7d} format={formatDucats} />
+            <StatCell look="line" mark={mark('scales')} label={t('stats.trades')} value={v.trades_7d} format={formatInt} />
           </div>
+          {/* SOLD AND BOUGHT, the week's two sides as one bar (2026-11-23, slice 8: a figure is a mark, a figure and a bar); the bar draws
+              itself once there is a trade to split, and before that the two lines say 0 */}
+          {v.sold_7d + v.bought_7d > 0 ? (
+            <StackedBar
+              parts={[
+                { id: 'sold', label: t('stats.sold7'), value: v.sold_7d, tone: 'accent' },
+                { id: 'bought', label: t('stats.bought7'), value: v.bought_7d, tone: 'info' },
+              ]}
+              format={formatDucats}
+              label={t('stats.wWeek')}
+              className="mt-5"
+              data-testid="stats-me-sides"
+            />
+          ) : (
+            <div>
+              <StatCell look="line" label={t('stats.sold7')} value={v.sold_7d} format={formatDucats} />
+              <StatCell look="line" label={t('stats.bought7')} value={v.bought_7d} format={formatDucats} />
+            </div>
+          )}
           <SignedBars bars={bars} label={t('stats.earnedEach', { n: formatInt(bars.length) })} height="h-24" className="mt-5" data-testid="stats-me-bars" />
-          <Hint className="mt-3">{t('stats.trades7', { n: formatInt(v.trades_7d) })}</Hint>
         </Card>
       }
     />
