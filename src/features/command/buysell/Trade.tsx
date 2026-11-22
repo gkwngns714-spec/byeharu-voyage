@@ -25,6 +25,7 @@ import { doneWords, type TradeDone } from './tradeDone'
 import { useTradeCity } from './tradeCity'
 import { TradeStatus } from './TradeStatus'
 import { TradeToast } from './TradeToast'
+import { WorldEventsLine } from '../../../live/WorldEventLine'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE — ONE SCREEN, BOTH SIDES, AND THE SMALL MAP AT THE BOTTOM (owner 2026-10-30)
@@ -215,6 +216,8 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
 
   // THE CITY PICKER stands at the head of the board on a phone, and in the wide desk's left pane (the layout below)
   const chips = <CityChips home={home} city={city} onCity={pressCity} />
+  // 0469: the world events (a famine, a festival, a blockade); a press puts the harbour in hand. Nothing while dark or none is on.
+  const events = <WorldEventsLine city={city} onCity={pressCity} />
   // WHERE SHE IS, at the head of the wide desk's left pane: in port, or under way to her destination (TradeStatus.tsx).
   // On a phone the same line stands beside her name (CommandScreen.tsx): the glass has no line to spare (tests/onepage.spec.ts).
   const status = <TradeStatus fleet={fleet} />
@@ -333,6 +336,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
           list: (
             <>
               {status}
+              {events}
               {chips}
               {cargoRow}
               {mapRow}
@@ -376,6 +380,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
                   spare. The goods card is 14 px taller since its best sale's city is printed whole, and the cards' pane must
                   hold a whole row of them (TradeBoard.tsx); with the doors on one line the face still fits the glass without
                   scrolling (tests/onepage.spec.ts), with 22 px in hand. */}
+              {events}
               <div className="mb-2 grid grid-cols-2 gap-2">
                 {cargoRow}
                 {mapRow}
