@@ -10,6 +10,7 @@ import { parseFightLog } from '../fightLines'
 import { BattleLog } from './BattleLog'
 import { BattleStage } from './BattleStage'
 import { eventLine, resultLine } from './lines'
+import { BountyLine } from '../BountyLine'
 import { sideLevel } from './shipCards'
 import { ShipsPanel } from './ShipsPanel'
 import { BAR_CODES, barLock, cooldownAt, lastTick, playableTimeline, readEvents, runChanceAt, stateAt, type BarLock, type BattleEvent } from './timeline'
@@ -289,6 +290,7 @@ function TickBattle({
   const endWords = (
     <div className="text-t-title" data-testid="battle-outcome" data-outcome={outcome}>
       {resultLine(t, outcome, result, state)}
+      {state.ended && <BountyLine battleId={battleId} />}
     </div>
   )
   // THE ONE STATUS LINE: the newest event, said short; the end's line stands on the stage instead
@@ -618,6 +620,7 @@ function OldBattle({ read, source, battleId }: { read: BattleTicksRead; source: 
       {outcome && (
         <div className="text-t-title" data-testid="battle-outcome" data-outcome={outcome}>
           {resultLine(t, outcome, read.result ?? null)}
+          <BountyLine battleId={battleId} />
         </div>
       )}
       {log && (

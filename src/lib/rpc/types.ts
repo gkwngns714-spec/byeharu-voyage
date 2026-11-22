@@ -2942,6 +2942,71 @@ export interface PirateShipCard {
   attack?: true
 }
 
+// ── 0471: BOUNTIES ON NAMED PIRATES ──────────────────────────────────────────────────────────────
+// `world.pirate_bounties()`. Dark (`pirate_bounties_enabled` false, or the pirates dark) it answers `{on: false}`. Her name is three
+// served parts (an epithet code, a given name, her home's CODE), composed in each language by src/live/bountyWords.ts.
+
+/** A ship a named pirate took: when, her name, her house. */
+export interface BountyTook {
+  at: string
+  ship: string | null
+  house: string | null
+}
+
+/** One standing bounty: a named pirate still free. */
+export interface BountyRow {
+  slot: number
+  /** Her fleet id (the map's PIRATE row, `world.pirate_ship_card`). */
+  fleet: string
+  epithet: string
+  given: string
+  /** The English name, as a report writes it. */
+  name: string
+  /** Port CODES: her home, and the harbour that posts and pays the bounty. */
+  home: string
+  poster: string | null
+  /** The sea she is in now (a served sea name); null on her way home or in port. */
+  sea: string | null
+  laid_up: boolean
+  named_at: string
+  /** The bounty now, in coin (the server's `bounty_value`). */
+  value: number
+  taken: number
+  took: BountyTook[]
+}
+
+/** One bounty collected. */
+export interface BountyClaim {
+  epithet: string
+  given: string
+  name: string
+  home: string | null
+  house: string | null
+  is_you: boolean
+  paid: number
+  at: string
+}
+
+export interface PirateBounties {
+  on: boolean
+  rates?: { base: number; per_hour: number; per_ship: number; cap: number; respawn_hours: number }
+  bounties?: BountyRow[]
+  claims?: BountyClaim[]
+  /** Your own claims, by battle. */
+  mine?: { battle: string; epithet: string; given: string; name: string; home: string | null; paid: number; at: string }[]
+}
+
+/** The `bounty` a BATTLE_REPORT (and a battle's result) carries when a company collected (0471). */
+export interface BountyPaid {
+  name: string
+  epithet: string
+  given: string
+  home: string | null
+  poster: string | null
+  paid: number
+  value: number
+}
+
 // ── 0121: ONE FLEET'S TRADING, LAP BY LAP (owner, 2026-10-15) ───────────────────────────────────
 // *"by clicking fleet, i want to be able to click on laps, so far, a lap and so on which tells me
 // what the ship has bought and sold, where it sold, and so on."* `world.fleet_trades(fleet)` — a

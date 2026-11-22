@@ -9,6 +9,8 @@ import { worldLevels, type LedgerEvent, type LevelsView, type PlayerHouse } from
 import { useServedRead } from '../live/useServedRead'
 import { goodWordOf, portNameOf, useWorld } from '../live/worldStore'
 import { ArrivalRaids } from '../live/ArrivalRaids'
+import { bountyOf, type PaidBounty } from '../live/bountyPaid'
+import { bountyName } from '../live/bountyWords'
 import { ArrivalRepeat } from '../live/ArrivalRepeat'
 import { HOME_TAB, tabWord } from './navTabs'
 
@@ -63,6 +65,8 @@ interface Card {
   newPorts: number
   /** 0352: the Reputation the served book gained on the read(s) this card holds (earns only). */
   reputation: number
+  /** 0471: the bounties collected on the read(s) this card holds (a fight's BATTLE_REPORT that paid one). */
+  bounties: PaidBounty[]
 }
 
 interface LevelLine {
@@ -98,7 +102,9 @@ function saleOf(e: LedgerEvent): Sale {
 /** The facts of one read: the events not seen before, against the house as it stood on the read before. */
 function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: PlayerHouse | null, held: LevelLine[]): Card | null {
   const reports = fresh.filter((e) => e.kind === 'VOYAGE_REPORT')
-  if (reports.length === 0) return null
+  // 0471: a fight that paid a bounty brings the card up on its own, as an arrival does
+  const bounties = fresh.flatMap((e) => bountyOf(e) ?? [])
+  if (reports.length === 0 && bounties.length === 0) return null
   const arrivals = reports.map((r): Arrival => {
     const to = str(r.payload, 'to')
     const fleet = str(r.payload, 'fleet')
@@ -116,7 +122,7 @@ function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: Play
   // 0356: a level's gift is not in this sum: it stands on its own level line.
   const seenSeq = before?.reputation?.seq ?? 0
   const reputation = (now?.reputation?.recent ?? []).reduce((n, r) => (r.seq > seenSeq && r.delta > 0 && r.kind !== 'level' ? n + r.delta : n), 0)
-  return { arrivals, levels, newPorts, reputation }
+  return { arrivals, levels, newPorts, reputation, bounties }
 }
 
 function merge(a: Card | null, b: Card): Card {
@@ -134,6 +140,7 @@ function merge(a: Card | null, b: Card): Card {
     ),
     newPorts: a.newPorts + b.newPorts,
     reputation: a.reputation + b.reputation,
+    bounties: [...a.bounties, ...b.bounties],
   }
 }
 
@@ -172,7 +179,7 @@ export function ArrivalCard() {
       // No arrival on this read. A level-up joins the card that is open; with no card open it is held for the next one.
       const lines = levelLines(fresh)
       if (lines.length === 0) return
-      if (open.current) setCard((c) => (c ? merge(c, { arrivals: [], levels: lines, newPorts: 0, reputation: 0 }) : c))
+      if (open.current) setCard((c) => (c ? merge(c, { arrivals: [], levels: lines, newPorts: 0, reputation: 0, bounties: [] }) : c))
       else held = levelLines(fresh, held)
     }
     read(useWorld.getState())
@@ -212,7 +219,9 @@ export function ArrivalCard() {
         data-net={sales.length ? net : undefined}
         className={FLOAT_CARD_CLASS}
       >
-        <p className="text-t-label font-semibold">{port ? t('feed.arrivedAt', { port }) : t('feed.arrived')}</p>
+        <p className="text-t-label font-semibold">
+          {card.arrivals.length === 0 ? t('bounty.title') : port ? t('feed.arrivedAt', { port }) : t('feed.arrived')}
+        </p>
         {sales.map((s) => (
           <p key={s.id} className="mt-1 flex justify-between gap-3 text-t-body" data-testid="arrival-sale">
             <span className="min-w-0 break-words">{t('feed.arrSold', { n: s.qty === null ? '' : formatInt(s.qty), good: goodWordOf(s.good) })}</span>
@@ -229,6 +238,11 @@ export function ArrivalCard() {
           </p>
         ))}
         <ArrivalRaids ids={card.arrivals.map((a) => a.id)} onOpen={setLogOpen} />
+        {card.bounties.map((b, i) => (
+          <p key={`${b.battle}-${i}`} className="mt-1 text-t-body text-accent" data-testid="arrival-bounty" data-paid={b.paid}>
+            {t('bounty.claimed', { n: formatInt(b.paid) })} · {bountyName(locale, b, portByCode)}
+          </p>
+        ))}
         {card.newPorts > 0 && (
           <p className="mt-1 text-t-body text-accent" data-testid="arrival-newport">
             {t('feed.newPort')}

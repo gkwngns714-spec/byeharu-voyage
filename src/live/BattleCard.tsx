@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { cmdBattleStance, worldBattle } from '../lib/rpc'
 import type { BattleRead, BattleStanceWord, Refusal } from '../lib/rpc'
 import { BattleView } from './BattleView'
+import { BountyLine } from './BountyLine'
 import { useWorld } from './worldStore'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -126,5 +127,11 @@ export function BattleCard({ fleetId, className = '' }: { fleetId: string; class
   }, [over, battle, refresh])
 
   if (!read) return null
-  return <BattleView read={read} nowMs={serverNow} refusal={refusal} navyAt={navyAt} onStance={(s) => battle && s !== stance && send(battle, s, true)} className={className} />
+  return (
+    <>
+      <BattleView read={read} nowMs={serverNow} refusal={refusal} navyAt={navyAt} onStance={(s) => battle && s !== stance && send(battle, s, true)} className={className} />
+      {/* 0471: the bounty this fight paid, once it is over */}
+      {read.status !== 'FIGHTING' && <BountyLine battleId={read.battle} className="mt-2" />}
+    </>
+  )
 }
