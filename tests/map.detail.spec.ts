@@ -177,12 +177,7 @@ for (const glass of [
       // the world's allegiance gives no holder has no flag to draw, and is set by its name; the plan's own law (3) above
       // proves a held capital keeps its flag at the widest desktop view)
       const labelled = new Set(s.labelled)
-      // 2026-11-23 (visual overhaul slice 4): the zoom column's filter became a 44-px glyph square (it was a word button
-      // about 90 px wide), so the phone's furthest-out glass now counts Hamburg as clear of the chrome. It is the crowded corner
-      // src/chart/labels.ts names itself (a lone flag "between Amsterdam and Copenhagen"), unset before as well, then hidden
-      // from this count by the wider button. Only it is let off, only on the phone; every other capital still must be set.
-      const crowded = glass.tag === 'phone' ? new Set(['HAM']) : new Set<string>()
-      expect(s.capitals.filter((c) => !labelled.has(c) && !crowded.has(c)), 'capitals not set furthest out').toEqual([])
+      expect(s.capitals.filter((c) => !labelled.has(c)), 'capitals not set furthest out').toEqual([])
       expect(s.flagged, 'flags furthest out').toBeGreaterThanOrEqual(glass.minFlags)
     })
   })
