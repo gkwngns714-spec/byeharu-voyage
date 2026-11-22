@@ -548,14 +548,31 @@ export function FleetsLayer({
             inFight={inFight?.has(f.fleet.id) ?? false}
             className="fill-accent bv-sun-hull-keyline stroke-chart-sea"
             strokeWidth={GLYPH.glyphStroke * 0.6}
-            hooks={{ 'data-testid': 'map-ship' }}
+            hooks={{ 'data-testid': 'map-ship', ...(selected ? { 'data-selected': 'true' } : {}) }}
           >
+            {/* A GOLD HALO (2026-11-23, the visual overhaul's slice 4: "your fleets are hull silhouettes with a gold halo"): a soft
+                brass glow round the dark ground her hull is read on, and a brass rim. The ground stays the sea's, so the gold hull
+                keeps its contrast (tests/map.kinds.spec.ts reads her against it). SELECTED is said twice, never by a shade alone: the
+                rim turns to ink and a second, dashed ink ring stands outside the glow. */}
+            <circle cx={halo.cx} cy={halo.cy} r={halo.r * 1.6} className="fill-accent/15" data-fleet-glow="" />
+            {selected && (
+              <circle
+                cx={halo.cx}
+                cy={halo.cy}
+                r={halo.r * 1.9}
+                className="fill-none stroke-ink"
+                strokeWidth={GLYPH.glyphStroke}
+                strokeDasharray="2 2"
+                vectorEffect="non-scaling-stroke"
+                data-fleet-selected=""
+              />
+            )}
             <circle
               cx={halo.cx}
               cy={halo.cy}
               r={halo.r}
-              className={`bv-sun-fleet-halo fill-chart-sea/70 ${selected ? 'stroke-ink/70' : 'stroke-accent/40'}`}
-              strokeWidth={GLYPH.glyphStroke}
+              className={`bv-sun-fleet-halo fill-chart-sea/70 ${selected ? 'stroke-ink' : 'stroke-accent/90'}`}
+              strokeWidth={GLYPH.glyphStroke * 1.3}
               vectorEffect="non-scaling-stroke"
             />
           </HullGroup>

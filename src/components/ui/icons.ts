@@ -55,6 +55,9 @@ export const ICON_NAMES = [
   'hull',
   'knots',
   'sailing',
+  // The Map's filter chips (slice 4)
+  'layers',
+  'waves',
   // The seven trade-good CATEGORIES. Not a good's own mark any more — the fallback, for a good
   // that arrives from a migration before anyone has drawn it. See goodIcons.ts.
   'spice',
@@ -283,6 +286,11 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   knots: ['M3 8.5h10.5a2.5 2.5 0 1 0-2.5-2.5', 'M3 12.5h16', 'M3 16.5h8.5a2.5 2.5 0 1 1-2.5 2.5'],
   // A sail full of wind over a wave — Under way (how many of your fleets are sailing). Not the ship: that is the Fleets tab.
   sailing: ['M7 3.5v13', 'M7 3.5c5 1.6 8.2 5.3 8.8 10.5H7', 'M3 20c2-1.3 4-1.3 6 0s4 1.3 6 0 4-1.3 6 0'],
+  // ── THE MAP'S FILTER CHIPS (2026-11-23, the visual overhaul's slice 4) ──
+  // Three sheets stacked — the chart's filter itself, and its "Off" chip (the plain chart). `regions` stays the Regions chip.
+  layers: ['M12 4 3 8.5l9 4.5 9-4.5L12 4Z', 'M3 12.5l9 4.5 9-4.5', 'M3 16.5l9 4.5 9-4.5'],
+  // Three swells — the Seas chip (the sea zones, their waves and what each asks to pass). Not `route`, not the chart.
+  waves: ['M3 8c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0', 'M3 13c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0', 'M3 18c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0'],
 
   // ── THE SEVEN CATEGORY MARKS — now the FALLBACK, not the answer ───────────────────────────────
   // Every good in `data/goods.json` has its own mark below. These seven remain because a good can
