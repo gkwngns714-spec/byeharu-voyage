@@ -145,9 +145,30 @@ for (const size of SIZES) {
         }
         // FIXED FACTS. The top bar is what it read at the quay, what the card says the arrival earned, and every level line's gift
         // (a level the sale crossed is paid by the shell's one ask and joins the open card).
+        // THE SALE'S CROSSING IS PAID ONE ASK LATER (worldStore `askLevelUp`): the arrival pays Exploration 2 itself, but a Trading
+        // level the sale's turnover made is paid by `cmd.level_up` after the house read that shows it, and its line joins the card on
+        // the read after that. In between, the bar (quay + earned + Exploration's 20) already equals the sum of the card's lines, so
+        // the sum alone settled early and the You balance then read 20 more (PR #792's run 44992061648: expected 46, served 66).
+        // So the card is settled only when it carries a line for every level the served levels read shows: the You page's Trading
+        // tile stands at the level paid (the quay's, or the card's Trading line), read after the arrival (its Exploration tile at 2+).
+        const tile = async (track: 'trading' | 'exploration') => {
+          const t = page.getByTestId(`levels-${track}`).first()
+          return (await t.count()) === 0 ? Number.NaN : Number(await t.getAttribute('data-level'))
+        }
+        const tradingPaid = async () => {
+          const line = page.locator('[data-testid="arrival-level"][data-track="trading"]')
+          return (await line.count()) === 0 ? quayLevel : Number(await line.first().getAttribute('data-level'))
+        }
         await expect
-          .poll(async () => Number(await bar.getAttribute('data-value')) - quay - earned - (await levelGifts()), { timeout: 30_000, message: 'the bar is not quay + earned + the level gifts on the card' })
-          .toBe(0)
+          .poll(
+            async () => ({
+              off: Number(await bar.getAttribute('data-value')) - quay - earned - (await levelGifts()),
+              afterArrival: (await tile('exploration')) >= 2,
+              tradingUnpaid: (await tile('trading')) - (await tradingPaid()),
+            }),
+            { timeout: 60_000, message: 'the bar is not quay + earned + the level gifts on the card, or a served level has no line yet' },
+          )
+          .toEqual({ off: 0, afterArrival: true, tradingUnpaid: 0 })
         const gifts = await levelGifts()
         for (const line of await page.getByTestId('arrival-level').all()) {
           const track = (await line.getAttribute('data-track')) as 'trading' | 'exploration' | 'combat'
