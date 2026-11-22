@@ -1,5 +1,6 @@
 import { useWide } from '../../components/ui'
-import { properName, useT } from '../../lib/i18n'
+import { properName, useLocale, useT } from '../../lib/i18n'
+import { levelName, nextOpening } from '../../live/levelWords'
 import { worldLevels, type LevelsView } from '../../lib/rpc'
 import { useServedRead } from '../../live/useServedRead'
 import { useSecondShip } from '../../live/useSecondShip'
@@ -27,6 +28,11 @@ import { openOfficeCity } from './officeView'
 // 2026-11-22 (P0, a new player can read the game): the count says what it counts, "Second ship · materials 0 / 4" (the yard's lines
 // stored), and the press opens the yard where those materials are stored and the trip to fetch them is planned.
 //
+// 0468 (P2, each level opens something): WHILE TRADING'S UNLOCKS ARE LIT (the served Trading benefits carry a step: level_unlocks_enabled),
+// the card names what her next Trading level opens ("Trading 4: Ships a fleet +1", levelWords.nextOpening over the served list): on the
+// first line in place of the far title while the second line is the second ship, else after the two tracks where the seas would stand
+// (the seas win when the title opens one). Dark the served list has no Trading step and the card is exactly as before.
+//
 // THE PRESS LAW: a fixed height in every state (loading, shown, nothing to show), so nothing moves when the read lands or on a press.
 
 // A control is 44 px (tests/consistency.spec.ts), so the card is 44 px. It stands on the Trade tab, under the fleet strip (phone) or under the
@@ -41,6 +47,7 @@ const WIDE = 'mx-3 mb-2 w-[22rem] min-[90rem]:mx-6'
 
 export function GoalCard() {
   const t = useT()
+  const locale = useLocale()
   const wide = useWide()
   const place = wide ? WIDE : PHONE
   const navigate = useNavigate()
@@ -53,6 +60,11 @@ export function GoalCard() {
   const next = v.title.next
   // While sea limits are not on (`seas_bite` false) the title opens nothing yet, so the card promises nothing.
   const opens = next && v.title.seas_bite && next.opens.length > 0 ? t('command.lvOpens', { what: next.opens.join(', ') }) : null
+  // 0468: lit only (a Trading step is served): what the next Trading level opens
+  const trading = v.level_skills?.skills.find((s) => s.code === 'trading')
+  const lit = trading?.benefits.some((b) => b.kind === 'perk') ?? false
+  const ahead = lit && trading ? nextOpening(locale, v.tracks.trading.level, trading.benefits) : null
+  const unlock = ahead ? t('command.goalOpens', { track: levelName(locale, 'trading'), n: ahead.level, what: ahead.what }) : null
   return (
     // THE PRESS OPENS THE NEXT STEP (P0 of docs/design/playable-2026-11-22.md): while the second line is the second ship, the step
     // is the build yard's sheet (Office > City > Build yard: the materials stored, Plan trip, Build); otherwise the levels (You).
@@ -62,10 +74,11 @@ export function GoalCard() {
       // her two track levels stand on the card whatever its second line says (the second ship's count hides the words; a test reads these)
       data-trading={v.tracks.trading.level}
       data-exploration={v.tracks.exploration.level}
+      data-unlock-level={ahead?.level}
     >
       <span className="min-w-0 whitespace-nowrap text-t-body text-ink" data-testid="goal-title">
         {/* "Next: Mate" (2026-11-22, P0): the title bare read as a promotion she had not had (the You page still said the old one) */}
-        {next ? t('command.goalNext', { name: properName('title', next.name, next.name) }) : t('command.lvTitleTop')}
+        {second && unlock ? unlock : next ? t('command.goalNext', { name: properName('title', next.name, next.name) }) : t('command.lvTitleTop')}
       </span>
       {reputation !== null ? (
         <span className="whitespace-nowrap text-t-caption text-ink-faint" data-testid="goal-reputation" data-value={reputation}>
@@ -88,7 +101,7 @@ export function GoalCard() {
           <span className="whitespace-nowrap">
             {t('command.goalTracks', { a: v.tracks.trading.level, b: v.tracks.exploration.level, n: next.level })}
           </span>
-          {opens && ` · ${opens}`}
+          {opens ? ` · ${opens}` : unlock && ` · ${unlock}`}
         </span>
       )}
     </button>
