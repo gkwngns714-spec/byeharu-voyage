@@ -45,7 +45,7 @@ $o$),
   ('world.houses_week()', 3, $o$                          and public.ledger_is_earning(l.kind)), 0);
 $o$)
 ), d as (
-  select h.fn, h.ord, h.old, replace(pg_get_functiondef(to_regprocedure(h.fn)), E'', '') as def from h
+  select h.fn, h.ord, h.old, replace(pg_get_functiondef(to_regprocedure(h.fn)), E'\r', '') as def from h
 ), line as (select (select (c.value #>> '{}')::numeric from public.world_config c where c.key = 'starting_ducats')
                    * (select (c.value #>> '{}')::numeric from public.world_config c where c.key = 'merchant_broke_pct') as v),
 cool as (select make_interval(hours => (select (c.value #>> '{}')::int from public.world_config c where c.key = 'gift_cooldown_hours')) as v)
