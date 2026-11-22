@@ -543,6 +543,10 @@ export function PortYard({
               data-testid="yard-order-wait"
             />
           )}
+          {/* 0472: her second hull; the order's fee is raised to the floor (served `first`, absent dark), so the price says why */}
+          {offerOrder && quoted?.first === true && typeof quoted.fee === 'number' && (
+            <Row label={t('yard.firstOrder')} value={<Figure value={formatDucats(quoted.fee)} />} data-testid="yard-order-first" data-fee={quoted.fee} />
+          )}
           {/* S3: one press from the totals to the trip that fetches what is short. It stands above the lines, with the
               totals, so a part unfolding does not move it; it goes when nothing is left to fetch by sea. */}
           {trip.length > 0 && (

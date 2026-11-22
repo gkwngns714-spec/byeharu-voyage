@@ -511,7 +511,18 @@ export interface YardOrderCard {
  *  no harbour sells a good she takes (`short` names them). */
 export type HullQuote =
   | { on: false }
-  | { on: true; class: string; labour?: number; materials?: number; fee?: number; price: number | null; minutes?: number; short?: string | null }
+  | {
+      on: true
+      class: string
+      labour?: number
+      materials?: number
+      fee?: number
+      price: number | null
+      minutes?: number
+      short?: string | null
+      /** 0472 (first_hour_enabled): her second hull; the fee was raised so the price is at least first_hull_order_floor. Absent dark. */
+      first?: boolean
+    }
 
 /** 0465 — cmd.order_hull's answer. */
 export interface HullOrdered {
