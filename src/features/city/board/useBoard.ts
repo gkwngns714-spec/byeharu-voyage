@@ -11,6 +11,7 @@ import { usePirateBounties } from '../../../live/usePirateBounties'
 import { useRequests } from '../../../live/useRequests'
 import { useSecondShipGoal } from '../../../live/useSecondShipGoal'
 import { useServedRead } from '../../../live/useServedRead'
+import { useRoleEdits } from '../../../live/useShipRoles'
 import type { ServedRead } from '../../../live/useServedRead'
 import { useWorld } from '../../../live/worldStore'
 
@@ -106,7 +107,10 @@ export function useBoard(cityPort: SnapshotPort | null): Board {
 
   // 0480: THE SERVED BOARD, asked first. Her docked fleets' versions are its question (a fleet at sea moves nothing the board prices
   // until she lies in port): one of them acting asks it again; the market's edge is useHqBoard's own.
-  const hq = useHqBoard(company, all.map((f) => (f.status === 'DOCKED' ? `${f.id}.${f.version}` : f.id)).join(','))
+  // 0485: a hull's role set here moves no fleet's version, so its press count is part of the question (the role card leaves, the yard's
+  // next role moves)
+  const roleEdits = useRoleEdits((s) => s.edits)
+  const hq = useHqBoard(company, `${all.map((f) => (f.status === 'DOCKED' ? `${f.id}.${f.version}` : f.id)).join(',')}:${roleEdits}`)
   const lit = litBoard(hq.view)
   // v1's reads only once the server has answered dark (or refused), and while it stays dark: never beside a lit board. A re-ask keeps the
   // last answer (useServedRead), so the dark board does not blink when a fleet acts.
