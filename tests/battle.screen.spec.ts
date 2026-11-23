@@ -160,10 +160,13 @@ test('reduced motion: the stage stands still, a hit number stands at full streng
   await expect(body).toHaveAttribute('data-motion', 'reduced')
   // a ship does not move between two frames
   const ship = page.getByTestId('battle-ship').first()
+  // the tick is read BEFORE the first frame and AFTER the second: the old order read it twice after the wait, so a tick that turned
+  // inside the 250 ms (a ship's place does step from one tick to the next) failed the law (main's run 45088790118: 818.8 -> 815.9)
+  const tick = await body.getAttribute('data-tick')
   const at = await ship.getAttribute('transform')
   await page.waitForTimeout(250)
-  const tick = await body.getAttribute('data-tick')
-  if ((await body.getAttribute('data-tick')) === tick) expect(await ship.getAttribute('transform')).toBe(at)
+  const now = await ship.getAttribute('transform')
+  if ((await body.getAttribute('data-tick')) === tick) expect(now).toBe(at)
   // the crit at tick 24 stands, not faded
   const crit = page.locator('[data-testid="battle-hit"][data-crit="1"]').first()
   await expect(crit).toBeAttached({ timeout: 15_000 })
