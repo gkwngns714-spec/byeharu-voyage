@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ready, reachable, settled } from './appReady.fixture'
+import { tradeOnDesk } from './desk.fixture'
 import { GLASSES, phoneLaws as defects, readGlass, type Glass } from './unfold.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -130,9 +131,8 @@ async function stockOneLot(page: Page) {
   const cargo = page.getByTestId('command-line')
   const before = await cargo.innerText()
   await page.locator('[data-testid="trade-row"] button:enabled').first().click()
-  const send = page.getByTestId('trade-tray').getByTestId('trade-tray-send')
-  await expect(send).toBeEnabled({ timeout: 30_000 })
-  await send.click()
+  // X1 (src/live/tradeOnDesk.ts): the price opens the Trade desk on that good, and the buy runs there
+  await tradeOnDesk(page)
   await expect.poll(async () => cargo.innerText(), { timeout: 60_000 }).not.toBe(before)
 }
 

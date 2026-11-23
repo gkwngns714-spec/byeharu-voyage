@@ -26,9 +26,12 @@ const NO_TRIP = () => {}
  *  the card (산타크루스데테네리페) widens its card, and with it the board's column, instead of standing out of the card. */
 const SALE_COLUMN = 'grid-cols-1 xl:grid-cols-[minmax(min-content,1fr)] min-[100rem]:grid-cols-1'
 
-/** A price's word ("Buy 561", "Sell 518"): shown where the prices' line (a size container, `SaleBlock`'s `top`) is 9 rem or wider,
- *  which is where two words and two four-figure prices stand on one line in Korean too; narrower, the figure stands alone. */
-const PRICE_WORD = 'hidden shrink-0 text-t-caption text-ink-faint @min-[9rem]:inline'
+/** A PRICE'S SIDE IS A MARK, NOT A WORD (2026-11-23, the visual overhaul's slice 3). It was the word ("Buy 561", "Sell 518") where the
+ *  line had room. Now each price is led by its arrow, in its tone: Buy an arrow down into the hold (`buyIn`, blue: goods moving aboard),
+ *  Sell an arrow up out of it (`sellOut`, green: coin coming in). The word is the figure's accessible name. Shown where the prices' line
+ *  (a size container, `SaleBlock`'s `top`) is 7 rem or wider; in the narrowest card (the HQ Market at 320 px, 107 px inside) the two
+ *  figures stand alone over their Buy and Sell buttons, in the same order. */
+const PRICE_MARK = 'hidden shrink-0 self-center @min-[7rem]:inline-flex'
 
 export function TradeCard({
   portId,
@@ -130,12 +133,13 @@ export function TradeCard({
         onPress={onBest ?? NO_TRIP}
         prices={
           <>
-            {/* EACH PRICE HAS ITS WORD (2026-11-22, P0 of docs/design/playable-2026-11-22.md: "561 / 518" with no words read as
-                nothing). The first is what the city asks (her Buy here), the second what it bids (her Sell here): the Buy and Sell
-                buttons under them, in the same order. The word stands where the card has room for it (`PRICE_WORD`); in the
-                narrowest cards (a 320-px phone, the desk's four to a line) the figures stand alone, over their buttons. */}
-            <span className="flex min-w-0 items-baseline gap-1">
-              <span className={PRICE_WORD} data-testid="trade-good-buy-word">{t('desk.buy')}</span>
+            {/* EACH PRICE HAS ITS SIDE (2026-11-22, P0: "561 / 518" with nothing said read as nothing). The first is what the city
+                asks (her Buy here), the second what it bids (her Sell here), over the Buy and Sell buttons in the same order. Since
+                slice 3 the side is its arrow and tone, not its word (`PRICE_MARK`); the word is the mark's accessible name. */}
+            <span className="flex min-w-0 items-baseline gap-0.5">
+              <span className={`${PRICE_MARK} ${buyDead ? 'text-ink-faint' : 'text-info'}`} role="img" aria-label={t('desk.buy')} data-testid="trade-good-buy-mark">
+                <Icon name="buyIn" size={13} />
+              </span>
               <span className={`text-t-body font-semibold tabular-nums ${buyDead ? 'text-ink-faint' : 'text-ink'}`} data-testid="trade-good-buy">
                 {buyDead ? '—' : formatPriceFigure(r.buy as number)}
               </span>
@@ -144,8 +148,12 @@ export function TradeCard({
                 "No buyer", which was false: the city buys it, at the bid the Map's tray printed for the same good. It is the bid
                 now, quiet, and its title says why Sell is dead ("None on board"; the card's own "On board 0" stands above it).
                 "No buyer" stays for the one case it is true: the city serves no bid for the good. */}
-            <span className="flex min-w-0 items-baseline gap-1">
-              {sell !== null && <span className={PRICE_WORD} data-testid="trade-good-sell-word">{t('desk.sell')}</span>}
+            <span className="flex min-w-0 items-baseline gap-0.5">
+              {sell !== null && (
+                <span className={`${PRICE_MARK} ${sellDead ? 'text-ink-faint' : 'text-success'}`} role="img" aria-label={t('desk.sell')} data-testid="trade-good-sell-mark">
+                  <Icon name="sellOut" size={13} />
+                </span>
+              )}
               <span
                 className={`text-t-body font-semibold tabular-nums ${sellDead ? 'text-ink-faint' : 'text-ink'}`}
                 data-testid="trade-good-sell"
@@ -224,7 +232,7 @@ function SaleBlock({
   const goodByCode = useWorld((s) => s.goodByCode)
   // two of the card's four shared rows: the prices, and the line under them
   const block = `row-span-2 grid w-full min-w-0 ${canLand ? SALE_COLUMN : 'grid-cols-1'} grid-rows-subgrid gap-y-0`
-  // a size container (`@container`), so each price's word stands only where the line has room for it (`PRICE_WORD`)
+  // a size container (`@container`), so each price's mark stands only where the line has room for it (`PRICE_MARK`)
   const top = '@container flex h-[1.375rem] w-full items-baseline justify-between gap-1'
   // the line holds two lines' height where a sale can land (the Trade board); one where none ever does (the HQ Market)
   const line = `flex ${canLand ? 'min-h-9' : 'min-h-[1.125rem]'} w-full min-w-0 flex-wrap content-between items-center gap-x-1 text-t-caption tabular-nums`

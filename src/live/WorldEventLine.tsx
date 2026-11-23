@@ -44,14 +44,26 @@ function EventWords({ e, nowMs, showPort }: { e: WorldEvent; nowMs: number; show
 }
 
 /** THE TRADE LINE: every event running or announced, soonest first. A press puts its harbour in hand (`onCity`), so its cards and
- *  their "Wanted ×2" are one press away; the harbour in hand is marked. Nothing while there is none. */
-export function WorldEventsLine({ city, onCity }: { city: string | null; onCity: (code: string) => void }) {
+ *  their "Wanted ×2" are one press away; the harbour in hand is marked. Nothing while there is none.
+ *  X8 (live/eventReach.ts): the desk passes `near`, and only the events it keeps stand there; Stats > News passes none and lists all. */
+export function WorldEventsLine({
+  city,
+  onCity,
+  near,
+  className = 'mb-2',
+}: {
+  city: string | null
+  onCity: (code: string) => void
+  near?: (e: WorldEvent) => boolean
+  className?: string
+}) {
   const t = useT()
-  const events = useWorldEvents()
+  const all = useWorldEvents()
+  const events = near ? all.filter(near) : all
   const { nowMs } = useShellState()
   if (events.length === 0) return null
   return (
-    <ul className="mb-2 space-y-1" aria-label={t('events.heading')} data-testid="world-events">
+    <ul className={`space-y-1 ${className}`} aria-label={t('events.heading')} data-testid="world-events">
       {events.map((e) => (
         <li key={e.id}>
           <button

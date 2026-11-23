@@ -1,13 +1,14 @@
 import { test, expect } from '@playwright/test'
 import { ready, reachable, settled, WORLD_BOOT_MS } from './appReady.fixture'
 import { phoneLaws, readGlass } from './unfold.fixture'
+import { tradeOnDesk } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY FACE, DRIVEN (docs/COMMAND_DESK.md §2.2, §3.6, slice D5) — on a local build, at the phone. Every
 // building PORT carried is a face of the city the fleet is docked at, on COMMAND:
 //   · each face the city has opens (its panel is not empty), a press selects and moves nothing above it,
 //     and the page never scrolls sideways;
-//   · the acts run from here: a BUY through the Trade face's own tray (cargo rises), and the Town face
+//   · the acts run from here: a BUY pressed on the Market face runs on the Trade desk (X1; cargo rises), and the Town face
 //     carries the Town Hall (the purse and Invest).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -52,16 +53,12 @@ test('every building face opens on the desk, and a buy runs from its Trade face'
   await strip.getByRole('tab', { name: 'Town', exact: true }).click()
   await expect(page.getByTestId('desk-town-hall')).toBeVisible({ timeout: 30_000 })
 
-  // a BUY from the Trade face: the quay's own tray, the one door
+  // a BUY from the Market face: X1 (src/live/tradeOnDesk.ts) — the price pressed opens the Trade desk on that good, and it runs there
   await strip.getByRole('tab', { name: 'Market', exact: true }).click()
   const cargo = page.getByTestId('command-line')
   const before = await cargo.innerText()
   await page.locator('[data-testid="trade-row"] button:enabled').first().click()
-  const tray = page.getByTestId('trade-tray')
-  await expect(tray).toBeVisible()
-  const send = tray.getByTestId('trade-tray-send')
-  await expect(send).toBeEnabled({ timeout: 30_000 })
-  await send.click()
+  await tradeOnDesk(page)
   await expect.poll(async () => cargo.innerText(), { timeout: 60_000 }).not.toBe(before)
 })
 

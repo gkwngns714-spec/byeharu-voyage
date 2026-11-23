@@ -192,7 +192,8 @@ for (const [locale, words] of [
       const line = card.getByTestId('goal-second-ship')
       await expect(line).toHaveText(words, { timeout: 120_000 })
       await expect(line).toHaveAttribute('data-price', '52000')
-      await expect(card.getByTestId('goal-saving').getByRole('meter')).toHaveAttribute('aria-valuenow', '77')
+      // the purse against the price is the card's RING since slice 3 (2026-11-23): it was a thin bar in the line's rest
+      await expect(card.getByTestId('goal-ring')).toHaveAttribute('data-pct', '77')
       expect(Math.round((await card.boundingBox())!.height), 'the card is not its one fixed height').toBe(44)
       await noSideways(page, 'Trade with the saving line')
       await page.screenshot({ path: info.outputPath(`goal-${locale}.png`) })

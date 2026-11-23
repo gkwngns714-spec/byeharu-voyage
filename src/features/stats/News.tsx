@@ -5,6 +5,9 @@ import { useT } from '../../lib/i18n'
 import { worldNewsFeed, type NewsFilter, type NewsItem, type StatsNow } from '../../lib/rpc'
 import { NewsLine } from '../../live/NewsCard'
 import { newsAtMs } from '../../live/newsWords'
+import { WorldEventsLine } from '../../live/WorldEventLine'
+import { useDeskGood } from '../../store/deskGood'
+import { useNavigate } from 'react-router-dom'
 
 // THE NEWS FACE (0347, owner row 216: *"major event, real time news-like feature"*; docs/NEWS_AND_MARKERS.md §4). Newest first, fifty
 // at a time; "Older" asks the fifty under the last. LIVE WITHOUT A SECOND POLL: the tab already asks world.stats_now every second
@@ -18,6 +21,8 @@ const FILTERS: readonly NewsFilter[] = ['world', 'cities']
 
 export function NewsFace({ live }: { live: StatsNow | null }) {
   const t = useT()
+  const navigate = useNavigate()
+  const setDeskCity = useDeskGood((s) => s.setFocus)
   const { nowMs } = useShellState()
   const [filter, setFilter] = useState<NewsFilter>('world')
   const [list, setList] = useState<{ filter: NewsFilter; items: NewsItem[]; more: boolean } | null>(null)
@@ -64,6 +69,10 @@ export function NewsFace({ live }: { live: StatsNow | null }) {
   }
 
   const shown = list !== null && list.filter === filter ? list : null
+  const openHarbour = (code: string) => {
+    setDeskCity(code)
+    navigate('/command')
+  }
   // THE FACE'S LIST is a card list like every Stats face's (consistency.spec: each face stands one list panel)
   return (
     <ListPanel
@@ -87,6 +96,9 @@ export function NewsFace({ live }: { live: StatsNow | null }) {
       }
       data-testid="stats-news"
     >
+      {/* X8 (live/eventReach.ts): EVERY WORLD EVENT, near or far, heads the news; the Trade desk keeps only those within two hours'
+          sail. A press opens the desk on that harbour. Nothing while dark or none is on. */}
+      <WorldEventsLine city={null} onCity={openHarbour} className="mx-3 mb-3" />
       {shown === null ? (
         <Skeleton className="h-40 w-full" />
       ) : shown.items.length === 0 ? (

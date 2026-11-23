@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { asWorldImageFile } from '../src/lib/db/worldImage'
 import { ready, reachable } from './appReady.fixture'
-import { openCityFace } from './desk.fixture'
+import { openCityFace, tradeOnDesk } from './desk.fixture'
 
 // THE MONEY LOG (0235, owner row 219): every money move beside World money. Since the unfold slice
 // (2026-11-02, owner row 260: *"everything is folded in stats"*) it is the Overview's own list panel — its rows
@@ -43,10 +43,8 @@ async function buyOne(page: Page): Promise<void> {
     return cell !== undefined
   })
   expect(pressed, 'no live buy cell to press').toBe(true)
-  const tray = page.locator('[data-testid="trade-tray"]')
-  await expect(tray.locator('[data-testid="trade-tray-send"]')).toBeEnabled({ timeout: 30_000 })
-  await tray.locator('[data-testid="trade-tray-send"]').click()
-  await expect(tray).toHaveCount(0, { timeout: 30_000 })
+  // X1 (src/live/tradeOnDesk.ts): the price opens the Trade desk on that good, and the buy runs there
+  await tradeOnDesk(page)
 }
 
 const noSideways = (page: Page) =>

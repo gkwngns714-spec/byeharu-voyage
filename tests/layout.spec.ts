@@ -40,7 +40,8 @@ import { test, expect } from '@playwright/test'
 // same three, and two copies of `ready()` would drift apart in silence. The reasoning that used to
 // sit inline here travelled with them; nothing about it changed.
 import { PHONE, reachable, ready, settled } from './appReady.fixture'
-import { openCityFace } from './desk.fixture'
+import { openCityFace, tradeOnDesk } from './desk.fixture'
+import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 
 // 'rank' joined the list 2026-08-23, when 0025 gave that tab a wide table to draw. It was the only
 // tab carrying a scrolling table that this guard did not measure, which is the combination the guard
@@ -445,6 +446,8 @@ test(`PORT: the ledger's price cells are the trade, and a press moves nothing ab
   baseURL,
 }) => {
   test.setTimeout(420_000)
+  // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
+  test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
@@ -761,6 +764,8 @@ test(`PORT: a line staged onto the basket docks the one tray at peek, moves noth
   baseURL,
 }) => {
   test.setTimeout(420_000)
+  // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
+  test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
@@ -872,6 +877,8 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
   baseURL,
 }) => {
   test.setTimeout(420_000)
+  // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
+  test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
@@ -1030,6 +1037,8 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
   baseURL,
 }) => {
   test.setTimeout(420_000)
+  // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
+  test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
@@ -1239,7 +1248,7 @@ test(`HQ › Production: a cell opens the one tray with a stepper, moves nothing
   await ready(page)
   await openCityFace(page)
 
-  // SOMETHING ON BOARD: buy the first live good through the trade tray, and wait for the world to
+  // SOMETHING ON BOARD: buy the first live good (on the Trade desk, X1), and wait for the world to
   // be read back (the ledger row says what is on board).
   const rows = page.locator('[data-testid="trade-row"]')
   expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
@@ -1252,10 +1261,10 @@ test(`HQ › Production: a cell opens the one tray with a stepper, moves nothing
     return row ? (row.innerText || '').split('\n')[0].trim() : ''
   })
   expect(bought, 'no live buy cell to press').not.toBe('')
-  const send = page.locator('[data-testid="trade-tray-send"]')
-  await expect(send).toBeEnabled({ timeout: 20_000 })
-  await send.click()
-  await expect(page.locator('[data-testid="trade-tray"]')).toHaveCount(0, { timeout: 30_000 })
+  // X1 (src/live/tradeOnDesk.ts): the price opens the Trade desk on that good; the lot is bought there, and Back returns to the City
+  await tradeOnDesk(page, 5)
+  await page.goBack()
+  await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })
   await expect(rows.filter({ hasText: bought }).first()).toContainText(/\d units? on board/, { timeout: 20_000 })
 
   // PRODUCTION: the desk's tab goes to the HQ's page; on a phone the columns stand under a segmented control. One row per good, one cell per row.

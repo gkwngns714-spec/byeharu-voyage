@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
+import { tradeOnDesk } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE HQ'S PRODUCTION PAGE (owner, 2026-11-06)
@@ -28,10 +29,10 @@ async function buyOneLot(page: Page) {
   const row = page.getByTestId('trade-row').filter({ hasText: 'Silk Cloth' }).first()
   await expect(row).toBeVisible({ timeout: 60_000 })
   await row.getByRole('button').filter({ hasText: /^buy/i }).first().click()
-  const send = page.getByTestId('trade-tray').getByTestId('trade-tray-send')
-  await expect(send).toBeEnabled({ timeout: 30_000 })
-  await send.click()
-  await expect(page.getByTestId('trade-tray')).toHaveCount(0, { timeout: 30_000 })
+  // X1 (src/live/tradeOnDesk.ts): the price opens the Trade desk on that good; the lot is bought there, and Back returns to the City
+  await tradeOnDesk(page, 5)
+  await page.goBack()
+  await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })
   await expect(row).toContainText(/\d units? on board/, { timeout: 30_000 })
 }
 

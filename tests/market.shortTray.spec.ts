@@ -1,3 +1,4 @@
+import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 
@@ -16,6 +17,10 @@ import { ready, reachable } from './appReady.fixture'
 //   4. nothing scrolls sideways — at 390 and 1280, at DPR 2.
 
 test.use({ deviceScaleFactor: 2 })
+
+// X1 (src/live/tradeOnDesk.ts, the visual overhaul's slice 3): the HQ Market's short trade tray these laws hold is not reached while TRADE_ON_DESK stands (a Buy or Sell
+// pressed there opens the Trade desk); these laws run again the day it is false.
+test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
 
 async function openMarket(page: Page, size: { width: number; height: number }) {
   await page.setViewportSize(size)

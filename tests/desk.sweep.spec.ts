@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { tradeOnDesk } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // NOTHING WAS LOST — every act PORT carried, reached from COMMAND (docs/COMMAND_DESK.md §2.2, slice D8)
@@ -9,9 +10,8 @@ import { ready, reachable } from './appReady.fixture'
 // verb map on the desk, at the phone and the desktop, on a local build (a fresh company docked at Lisbon), and
 // requires each act's doorway to stand where the map says — and the ones a fresh company can afford, to RUN:
 //
-//   Trade · Buy                 City › Trade, a buy cell → the trade tray → Buy (cargo rises)         RUNS
-//   Trade · Sell                City › Trade › Sell, the good on board → the tray says Sell            opens
-//   Trade · bargain, basket     the tray's Bargain row and its Add to basket                           opens
+//   Trade · Buy                 City › Market, a buy cell → the Trade desk on that good → Buy (X1)    RUNS
+//   Trade · Sell                City › Market › Sell, the good on board → the desk on Sell (X1)        opens
 //   Trade · Requests            City › Trade › Requests                                                 opens
 //   Trade · Resupply            City › Trade's Supplies row → the step tray                            opens
 //   Town · Town Hall · Invest   City › Town → the Town Hall; the desk's Invest face → the same hall    opens
@@ -52,28 +52,24 @@ for (const size of SIZES) {
       await expect(page.getByTestId('desk-city')).toBeVisible()
       await expect(page.getByRole('navigation').getByText('Port', { exact: true })).toHaveCount(0)
 
-      // Trade · Buy — runs
+      // Trade · Buy — runs. X1 (src/live/tradeOnDesk.ts): the Market face's price opens the Trade desk on that good, and the buy runs
+      // there (the bargain and the basket were the Market face's own tray; they return with TRADE_ON_DESK false)
       await face(page, 'Market')
       const cargo = page.getByTestId('command-line')
       const before = await cargo.innerText()
       await page.locator('[data-testid="trade-row"] button:enabled').first().click()
-      const tray = page.getByTestId('trade-tray')
-      await expect(tray).toBeVisible()
-      // bargain and basket stand in the same tray (the bargain under its More, S5)
-      await tray.getByTestId('trade-tray-more').click()
-      await expect(tray.getByTestId('haggle-row')).toBeVisible({ timeout: 30_000 })
-      await expect(tray.getByTestId('trade-tray-stage')).toBeVisible()
-      await expect(tray.getByTestId('trade-tray-send')).toBeEnabled({ timeout: 30_000 })
-      await tray.getByTestId('trade-tray-send').click()
+      await tradeOnDesk(page)
       await expect.poll(async () => cargo.innerText(), { timeout: 60_000 }).not.toBe(before)
-      // the issued trade closes its tray (on a wide glass the slot returns to the basket)
-      await expect(page.getByTestId('trade-tray')).toHaveCount(0, { timeout: 60_000 })
+      await page.goBack()
+      await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })
 
-      // Trade · Sell — the good now on board offers its sell tray
+      // Trade · Sell — the good now on board: its Sell opens the desk on Sell
       await page.getByRole('tablist', { name: 'Trade faces' }).getByRole('tab', { name: 'Sell', exact: true }).click()
       await page.locator('[data-testid="trade-row"] button:enabled').last().click()
-      await expect(page.getByTestId('trade-tray-send')).toHaveText(/^Sell /, { timeout: 30_000 })
-      await page.getByTestId('trade-tray').getByRole('button', { name: 'Close' }).first().click()
+      await expect(page).toHaveURL(/\/command$/, { timeout: 30_000 })
+      await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'sell', { timeout: 30_000 })
+      await page.goBack()
+      await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })
 
       // Trade · Requests
       await page.getByRole('tab', { name: 'Requests', exact: true }).click()

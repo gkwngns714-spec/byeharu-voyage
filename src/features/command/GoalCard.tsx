@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { Bar, useWide } from '../../components/ui'
+import { Icon, Ring, useWide } from '../../components/ui'
 import { properName, useLocale, useT } from '../../lib/i18n'
 import { levelName, nextOpening } from '../../live/levelWords'
 import { worldLevels, type LevelsView } from '../../lib/rpc'
@@ -54,7 +54,11 @@ import { useShowOnMap } from '../../live/showOnMap'
 // sentence, "Mate: Trading 1/2, Exploration 1/2", in a 44-px box set a second gutter in from the page's own: at 320 px the sentence
 // took two lines and pushed Reputation out of the box. Now the title's name and Reputation share the first line and the two tracks
 // are the second, each short enough for a 320-px glass with the longest served title; the box stands on the page's own margin.
-const CARD = 'grid min-h-11 min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_auto] content-center items-baseline gap-x-3 rounded-control px-3 text-left'
+// 2026-11-23 (the visual overhaul's slice 3): THE GOAL IS A RING. A 30-px ring at the card's head, filled by the goal's own figures (her
+// purse against the Order's price; else the materials stored; else the lower track against the next title's level), around the goal's
+// mark (a ship for the second ship, the coronet for a title). It stands in the card's own 44 px; the thin bar the saving line drew went
+// into it, so the words are not longer than they were.
+const CARD = 'grid min-h-11 min-w-0 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] content-center items-baseline gap-x-2.5 rounded-control px-3 text-left'
 const PHONE = 'mb-1'
 const WIDE = 'mx-3 mb-2 w-[22rem] min-[90rem]:mx-6'
 
@@ -102,7 +106,6 @@ export function GoalCard() {
   // (Office > City opens the city she lies in, and one with no yard fell back to its Market with no word why)
   const next2 = !second ? 'you' : second.here ? 'yard' : 'map'
   const nextTitle = next ? t('command.goalNext', { name: properName('title', next.name, next.name) }) : t('command.lvTitleTop')
-  const showSaving = saving !== null
   const press = () => {
     if (next2 === 'yard' && second) {
       // the yard ON the hull's sheet, where the Order is (finding 3); with a hull on order, the yard itself
@@ -112,6 +115,15 @@ export function GoalCard() {
       showOnMap(second.port, true)
     } else navigate(next2 === 'map' ? '/map' : '/you')
   }
+  // THE RING'S FILL: the goal's own served figures, nothing worked out but the share
+  const ringPct = saving
+    ? (Math.max(0, saving.have) / saving.price) * 100
+    : second
+      ? (second.of > 0 ? (second.ready / second.of) * 100 : 0)
+      : next
+        ? (Math.min(v.tracks.trading.level, v.tracks.exploration.level) / Math.max(1, next.level)) * 100
+        : 100
+  const ringDone = saving ? saving.have >= saving.price : ringPct >= 100
   return (
     // THE PRESS OPENS THE NEXT STEP (P0 of docs/design/playable-2026-11-22.md): while the second line is the second ship, the step
     // is the build yard's sheet (Office > City > Build yard: the materials stored, the Order, Plan trip, Build); otherwise the levels (You).
@@ -123,7 +135,12 @@ export function GoalCard() {
       data-exploration={v.tracks.exploration.level}
       data-unlock-level={ahead?.level}
     >
-      <span ref={titleBox} className="relative min-w-0 overflow-hidden whitespace-nowrap text-t-body text-ink" data-testid="goal-title">
+      <span className="col-start-1 row-span-2 row-start-1 flex self-center" data-testid="goal-ring" data-pct={Math.round(Math.min(100, ringPct))} data-done={ringDone || undefined}>
+        <Ring pct={ringPct} size={30} label={second ? (goal?.words ?? nextTitle) : nextTitle}>
+          <Icon name={second ? 'ship' : 'coronet'} size={16} className={ringDone ? 'text-success' : 'text-accent'} />
+        </Ring>
+      </span>
+      <span ref={titleBox} className="relative col-start-2 min-w-0 overflow-hidden whitespace-nowrap text-t-body text-ink" data-testid="goal-title">
         {/* "Next: Mate" (2026-11-22, P0): the title bare read as a promotion she had not had (the You page still said the old one) */}
         {second && unlock ? (
           // THE UNLOCK STANDS WHERE IT FITS (2026-11-23, finding 9): measured against the line's own box at every width, else the
@@ -140,35 +157,25 @@ export function GoalCard() {
       </span>
       {reputation !== null ? (
         // from `sm` up the top bar carries Reputation (TopBar.tsx), and the card's first line is the goal's
-        <span className="whitespace-nowrap text-t-caption text-ink-faint sm:hidden" data-testid="goal-reputation" data-value={reputation}>
+        <span className="col-start-3 whitespace-nowrap text-t-caption text-ink-faint sm:hidden" data-testid="goal-reputation" data-value={reputation}>
           {t('shell.reputation')} {formatInt(reputation)}
         </span>
       ) : (
-        <span />
+        <span className="col-start-3" />
       )}
       {second ? (
         <span
-          className={`col-span-2 min-w-0 whitespace-nowrap text-t-caption text-ink-faint ${showSaving ? 'flex items-center gap-2' : ''}`}
+          className="col-span-2 col-start-2 min-w-0 whitespace-nowrap text-t-caption text-ink-faint"
           data-testid="goal-second-ship"
           data-ready={second.ready}
           data-of={second.of}
           data-purse={saving?.have}
           data-price={saving?.price}
         >
-          {showSaving ? <span>{goal?.words}</span> : goal?.words}
-          {saving && (
-            // the purse against the price, in the rest of the line: no line is added, the card keeps its one height
-            <span className="min-w-6 flex-1" data-testid="goal-saving">
-              <Bar
-                pct={(Math.max(0, saving.have) / saving.price) * 100}
-                tone={saving.have >= saving.price ? 'success' : 'accent'}
-                label={t('yard.secondShipBar')}
-              />
-            </span>
-          )}
+          {goal?.words}
         </span>
       ) : next && (
-        <span className="col-span-2 min-w-0 break-words text-t-caption text-ink-faint" data-testid="goal-tracks">
+        <span className="col-span-2 col-start-2 min-w-0 break-words text-t-caption text-ink-faint" data-testid="goal-tracks">
           <span className="whitespace-nowrap">
             {/* a met requirement reads "Trading 7 ✓", not "Trading 7/4" (2026-11-23, finding 26) */}
             {[

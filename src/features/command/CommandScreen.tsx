@@ -1,6 +1,7 @@
 import { DeskShell } from './DeskShell'
 import { Trade } from './buysell/Trade'
 import { GoalCard } from './GoalCard'
+import { FirstVoyageLine } from '../../live/FirstVoyageLine'
 import { useT } from '../../lib/i18n'
 
 // COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). TWO SHAPES, ONE STATE (§3.9): on a wide glass
@@ -57,7 +58,13 @@ export function CommandScreen() {
       testid="command"
       title={t('shell.tab_Trade')}
       board
-      above={<GoalCard />}
+      above={
+        <>
+          <GoalCard />
+          {/* 0476: the starter chain's step, under the goal card (nothing drawn while dark or done) */}
+          <FirstVoyageLine />
+        </>
+      }
       body={(fleet, layout) => <Trade fleet={fleet} layout={layout} />}
     />
   )
