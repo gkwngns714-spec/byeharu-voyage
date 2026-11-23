@@ -152,7 +152,8 @@ for (const size of SIZES) {
         // So the card is settled only when it carries a line for every level the served levels read shows: the You page's Trading
         // tile stands at the level paid (the quay's, or the card's Trading line), read after the arrival (its Exploration tile at 2+).
         const tile = async (track: 'trading' | 'exploration') => {
-          const t = page.getByTestId(`levels-${track}`).first()
+          // You's levels door (roadmap slice 10): every level as a ring with its served level
+          const t = page.getByTestId(`you-level-${track}`).first()
           return (await t.count()) === 0 ? Number.NaN : Number(await t.getAttribute('data-level'))
         }
         const tradingPaid = async () => {
@@ -198,11 +199,10 @@ for (const size of SIZES) {
         await page.screenshot({ path: test.info().outputPath(`level-up-card-${size.width}-${lang}.png`) })
 
         // 0356: THE LEVELS PAGE prints the next level's gift beside each bar: 10 x (her level + 1), from the served gift.
-        // the You page, where the levels stand (the desk's Levels face moved there, 2026-11-16; the goal card of a one-ship
-        // company opens the build yard since 2026-11-22, its next step)
-        await page.goto('you')
+        // the Levels page (roadmap slice 10: the levels' own page, its door on You)
+        await page.goto('levels')
         await ready(page)
-        await expect(page.getByTestId('you-levels').first()).toBeVisible({ timeout: 60_000 })
+        await expect(page.getByTestId('skills-levels').first()).toBeVisible({ timeout: 60_000 })
         for (const track of ['trading', 'exploration'] as const) {
           const row = page.getByTestId(`levels-${track}`).first()
           const level = Number((await row.innerText()).match(/\d+/)![0])

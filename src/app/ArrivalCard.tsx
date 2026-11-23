@@ -4,9 +4,9 @@ import { Button, FLOAT_CARD_CLASS, glassBesideRailClass } from '../components/ui
 import { formatInt, moneyFigure, moneyWord, type MoneyKind } from '../lib/format'
 import { num, str } from '../lib/json'
 import { useLocale, useT } from '../lib/i18n'
-import { levelName, levelOpens } from '../live/levelWords'
-import { worldLevels, type LedgerEvent, type LevelsView, type PlayerHouse } from '../lib/rpc'
-import { useServedRead } from '../live/useServedRead'
+import { levelName } from '../live/levelWords'
+import { levelLines, type LevelLine } from './levelLines'
+import type { LedgerEvent, PlayerHouse } from '../lib/rpc'
 import { goodWordOf, portNameOf, useWorld } from '../live/worldStore'
 import { ArrivalRaids } from '../live/ArrivalRaids'
 import { bountyOf, type PaidBounty } from '../live/bountyPaid'
@@ -31,9 +31,8 @@ import { HOME_TAB, tabWord } from './navTabs'
 // after a load is the baseline; the "While away" card, AwayCard.tsx, says what the routes and the purse did meanwhile) or a
 // sale made by pressing Sell at the quay (the Trade panel's own toast says that).
 // SLICE B (2026-11-16): a profitable trip between two harbours offers "Make route" (src/live/ArrivalRepeat.tsx).
-// 0468 (P2, each level opens something): under a level line, what that level OPENS ("Opens: Ships a fleet +1"): the served list of
-// what each level gives (`world.levels()`, public.level_benefits, worded by levelWords.levelOpens). Asked only while a level line is on
-// the card (the same cached read the goal card holds), so a closed card costs no read. Nothing served for that level: no line.
+// 0468 (P2, each level opens something): what a level OPENS stood under its line here ("Opens: Ships a fleet +1"). Since roadmap slice 10
+// it stands on the level-up card (LevelUpCard.tsx), the one loud moment a level has; this card keeps the level's line and its gift.
 // An overlay: fixed, never in the flow, pointer-events only on the card itself; reduced motion is index.css's rule.
 
 const SHOWN_MS = 20_000
@@ -71,31 +70,6 @@ interface Card {
   reputation: number
   /** 0471: the bounties collected on the read(s) this card holds (a fight's BATTLE_REPORT that paid one). */
   bounties: PaidBounty[]
-}
-
-interface LevelLine {
-  /** The level's code (`public.level_skills`): since 0411 every level raised by doing fires the same LEVEL_UP. */
-  track: string
-  level: number
-  /** 0468: the lowest level crossed on this card, so "Opens:" names what every level crossed opened, not only the highest. */
-  low: number
-  reputation: number
-}
-
-/** The LEVEL_UP events among these, one line a track: the highest level, and the Reputation of all its crossings added. */
-function levelLines(events: LedgerEvent[], into: LevelLine[] = []): LevelLine[] {
-  const lines = [...into]
-  for (const e of events) {
-    if (e.kind !== 'LEVEL_UP') continue
-    const track = str(e.payload, 'track')
-    const level = num(e.payload, 'level')
-    if (track === null || track === '' || level === null) continue
-    const reputation = num(e.payload, 'reputation') ?? 0
-    const at = lines.findIndex((l) => l.track === track)
-    if (at < 0) lines.push({ track, level, low: level, reputation })
-    else lines[at] = { track, level: Math.max(lines[at].level, level), low: Math.min(lines[at].low, level), reputation: lines[at].reputation + reputation }
-  }
-  return lines
 }
 
 function saleOf(e: LedgerEvent): Sale {
@@ -261,7 +235,6 @@ export function ArrivalCard() {
               : t('feed.levelUp', { track: levelName(locale, l.track), n: l.level })}
           </p>
         ))}
-        {card.levels.length > 0 && <ArrivalOpens levels={card.levels} />}
         {card.reputation > 0 && (
           <p className="mt-1 text-t-body text-accent" data-testid="arrival-reputation" data-reputation={card.reputation}>
             {t('feed.repEarned', { n: formatInt(card.reputation) })}
@@ -287,30 +260,5 @@ export function ArrivalCard() {
         </div>
       </div>
     </div>
-  )
-}
-
-/** 0468: what each level on the card opens, one line a level that opens something: "Opens: Ships a fleet +1". The served list only. */
-function ArrivalOpens({ levels }: { levels: LevelLine[] }) {
-  const t = useT()
-  const locale = useLocale()
-  const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
-  const v = read.view
-  if (!v || !v.company) return null
-  const lines = levels
-    .map((l) => {
-      const skill = v.level_skills.skills.find((s) => s.code === l.track)
-      const crossed = Array.from({ length: l.level - l.low + 1 }, (_, i) => l.low + i)
-      return { l, what: skill ? crossed.flatMap((n) => levelOpens(locale, n, skill.benefits)) : [] }
-    })
-    .filter((x) => x.what.length > 0)
-  return (
-    <>
-      {lines.map(({ l, what }) => (
-        <p key={l.track} className="mt-1 text-t-body text-accent" data-testid="arrival-opens" data-track={l.track} data-level={l.level}>
-          {t('command.lvOpens', { what: what.join(', ') })}
-        </p>
-      ))}
-    </>
   )
 }

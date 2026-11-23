@@ -47,10 +47,10 @@ for (const glass of GLASSES) {
       test('the You page levels name every country with her band and score', async ({ page, request, baseURL }) => {
         test.setTimeout(480_000)
         test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
-        // the Levels face moved to the You page (2026-11-16)
-        await page.goto('you')
+        // the Levels face moved to the You page (2026-11-16), and to its own Levels page (roadmap slice 10)
+        await page.goto('levels')
         await ready(page)
-        await expect(page.getByTestId('you-levels').first()).toBeVisible({ timeout: 60_000 })
+        await expect(page.getByTestId('skills-levels').first()).toBeVisible({ timeout: 60_000 })
         const list = page.getByTestId('levels-regard').first()
         await expect(list).toBeVisible({ timeout: 60_000 })
         await list.scrollIntoViewIfNeeded()

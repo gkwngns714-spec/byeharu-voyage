@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Bar, GroupHeading, Icon, Ring, Tile, Tray, type TrayDetent } from '../components/ui'
 import { formatInt, formatRelative } from '../lib/format'
 import { translateMaybe, useLocale, useT } from '../lib/i18n'
 import type { LevelSkill, LevelSkillsCard } from '../lib/rpc'
 import { useShellState } from '../app/shellState'
-import { activityLine, everyLevelLine, giftAt, levelFill, levelGives, levelMark, levelName, perksNow } from './levelWords'
+import { activityLine, everyLevelLine, giftAt, levelFill, levelGives, levelMark, levelName, nextOpening, perksNow } from './levelWords'
+import { fastestWay } from './levelWays'
+import { useLevelGate } from './levelGate'
 
 // THE LEVELS, AS TILES (0411, docs/LEVELS.md; the owner, 2026-11-14: "like rs3, i want diverse skills related to this game" and
 // "with exp table, exp info, with benefits when leveling up, what activity needs done etc.").
@@ -104,64 +107,97 @@ function useRises(code: string, level: number): number {
 }
 
 /** One level as a Melvor-style tile: its mark in a ring filling to the next level, the level figure, its name, the 6-px bar to the
- *  next, and the experience against the next level with the next level's gift. */
+ *  next, and the experience against the next level with the next level's gift. Slice 10 (the Levels page, roadmap 2026-11-23): under
+ *  them what the next level that opens something opens (`nextOpening`, the served benefits), and at the foot "fastest way", one press
+ *  to the place where the act that raises it is done (levelWays.ts). The level is one button (it opens the tray); the way is a link
+ *  beside it on the same tile, never inside it. */
 function LevelTile({ s, on, onSelect }: { s: LevelSkill; on: boolean; onSelect: (code: string) => void }) {
   const t = useT()
   const locale = useLocale()
+  const gate = useLevelGate()
   const name = levelName(locale, s.code, s.word)
   const gift = nextGift(s)
   const fill = levelFill(s)
   const rises = useRises(s.code, s.level)
+  const opens = s.counted && s.next_at !== null ? nextOpening(locale, s.level, s.benefits) : null
+  const way = fastestWay(s, gate.shut)
   return (
     // THE KIT'S TILE (2026-11-15; tests/duplication.spec.ts "no inline border+bg skin"): its skin, its selected wash and hairline;
     // the body is the level's own (no head). A level tile is tighter than a catalogue tile and stands inset on its sheet.
-    <Tile
-      tap="whole"
-      state={on ? 'selected' : 'rest'}
-      onClick={() => onSelect(s.code)}
-      aria-pressed={on}
-      data-testid={`levels-${s.code}`}
-      data-level={s.level}
-      data-rose={rises > 0 ? rises : undefined}
-      className={`relative min-w-0 gap-1! p-2! ${on ? '' : 'bg-surface-2!'} ${s.counted ? '' : 'text-ink-faint'}`}
-    >
+    <Tile state={on ? 'selected' : 'rest'} className={`relative min-w-0 gap-1! p-2! ${on ? '' : 'bg-surface-2!'} ${s.counted ? '' : 'text-ink-faint'}`} data-testid="level-tile">
       {/* THE LEVEL-UP MOMENT: a gold glow round the tile and a chevron rising off the ring, once (1.4 s). Keyed by the rise, so a
           second rise plays it again; under reduced motion it is not drawn at all (index.css `.bv-level-*`). */}
       {rises > 0 && <span key={`glow-${rises}`} aria-hidden="true" className="bv-level-glow pointer-events-none absolute inset-0 rounded-tile" />}
-      <span className="flex items-center justify-between gap-2">
-        <span className="relative inline-flex">
-          <Ring pct={fill} size={40} track="edge" tone={s.counted ? 'accent' : 'muted'} label={t('books.levelRing', { track: name, n: formatInt(s.level) })}>
-            <span key={`mark-${rises}`} className={`inline-flex ${s.counted ? 'text-accent' : 'text-ink-faint'} ${rises > 0 ? 'bv-level-pop' : ''}`}>
-              <Mark code={s.code} size={20} />
-            </span>
-          </Ring>
-          {rises > 0 && (
-            <span key={`up-${rises}`} aria-hidden="true" className="bv-level-up pointer-events-none absolute -top-1 left-1/2 -ml-2 text-accent">
-              <Icon name="levelUp" size={16} />
-            </span>
-          )}
-        </span>
-        <span key={`level-${rises}`} className={`text-t-title tabular-nums ${rises > 0 ? 'bv-level-pop text-accent' : ''}`} data-testid="level-tile-level">
-          {formatInt(s.level)}
-        </span>
-      </span>
-      <span className="block break-words text-t-body">{name}</span>
-      <Bar pct={fill} label={t('you.levelOf', { name })} tone={s.counted ? 'accent' : 'neutral'} />
-      <span className="flex flex-wrap gap-x-2 text-t-caption text-ink-faint">
-        {/* a level not counted yet (Combat) says nothing: "Not counted yet" was a builder's note (2026-11-22, P0) */}
-        {!s.counted ? null : s.next_at === null ? (
-          t('command.lvTop')
-        ) : (
-          <>
-            <span className="whitespace-nowrap tabular-nums">{t('command.lvExpOf', { a: formatInt(s.points), b: formatInt(s.next_at) })}</span>
-            {gift > 0 && (
-              <span className="whitespace-nowrap text-accent" data-testid="levels-gift" data-value={gift}>
-                {t('command.lvNextGift', { n: formatInt(gift) })}
+      <button
+        type="button"
+        onClick={() => onSelect(s.code)}
+        aria-pressed={on}
+        data-testid={`levels-${s.code}`}
+        data-level={s.level}
+        data-rose={rises > 0 ? rises : undefined}
+        className="flex min-h-11 w-full min-w-0 flex-col gap-1 text-left"
+      >
+        <span className="flex w-full items-center justify-between gap-2">
+          <span className="relative inline-flex">
+            <Ring pct={fill} size={40} track="edge" tone={s.counted ? 'accent' : 'muted'} label={t('books.levelRing', { track: name, n: formatInt(s.level) })}>
+              <span key={`mark-${rises}`} className={`inline-flex ${s.counted ? 'text-accent' : 'text-ink-faint'} ${rises > 0 ? 'bv-level-pop' : ''}`}>
+                <Mark code={s.code} size={20} />
+              </span>
+            </Ring>
+            {rises > 0 && (
+              <span key={`up-${rises}`} aria-hidden="true" className="bv-level-up pointer-events-none absolute -top-1 left-1/2 -ml-2 text-accent">
+                <Icon name="levelUp" size={16} />
               </span>
             )}
-          </>
+          </span>
+          <span key={`level-${rises}`} className={`text-t-title tabular-nums ${rises > 0 ? 'bv-level-pop text-accent' : ''}`} data-testid="level-tile-level">
+            {formatInt(s.level)}
+          </span>
+        </span>
+        <span className="block break-words text-t-body">{name}</span>
+        <Bar pct={fill} label={t('you.levelOf', { name })} tone={s.counted ? 'accent' : 'neutral'} className="w-full" />
+        <span className="flex flex-wrap gap-x-2 text-t-caption text-ink-faint">
+          {/* a level not counted yet (Combat) says nothing: "Not counted yet" was a builder's note (2026-11-22, P0) */}
+          {!s.counted ? null : s.next_at === null ? (
+            t('command.lvTop')
+          ) : (
+            <>
+              <span className="whitespace-nowrap tabular-nums">{t('command.lvExpOf', { a: formatInt(s.points), b: formatInt(s.next_at) })}</span>
+              {gift > 0 && (
+                <span className="whitespace-nowrap text-accent" data-testid="levels-gift" data-value={gift}>
+                  {t('command.lvNextGift', { n: formatInt(gift) })}
+                </span>
+              )}
+            </>
+          )}
+        </span>
+        {/* WHAT THE NEXT LEVEL OPENS: the chevron, the level, and the served benefit's own phrase */}
+        {opens && (
+          <span className="flex items-start gap-1 text-t-caption text-ink-muted" data-testid="levels-next-opens" data-level={opens.level}>
+            <span className="flex shrink-0 items-center gap-0.5 tabular-nums text-accent">
+              <Icon name="levelUp" size={12} />
+              {formatInt(opens.level)}
+            </span>
+            <span className="min-w-0 break-words">{opens.what}</span>
+          </span>
         )}
-      </span>
+      </button>
+      {/* FASTEST WAY: one press to the act that raises it (levelWays.ts), its place's mark and word */}
+      {way && (
+        <Link
+          to={way.to}
+          onClick={() => way.prepare?.()}
+          aria-label={`${t('you.fastest')} · ${way.word(locale)}`}
+          className="-mx-1 flex min-h-11 items-center gap-1.5 rounded-control border-t border-edge px-1 text-t-caption text-ink-muted hover:text-accent"
+          data-testid={`levels-way-${s.code}`}
+          data-activity={way.activity}
+        >
+          <Icon name="speed" size={14} className="shrink-0 text-accent" />
+          <Icon name={way.icon} size={16} className="shrink-0" />
+          <span className="min-w-0 flex-1 break-words">{way.word(locale)}</span>
+          <Icon name="chevron" size={14} className="shrink-0" />
+        </Link>
+      )}
     </Tile>
   )
 }

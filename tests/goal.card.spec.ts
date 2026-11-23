@@ -63,13 +63,14 @@ for (const size of SIZES) {
       await card.click()
       await expect(page).toHaveURL(/\/office$/)
       await expect(page.getByTestId('port-yard')).toBeVisible({ timeout: 60_000 })
-      // the You page, where the levels stand (the desk's Levels face moved there, 2026-11-16): its figures are the card's
+      // the You page: its levels door (roadmap slice 10) and its house plate carry the card's figures
       await page.goto('you')
       await ready(page)
       await expect(page.getByTestId('you-levels').first()).toBeVisible({ timeout: 60_000 })
-      await expect(page.getByTestId('levels-trading').first()).toBeVisible()
-      await expect(page.getByTestId('levels-exploration').first()).toBeVisible()
-      await expect(page.getByTestId('levels-title')).toContainText(`${m![1]}`)
+      await expect(page.getByTestId('you-level-trading').first()).toBeVisible()
+      await expect(page.getByTestId('you-level-exploration').first()).toBeVisible()
+      // the next title is the title ring's target, under the plate's two rings (visual slice 9 moved it there)
+      await expect(page.getByTestId('levels-title-next')).toContainText(`${m![1]}`)
     })
   })
 }

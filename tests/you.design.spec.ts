@@ -22,7 +22,8 @@ import { serveVeteranWorld, VETERAN_CAPTAINS, VETERAN_HULLS } from './manyFleets
 // 1,024, the ships and captains in the main · (f) no box scrolls inside itself · (g) the ships come first on a phone · U3 every old id stays.
 
 const SHEET = '[data-testid="you"]'
-const FIGURES = ['levels-trading', 'levels-exploration'] as const
+// roadmap slice 10: the levels have their own page; You's levels card is its door, every level a ring over its figure
+const FIGURES = ['you-level-trading', 'you-level-exploration'] as const
 const ROWS = ['you-ship', 'your-captain'] as const
 
 /** Where a block stands: inside the side column (`[data-page-side]`) or not. Self-contained, shipped into the page. */
@@ -92,7 +93,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
 
         // (c) THE HIERARCHY
         for (const track of ['trading', 'exploration', 'combat'])
-          if ((await page.getByTestId(`levels-${track}`).count()) !== 1) failures.push(`${where}: (c) the ${track} level is not a tile`)
+          if ((await page.getByTestId(`you-level-${track}`).count()) !== 1) failures.push(`${where}: (c) the ${track} level is not on the door`)
         if (d.figures.length < 1) failures.push(`${where}: (c) no level figure is shown`)
         for (const f of d.figures) {
           if (f.font < 20) failures.push(`${where}: (c) the level figure is ${f.font} px — the law is 20`)

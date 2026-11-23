@@ -4,6 +4,7 @@ import { ShellStateContext } from './shellState'
 import { ShellFrame } from './ShellFrame'
 import { RebuildNotice } from './RebuildNotice'
 import { ArrivalCard } from './ArrivalCard'
+import { LevelUpCard } from './LevelUpCard'
 import { WelcomeCard } from './WelcomeCard'
 import { AwayCard } from './AwayCard'
 import { LaunchOffer } from './LaunchOffer'
@@ -112,6 +113,8 @@ export function AppShell() {
              AwayCard.tsx): overlays over any tab, never in the flow. */
           <>
             <ArrivalCard />
+            {/* a level crossed: its own loud card over the glass's middle, which takes no press (LevelUpCard.tsx, roadmap slice 10) */}
+            <LevelUpCard />
             <AwayCard />
             {/* a hull joined her fleet: its own fleet on her best route, or stay (LaunchOffer.tsx, the roadmap's slice 6) */}
             <LaunchOffer />
