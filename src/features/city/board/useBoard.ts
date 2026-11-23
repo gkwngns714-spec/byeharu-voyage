@@ -104,11 +104,13 @@ export function useBoard(cityPort: SnapshotPort | null): Board {
   const gate = useLevelGate()
   const company = useWorld((s) => s.player?.id ?? null)
 
-  // 0480: THE SERVED BOARD, asked first. Her fleets' versions are its question: one of them acting asks it again.
-  const hq = useHqBoard(company, all.map((f) => `${f.id}.${f.version}`).join(','))
+  // 0480: THE SERVED BOARD, asked first. Her docked fleets' versions are its question (a fleet at sea moves nothing the board prices
+  // until she lies in port): one of them acting asks it again; the market's edge is useHqBoard's own.
+  const hq = useHqBoard(company, all.map((f) => (f.status === 'DOCKED' ? `${f.id}.${f.version}` : f.id)).join(','))
   const lit = litBoard(hq.view)
-  // v1's reads only once the server has answered dark (or refused): never beside a lit board
-  const v1 = company !== null && !hq.loading && lit === null
+  // v1's reads only once the server has answered dark (or refused), and while it stays dark: never beside a lit board. A re-ask keeps the
+  // last answer (useServedRead), so the dark board does not blink when a fleet acts.
+  const v1 = company !== null && (hq.view !== null || !hq.loading) && lit === null
 
   const fleets = useMemo<BoardFleet[]>(
     () =>
