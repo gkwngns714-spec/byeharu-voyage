@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { PLAN_LINE_CLASS } from '../../../components/ui/tileStyles'
 import { Button, Chip, Figure, GoodKind, Hint, Note, PriceChart, Row, Skeleton, SpanPicker, Stepper, Tray, type TrayDetent, type TrayMode, WRAP_ROW_CLASS } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { taxFactorWords } from '../../../domain/port'
@@ -610,7 +611,7 @@ function AlsoLine({ also, onToggle }: { also: NonNullable<PlanDraft['also']>; on
   const goodByCode = useWorld((s) => s.goodByCode)
   const name = properName('good', also.good, goodByCode[also.good]?.name ?? also.good)
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" data-testid="plan-also" data-good={also.good} data-units={also.units} data-on={also.on}>
+    <div className={PLAN_LINE_CLASS} data-testid="plan-also" data-good={also.good} data-units={also.units} data-on={also.on}>
       <Chip on={also.on} onClick={onToggle} className="shrink-0 whitespace-nowrap" data-testid="plan-also-tick">
         {t('desk.alsoLoad')}
       </Chip>

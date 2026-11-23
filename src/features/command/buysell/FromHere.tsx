@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
+import { tileToneClass } from '../../../components/ui/tileStyles'
 import { Icon, KEEP_WORDS_CLASS, goodIcon, useWide } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
@@ -85,7 +86,7 @@ export function FromHere({
               title={x.title}
               onClick={x.press}
               // two columns on fixed lines, so every tile's profit starts where the others' do (tests/align.spec.ts COLUMN)
-              className={`grid min-h-11 w-full grid-cols-[minmax(0,1fr)_5.75rem] items-center gap-2 rounded-lg px-2 py-1 text-left text-t-caption transition ${x.on ? 'bg-accent-soft text-accent ring-1 ring-accent' : 'bg-surface-2 text-ink-muted hover:text-ink'}`}
+              className={`grid min-h-11 w-full grid-cols-[minmax(0,1fr)_5.75rem] items-center gap-2 rounded-lg px-2 py-1 text-left text-t-caption transition ${tileToneClass(x.on)}`}
               {...x.data}
             >
               {x.city}
@@ -108,7 +109,7 @@ export function FromHere({
             aria-pressed={x.on}
             title={x.title}
             onClick={x.press}
-            className={`flex h-11 flex-auto flex-col items-center justify-center rounded-lg px-2 text-t-caption transition ${x.on ? 'bg-accent-soft text-accent ring-1 ring-accent ring-inset' : 'bg-surface-2 text-ink-muted hover:text-ink'}`}
+            className={`flex h-11 flex-auto flex-col items-center justify-center rounded-lg px-2 text-t-caption transition ${tileToneClass(x.on)}${x.on ? ' ring-inset' : ''}`}
             {...x.data}
           >
             {x.city}

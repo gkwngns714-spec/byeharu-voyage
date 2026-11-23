@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PLAN_LINE_CLASS } from '../components/ui/tileStyles'
 import { Chip } from '../components/ui'
 import { useT } from '../lib/i18n'
 import { cmdRaidOrder, worldEarlySighting, worldRaidRead, type EarlySighting, type RaidOrderWord } from '../lib/rpc'
@@ -45,7 +46,7 @@ export function IfAttacked({ fleetId }: { fleetId: string }) {
   }
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" data-testid="plan-if-attacked" data-order={now}>
+    <div className={PLAN_LINE_CLASS} data-testid="plan-if-attacked" data-order={now}>
       <span className="shrink-0 text-t-caption text-ink-muted">{t('desk.ifAttacked')}</span>
       <span className="flex gap-2">
         {ORDERS.map((o) => (
