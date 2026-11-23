@@ -69,7 +69,8 @@ for (const size of SIZES) {
       await expect(page.getByTestId('you-levels').first()).toBeVisible({ timeout: 60_000 })
       await expect(page.getByTestId('levels-trading').first()).toBeVisible()
       await expect(page.getByTestId('levels-exploration').first()).toBeVisible()
-      await expect(page.getByTestId('levels-title')).toContainText(`${m![1]}`)
+      // the card names the NEXT title; since slice 9 (#816) the You page shows it under the title ring, not in it
+      await expect(page.getByTestId('levels-title-next')).toContainText(`${m![1]}`)
     })
   })
 }
