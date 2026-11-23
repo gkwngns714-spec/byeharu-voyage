@@ -89,3 +89,10 @@ weekly influence race shown on the map with cities tinted by who leads, and Repu
 ## Prod checks
 - Before: `scripts/ops/harness/nation-race/before-0484.sql` (done, the one read).
 - After (and 30 minutes after lighting): `scripts/ops/harness/nation-race/after-0484.sql`.
+
+## Prod refusal 2026-11-23 ~12:05 UTC, and the fix
+The first prod push was refused by the self-assert ("the read is not registered for authenticated alone, a core or the tick is reachable
+by a client, or a table is"); the push rolled back, head stayed 0483. Cause: prod's platform default privileges grant EXECUTE on every new
+function in `public` to `service_role` (pg_default_acl, supabase_admin / postgres), and the cores' revokes named only public, anon and
+authenticated, while the self-assert also refuses `service_role` (as 0483 does). The disposable chain and PGlite have no such default, so
+the gates were green. Fix: every core and the tick revoke from `service_role` too, as 0483's grants block does.

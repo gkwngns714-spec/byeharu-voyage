@@ -536,20 +536,20 @@ begin
 end
 $body$;
 
-revoke all on function public.nation_race_on() from public, anon, authenticated;
-revoke all on function public.nation_race_week(timestamptz) from public, anon, authenticated;
-revoke all on function public.nation_race_week_start(bigint) from public, anon, authenticated;
-revoke all on function public.nation_race_city(uuid) from public, anon, authenticated;
-revoke all on function public.nation_race_post(uuid, uuid, bigint) from public, anon, authenticated;
-revoke all on function public.nation_race_sale(uuid, uuid, numeric) from public, anon, authenticated;
-revoke all on function public.nation_race_job(uuid, uuid, bigint) from public, anon, authenticated;
-revoke all on function public.nation_race_gift(uuid, uuid, bigint) from public, anon, authenticated;
-revoke all on function public.nation_fee_factor(uuid, uuid) from public, anon, authenticated;
-revoke all on function public.nation_race_leaders(bigint) from public, anon, authenticated;
-revoke all on function public.nation_race_standings(bigint) from public, anon, authenticated;
-revoke all on function public.nation_race_marks(uuid, jsonb) from public, anon, authenticated;
-revoke all on function public.nation_race_settle(bigint, timestamptz) from public, anon, authenticated;
-revoke all on function public.tick_nation_race(timestamptz) from public, anon, authenticated;
+revoke all on function public.nation_race_on() from public, anon, authenticated, service_role;
+revoke all on function public.nation_race_week(timestamptz) from public, anon, authenticated, service_role;
+revoke all on function public.nation_race_week_start(bigint) from public, anon, authenticated, service_role;
+revoke all on function public.nation_race_city(uuid) from public, anon, authenticated, service_role;
+revoke all on function public.nation_race_post(uuid, uuid, bigint) from public, anon, authenticated, service_role;
+revoke all on function public.nation_race_sale(uuid, uuid, numeric) from public, anon, authenticated, service_role;
+revoke all on function public.nation_race_job(uuid, uuid, bigint) from public, anon, authenticated, service_role;
+revoke all on function public.nation_race_gift(uuid, uuid, bigint) from public, anon, authenticated, service_role;
+revoke all on function public.nation_fee_factor(uuid, uuid) from public, anon, authenticated, service_role;
+revoke all on function public.nation_race_leaders(bigint) from public, anon, authenticated, service_role;
+revoke all on function public.nation_race_standings(bigint) from public, anon, authenticated, service_role;
+revoke all on function public.nation_race_marks(uuid, jsonb) from public, anon, authenticated, service_role;
+revoke all on function public.nation_race_settle(bigint, timestamptz) from public, anon, authenticated, service_role;
+revoke all on function public.tick_nation_race(timestamptz) from public, anon, authenticated, service_role;
 revoke all on function world.nation_race() from public, anon;
 grant execute on function world.nation_race() to authenticated;
 comment on function world.nation_race() is
