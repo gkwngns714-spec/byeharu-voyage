@@ -182,3 +182,4 @@ Two pure reads are neither, each tied to the runner that executes it with `db.qu
 - `wanted/` is 0334 (docs/dev-log/2026-11-06-wanted.md): `after.sql`, `before.sql`, `dark-scene.sql`, `mutations-0334.mjs`, `proof-0334.mjs`.
 - `world-events/` is 0469 (docs/dev-log/2026-11-22-world-events.md): `after-0469.sql`, `before-0469.sql`.
 - `yard-order/` is 0465: `after-0465.sql`, `before-0465.sql`.
+- `harbour-reuse/` is 0488 (docs/dev-log/2026-11-24-harbour-reuse.md): `before-0488.sql`, `after-0488.sql` (head, the six bodies' md5s, the nine new names server-only, best_sales at Lisbon and its pieces timed).
