@@ -50,9 +50,9 @@ test.describe('the ranking rule', () => {
   })
 })
 
-async function openHq(page: Page, width: number, height: number, served = false, jobs = false, contracts = false, race = false) {
+async function openHq(page: Page, width: number, height: number, served = false, jobs = false, contracts = false, race = false, roles = false) {
   await page.setViewportSize({ width, height })
-  await serveHqLit(page, { served, jobs, contracts, race })
+  await serveHqLit(page, { served, jobs, contracts, race, roles })
   await page.goto('city')
   await ready(page)
   await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: WORLD_BOOT_MS })
@@ -244,6 +244,45 @@ test.describe('the country race (0484, lit)', () => {
       await expect(page.getByTestId('map-layer-filter')).toHaveAttribute('data-layer', 'race')
       await expect(page.locator('[data-testid="map-event-mark"][data-code="RACE_RIVAL"]').first()).toBeAttached({ timeout: 60_000 })
       if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/race-map-${glass.width}.png` })
+    })
+  }
+})
+
+// 0485: A HULL'S ROLE (ship_roles_enabled lit, the board served; the first slot opens at her first hull in this world): the board's role card
+// names the best role for her barca (Guard: nothing she does yet asks another) and one press sets it; her fleet row's chips show it on, and
+// one press there changes it (Fast). Nothing leaves the glass, and every press is 44 px.
+test.describe("a hull's role (0485, lit)", () => {
+  for (const glass of [
+    { width: 320, height: 640 },
+    { width: 1280, height: 800 },
+  ]) {
+    test(`the role card and the fleet row's chips at ${glass.width}`, async ({ page, request, baseURL }) => {
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      test.setTimeout(600_000)
+      await openHq(page, glass.width, glass.height, true, false, false, false, true)
+      const card = page.locator('[data-testid="hq-move"][data-kind="role"]')
+      await expect(card).toBeVisible({ timeout: 180_000 })
+      await expect(card).toHaveAttribute('data-act', 'cmd.set_ship_role')
+      await expect(page.locator('[data-testid="hq-move-role"]')).toHaveAttribute('data-role', 'guard')
+      const hull = page.getByTestId('hq-role-hull').first()
+      await expect(hull).toHaveAttribute('data-role', '')
+      await expect(hull.getByTestId('hq-role-set-guard')).toHaveAttribute('data-best', 'true')
+      if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/roles-${glass.width}.png`, fullPage: true })
+      await card.click()
+      await expect(hull).toHaveAttribute('data-role', 'guard', { timeout: 60_000 })
+      await expect(hull.getByTestId('hq-role-set-guard')).toHaveAttribute('aria-pressed', 'true')
+      await expect(card).toHaveCount(0, { timeout: 60_000 })
+      await hull.getByTestId('hq-role-set-fast').click()
+      await expect(hull).toHaveAttribute('data-role', 'fast', { timeout: 60_000 })
+      await expect(page.getByTestId('hq-role-refusal')).toHaveCount(0)
+      expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
+      const small = await page.evaluate(() =>
+        [...document.querySelectorAll('[data-testid="hq-board"] button')]
+          .map((b) => b.getBoundingClientRect())
+          .filter((r) => r.width > 0 && (r.height < 43.5 || r.width < 43.5)).length,
+      )
+      expect(small, 'presses under 44 px').toBe(0)
+      if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/roles-set-${glass.width}.png`, fullPage: true })
     })
   }
 })

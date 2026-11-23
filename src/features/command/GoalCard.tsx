@@ -11,6 +11,10 @@ import { useShellState } from '../../app/shellState'
 import { useNavigate } from 'react-router-dom'
 import { openOfficeCity } from './officeView'
 import { useShowOnMap } from '../../live/showOnMap'
+import { litRoles, useShipRoles } from '../../live/useShipRoles'
+import type { IconName } from '../../components/ui'
+import type { LadderStep } from '../../lib/rpc'
+import type { TKey } from '../../lib/i18n'
 
 // THE GOAL CARD (remaster S6): one line on the Trade face saying what to aim for: the next Title and how far along you are.
 // NOT a quest: it reads the SAME served read the You page's levels read (`world.levels()`, 0325, the same cached `worldLevels` read) and
@@ -46,6 +50,12 @@ import { useShowOnMap } from '../../live/showOnMap'
 // ran under "평판 226". Now it stands only where it is measured to fit beside it, at every width, else the title stands; and from `sm`
 // up the figure is the top bar's (TopBar.tsx shows Reputation there), so the card's first line is the unlock's.
 //
+// 0485 (ship_roles_enabled, docs/design/roadmap-2026-11-23.md slice 17): PAST THE SECOND SHIP, THE SECOND LINE IS THE LADDER, in place
+// of the two tracks (one line replaces the other, as the second ship's does): her ships of five, then her fleets working by themselves
+// (a standing route or job), then her fleets with a captain: the first step not done (world.ship_roles' `ladder`, the server's count),
+// with the role the next hull should fill while the step is ships. The ring is that step's share; its mark the step's glyph; the press
+// opens HQ, where each step is done (the yard's card, a fleet's job, the inn's card). Dark, or every step done: the tracks, as before.
+//
 // THE PRESS LAW: a fixed height in every state (loading, shown, nothing to show), so nothing moves when the read lands or on a press.
 
 // A control is 44 px (tests/consistency.spec.ts), so the card is 44 px. It stands on the Trade tab, under the fleet strip (phone) or under the
@@ -58,6 +68,10 @@ import { useShowOnMap } from '../../live/showOnMap'
 // purse against the Order's price; else the materials stored; else the lower track against the next title's level), around the goal's
 // mark (a ship for the second ship, the coronet for a title). It stands in the card's own 44 px; the thin bar the saving line drew went
 // into it, so the words are not longer than they were.
+const LADDER_ICON: Record<LadderStep, IconName> = { ships: 'ship', routes: 'route', captains: 'captain' }
+const LADDER_WORD: Record<LadderStep, TKey> = { ships: 'hq.ladderShips', routes: 'hq.ladderRoutes', captains: 'hq.ladderCaptains' }
+const ROLE_WORD_GOAL = { guard: 'hq.roleGuard', fast: 'hq.roleFast', hold: 'hq.roleHold' } as const
+
 const CARD = 'grid min-h-11 min-w-0 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] content-center items-baseline gap-x-2.5 rounded-control px-3 text-left'
 const PHONE = 'mb-1'
 const WIDE = 'mx-3 mb-2 w-[22rem] min-[90rem]:mx-6'
@@ -78,6 +92,9 @@ export function GoalCard() {
   const goal = useSecondShipGoal(nowMs)
   const second = goal?.second ?? null
   const saving = goal?.saving ?? null
+  // 0485: the ladder, past the second ship (lit only)
+  const roles = litRoles(useShipRoles().view)
+  const ladder = !second && roles && roles.ladder.step !== null && roles.ladder.have !== null && roles.ladder.of ? roles.ladder : null
   // the unlock stands only where it fits beside the reputation (measured, at every width)
   const titleBox = useRef<HTMLSpanElement>(null)
   const unlockGhost = useRef<HTMLSpanElement>(null)
@@ -104,7 +121,7 @@ export function GoalCard() {
   const unlock = ahead ? t('command.goalOpens', { track: levelName(locale, 'trading'), n: ahead.level, what: ahead.what }) : null
   // THE PRESS OPENS THE NEXT STEP (2026-11-22 second play-test): the yard where she lies; away from it the Map, where its city is
   // (Office > City opens the city she lies in, and one with no yard fell back to its Market with no word why)
-  const next2 = !second ? 'you' : second.here ? 'yard' : 'map'
+  const next2 = ladder ? 'hq' : !second ? 'you' : second.here ? 'yard' : 'map'
   const nextTitle = next ? t('command.goalNext', { name: properName('title', next.name, next.name) }) : t('command.lvTitleTop')
   const press = () => {
     if (next2 === 'yard' && second) {
@@ -113,16 +130,25 @@ export function GoalCard() {
     } else if (next2 === 'map' && second?.port) {
       // the yard's city, its tray up with the Sail press (finding 21)
       showOnMap(second.port, true)
-    } else navigate(next2 === 'map' ? '/map' : '/you')
+    } else navigate(next2 === 'map' ? '/map' : next2 === 'hq' ? '/city' : '/you')
   }
   // THE RING'S FILL: the goal's own served figures, nothing worked out but the share
   const ringPct = saving
     ? (Math.max(0, saving.have) / saving.price) * 100
-    : second
+    : ladder && ladder.of
+      ? ((ladder.have ?? 0) / ladder.of) * 100
+      : second
       ? (second.of > 0 ? (second.ready / second.of) * 100 : 0)
       : next
         ? (Math.min(v.tracks.trading.level, v.tracks.exploration.level) / Math.max(1, next.level)) * 100
         : 100
+  const ladderWords =
+    ladder && ladder.step
+      ? [
+          t(LADDER_WORD[ladder.step], { n: formatInt(ladder.have ?? 0), of: formatInt(ladder.of ?? 0) }),
+          ...(ladder.step === 'ships' && roles?.next ? [t('hq.roleNext', { role: t(ROLE_WORD_GOAL[roles.next]) })] : []),
+        ].join(' · ')
+      : null
   const ringDone = saving ? saving.have >= saving.price : ringPct >= 100
   return (
     // THE PRESS OPENS THE NEXT STEP (P0 of docs/design/playable-2026-11-22.md): while the second line is the second ship, the step
@@ -136,8 +162,8 @@ export function GoalCard() {
       data-unlock-level={ahead?.level}
     >
       <span className="col-start-1 row-span-2 row-start-1 flex self-center" data-testid="goal-ring" data-pct={Math.round(Math.min(100, ringPct))} data-done={ringDone || undefined}>
-        <Ring pct={ringPct} size={30} label={second ? (goal?.words ?? nextTitle) : nextTitle}>
-          <Icon name={second ? 'ship' : 'coronet'} size={16} className={ringDone ? 'text-success' : 'text-accent'} />
+        <Ring pct={ringPct} size={30} label={second ? (goal?.words ?? nextTitle) : ladderWords ?? nextTitle}>
+          <Icon name={second ? 'ship' : ladder?.step ? LADDER_ICON[ladder.step] : 'coronet'} size={16} className={ringDone ? 'text-success' : 'text-accent'} />
         </Ring>
       </span>
       <span ref={titleBox} className="relative col-start-2 min-w-0 overflow-hidden whitespace-nowrap text-t-body text-ink" data-testid="goal-title">
@@ -173,6 +199,16 @@ export function GoalCard() {
           data-price={saving?.price}
         >
           {goal?.words}
+        </span>
+      ) : ladder && ladderWords ? (
+        <span
+          className="col-span-2 col-start-2 min-w-0 whitespace-nowrap text-t-caption text-ink-faint"
+          data-testid="goal-ladder"
+          data-step={ladder.step ?? undefined}
+          data-have={ladder.have ?? undefined}
+          data-of={ladder.of ?? undefined}
+        >
+          {ladderWords}
         </span>
       ) : next && (
         <span className="col-span-2 col-start-2 min-w-0 break-words text-t-caption text-ink-faint" data-testid="goal-tracks">

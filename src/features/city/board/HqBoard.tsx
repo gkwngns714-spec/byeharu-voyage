@@ -6,6 +6,7 @@ import { useT, type TKey } from '../../../lib/i18n'
 import type { FleetJobRow, SnapshotPort } from '../../../lib/rpc'
 import { litAway, useAwayReport } from '../../../live/useAwayReport'
 import { litRace, useNationRace } from '../../../live/useNationRace'
+import { litRoles, useShipRoles } from '../../../live/useShipRoles'
 import { JobsAway } from './JobsAway'
 import { Bridge } from './Bridge'
 import { FleetRows } from './FleetRows'
@@ -23,6 +24,8 @@ import { useMovePress } from './useMovePress'
 //   THE BRIDGE   coin and coin per hour · each fleet a ship in her job's tone · what finishes next · pirates near
 //   BEST MOVES   every move open now as a card, ranked by domain/hq's one rule; the top few, More for the rest; icon chips to filter
 //   FLEETS       one row a fleet: picture, job, today's route money, Route / Plan; an idle fleet glows and offers her best card
+//   0485         lit (ship_roles_enabled): each fleet row's role chips (guard, fast, big cargo) for each of her hulls; the board's role card
+//                (the best role for her new hull, one press) and the yard's card naming the role the next hull should fill
 //   0484         lit (nation_race_enabled): THE COUNTRY RACE under the bridge (her country's place, the countries' cities led as bars, her
 //                influence, the week's clock, the home perk, her title), and a trade or request card in a contested city marks what it adds
 //                for her country (an Influence chip, in the tone of who leads there); the Influence filter shows only those cards
@@ -44,6 +47,7 @@ const FILTER_WORD: Record<Filter, TKey> = {
   request: 'hq.request',
   contract: 'hq.contract',
   yard: 'hq.yard',
+  role: 'hq.role',
   land: 'hq.land',
   crew: 'hq.crew',
   invest: 'hq.invest',
@@ -60,6 +64,8 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
   const jobs = useMemo(() => (away ? new Map<string, FleetJobRow>(away.jobs.map((j) => [j.fleet, j])) : null), [away])
   // 0484: the country race (world.nation_race; dark: null, and nothing of it is drawn)
   const race = litRace(useNationRace().view)
+  // 0485: her hulls' roles (world.ship_roles; dark: null, and nothing of them is drawn)
+  const roles = litRoles(useShipRoles().view)
   const raced = (m: (typeof board.moves)[number]) => m.data.kind === 'served' && (m.data.move.race?.points ?? 0) > 0
   const shown = board.moves.filter((m) => filter === 'all' || (filter === 'race' ? raced(m) : m.kind === filter))
   const list = more ? shown : shown.slice(0, TOP_MOVES)
@@ -76,7 +82,7 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
             [
               'all',
               ...(board.moves.some(raced) ? (['race'] as const) : []),
-              ...MOVE_KINDS.filter((k) => k !== 'contract' || board.moves.some((m) => m.kind === 'contract')),
+              ...MOVE_KINDS.filter((k) => (k !== 'contract' && k !== 'role') || board.moves.some((m) => m.kind === k)),
             ] as Filter[]
           ).map((f) => (
             <Chip key={f} on={filter === f} onClick={() => setFilter(f)} data-testid={`hq-filter-${f}`}>
@@ -106,7 +112,7 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
       </SheetSection>
 
       <SheetSection heading={t('hq.fleets')}>
-        <FleetRows fleets={board.fleets} moves={board.moves} jobs={jobs} />
+        <FleetRows fleets={board.fleets} moves={board.moves} jobs={jobs} roles={roles} />
       </SheetSection>
     </div>
   )

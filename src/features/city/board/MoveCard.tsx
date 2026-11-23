@@ -1,12 +1,12 @@
 import { Figure, IconDisc, KEEP_WORDS_CLASS, NeedChip, Note, goodIcon, tileToneClass, type NeedTone } from '../../../components/ui'
 import type { Move } from '../../../domain/hq'
 import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../../../lib/format'
-import type { FleetJobParams, FleetJobRow, HqMove, HqRace, HqRisk } from '../../../lib/rpc'
+import type { FleetJobParams, FleetJobRow, HqMove, HqRace, HqRisk, ShipRole, ShipRoleWhy } from '../../../lib/rpc'
 import { properName, useT } from '../../../lib/i18n'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { RepeatChip } from './JobControl'
-import { KIND_ICON } from './jobMarks'
+import { KIND_ICON, ROLE_ICON, ROLE_WORD } from './jobMarks'
 import { pressServed, useServedPress } from './servedPress'
 import type { MoveData } from './useBoard'
 
@@ -26,6 +26,16 @@ function riskMark(r: HqRisk): { icon: 'pirate' | 'shield'; tone: NeedTone } {
 /** 0484: an Influence chip's tone and word by who leads that city this week: hers green, a rival's amber (a race to win), nobody muted. */
 const RACE_TONE: Record<HqRace['lead'], NeedTone> = { mine: 'success', rival: 'warning', open: 'muted' }
 const RACE_WORD = { mine: 'hq.raceMine', rival: 'hq.raceRival', open: 'hq.raceOpen' } as const
+
+/** 0485: why a role is the pick, as its chip's word. */
+const WHY_WORD: Record<ShipRoleWhy, 'hq.whyRaids' | 'hq.whyJobs' | 'hq.whyRoutes'> = { raids: 'hq.whyRaids', jobs: 'hq.whyJobs', routes: 'hq.whyRoutes' }
+
+/** 0485: what a role gives, as its chip's figure and word: the guard's weight (pirates strike only within reach ÷ it), a share in %. */
+function gainOf(role: ShipRole, gain: number): { fig: string; key: 'hq.gainGuard' | 'hq.gainFast' | 'hq.gainHold'; n: number } {
+  if (role === 'guard') return { fig: `÷${formatInt(gain)}`, key: 'hq.gainGuard', n: gain }
+  const pct = Math.round(gain * 100)
+  return { fig: `+${formatInt(pct)}%`, key: role === 'fast' ? 'hq.gainFast' : 'hq.gainHold', n: pct }
+}
 
 /** 0481: a trade card's trip as a fixed route (her fleet; buy where she lies, sell there, the passage's stops), or null: not a trade, or
  *  she sells her own cargo (no harbour to buy at). */
@@ -79,7 +89,10 @@ export function MoveCard({
       case 'request':
         return t('hq.fulfil', { good: goodName(m.needs.good ?? '') })
       case 'yard':
-        return t('hq.secondShip')
+        // 0485 (lit): past the second hull, the yard's card is the next ship's, and names her role
+        return m.role ? t('hq.nextShip') : t('hq.secondShip')
+      case 'role':
+        return t('hq.roleOf', { role: t(ROLE_WORD[m.needs.role ?? 'guard']), ship: m.needs.ship_name ?? '' })
       case 'land':
         return t('hq.collect', { good: goodName(m.needs.good ?? '') })
       case 'crew':
@@ -129,6 +142,9 @@ export function MoveCard({
   // 0484: what it adds for her country's weekly race (a trade or request in a contested city), in the tone of who leads there
   const race = s?.race && s.race.points > 0 ? s.race : null
   const good = s ? (s.kind === 'trade' ? s.needs.good : undefined) : d.kind === 'trade' ? d.sale.good : undefined
+  // 0485: a role card's role, why it is the pick and what it gives; the yard's card, the role the next hull should fill
+  const roleCard = s?.kind === 'role' && s.needs.role ? { role: s.needs.role, why: s.needs.why ?? null, n: s.needs.n ?? 0, gain: gainOf(s.needs.role, s.needs.gain ?? 0) } : null
+  const nextRole = s?.kind === 'yard' ? (s.role ?? null) : null
   const repeat = jobs ? repeatOf(d) : null
   const held = repeat ? (jobs?.get(repeat.fleet) ?? null) : null
 
@@ -193,6 +209,21 @@ export function MoveCard({
             <span data-testid="hq-move-collateral" className="inline-flex">
               <NeedChip icon="pact" tone="warning" label={t('hq.collateral', { n: formatDucats(collateral) })}>
                 {formatDucats(collateral)}
+              </NeedChip>
+            </span>
+          )}
+          {roleCard && (
+            <span data-testid="hq-move-role" data-role={roleCard.role} className="inline-flex flex-wrap gap-1.5">
+              <NeedChip icon={ROLE_ICON[roleCard.role]} tone="success" label={t(roleCard.gain.key, { n: roleCard.gain.n })}>
+                {roleCard.gain.fig}
+              </NeedChip>
+              {roleCard.why && roleCard.n > 0 && <NeedChip icon="report" label={t(WHY_WORD[roleCard.why], { n: roleCard.n })}>{formatInt(roleCard.n)}</NeedChip>}
+            </span>
+          )}
+          {nextRole && (
+            <span data-testid="hq-move-next-role" data-role={nextRole} className="inline-flex">
+              <NeedChip icon={ROLE_ICON[nextRole]} tone="accent" label={t('hq.roleNext', { role: t(ROLE_WORD[nextRole]) })}>
+                {t(ROLE_WORD[nextRole])}
               </NeedChip>
             </span>
           )}
