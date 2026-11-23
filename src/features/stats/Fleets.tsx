@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   Button,
   Card,
@@ -11,6 +11,8 @@ import {
   FlagSlot,
   Hint,
   ListPanel,
+  MarkRow,
+  MarkRowHead,
   Note,
   PageSplit,
   Row,
@@ -20,6 +22,8 @@ import {
   ALL,
   oneOf,
   useFilterChoice,
+  shareOf,
+  type IconName,
 } from '../../components/ui'
 import { formatDucats, formatInt, formatKoreaTime, formatRealShort, formatRelative, instantMs } from '../../lib/format'
 import { useLocale, useT } from '../../lib/i18n'
@@ -205,38 +209,52 @@ export function FleetsFace({ kind }: { kind: StatsFleetKindId }) {
 
 type T = ReturnType<typeof useT>
 
-/** A kind's book as a table: one line a figure, its last 24 h and its 7 days side by side. Counts as counts, money as money, the hull lost
- *  rounded. The server's keys, the face's words. */
+/** A kind's book (2026-11-23, visual pass 3: "columns of label-and-zero rows"): one MARK ROW a figure, its glyph and word, the last
+ *  24 h quiet beside the 7 days, and a bar of the 7 days against the largest of its own unit (counts against counts, money against
+ *  money). Counts as counts, money as money, the hull lost rounded. A kind with nothing in either window stands its mark over one line.
+ *  The server's keys, the face's words. */
+type BookLine = { label: string; key: string; icon: IconName; money: boolean }
+
+const KIND_MARK: Record<StatsFleetKindId, IconName> = { NAVY: 'navy', PIRATE: 'pirate', CARGO: 'hold' }
+
 function BookTable({ kind, day, week }: { kind: StatsFleetKindId; day: StatsFleetFigs | undefined; week: StatsFleetFigs | undefined }) {
   const t = useT()
-  const n = (label: string, key: string) => ({ label, key, format: formatInt })
-  const d = (label: string, key: string) => ({ label, key, format: formatDucats })
-  const hull = { label: t('stats.damage'), key: 'hull', format: (x: number) => formatInt(Math.round(x)) }
-  const cells =
+  const n = (label: string, key: string, icon: IconName): BookLine => ({ label, key, icon, money: false })
+  const d = (label: string, key: string, icon: IconName): BookLine => ({ label, key, icon, money: true })
+  const hull = n(t('stats.damage'), 'hull', 'hull')
+  const lines: BookLine[] =
     kind === 'NAVY'
-      ? [n(t('stats.fights'), 'fights'), n(t('stats.won'), 'won'), n(t('stats.lost'), 'lost'), n(t('stats.pirateSunk'), 'sunk'), n(t('stats.stops'), 'stops'), hull,
-         n(t('stats.wrecks'), 'wrecks'), d(t('stats.fines'), 'fines'), d(t('stats.prizes'), 'prizes'), d(t('stats.upkeep'), 'upkeep'), d(t('stats.repairs'), 'repairs')]
+      ? [n(t('stats.fights'), 'fights', 'cannon'), n(t('stats.won'), 'won', 'cutlass'), n(t('stats.lost'), 'lost', 'shield'), n(t('stats.pirateSunk'), 'sunk', 'target'),
+         n(t('stats.stops'), 'stops', 'anchor'), hull, n(t('stats.wrecks'), 'wrecks', 'storm'), d(t('stats.fines'), 'fines', 'tag'), d(t('stats.prizes'), 'prizes', 'coin'),
+         d(t('stats.upkeep'), 'upkeep', 'crew'), d(t('stats.repairs'), 'repairs', 'wrench')]
       : kind === 'PIRATE'
-        ? [n(t('stats.raids'), 'raids'), n(t('stats.won'), 'raids_won'), n(t('stats.lost'), 'raids_lost'), d(t('stats.loot'), 'loot'), d(t('stats.ransom'), 'ransom'),
-           d(t('stats.goldTaken'), 'gold'), n(t('stats.navyFights'), 'navy_fights'), hull, n(t('stats.wrecks'), 'wrecks'), n(t('stats.rebuilt'), 'refits'),
-           d(t('stats.upkeep'), 'upkeep'), d(t('stats.repairs'), 'repairs')]
-        : [n(t('stats.deliveries'), 'delivered_n'), d(t('stats.delivered'), 'delivered'), n(t('stats.loads'), 'loaded_n'), d(t('stats.returned'), 'returned'),
-           d(t('stats.looted'), 'looted'), n(t('stats.attacked'), 'attacked'), n(t('stats.held'), 'held'), hull, n(t('stats.wrecks'), 'wrecks'), d(t('stats.repairs'), 'repairs')]
+        ? [n(t('stats.raids'), 'raids', 'cannon'), n(t('stats.won'), 'raids_won', 'cutlass'), n(t('stats.lost'), 'raids_lost', 'shield'), d(t('stats.loot'), 'loot', 'crate'),
+           d(t('stats.ransom'), 'ransom', 'pact'), d(t('stats.goldTaken'), 'gold', 'coin'), n(t('stats.navyFights'), 'navy_fights', 'navy'), hull,
+           n(t('stats.wrecks'), 'wrecks', 'storm'), n(t('stats.rebuilt'), 'refits', 'mallet'), d(t('stats.upkeep'), 'upkeep', 'crew'), d(t('stats.repairs'), 'repairs', 'wrench')]
+        : [n(t('stats.deliveries'), 'delivered_n', 'anchor'), d(t('stats.delivered'), 'delivered', 'coin'), n(t('stats.loads'), 'loaded_n', 'hold'),
+           d(t('stats.returned'), 'returned', 'sellOut'), d(t('stats.looted'), 'looted', 'crate'), n(t('stats.attacked'), 'attacked', 'cutlass'),
+           n(t('stats.held'), 'held', 'shield'), hull, n(t('stats.wrecks'), 'wrecks', 'storm'), d(t('stats.repairs'), 'repairs', 'wrench')]
+  const format = (l: BookLine, x: number) => (l.money ? formatDucats(x) : formatInt(Math.round(x)))
+  if (lines.every((l) => fig(day, l.key) === 0 && fig(week, l.key) === 0))
+    return (
+      <Empty icon={KIND_MARK[kind]} data-testid="stats-fleet-book">
+        {t('codex.nothingYet')}
+      </Empty>
+    )
+  const widest = (money: boolean) => Math.max(0, ...lines.filter((l) => l.money === money).map((l) => Math.abs(fig(week, l.key))))
+  const top = { count: widest(false), money: widest(true) }
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_max-content_max-content] items-baseline gap-x-4 gap-y-3" data-testid="stats-fleet-book">
-      <span />
-      <span className="justify-self-end text-t-caption text-ink-faint">{t('stats.last24')}</span>
-      <span className="justify-self-end text-t-caption text-ink-faint">{t('stats.week7')}</span>
-      {cells.map((c) => (
-        <Fragment key={c.key}>
-          <span className="min-w-0 text-t-label text-ink-muted">{c.label}</span>
-          <span className="justify-self-end">
-            <Figure value={c.format(fig(day, c.key))} />
-          </span>
-          <span className="justify-self-end">
-            <Figure value={c.format(fig(week, c.key))} />
-          </span>
-        </Fragment>
+    <div data-testid="stats-fleet-book">
+      <MarkRowHead aside={t('stats.last24')} figure={t('stats.week7')} />
+      {lines.map((l) => (
+        <MarkRow
+          key={l.key}
+          icon={l.icon}
+          label={l.label}
+          aside={<Figure value={format(l, fig(day, l.key))} tone="faint" />}
+          figure={<Figure value={format(l, fig(week, l.key))} />}
+          pct={shareOf(fig(week, l.key), l.money ? top.money : top.count)}
+        />
       ))}
     </div>
   )

@@ -282,3 +282,11 @@ Left for later: the Office City face's nine-word face strip (glyphs would add a 
 and History face strips (words only); Routes' Overview and Stats > Pirates' Totals (columns of label-figure zeros); the Rank podium
 on an all-zero board (three equal steps of "1"); the Account page's header line and sign-in sentence; History's Money card (Net, In,
 Out as label rows, one bar for a single day); Production's HQ tile and the build yard sharing the mallet.
+
+**Visual pass 3** (decided by default, the owner may reverse each): the Stats, History and Rank strips draw each face's glyph over
+its word (`Segmented`'s `icon`; new `news`, `candles`, `pirate`, `more`, `merchant`, `navy`, `calendar`, `helm`, `nation`); an all-zero
+podium is bare (three empty steps, the trophy, "No leader"), never three steps of "1"; Stats > Pirates / Navy / Cargo's Totals, the
+Routes overview and History's Money are mark rows (`MarkRow`: glyph, word, figure, a bar against the largest of its set), a quiet kind
+standing its mark over one line; a row of one or two signed bars is thin strokes, not a slab; the Account header is You's plate (`PlateDisc`)
+and its warning an info mark and "Not signed in · This browser only"; Production wears its own `works` glyph (the mallet stays the
+build yard). Left: the Office City face's word strip; Codex's and Land's face strips are still words.

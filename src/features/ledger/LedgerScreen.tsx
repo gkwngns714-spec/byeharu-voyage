@@ -5,6 +5,7 @@ import {
   IconDisc,
   ListHeading,
   ListPanel,
+  MarkRow,
   PageSplit,
   RankBars,
   Row,
@@ -14,6 +15,7 @@ import {
   StatCell,
   Tray,
   deltaTone,
+  shareOf,
   type IconName,
   type RankRow,
   type TrayDetent,
@@ -120,7 +122,7 @@ function LedgerBody({ title }: { title: string }) {
   return (
     <Sheet title={title} layout="page" data-testid="ledger">
       <Segmented
-        segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))}
+        segments={FACES.map((f) => ({ id: f.id, label: t(f.label), icon: f.icon }))}
         value={face}
         onChange={setFace}
         label={title}
@@ -169,10 +171,11 @@ function LedgerBody({ title }: { title: string }) {
           <>
             <Card icon="coin" title={t('history.money')} data-testid="ledger-money">
               <StatCell look="stacked" label={t('stats.netShort')} value={money.net} format={formatDucatsDelta} tone={deltaTone(money.net)} data-testid="ledger-net" />
+              {/* IN, OUT AND THE MOVES AS MARK ROWS (visual pass 3): in and out each a bar against the larger of the two */}
               <div className="mt-3">
-                <StatCell look="line" label={t('history.in')} value={money.inSum} format={formatDucatsDelta} tone="success" />
-                <StatCell look="line" label={t('history.out')} value={money.outSum} format={formatDucatsDelta} tone="danger" />
-                <StatCell look="line" label={t('history.moves')} value={money.moved} format={formatInt} />
+                <MarkRow icon="plus" label={t('history.in')} figure={<Figure value={formatDucatsDelta(money.inSum)} tone="success" />} pct={shareOf(money.inSum, Math.max(money.inSum, -money.outSum))} tone="success" />
+                <MarkRow icon="minus" label={t('history.out')} figure={<Figure value={formatDucatsDelta(money.outSum)} tone="danger" />} pct={shareOf(money.outSum, Math.max(money.inSum, -money.outSum))} tone="danger" />
+                <MarkRow icon="history" label={t('history.moves')} figure={<Figure value={formatInt(money.moved)} />} />
               </div>
               {money.bars.length > 0 && (
                 <>

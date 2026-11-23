@@ -1,4 +1,4 @@
-import { Card, CardMark, Clip, Facts, Icon, ListPanel, MasteryRing, PageSplit, Ring, Row, Sheet, goodIcon, masteredTone } from '../../components/ui'
+import { Card, CardMark, Clip, Facts, Icon, ListPanel, MasteryRing, PageSplit, PlateDisc, Ring, Row, Sheet, goodIcon, masteredTone } from '../../components/ui'
 import { useMasteryLevels } from '../../live/goodsMastery'
 import { ShipPicture } from '../fleets/ShipPicture'
 import { formatInt } from '../../lib/format'
@@ -176,9 +176,9 @@ function HousePlate({ player }: { player: PlayerHouse }) {
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="flex min-w-0 flex-[1_1_14rem] items-center gap-3">
           {player.nation && (
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-2 ring-1 ring-edge" data-testid="you-plate-flag">
+            <PlateDisc data-testid="you-plate-flag">
               <HullCountry nation={player.nation} compact size="title" />
-            </span>
+            </PlateDisc>
           )}
           <div className="flex min-w-0 flex-col gap-1">
             {/* the name whole (names.whole): it wraps, never clips */}

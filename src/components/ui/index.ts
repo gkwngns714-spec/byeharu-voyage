@@ -92,6 +92,11 @@ export { masteredTone } from './masteryStyles'
 
 // 7. BAR — one proportion, 4px, continuous or countable. Meter + Gauge + stockBar + pips, folded.
 export { Bar, type BarTone } from './Bar'
+// The mark row: a glyph, a short word, its figure and a bar under them (visual pass 3), and the share its bar draws.
+export { MarkRow, MarkRowHead } from './MarkRow'
+// The round inset a plate leads with: a house's flag on You and on the Account page (visual pass 3).
+export { PlateDisc } from './PlateDisc'
+export { shareOf } from './barShare'
 //    THE STACKED BAR — one whole cut into the KINDS that make it up, with the legend that keeps
 //    colour from being the only channel (the world's money by holder; the merchants' fleets).
 export { StackedBar, type StackedPart } from './StackedBar'

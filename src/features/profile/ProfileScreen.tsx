@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, Facts, LanguageSwitch, Note, PageSplit, Row, Sheet } from '../../components/ui'
+import { Button, Card, Clip, Facts, Icon, LanguageSwitch, Note, PageSplit, PlateDisc, Row, Sheet } from '../../components/ui'
 import { cmdChangeCountry, type Refusal } from '../../lib/rpc'
 import { HullCountry } from '../../live/HullCountry'
 import { NationPicker } from '../../live/NationPicker'
@@ -62,23 +62,30 @@ export function ProfileScreen() {
         data-testid="profile-page"
         main={
           <>
+            {/* THE HEADER IS A PLATE (2026-11-23, visual pass 3), You's: the house's flag on its disc, the name whole at the card's size,
+                and its country and founding day quiet under it. */}
             <Card>
               {player ? (
-                <Row
-                  data-testid="house-line"
-                  hairline={false}
-                  label={
-                    // THE THREE FACTS TURN ONLY AT A DOT (owner, 2026-11-12): "11월 / 12일 설립" and "since / Nov 12" broke a date in two
+                <div data-testid="house-line" className="flex min-w-0 items-center gap-3">
+                  {player.nation && (
+                    <PlateDisc>
+                      <HullCountry nation={player.nation} compact size="title" />
+                    </PlateDisc>
+                  )}
+                  <div className="min-w-0">
+                    <h2 className="text-t-card text-ink">
+                      <Clip>{player.company_name}</Clip>
+                    </h2>
+                    {/* THE FACTS TURN ONLY AT A DOT (owner, 2026-11-12): "11월 / 12일 설립" and "since / Nov 12" broke a date in two */}
                     <Facts
-                      className="block text-t-body text-ink"
+                      className="block text-t-caption text-ink-muted"
                       items={[
-                        player.company_name,
                         player.nation ? properName('nation', player.nation, player.nation_name ?? player.nation) : player.nation_name,
                         <span className="whitespace-nowrap">{t('profile.since', { date: founded(player.founded_at, nowMs) })}</span>,
                       ]}
                     />
-                  }
-                />
+                  </div>
+                </div>
               ) : (
                 <Row label={t('profile.noCompany')} tone="muted" hairline={false} />
               )}
@@ -99,8 +106,13 @@ export function ProfileScreen() {
               {authMode === 'local' ? (
                 // THE SENTENCE TAKES THE CARD'S WIDTH AND THE BUTTON STANDS UNDER IT (owner, 2026-11-12): beside the button it was
                 // three cramped lines in half a card at 320 px
+                // A MARK AND ONE SHORT LINE (visual pass 3): the warning's glyph in the warning tone, and the line that this save lives in
+                // this browser only (clearing it ends the game)
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-                  <p className="min-w-0 flex-[1_1_16rem] text-t-label text-ink-faint [text-wrap:balance]">{t('profile.localOnly')}</p>
+                  <p className="flex min-w-0 flex-[1_1_12rem] items-center gap-2" data-testid="profile-local">
+                    <Icon name="info" size={20} className="shrink-0 text-warning" />
+                    <Facts className="min-w-0 text-t-label text-ink-muted" items={[t('profile.localOnly'), t('profile.localWhere')]} />
+                  </p>
                   <Button variant="secondary" disabled data-testid="sign-out">
                     {t('profile.signOut')}
                   </Button>

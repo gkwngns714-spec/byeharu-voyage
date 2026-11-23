@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Bar, Figure, Flag, FlagSlot, Icon, Row, type BarTone } from '../../components/ui'
 import { formatInt } from '../../lib/format'
+import { useT } from '../../lib/i18n'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 
 // THE RANK BOARDS' TWO PICTURES (2026-11-23, the visual overhaul's slice 8: docs/design/visual-overhaul-2026-11-23.md §3.8). The three
@@ -31,6 +32,9 @@ const STEP_MAX = 84
 export function Podium({ steps, label }: { steps: readonly PodiumStep[]; label: string }) {
   const nationByCode = useWorld((s) => s.nationByCode)
   if (steps.length === 0) return null
+  // AN ALL-ZERO BOARD HAS NO LEADER (2026-11-23, visual pass 3): three equal steps each reading "1" said three houses had won. The
+  // honest picture is the podium bare, the trophy over its empty first step and one short line.
+  if (steps.every((s) => s.value === 0)) return <EmptyPodium label={label} />
   const widest = Math.max(...steps.map((s) => Math.abs(s.value))) || 1
   // second · first · third: the first stands in the middle, the classic podium; a board of one or two still centres its first
   const order = steps.length === 1 ? [0] : steps.length === 2 ? [1, 0] : [1, 0, 2]
@@ -63,6 +67,25 @@ export function Podium({ steps, label }: { steps: readonly PodiumStep[]; label: 
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/** The step heights of a bare podium (second · first · third), px: the classic shape, no figure behind it. */
+const BARE = [48, 72, 36] as const
+
+/** THE BARE PODIUM: three empty steps in the podium's shape, the trophy over the middle one, and one line. No place, no name. */
+function EmptyPodium({ label }: { label: string }) {
+  const t = useT()
+  return (
+    <div role="img" aria-label={`${label}: ${t('rank.podiumEmpty')}`} className="col-span-full mb-3 flex flex-col items-center gap-2 px-2" data-testid="rank-podium" data-empty="">
+      <Icon name="trophy" size={22} className="text-ink-faint" aria-hidden="true" />
+      <div className="grid w-full max-w-xs grid-cols-3 items-end gap-2" aria-hidden="true">
+        {BARE.map((h, i) => (
+          <div key={i} className="rounded-t-[10px] bg-surface-2" style={{ height: h }} />
+        ))}
+      </div>
+      <span className="text-t-caption text-ink-muted">{t('rank.podiumEmpty')}</span>
     </div>
   )
 }

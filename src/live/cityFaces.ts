@@ -46,7 +46,7 @@ export const PORT_FACES = [
   { id: 'city', building: null, icon: 'office', get label() { return t('town.f_city') } },
   // The id stays `warehouse` (it is the served building kind and a persisted byte). The face is no longer on the desk: it is the HQ's
   // Production page (owner, 2026-11-06), and the tab and the Town row are its door (`productionHref`).
-  { id: 'warehouse', building: 'warehouse', icon: 'hold', get label() { return t('city.production') } },
+  { id: 'warehouse', building: 'warehouse', icon: 'works', get label() { return t('city.production') } },
   { id: 'workstation', building: 'workstation', icon: 'crate', get label() { return t('town.f_workstation') } },
   { id: 'inn', building: 'inn', icon: 'crew', get label() { return t('town.f_inn') } },
   { id: 'building_yard', building: 'building_yard', icon: 'mallet', get label() { return t('town.f_building_yard') } },
