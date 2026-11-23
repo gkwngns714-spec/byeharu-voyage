@@ -1,4 +1,5 @@
 import { Card, CardMark, Clip, Facts, Icon, ListPanel, PageSplit, Ring, Row, Sheet } from '../../components/ui'
+import { ShipPicture } from '../fleets/ShipPicture'
 import { formatInt } from '../../lib/format'
 import type { FleetView, PlayerHouse } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -332,6 +333,9 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
         ships.map(({ ship, fleet }, i) => (
           <Row
             key={ship.id}
+            // HER PICTURE LEADS HER ROW (visual pass 2, 2026-11-23), as on the Fleets tab: her tier's outline, gold for the flagship, whose
+            // word is the picture's name and leaves the caption line
+            mark={<ShipPicture code={ship.class_code} tone={ship.is_flagship ? 'var(--color-accent)' : undefined} label={ship.is_flagship ? t('you.flagship') : undefined} />}
             label={<Clip>{ship.name}</Clip>}
             // IN A NARROW ROW HER FLEET GOES UNDER HER NAME (owner, 2026-11-12): beside a 24-letter fleet name the ship's own name
             // stood on three lines ("Nossa / Senhora da / Estrela") in a 320-px card, and on two at 390. The row is its own query
@@ -341,8 +345,8 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
             hairline={i < ships.length - 1}
             data-testid="you-ship"
           >
-            <Facts className="block text-t-caption text-ink-faint pair:hidden" items={[properName('hull', ship.class, ship.class), levelWord(ship.id), ship.is_flagship ? t('you.flagship') : null]} />
-            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name === ship.name ? null : fleet.name, properName('hull', ship.class, ship.class), levelWord(ship.id), ship.is_flagship ? t('you.flagship') : null]} />
+            <Facts className="block text-t-caption text-ink-faint pair:hidden" items={[properName('hull', ship.class, ship.class), levelWord(ship.id)]} />
+            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name === ship.name ? null : fleet.name, properName('hull', ship.class, ship.class), levelWord(ship.id)]} />
           </Row>
         ))
       )}

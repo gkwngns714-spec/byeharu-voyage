@@ -64,6 +64,11 @@ function faceWord(id: 'building_yard' | 'shipyard' | 'gear'): string {
   return PORT_FACES.find((f) => f.id === id)!.label
 }
 
+/** And its glyph, off the same table (visual pass 2): each door on the Port and Inn panels wears its face's mark. */
+function faceIcon(id: 'building_yard' | 'shipyard' | 'gear' | 'inn') {
+  return PORT_FACES.find((f) => f.id === id)!.icon
+}
+
 /** THE PAGE'S CONTENT COLUMN — packed, never spread edge to edge on a wide glass. */
 function PageBody({ children }: { children: ReactNode }) {
   return <div className="mx-auto w-full max-w-2xl">{children}</div>
@@ -109,9 +114,9 @@ function PortFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null
   return (
     <>
       {!yard && !repair && <Note tone="neutral" className="mb-2">{t('city.noYard')}</Note>}
-      {yard && <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={buildWord} onClick={() => setOpen('yard')} data-testid="city-port-yard" />}
-      {repair && <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={repairWord} figure={damage} onClick={() => setOpen('repair')} data-testid="city-port-repair" />}
-      <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={gearWord} onClick={() => setOpen('gear')} data-testid="city-port-gear" />
+      {yard && <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={buildWord} icon={faceIcon('building_yard')} onClick={() => setOpen('yard')} data-testid="city-port-yard" />}
+      {repair && <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={repairWord} icon={faceIcon('shipyard')} figure={damage} onClick={() => setOpen('repair')} data-testid="city-port-repair" />}
+      <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={gearWord} icon={faceIcon('gear')} onClick={() => setOpen('gear')} data-testid="city-port-gear" />
       {open === 'gear' && (
         <DetailPage title={gearWord} onClose={() => setOpen(null)} data-testid="city-port-gear-page">
           <PageBody>
@@ -151,6 +156,7 @@ function InnFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null 
       <SummaryRow
           className={`min-h-row! ${SUMMARY_STACK_CLASS}`}
         title={t('inn.crew')}
+        icon={faceIcon('inn')}
         figure={crew ? formatOfTotal(crew.aboard, crew.max) : undefined}
         onClick={() => setOpen(true)}
         data-testid="city-inn-crew"
@@ -158,6 +164,7 @@ function InnFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null 
       <SummaryRow
           className={`min-h-row! ${SUMMARY_STACK_CLASS}`}
         title={t('inn.captainsHere')}
+        icon="captain"
         figure={room.view ? formatInt(room.view.present.length) : undefined}
         onClick={() => setOpen(true)}
         data-testid="city-inn-captains"

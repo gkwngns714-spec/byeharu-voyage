@@ -70,6 +70,12 @@ export const ICON_NAMES = [
   // The Map's filter chips (slice 4)
   'layers',
   'waves',
+  'people',
+  'banner',
+  'pact',
+  'wrench',
+  'fitting',
+  'captain',
   // A price's side on the goods card (slice 3): bought into the hold, sold out of it
   'buyIn',
   'sellOut',
@@ -344,6 +350,19 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   layers: ['M12 4 3 8.5l9 4.5 9-4.5L12 4Z', 'M3 12.5l9 4.5 9-4.5', 'M3 16.5l9 4.5 9-4.5'],
   // Three swells — the Seas chip (the sea zones, their waves and what each asks to pass). Not `route`, not the chart.
   waves: ['M3 8c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0', 'M3 13c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0', 'M3 18c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0'],
+  // ── VISUAL PASS 2 (2026-11-23): the facts that were still a word with no mark ──
+  // Three roofs in a row — a city's Population. Not `crew` (your hands) nor `person` (You).
+  people: ['M2.5 20.5h19', 'M3.5 20.5v-6l3.5-3 3.5 3v6', 'M10.5 20.5V11l3.5-3.5 3.5 3.5v9.5', 'M17.5 20.5v-6l2-1.8'],
+  // A pennant on its pole — your Status in a city (your influence points there). Not the flag tile: that is a country.
+  banner: ['M6 21V3.5', 'M6 4.5h12l-3 4 3 4H6'],
+  // Two clasped rings — a city's Relationship with you. Not the heart: that is a captain's trait.
+  pact: ['M9 8.5a5 5 0 1 0 0 7', 'M15 15.5a5 5 0 1 0 0-7', 'M9 12h6'],
+  // A spanner — Repair (a hull made whole). Not the mallet: that is the build yard and Shipbuilding.
+  wrench: ['M14.7 6.3a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3l7.7-7.7a4 4 0 0 0-2-2Z', 'M14.7 6.3 17 4'],
+  // A block and its hook — Gear (the fittings a ship carries). Not the cog: that is the Account.
+  fitting: ['M12 2.5v3', 'M12 5.5a4.5 4.5 0 1 1 0 9a4.5 4.5 0 1 1 0-9Z', 'M12 8.5a1.5 1.5 0 1 1 0 3a1.5 1.5 0 1 1 0-3Z', 'M12 14.5v3a2.5 2.5 0 1 1-2.5 2.5'],
+  // A tricorne — Captains (the people you hire to sit in a ship's cabins). Not `person` (You) nor `crew` (the hands).
+  captain: ['M2.5 14.5c3 .8 6 1.2 9.5 1.2s6.5-.4 9.5-1.2', 'M4 14.7 6.5 9c1.6.8 3.5 1.2 5.5 1.2s3.9-.4 5.5-1.2l2.5 5.7', 'M12 10.2V7.5'],
   // ── A PRICE'S SIDE ON THE GOODS CARD (2026-11-23, the visual overhaul's slice 3: the card's two prices read Buy / Sell by tone and
   // arrow, not by word). An arrow down into an open tray — BUY (what the city asks: goods come into your hold). An arrow up out of
   // it — SELL (what the city bids: goods go out, coin comes in). Not the chevron, not levelUp: those are a door and the Levels.

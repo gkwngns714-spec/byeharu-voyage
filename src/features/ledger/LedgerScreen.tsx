@@ -131,7 +131,7 @@ function LedgerBody({ title }: { title: string }) {
         // no `sideFirst`: on a phone the figures stand AFTER the entries — the record's purpose is the entries
         stickySide
         main={
-          <ListPanel look="card" columns="fit" title={t('history.entries')} count={formatInt(shown.length)} data-testid="ledger-list">
+          <ListPanel look="card" columns="fit" icon="ledger" title={t('history.entries')} count={formatInt(shown.length)} data-testid="ledger-list">
             {shown.length === 0 ? (
               <Row label={events.length === 0 ? t('codex.nothingYet') : t('codex.nothingHere')} tone="muted" hairline={false} />
             ) : (
@@ -167,7 +167,7 @@ function LedgerBody({ title }: { title: string }) {
         }
         side={
           <>
-            <Card title={t('history.money')} data-testid="ledger-money">
+            <Card icon="coin" title={t('history.money')} data-testid="ledger-money">
               <StatCell look="stacked" label={t('stats.netShort')} value={money.net} format={formatDucatsDelta} tone={deltaTone(money.net)} data-testid="ledger-net" />
               <div className="mt-3">
                 <StatCell look="line" label={t('history.in')} value={money.inSum} format={formatDucatsDelta} tone="success" />

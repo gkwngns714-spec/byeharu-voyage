@@ -1,25 +1,5 @@
 import { useMemo, useState } from 'react'
-import {
-  Button,
-  Card,
-  Figure,
-  Hint,
-  ListHeading,
-  ListPanel,
-  Note,
-  PageSplit,
-  RankBars,
-  Row,
-  Segmented,
-  Sheet,
-  Skeleton,
-  StackedBar,
-  StatCell,
-  Tray,
-  type RankRow,
-  type StackedPart,
-  type TrayDetent,
-} from '../../components/ui'
+import { Button, Card, Empty, Figure, Hint, ListHeading, ListPanel, Note, PageSplit, RankBars, type RankRow, Row, Segmented, Sheet, Skeleton, StackedBar, type StackedPart, StatCell, Tray, type TrayDetent } from '../../components/ui'
 import { formatDucats, formatInt, formatMiles, formatRelative } from '../../lib/format'
 import type { RouteBoard, RouteBoardRow } from '../../lib/rpc'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
@@ -133,7 +113,7 @@ function RoutesBody({ title }: { title: string }) {
     >
       {board === null ? (
         loading ? (
-          <ListPanel look="card" title={t('routes.lanes')} data-testid="routes-list">
+          <ListPanel look="card" icon="route" title={t('routes.lanes')} data-testid="routes-list">
             <div className="space-y-2 py-1">
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
@@ -153,6 +133,7 @@ function RoutesBody({ title }: { title: string }) {
               <ListPanel
                 look="card"
                 columns="fit"
+                icon="route"
                 title={t('routes.lanes')}
                 count={formatInt(board.routes.length)}
                 // THE 44-PX FLOOR (the audit, 2026-10-31): it is the card's one secondary action, so it takes the md size.
@@ -176,7 +157,10 @@ function RoutesBody({ title }: { title: string }) {
                 data-testid="routes-list"
               >
                 {others.length === 0 && mine.length === 0 ? (
-                  <Row label={t('routes.none')} tone="muted" hairline={false} />
+                  // no lane at all: a drawn route over the one line (visual pass 2)
+                  <Empty icon="route" className="my-1">
+                    {t('routes.none')}
+                  </Empty>
                 ) : mine.length === 0 ? (
                   others.map(lane)
                 ) : (

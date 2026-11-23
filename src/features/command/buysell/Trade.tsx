@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DetailPage, SummaryRow, useWide } from '../../../components/ui'
+import { DetailPage, Icon, SummaryRow, useWide } from '../../../components/ui'
 import { fleetCargoByCode, fleetHoldTotal, fleetHoldUsed } from '../../../domain/fleet'
 import { useBestSales, usePriceWhy } from '../../../live/useDesk'
 import { usePortMarket } from '../../../live/usePortMarket'
@@ -383,7 +383,9 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
             // is pressed, under the same line. Not while a page is open: the Orders page draws the same block, and one
             // screen never holds two of it.
             <div className="bv-scroll h-full min-h-0 overflow-y-auto px-4 pb-4" data-testid="desk-idle">
-              <p className="pt-4 text-t-caption text-ink-faint" data-testid="desk-slot-hint">
+              {/* the hint wears the desk's own mark, the scales (visual pass 2), so the line reads as the Trade pane's and not a stray caption */}
+              <p className="flex items-center gap-2 pt-4 text-t-caption text-ink-faint" data-testid="desk-slot-hint">
+                <Icon name="scales" size={16} className="shrink-0 text-accent" />
                 {t('desk.pickGood')}
               </p>
               {page === null && <ShipInfo fleet={fleet} aside />}

@@ -261,3 +261,24 @@ player sees.
 - No glyph means two things (a check over the tab table, the level marks and the card marks).
 - Every level, goal and room limit is drawn as a bar or ring.
 - The look and layout specs stay green with no law weakened; every word still in both dictionaries.
+
+## 5. Visual pass 2 (after the ten slices)
+
+A second walk of every screen at 390 x 844 and 1280 x 800 (local build, lit world, fresh company) found the places the slices did not
+reach. Fixed here (decided by default, the owner may reverse each):
+- **Empty states draw their mark.** `Empty` takes an `icon`: the glyph of what would stand there on a disc over the one line. Used for
+  an empty Storage (crate), an empty Land store (crate), nobody else on a Land site (crew), no captains (a new tricorne `captain`),
+  no Report place (anchor) and no routes (route). Each was a grey sentence or a bare "0".
+- **City hall's five figures lead with a mark** (new `people`, coin, new `banner` for Status, crew, new `pact` for Relationship).
+- **Doors wear their face's glyph.** `SummaryRow` takes an `icon`; the HQ Port panel's Build (mallet), Repair (new `wrench`) and
+  Gear (new `fitting`), the Inn's Crew and Captains here, and the Report's sections (scales, crew, cask, wrench, shield, invest,
+  ship, coin). The face glyphs live on the one face table (`live/cityFaces.ts`).
+- **The wide desk's ship block** leads its rows with crew, coin, cask and hold, and its "Press a good." with the scales.
+- **Land's Party card** leads Packs, Home in and To collect with hold, clock and crate; its four cards carry card marks.
+- **You's ships** lead with their picture (`ShipPicture`, gold for the flagship, whose word moved into the picture's name).
+- **Card marks** on Production (Storage, Cargo, Recipes), History (Entries, Money) and Routes (Lanes).
+
+Left for later: the Office City face's nine-word face strip (glyphs would add a line under the phone desk's one-glass law); the Stats
+and History face strips (words only); Routes' Overview and Stats > Pirates' Totals (columns of label-figure zeros); the Rank podium
+on an all-zero board (three equal steps of "1"); the Account page's header line and sign-in sentence; History's Money card (Net, In,
+Out as label rows, one bar for a single day); Production's HQ tile and the build yard sharing the mallet.

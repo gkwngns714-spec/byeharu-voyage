@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bar, DetailPage, Figure, GroupHeading, Note, Row, ScrollPane, Segmented, SignedBars, Skeleton, SummaryRow } from '../../../components/ui'
+import { Bar, DetailPage, Empty, Figure, GroupHeading, type IconName, Note, Row, ScrollPane, Segmented, SignedBars, Skeleton, SummaryRow } from '../../../components/ui'
 import { useServedRead } from '../../../live/useServedRead'
 import { formatDucatsDelta, formatRealDay } from '../../../lib/format'
 import { worldReport, type Report as ReportView, type ReportLine, type ReportPlace, type ReportSection } from '../../../lib/rpc'
@@ -43,6 +43,18 @@ const SECTION_KEYS: Record<ReportSection['id'], TKey> = {
   invest: 'desk.secInvest',
   ships: 'desk.secShips',
   other: 'desk.secOther',
+}
+
+/** Each section's glyph (visual pass 2, 2026-11-23): the list is found by its marks, the same ones those facts wear elsewhere. */
+const SECTION_ICONS: Record<ReportSection['id'], IconName> = {
+  trade: 'scales',
+  crew: 'crew',
+  supplies: 'cask',
+  repairs: 'wrench',
+  insurance: 'shield',
+  invest: 'invest',
+  ships: 'ship',
+  other: 'coin',
 }
 
 const hint = () => tNow('desk.reportHint')
@@ -113,6 +125,7 @@ export function Report({ layout }: { layout: DeskLayout }) {
     <SummaryRow
       key={s.id}
       title={t(SECTION_KEYS[s.id])}
+      icon={SECTION_ICONS[s.id]}
       figure={<Figure value={formatDucatsDelta(s.ducats)} tone={tone(s.ducats)} />}
       meter={share(s.ducats, r.sections)}
       onClick={() => setOpen({ kind: 'section', id: s.id })}
@@ -163,7 +176,8 @@ export function Report({ layout }: { layout: DeskLayout }) {
         <GroupHeading>{t('desk.byPlace')}</GroupHeading>
         <ScrollPane className="max-h-[10rem] lg:max-h-none" data-testid="report-places">
           {nothing ? (
-            <Note tone="neutral">{t('desk.reportNothing')}</Note>
+            // no place has moved money yet: a drawn anchor (the places are harbours) over the one line (visual pass 2)
+            <Empty icon="anchor">{t('desk.reportNothing')}</Empty>
           ) : (
             <div className="flex flex-col gap-1.5">{r.places.map(place)}</div>
           )}

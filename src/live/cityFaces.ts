@@ -4,6 +4,7 @@
 
 import type { BuildingKind } from '../lib/rpc'
 import { t } from '../lib/i18n'
+import type { IconName } from '../components/ui/icons'
 
 /**
  * THE FACES OF ONE PLACE, EACH DESCRIBED ONCE. Not routes: a port is one screen, and these are its
@@ -37,31 +38,34 @@ export const PORT_FACES = [
     // harbour turns to it. A face that names a building is offered only where that building
     // STANDS — one rule, read from the rows, replacing PortScreen's hand-written academy check.
     building: 'market',
+    icon: 'chart',
     get label() {
       return t('town.f_market')
     },
   },
-  { id: 'city', building: null, get label() { return t('town.f_city') } },
+  { id: 'city', building: null, icon: 'office', get label() { return t('town.f_city') } },
   // The id stays `warehouse` (it is the served building kind and a persisted byte). The face is no longer on the desk: it is the HQ's
   // Production page (owner, 2026-11-06), and the tab and the Town row are its door (`productionHref`).
-  { id: 'warehouse', building: 'warehouse', get label() { return t('city.production') } },
-  { id: 'workstation', building: 'workstation', get label() { return t('town.f_workstation') } },
-  { id: 'inn', building: 'inn', get label() { return t('town.f_inn') } },
-  { id: 'building_yard', building: 'building_yard', get label() { return t('town.f_building_yard') } },
+  { id: 'warehouse', building: 'warehouse', icon: 'hold', get label() { return t('city.production') } },
+  { id: 'workstation', building: 'workstation', icon: 'crate', get label() { return t('town.f_workstation') } },
+  { id: 'inn', building: 'inn', icon: 'crew', get label() { return t('town.f_inn') } },
+  { id: 'building_yard', building: 'building_yard', icon: 'mallet', get label() { return t('town.f_building_yard') } },
   // 2026-09-09: REPAIR's doorway, moved off COMMAND's grid to the building whose act it is. The
   // label is the ACT, not the building's period name — owner row 86: *"wtf is shipyard"*. The id
   // stays `shipyard` (the served kind); one word, and not the Build face's word.
-  { id: 'shipyard', building: 'shipyard', get label() { return t('town.f_shipyard') } },
+  { id: 'shipyard', building: 'shipyard', icon: 'wrench', get label() { return t('town.f_shipyard') } },
   // 0131: the academy's face is the SKILLS screen (docs/SHIPS_AND_SKILLS.md §8 S9) — groups of
   // skills and the training queue; the label is what it shows, as Repair and Build are acts.
-  { id: 'academy', building: 'academy', get label() { return t('town.f_academy') } },
+  { id: 'academy', building: 'academy', icon: 'levelUp', get label() { return t('town.f_academy') } },
   // 0424 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): the starter gear, sold at EVERY
   // harbour (no building: fitting needs none), so `building` is null and every harbour turns to it.
-  { id: 'gear', building: null, get label() { return t('town.f_gear') } },
+  { id: 'gear', building: null, icon: 'fitting', get label() { return t('town.f_gear') } },
 ] as const satisfies readonly {
   id: string
   /** 0067 — the building this face IS, or null for a face that is not one. */
   building: BuildingKind | null
+  /** Its glyph (visual pass 2, 2026-11-23): the mark its door wears on HQ's Port and Inn panels. */
+  icon: IconName
   label: string
 }[]
 
