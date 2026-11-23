@@ -8,6 +8,8 @@ import { MarketLeft } from '../../live/MarketLeft'
 import { useMarketPick } from '../../live/marketPick'
 import { RequestBoard } from '../../live/RequestBoard'
 import { useRequests } from '../../live/useRequests'
+import { litContracts, useCourierContracts } from '../../live/useCourierContracts'
+import { ContractPostPage, ContractRows } from './ContractPage'
 
 // THE REQUEST PAGE — the owner's flow, one page (2026-10-31: *"Request i press, a page shows up,
 // where i search trade good - press it, shows up chart, choose price to buy, and then the put the
@@ -150,7 +152,8 @@ export function RequestPage({
 // "City requests" are the harbour's delivery jobs (world.contracts, the ONE RequestBoard Trade >
 // City draws and the Map tray draws, read-only here: nobody delivers from HQ). "Your orders" are
 // the player's own requests (world.requests, passed in by the caller, which already reads it for
-// `home`) with the New request door under them.
+// `home`) with the New request door under them. 0483, lit (contracts_enabled): that door is "Post a contract" (ContractPage.tsx),
+// and her courier contracts stand above it.
 export function RequestsFace({
   port,
   goods,
@@ -166,6 +169,8 @@ export function RequestsFace({
   const jobs = useRequests(port.id)
   const [requestPage, setRequestPage] = useState(false)
   const [cancelling, setCancelling] = useState<string | null>(null)
+  // 0483 (contracts_enabled): the door "New request" becomes "Post a contract", and her contracts stand under her orders
+  const contracts = litContracts(useCourierContracts().view) !== null
   return (
     <div className="mt-2" data-testid="city-market-requests">
       <div className="text-t-caption text-ink-faint" data-testid="city-jobs-heading">
@@ -210,8 +215,18 @@ export function RequestsFace({
           </div>
         ))
       )}
-      <SummaryRow title={t('city.requestNew')} onClick={() => setRequestPage(true)} data-testid="city-request-new" />
-      {requestPage && <RequestPage port={port} goods={goods} onClose={() => setRequestPage(false)} />}
+      {contracts ? (
+        <>
+          <ContractRows />
+          <SummaryRow icon="pact" title={t('city.contractPost')} onClick={() => setRequestPage(true)} data-testid="city-contract-new" />
+          {requestPage && <ContractPostPage port={port} onClose={() => setRequestPage(false)} />}
+        </>
+      ) : (
+        <>
+          <SummaryRow title={t('city.requestNew')} onClick={() => setRequestPage(true)} data-testid="city-request-new" />
+          {requestPage && <RequestPage port={port} goods={goods} onClose={() => setRequestPage(false)} />}
+        </>
+      )}
     </div>
   )
 }

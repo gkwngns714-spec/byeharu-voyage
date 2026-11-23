@@ -82,6 +82,10 @@ export function MoveCard({
         return t('hq.hireCaptain')
       case 'invest':
         return t('hq.investIdle')
+      case 'contract':
+        return m.act.rpc === 'cmd.deliver_contract'
+          ? t('hq.deliver', { good: goodName(m.needs.good ?? '') })
+          : t('hq.carry', { good: goodName(m.needs.good ?? ''), port: portNameOf(portByCode, m.needs.to ?? '') })
     }
   }
 
@@ -101,7 +105,7 @@ export function MoveCard({
         : move.gain !== null
           ? formatDucatsDelta(move.gain)
           : null
-  const tone = move.kind === 'trade' || move.kind === 'request' || (s?.kind === 'invest' && s.profit !== null) ? 'success' : 'ink'
+  const tone = move.kind === 'trade' || move.kind === 'request' || move.kind === 'contract' || (s?.kind === 'invest' && s.profit !== null) ? 'success' : 'ink'
   // what is moved: the good and its units (a trade, a request, Land's goods)
   const goods: { code: string; units: number | null } | null = s
     ? s.needs.good
@@ -113,8 +117,11 @@ export function MoveCard({
         ? { code: d.request.good, units: d.units }
         : null
   const cost = s ? (s.kind === 'trade' || s.kind === 'invest' ? (s.needs.cost ?? null) : null) : d.kind === 'trade' ? (d.sale.cost ?? null) : null
-  const flag = s ? (s.kind === 'trade' ? (s.needs.to ?? null) : null) : d.kind === 'trade' ? d.sale.port : null
-  const risk = s ? (s.kind === 'trade' && s.risk ? riskMark(s.risk) : null) : null
+  const flag = s ? (s.kind === 'trade' || s.kind === 'contract' ? (s.needs.to ?? null) : null) : d.kind === 'trade' ? d.sale.port : null
+  const risk = s ? ((s.kind === 'trade' || s.kind === 'contract') && s.risk ? riskMark(s.risk) : null) : null
+  // 0483: a contract to take loads at its harbour A (a chip when she lies elsewhere) and holds her collateral
+  const loadAt = s?.kind === 'contract' && s.act.rpc === 'cmd.take_contract' && s.needs.from && s.needs.from !== s.at ? s.needs.from : null
+  const collateral = s?.kind === 'contract' ? (s.needs.collateral ?? null) : null
   const good = s ? (s.kind === 'trade' ? s.needs.good : undefined) : d.kind === 'trade' ? d.sale.good : undefined
   const repeat = jobs ? repeatOf(d) : null
   const held = repeat ? (jobs?.get(repeat.fleet) ?? null) : null
@@ -166,6 +173,21 @@ export function MoveCard({
             <NeedChip icon="coin" label={t('hq.cost', { n: formatDucats(cost) })}>
               {formatDucats(cost)}
             </NeedChip>
+          )}
+          {loadAt && (
+            <NeedChip icon="anchor" label={t('hq.loadAt', { port: portNameOf(portByCode, loadAt) })}>
+              <span className="inline-flex items-center gap-1" data-testid="hq-move-load">
+                <PortFlag code={loadAt} />
+                {portNameOf(portByCode, loadAt)}
+              </span>
+            </NeedChip>
+          )}
+          {collateral !== null && collateral > 0 && (
+            <span data-testid="hq-move-collateral" className="inline-flex">
+              <NeedChip icon="pact" tone="warning" label={t('hq.collateral', { n: formatDucats(collateral) })}>
+                {formatDucats(collateral)}
+              </NeedChip>
+            </span>
           )}
           {!s && d.kind === 'trade' && (
             <NeedChip icon={d.haunt ? 'target' : 'shield'} tone={d.haunt ? 'danger' : 'muted'} label={d.haunt ? t('hq.pirateHaunt') : t('hq.noRisk')} />

@@ -1626,6 +1626,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // cmd.set_fleet_job(fleet, kind, params), cmd.clear_fleet_job(fleet), cmd.fleet_jobs_seen(); a fleet not hers refused; dark
       // E_NOT_IN_USE. Landed WITH the faces (HQ's away card, each fleet row's job and a trade card's Repeat).
       'worldAwayReport', 'cmdSetFleetJob', 'cmdClearFleetJob', 'cmdFleetJobsSeen',
+      // Pin moved deliberately 2026-11-23 with migration 0483 (courier contracts): world.courier_contracts() - no argument, no player id;
+      // dark {on: false}; lit her posted and carried contracts. A read. And its five doors, none taking a player id: cmd.take_contract(fleet,
+      // contract, version) (HQ's card, one press), cmd.deliver_contract(contract), cmd.fail_contract(contract), cmd.post_contract(from, to,
+      // good, qty, reward, collateral, hours) ("Post a contract"), cmd.cancel_contract(contract); dark E_NOT_IN_USE. Landed WITH the faces
+      // (HQ's contract cards, the Requests face's door and her contracts' rows).
+      'worldCourierContracts', 'cmdTakeContract', 'cmdDeliverContract', 'cmdFailContract', 'cmdPostContract', 'cmdCancelContract',
       // Pin moved deliberately with migration 0327 (docs/WORLD_POWERS.md §4.2): A FLEET ATTACKS A CARGO SHIP, and its dry run. No player id; dark (E_NOT_IN_USE) until
       // attack_enabled. Landed WITH the face (src/live/AttackSection.tsx).
       'cmdAttack', 'cmdPreviewAttack',

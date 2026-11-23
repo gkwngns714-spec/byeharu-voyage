@@ -9,7 +9,7 @@
 //
 // THE RULE, in order:
 //   1. THE YARD, when her purse covers the second ship's Order: a second hull is a second earner, so it beats any one trip.
-//   2. TRADE RUNS AND REQUESTS, together, by coin per hour:
+//   2. TRADE RUNS, REQUESTS AND COURIER CONTRACTS (0483, served only), together, by coin per hour:
 //        a trade run  = the served profit (world.best_sales) / the served time to the sale (`seconds`, else `days`);
 //        a request    = the served premium for the units she holds / a quarter hour (she is docked there: fulfilling is one press,
 //                       so the quarter hour is the floor that keeps a small premium from outranking a real trip).
@@ -21,10 +21,10 @@
 // Nothing is judged here that the server judges (whether she can sail there, whether it pays): a move is built only from served
 // figures, and the press is the desk's, the yard's, the inn's or the Office's own.
 
-export type MoveKind = 'trade' | 'request' | 'yard' | 'land' | 'crew' | 'invest'
+export type MoveKind = 'trade' | 'request' | 'contract' | 'yard' | 'land' | 'crew' | 'invest'
 
 /** The board's filter chips, in their order. */
-export const MOVE_KINDS: readonly MoveKind[] = ['trade', 'request', 'yard', 'land', 'crew', 'invest']
+export const MOVE_KINDS: readonly MoveKind[] = ['trade', 'request', 'contract', 'yard', 'land', 'crew', 'invest']
 
 export interface Move<T = unknown> {
   id: string
@@ -51,7 +51,7 @@ export function perHourOf(gain: number | null, seconds: number | null): number |
 }
 
 /** The bands, the server's own (public.hq_board_for's `band`). */
-const BAND: Record<MoveKind, number> = { yard: 0, trade: 1, request: 1, land: 2, crew: 3, invest: 4 }
+const BAND: Record<MoveKind, number> = { yard: 0, trade: 1, request: 1, contract: 1, land: 2, crew: 3, invest: 4 }
 
 /** The board's order (the rule above). Pure: a new array, the input untouched. */
 export function rankMoves<T>(moves: readonly Move<T>[]): Move<T>[] {

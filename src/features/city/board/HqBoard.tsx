@@ -21,6 +21,7 @@ import { useMovePress } from './useMovePress'
 //   THE BRIDGE   coin and coin per hour · each fleet a ship in her job's tone · what finishes next · pirates near
 //   BEST MOVES   every move open now as a card, ranked by domain/hq's one rule; the top few, More for the rest; icon chips to filter
 //   FLEETS       one row a fleet: picture, job, today's route money, Route / Plan; an idle fleet glows and offers her best card
+//   0483         lit (contracts_enabled): courier contracts are served cards (take one, deliver one); their chip shows when one is served
 //   0481         lit (fleet_jobs_enabled): WHILE AWAY at the top (what each standing job did), each fleet row's job mark and setter, and a
 //                trade card's Repeat (that trip as her fixed route)
 //
@@ -34,6 +35,7 @@ const FILTER_WORD: Record<Filter, TKey> = {
   all: 'hq.all',
   trade: 'hq.trade',
   request: 'hq.request',
+  contract: 'hq.contract',
   yard: 'hq.yard',
   land: 'hq.land',
   crew: 'hq.crew',
@@ -59,7 +61,7 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
 
       <SheetSection heading={t('hq.moves')} trailing={<span className="text-t-caption tabular-nums text-ink-faint">{formatInt(shown.length)}</span>}>
         <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label={t('hq.filter')} data-testid="hq-filters">
-          {(['all', ...MOVE_KINDS] as Filter[]).map((f) => (
+          {(['all', ...MOVE_KINDS.filter((k) => k !== 'contract' || board.moves.some((m) => m.kind === 'contract'))] as Filter[]).map((f) => (
             <Chip key={f} on={filter === f} onClick={() => setFilter(f)} data-testid={`hq-filter-${f}`}>
               <span className="inline-flex items-center gap-1">
                 {f !== 'all' && <Icon name={KIND_ICON[f]} size={16} aria-hidden />}

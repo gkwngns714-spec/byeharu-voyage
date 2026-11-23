@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { cmdInvest, cmdLandCollect, cmdOrderHull, type FleetView, type HqMove, type Refusal, type RpcResult } from '../../../lib/rpc'
+import { cmdDeliverContract, cmdInvest, cmdLandCollect, cmdOrderHull, cmdTakeContract, type FleetView, type HqMove, type Refusal, type RpcResult } from '../../../lib/rpc'
 import { t } from '../../../lib/i18n'
 import { useWorld } from '../../../live/worldStore'
 import { planLines } from '../../../domain/plan'
@@ -15,6 +15,8 @@ import { planLines } from '../../../domain/plan'
 //   cmd.hire_officer  the store's hireOfficer (the Inn's Hire), into her fleet: seated
 //   cmd.invest        the Town Hall's Invest (CityTownHall's call), then the world read back
 //   cmd.land_collect  the Land party's Collect (PartyFace's call), then the world read back
+//   cmd.take_contract / cmd.deliver_contract  0483: the contract's own doors (one act: the take sends her plan on stored courses), then the
+//                     world read back
 // A refusal is the server's own words, kept under the card until its next press; the card stays. Nothing here judges what the
 // server judges.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -84,6 +86,11 @@ async function commit(move: HqMove, fleet: FleetView | null): Promise<Refusal | 
       return readBack(cmdInvest(act.args.port, act.args.kind, act.args.shares))
     case 'cmd.land_collect':
       return readBack(cmdLandCollect())
+    // 0483: the server takes the contract and sends her plan (stored courses) in one act; the world read back shows her under way
+    case 'cmd.take_contract':
+      return readBack(cmdTakeContract(act.args.fleet, act.args.contract, act.args.version))
+    case 'cmd.deliver_contract':
+      return readBack(cmdDeliverContract(act.args.contract))
   }
 }
 

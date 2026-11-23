@@ -29,7 +29,7 @@ const SWEPT = ['features', 'app', 'components/ui', 'domain', 'lib/format', 'lib/
 )
 
 /** The NEVER column of docs/WORDS.md, as word-boundary patterns. */
-const BANNED: { word: RegExp; say: string }[] = [
+const BANNED: { word: RegExp; say: string; except?: RegExp }[] = [
   { word: /\btuns?\b/i, say: 'tons' },
   { word: /\bstores\b/i, say: 'supplies' },
   { word: /\bprovision(?:ed|s|ing)?\b/i, say: 'resupply' },
@@ -64,8 +64,10 @@ const BANNED: { word: RegExp; say: string }[] = [
   { word: /\bd\. (?:each|per)\b/, say: '🪙 each / 🪙 per … (COIN)' },
   // 2026-09-14, owner row 76 slice 4 (docs/QUAY_LEDGER.md §3 F): the reference's 의뢰 board is
   // REQUESTS on the tab and a REQUEST in a sentence; `contract` is the wire's word
-  // (`trade_contracts`, `world.contracts`) and never the player's.
-  { word: /\bcontracts?\b/i, say: 'request(s)' },
+  // (`trade_contracts`, `world.contracts`) and never the player's. 0483: a COURIER CONTRACT (carry goods A to B for a reward against a
+  // collateral; docs/design/roadmap-2026-11-23.md slice 14, "Post a contract") is a different thing and is called a contract: its few
+  // words are named here, so a port's ask still never reads "contract".
+  { word: /\bcontracts?\b/i, say: 'request(s)', except: /^(?:Post a contract|Your contracts|Contracts|Contract reward|Contract return)$/ },
   // 2026-09-30, owner row 106 (docs/TRADE_ROUTES.md §7, decision D6): the loop of ports a fleet sails
   // by itself is a ROUTE, one turn of it a LAP; not running by choice is PAUSED, halted by a refusal
   // is STOPPED. The wire says `standing_route`; the player never reads it.
@@ -149,8 +151,8 @@ test('no banned word in player-facing text — docs/WORDS.md', () => {
       for (const lit of literals(readFileSync(file, 'utf8'))) {
         // every value in a dict is player text, so the code-literal allowances (identifiers, server verbs) do not apply there
         if (!rel.includes('/i18n/dict/') && ALLOW.some((a) => a.test(lit))) continue
-        for (const { word, say } of BANNED) {
-          if (word.test(lit)) hits.push(`${rel}: "${lit.slice(0, 80)}" — say "${say}"`)
+        for (const { word, say, except } of BANNED) {
+          if (word.test(lit) && !except?.test(lit)) hits.push(`${rel}: "${lit.slice(0, 80)}" — say "${say}"`)
         }
       }
     }
