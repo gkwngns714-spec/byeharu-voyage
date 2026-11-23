@@ -23,7 +23,8 @@ export const hqDict = defineDict({
     moves: 'Best moves',
     filter: 'Show',
     all: 'All',
-    trade: 'Trade',
+    // not "Trade": that is the rail's own word for the desk, and two controls may not share a label (tests/consistency.spec.ts)
+    trade: 'Sales',
     request: 'Requests',
     yard: 'Build',
     crew: 'Crew',
@@ -73,7 +74,7 @@ export const hqDict = defineDict({
     moves: '최선의 수',
     filter: '보기',
     all: '전체',
-    trade: '교역',
+    trade: '판매',
     request: '의뢰',
     yard: '건조',
     crew: '선원',

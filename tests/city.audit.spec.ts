@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable, settled } from './appReady.fixture'
 import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
+import { toPlaces } from './hqPlaces.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY AUDIT ROWS + THE 2026-10-31 OWNER INSTRUCTIONS, RE-MEASURED AND HELD
@@ -49,6 +50,8 @@ async function openCity(page: Page, size: { width: number; height: number }) {
   await page.goto('city')
   await ready(page)
   await expect(page.getByTestId('city-screen')).toBeVisible()
+  // the places stand under the command board (2026-11-23): the frame is read where the player scrolls to them
+  await toPlaces(page)
 }
 
 /** The frame's boxes — the regions a press may NOT move (the five-figure card is gone). */

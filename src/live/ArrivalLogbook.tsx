@@ -1,4 +1,4 @@
-import { Icon, Ring, goodIcon, categoryLabel } from '../components/ui'
+import { Icon, KEEP_WORDS_CLASS, Ring, goodIcon, categoryLabel } from '../components/ui'
 import { formatInt } from '../lib/format'
 import { properName, useLocale, useT } from '../lib/i18n'
 import type { LogbookFound, LogbookSale, LogbookSetDone } from '../lib/rpc'
@@ -30,7 +30,7 @@ export function ArrivalFound({ f }: { f: LogbookFound }) {
       </Ring>
       <div className="min-w-0 flex-1">
         <p className="text-t-caption font-semibold uppercase tracking-wide text-accent">{t('logbook.discovered')}</p>
-        <p className="truncate text-t-title font-semibold text-ink">{portNameOf(portByCode, f.port)}</p>
+        <p className={`${KEEP_WORDS_CLASS} text-t-title font-semibold text-ink`}>{portNameOf(portByCode, f.port)}</p>
         <p className="flex flex-wrap items-center gap-x-2 text-t-caption tabular-nums text-ink-muted">
           {region ? <span>{`${region} ${t('logbook.of', { n: formatInt(f.n), of: formatInt(f.of) })}`}</span> : null}
           {f.sea_new ? (
@@ -41,7 +41,7 @@ export function ArrivalFound({ f }: { f: LogbookFound }) {
           ) : null}
         </p>
         {f.specialty.length > 0 && (
-          <p className="mt-0.5 flex items-center gap-1 text-t-caption text-ink-muted" data-testid="arrival-specialty">
+          <p className="mt-0.5 flex flex-wrap items-center gap-1 text-t-caption text-ink-muted" data-testid="arrival-specialty">
             <span>{t('logbook.knownFor')}</span>
             {f.specialty.map((code) => {
               const g = goodByCode[code]
@@ -51,7 +51,7 @@ export function ArrivalFound({ f }: { f: LogbookFound }) {
                 </span>
               )
             })}
-            {first ? <span className="truncate text-ink">{first.name}</span> : null}
+            {first ? <span className={`${KEEP_WORDS_CLASS} text-ink`}>{first.name}</span> : null}
           </p>
         )}
       </div>

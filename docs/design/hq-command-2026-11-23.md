@@ -97,7 +97,8 @@ With `sea_conditions_bite` off, the client still drew each wall as "what the rul
     or more. Otherwise it is a quiet shield.
 - **Best moves** (`HqBoard.tsx`, `MoveCard.tsx`) shows the top five cards, with More for the rest. Each card has the activity's glyph,
   the whole title, the headline figure (+coin, and coin per hour where a time is served), and the needs as marks: the fleet, the good
-  and its units, the time, the cost, and the pirate risk. Icon chips filter the list: All, Trade, Requests, Build, Crew, Invest.
+  and its units, the time, the cost, and the pirate risk. Icon chips filter the list: All, Sales, Requests, Build, Crew, Invest
+  (the trade chip says "Sales": "Trade" is the rail's word for the desk, and two controls may not share a label).
   - **Trade:** `world.best_sales` for up to three idle fleets' ports (the desk's own read and key), up to three paying near sales each.
   - **Requests:** the requests in the city in hand that a fleet of hers lying there can fill from her hold.
   - **Build:** the second ship, when her purse covers the Order's quote (`useSecondShipGoal`).

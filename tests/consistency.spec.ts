@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { toPlaces } from './hqPlaces.fixture'
 import { NAV_CELLS, tabWord } from '../src/app/navTabs'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -484,6 +485,10 @@ for (const size of [{ width: 390, height: 844 }, { width: 320, height: 568 }] as
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
     await page.setViewportSize(size)
     await screen(page, 'city')
+    // 2026-11-23 (the HQ command board, docs/design/hq-command-2026-11-23.md): the board stands first and the doors under it, so the
+    // doors are whole on the glass once she has scrolled to them (the places' own glass, as hq.design's laws (g) and (h) read it)
+    await page.getByTestId('city-hall-scroll').waitFor({ timeout: 60_000 })
+    await toPlaces(page)
     const m = await page.evaluate(() => {
       const pick = (id: string) => {
         const el = document.querySelector(`[data-testid="${id}"]`)
@@ -554,6 +559,8 @@ test('HQ: a building press changes only the split; the six doors and the frame s
     await page.setViewportSize(size)
     await screen(page, 'city')
     await page.getByTestId('city-hall-scroll').waitFor({ timeout: 60_000 })
+    // the doors stand under the command board (2026-11-23): the frame is read where the player scrolls to them
+    await toPlaces(page)
     const boxes = () =>
       page.evaluate((ids: string[]) =>
         ids

@@ -176,8 +176,9 @@ export function Report({ layout }: { layout: DeskLayout }) {
         <GroupHeading>{t('desk.byPlace')}</GroupHeading>
         <ScrollPane className="max-h-[10rem] lg:max-h-none" data-testid="report-places">
           {nothing ? (
-            // no place has moved money yet: a drawn anchor (the places are harbours) over the one line (visual pass 2)
-            <Empty icon="anchor">{t('desk.reportNothing')}</Empty>
+            // no place has moved money yet: the well's one line. Not the drawn anchor of visual pass 2: its disc made the face 738 px in a
+            // 715-px Sheet at 390, and this face stays one glass tall (tests/onepage.spec.ts, tests/consistency.spec.ts)
+            <Empty>{t('desk.reportNothing')}</Empty>
           ) : (
             <div className="flex flex-col gap-1.5">{r.places.map(place)}</div>
           )}

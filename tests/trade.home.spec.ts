@@ -23,10 +23,11 @@ for (const size of [PHONE, { width: 1280, height: 800 }]) {
     await expect(page.getByTestId('trade-buy').first(), 'no buy button on the landing screen').toBeVisible({ timeout: 120_000 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'sideways scroll').toBe(true)
 
-    // ONE PLACE PER DESTINATION: the rail's own cells are not in its Menu; the phone's Menu holds all six.
+    // ONE PLACE PER DESTINATION: the rail's own cells are not in its Menu; the phone's Menu holds all five (Stats, History, Rank,
+    // Codex, You). Routes left the Menu on 2026-11-23 (roadmap X3, navTabs.ts: its page is `/lanes`, a door on Stats > Markets).
     await bar.getByTestId('nav-cell-cabin').click()
     const panel = page.getByTestId('nav-group-panel')
-    await expect(panel.getByRole('link')).toHaveCount(onRail ? 4 : 6)
+    await expect(panel.getByRole('link')).toHaveCount(onRail ? 3 : 5)
     await expect(panel.locator('a[href$="/you"], a[href$="/stats"]')).toHaveCount(onRail ? 0 : 2)
     if (onRail) {
       await bar.getByTestId('nav-cell-cabin').click()

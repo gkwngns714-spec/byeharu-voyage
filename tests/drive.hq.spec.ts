@@ -3,6 +3,7 @@ import { arrivedAtEdge, ready, reachable } from './appReady.fixture'
 import { sampleWalkers, walkVerdict } from './cityWalk.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 import { tradeOnDesk } from './desk.fixture'
+import { toPlaces } from './hqPlaces.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DRIVE AUDIT, 2026-11-08 — THE HQ (CITY PAGE), DRIVEN AS THE OWNER WOULD
@@ -42,18 +43,24 @@ async function openHq(page: Page, request: Parameters<typeof reachable>[0], base
   await expect(page.getByTestId('city-hall-figures')).toBeVisible({ timeout: 120_000 })
   await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 120_000 })
   await page.waitForTimeout(500)
+  // the places stand under the command board (2026-11-23): the hall is read and pressed where the player scrolls to it
+  await toPlaces(page)
 }
 
 /** Every region of the frame that a tile press may not move (rows 251/255), in rounded boxes. */
 async function frame(page: Page) {
   return page.evaluate(() => {
-    const pick = (id: string) => {
+    // `inPage`: read in the sheet's own page, not the glass. The places stand under the command board (2026-11-23), so the sheet is
+    // scrolled to them; Production takes the whole page under the row and is shorter than the hall's split, so the browser pulls a
+    // scrolled sheet back up by the difference. That pull is the scroll's, not the frame's: the grid's place IN THE PAGE is what holds.
+    const pick = (id: string, inPage = false) => {
       const el = document.querySelector(`[data-testid="${id}"]`)
       if (!el) return null
       const r = el.getBoundingClientRect()
-      return [Math.round(r.top), Math.round(r.left), Math.round(r.width), Math.round(r.height)]
+      const scrolled = inPage ? ((el.closest('[data-sheet]') as HTMLElement | null)?.scrollTop ?? 0) : 0
+      return [Math.round(r.top + scrolled), Math.round(r.left), Math.round(r.width), Math.round(r.height)]
     }
-    return { header: pick('city-header'), grid: pick('city-building-grid'), rail: pick('city-rail') }
+    return { header: pick('city-header'), grid: pick('city-building-grid', true), rail: pick('city-rail') }
   })
 }
 

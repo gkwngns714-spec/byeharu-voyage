@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Card, Flag, Icon, MasteryRing, Ring, Segmented, Skeleton, goodIcon, categoryLabel, masteredTone, Portrait, type IconName } from '../../components/ui'
+import { Card, Flag, Icon, KEEP_WORDS_CLASS, MasteryRing, Ring, Segmented, Skeleton, goodIcon, categoryLabel, masteredTone, Portrait, type IconName } from '../../components/ui'
 import { useMasteryLevels } from '../../live/goodsMastery'
 import { ShipArtIcon } from '../../live/battle/ShipArt'
 import { shipTierOf } from '../../chart'
@@ -54,7 +54,7 @@ function TotalRings({ v, size }: { v: Ready; size: number }) {
           </Ring>
           <span className="text-t-title leading-none tabular-nums text-ink">{formatInt(c.n)}</span>
           <span className="text-t-caption leading-none tabular-nums text-ink-muted">/ {formatInt(c.of)}</span>
-          <span className="max-w-full truncate text-t-caption text-ink-muted">{c.word}</span>
+          <span className="max-w-full break-words text-center text-t-caption text-ink-muted">{c.word}</span>
         </span>
       ))}
     </span>
@@ -142,7 +142,7 @@ function SetCard({
           )}
         </Ring>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-t-label font-semibold text-ink">{name}</p>
+          <p className={`${KEEP_WORDS_CLASS} text-t-label font-semibold text-ink`}>{name}</p>
           <p className="text-t-caption tabular-nums text-ink-muted">
             {t('logbook.of', { n: formatInt(n), of: formatInt(of) })}
             {done ? <span className="ml-2 font-semibold text-accent">{t('logbook.done')}</span> : null}
