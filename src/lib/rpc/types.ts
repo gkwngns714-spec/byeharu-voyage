@@ -3275,7 +3275,46 @@ export interface HqMove {
   risk: HqRisk | null
   needs: HqNeeds
   act: HqAct
+  /** 0484 (nation_race_enabled): a trade or request in a contested harbour: the points it adds for her country, and who leads there this
+   *  week ('mine', 'rival', or 'open' when nobody has scored). Absent otherwise. */
+  race?: HqRace
 }
+
+/** 0484: what a board card adds to her country's weekly race. */
+export interface HqRace {
+  points: number
+  lead: 'mine' | 'rival' | 'open'
+}
+
+/** 0484: one racing country this week: the contested cities it leads, its points, its place. */
+export interface NationRaceRow {
+  nation: string
+  cities: number
+  points: number
+  place: number
+}
+
+/** `world.nation_race()` (0484). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her country's race this week. */
+export type NationRaceView =
+  | { on: false }
+  | { on: true; company: false }
+  | {
+      on: true
+      company: true
+      week: number
+      starts_at: string
+      ends_at: string
+      nations: NationRaceRow[]
+      /** Each contested city someone scored in this week, and its leader. */
+      cities: { port: string; nation: string; points: number }[]
+      /** Her country, her points this week, her place among its companies (null with none), and whether it races. */
+      mine: { nation: string | null; points: number; place: number | null; racing: boolean }
+      /** A champion of the last settled week holds the title until the next settles. */
+      title: { week: number; nation: string | null } | null
+      last: { week: number; winner: string | null; champions: { name: string; points: number }[] } | null
+      perk: { fee_cut: number }
+      rates: { sale_per: number; job_mult: number; gift_mult: number }
+    }
 
 /** `world.hq_board()` (0480). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her board, ranked by the server. */
 export type HqBoardView =

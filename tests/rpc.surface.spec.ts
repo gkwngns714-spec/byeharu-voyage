@@ -1632,6 +1632,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // good, qty, reward, collateral, hours) ("Post a contract"), cmd.cancel_contract(contract); dark E_NOT_IN_USE. Landed WITH the faces
       // (HQ's contract cards, the Requests face's door and her contracts' rows).
       'worldCourierContracts', 'cmdTakeContract', 'cmdDeliverContract', 'cmdFailContract', 'cmdPostContract', 'cmdCancelContract',
+      // Pin moved deliberately 2026-11-23 with migration 0484 (the country race): world.nation_race() - no argument, no player id; dark
+      // {on: false}; lit this week's countries and contested cities, her points, place and title. A read. Landed WITH the faces (HQ's race
+      // strip and Influence chips, the map's Race layer).
+      'worldNationRace',
       // Pin moved deliberately with migration 0327 (docs/WORLD_POWERS.md §4.2): A FLEET ATTACKS A CARGO SHIP, and its dry run. No player id; dark (E_NOT_IN_USE) until
       // attack_enabled. Landed WITH the face (src/live/AttackSection.tsx).
       'cmdAttack', 'cmdPreviewAttack',

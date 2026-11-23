@@ -24,6 +24,7 @@ import { useMerchantCard } from '../../live/useMerchantCard'
 import { useMerchantsHere } from '../../live/useMerchantsHere'
 import { useFights } from '../../live/useFights'
 import { useWorldEvents } from '../../live/useWorldEvents'
+import { litRace, useNationRace } from '../../live/useNationRace'
 import type { MapEventMark } from '../../chart'
 import { FightSheet } from '../../live/FightSheet'
 import { BattleScreen } from '../../live/battle/BattleScreen'
@@ -455,13 +456,25 @@ function Chart({
   const fights = useMemo(() => mapFightsOf(fightCards), [fightCards])
   // 0469: THE WORLD EVENTS (a famine, a festival, a blockade): a ring round each harbour, at the harbour's place on this shore.
   const worldEvents = useWorldEvents()
+  // 0484: THE COUNTRY RACE (world.nation_race, live/useNationRace.ts). With the map's Race layer on, every contested city someone leads this
+  // week is ringed with the world events' rings (hers green, a rival's amber) and its name carries the leader's flag (portFlags below).
+  const race = litRace(useNationRace().view)
+  const raceOn = layer === 'race' && race !== null
   const eventMarks = useMemo<MapEventMark[]>(
-    () =>
-      worldEvents.flatMap((e) => {
+    () => [
+      ...worldEvents.flatMap((e) => {
         const port = portsByCode.get(e.port_code)
         return port ? [{ id: e.id, code: e.code, portCode: e.port_code, live: e.live, lat: port.lat, lon: port.lon }] : []
       }),
-    [worldEvents, portsByCode],
+      ...(raceOn && race
+        ? race.cities.flatMap((c) => {
+            const port = portsByCode.get(c.port)
+            const code = c.nation === race.mine.nation ? 'RACE_MINE' : 'RACE_RIVAL'
+            return port ? [{ id: `race:${c.port}`, code, portCode: c.port, live: true, lat: port.lat, lon: port.lon }] : []
+          })
+        : []),
+    ],
+    [worldEvents, portsByCode, raceOn, race],
   )
   // EVERY FLEET OF A FIGHT STANDS AT THE FIGHT while it is fought (src/chart/fightPins.ts): the raider that struck from her
   // port, the ship the server holds, a ship the wide map would thin out. From the fight's own card; gone with the ring.
@@ -584,7 +597,12 @@ function Chart({
   // 0143 (D14) asked for the flags with Regions on only. The owner, 2026-10-18: "beside the name show
   // flag that are influenced by" — every harbour's name carries the bundled flag of the nation that
   // holds it, at every zoom; measured legible and clean at 1440×900 and 390×844 (PR screenshots).
-  const portFlags = usePortFlags(true)
+  const heldFlags = usePortFlags(true)
+  // 0484: with the Race layer on, a contested city someone leads this week carries its LEADER's flag (the rest keep their holder's)
+  const portFlags = useMemo(
+    () => (raceOn && race ? new Map([...(heldFlags ?? []), ...race.cities.map((c) => [c.port, c.nation] as const)]) : heldFlags),
+    [raceOn, race, heldFlags],
+  )
   const allegiance = useWorld((s) => s.allegiance)
   const loadAllegiance = useWorld((s) => s.loadAllegiance)
   const openPort = selection?.kind === 'port' ? selection.code : null
@@ -799,6 +817,7 @@ function Chart({
           findTestId="map-find"
           testId="map-view-controls"
           seas
+          race={race !== null}
         />
 
         {/* THE CORNER: where the mouse is (./PointerCoords.tsx), a missing coast, and the minimap. */}

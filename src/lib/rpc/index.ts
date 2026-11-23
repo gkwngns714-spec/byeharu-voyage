@@ -87,6 +87,7 @@ import type {
   LogbookView,
   GoodsMasteryView,
   HqBoardView,
+  NationRaceView,
   FleetJobsReport,
   CourierContractsView,
   CourierOutcome,
@@ -801,6 +802,11 @@ export function worldGoodsMastery(): Promise<RpcResult<GoodsMasteryView>> {
 /** 0480: the HQ board, served: every move open to her now, ranked by the server, each with the command that commits it. Dark: `{on: false}`. */
 export function worldHqBoard(): Promise<RpcResult<HqBoardView>> {
   return call<HqBoardView>('worldHqBoard', [])
+}
+
+/** 0484: the country race: this week's countries and contested cities, her points, place and title. Dark: `{on: false}`. */
+export function worldNationRace(): Promise<RpcResult<NationRaceView>> {
+  return call<NationRaceView>('worldNationRace', [])
 }
 
 /** 0481: her fleets' standing jobs and what each did since she last read this. Dark: `{on: false}`. */

@@ -50,9 +50,9 @@ test.describe('the ranking rule', () => {
   })
 })
 
-async function openHq(page: Page, width: number, height: number, served = false, jobs = false, contracts = false) {
+async function openHq(page: Page, width: number, height: number, served = false, jobs = false, contracts = false, race = false) {
   await page.setViewportSize({ width, height })
-  await serveHqLit(page, { served, jobs, contracts })
+  await serveHqLit(page, { served, jobs, contracts, race })
   await page.goto('city')
   await ready(page)
   await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: WORLD_BOOT_MS })
@@ -214,6 +214,36 @@ test.describe('courier contracts (0483, lit)', () => {
       await expect(page.locator(`[data-testid="hq-fleet"][data-fleet="${fleet}"]`)).not.toHaveAttribute('data-job', 'idle', { timeout: 120_000 })
       await expect(page).toHaveURL(/\/city/)
       await expect(page.getByTestId('hq-move-refusal')).toHaveCount(0)
+    })
+  }
+})
+
+// 0484: THE COUNTRY RACE (nation_race_enabled lit, the board served, Castile leading three contested harbours): under the bridge her
+// country's flag and place, the countries as bars of the cities they lead, her influence and the week's clock; nothing leaves the glass.
+// The map's filter offers Race, and with it on each led city is ringed (a rival's: amber).
+test.describe('the country race (0484, lit)', () => {
+  for (const glass of [
+    { width: 320, height: 640 },
+    { width: 1280, height: 800 },
+  ]) {
+    test(`the race strip on HQ and the Race layer on the map at ${glass.width}`, async ({ page, request, baseURL }) => {
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      test.setTimeout(600_000)
+      await openHq(page, glass.width, glass.height, true, false, false, true)
+      const strip = page.getByTestId('hq-race')
+      await expect(strip).toBeVisible({ timeout: 180_000 })
+      await expect(strip).toHaveAttribute('data-nation', 'PRT')
+      await expect(page.getByTestId('hq-race-place')).toBeVisible()
+      await expect(page.locator('[data-testid="hq-race-nations"] li[data-nation="ESP"]')).toBeVisible()
+      expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
+      if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/race-${glass.width}.png`, fullPage: true })
+      await page.goto('map')
+      await ready(page)
+      await page.getByTestId('map-layer-filter').click()
+      await page.getByTestId('map-layer-race').click()
+      await expect(page.getByTestId('map-layer-filter')).toHaveAttribute('data-layer', 'race')
+      await expect(page.locator('[data-testid="map-event-mark"][data-code="RACE_RIVAL"]').first()).toBeAttached({ timeout: 60_000 })
+      if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/race-map-${glass.width}.png` })
     })
   }
 })

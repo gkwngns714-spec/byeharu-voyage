@@ -8,6 +8,8 @@
 //   off      the map as it is (the default, element for element: ./regions.ts's header)
 //   regions  the water and the land tinted and the regions named (row 93)
 //   seas     each sea zone outlined and named with what it asks (./seaZones.ts)
+//   race     0484: each contested city ringed by who leads it in this week's country race, its leader's flag by its name (offered only
+//            while the race is lit; a kept "Race" reads as off where it is not)
 //
 // ── §7B ────────────────────────────────────────────────────────────────────────────────────────
 // WHAT IT IS   one concept: WHICH LAYER IS ON — a UI preference, no game state, not per-account
@@ -28,8 +30,8 @@
 
 import { useSyncExternalStore } from 'react'
 
-export type MapLayer = 'off' | 'regions' | 'seas'
-export const MAP_LAYERS: readonly MapLayer[] = ['off', 'regions', 'seas']
+export type MapLayer = 'off' | 'regions' | 'seas' | 'race'
+export const MAP_LAYERS: readonly MapLayer[] = ['off', 'regions', 'seas', 'race']
 
 /** The one key. Versioned like every persisted preference in this app. */
 export const MAP_LAYER_KEY = 'byeharu-voyage.map.layer.v1'
@@ -41,7 +43,7 @@ export const REGIONS_FILTER_KEY = 'byeharu-voyage.map.regions.v1'
 export function readMapLayer(read: (key: string) => string | null): MapLayer {
   try {
     const v = read(MAP_LAYER_KEY)
-    if (v === 'regions' || v === 'seas' || v === 'off') return v
+    if (v === 'regions' || v === 'seas' || v === 'race' || v === 'off') return v
     return read(REGIONS_FILTER_KEY) === '1' ? 'regions' : 'off'
   } catch {
     return 'off'

@@ -426,6 +426,8 @@ const TABLE = {
   worldGoodsMastery: { schema: 'world', fn: 'goods_mastery', args: [] },
   // 0480 (docs/design/hq-command-2026-11-23.md v2): the HQ board's one read, ranked by the server. Dark {on: false}.
   worldHqBoard: { schema: 'world', fn: 'hq_board', args: [] },
+  // 0484 — THE COUNTRY RACE (dark: {on: false}): this week's countries and contested cities, her points, place and title.
+  worldNationRace: { schema: 'world', fn: 'nation_race', args: [] },
   // 0481 (docs/design/hq-command-2026-11-23.md v2, standing fleet jobs): the away report's one read (dark {on: false}), and the doors that
   // give a fleet her job, take it away, and mark the report read. None takes a player id; a fleet that is not hers is refused.
   worldAwayReport: { schema: 'world', fn: 'away_report', args: [] },

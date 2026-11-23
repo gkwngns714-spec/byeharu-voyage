@@ -1,7 +1,8 @@
 import { project, type LatLon } from '../lib/geo'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE WORLD EVENTS ON THE MAP (0469): a ring round every harbour with a famine, a festival or a blockade running or announced.
+// THE WORLD EVENTS ON THE MAP (0469): a ring round every harbour with a famine, a festival or a blockade running or announced. 0484: and,
+// with the map's Race layer on, round every contested city someone leads this week (RACE_MINE, RACE_RIVAL: always `live`, solid).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // WHICH AND WHERE are the server's (world.world_events, through src/live/useWorldEvents.ts); the screen hands the harbours' places in.
 // PAINT ORDER (ChartCanvas): with the battles' rings, UNDER the port marks, the hulls and every name, so it never covers a city's
@@ -21,6 +22,10 @@ const STROKE: Record<string, string> = {
   FAMINE: 'stroke-warning',
   FESTIVAL: 'stroke-accent',
   BLOCKADE: 'stroke-danger',
+  // 0484: the map's Race layer rings each contested city by who leads it this week: her country green, a rival amber (a race to win). The
+  // leader's flag stands by the city's name (the chart's flags), so colour is not the only signal.
+  RACE_MINE: 'stroke-success',
+  RACE_RIVAL: 'stroke-warning',
 }
 
 /** The ring's radius, in CSS pixels: wide enough to stand clear of the largest harbour mark. */

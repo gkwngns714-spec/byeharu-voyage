@@ -5,11 +5,13 @@ import { formatInt } from '../../../lib/format'
 import { useT, type TKey } from '../../../lib/i18n'
 import type { FleetJobRow, SnapshotPort } from '../../../lib/rpc'
 import { litAway, useAwayReport } from '../../../live/useAwayReport'
+import { litRace, useNationRace } from '../../../live/useNationRace'
 import { JobsAway } from './JobsAway'
 import { Bridge } from './Bridge'
 import { FleetRows } from './FleetRows'
 import { KIND_ICON } from './jobMarks'
 import { MoveCard } from './MoveCard'
+import { RaceBridge } from './RaceBridge'
 import { useBoard } from './useBoard'
 import { useMovePress } from './useMovePress'
 
@@ -21,6 +23,9 @@ import { useMovePress } from './useMovePress'
 //   THE BRIDGE   coin and coin per hour · each fleet a ship in her job's tone · what finishes next · pirates near
 //   BEST MOVES   every move open now as a card, ranked by domain/hq's one rule; the top few, More for the rest; icon chips to filter
 //   FLEETS       one row a fleet: picture, job, today's route money, Route / Plan; an idle fleet glows and offers her best card
+//   0484         lit (nation_race_enabled): THE COUNTRY RACE under the bridge (her country's place, the countries' cities led as bars, her
+//                influence, the week's clock, the home perk, her title), and a trade or request card in a contested city marks what it adds
+//                for her country (an Influence chip, in the tone of who leads there); the Influence filter shows only those cards
 //   0483         lit (contracts_enabled): courier contracts are served cards (take one, deliver one); their chip shows when one is served
 //   0481         lit (fleet_jobs_enabled): WHILE AWAY at the top (what each standing job did), each fleet row's job mark and setter, and a
 //                trade card's Repeat (that trip as her fixed route)
@@ -30,9 +35,11 @@ import { useMovePress } from './useMovePress'
 /** How many moves stand before More. */
 export const TOP_MOVES = 5
 
-type Filter = 'all' | MoveKind
+/** 'race' (0484): the cards that add to her country's weekly race, whatever their kind. */
+type Filter = 'all' | 'race' | MoveKind
 const FILTER_WORD: Record<Filter, TKey> = {
   all: 'hq.all',
+  race: 'hq.influence',
   trade: 'hq.trade',
   request: 'hq.request',
   contract: 'hq.contract',
@@ -51,20 +58,30 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
   // 0481: her fleets' standing jobs (world.away_report; dark: null, and nothing of them is drawn)
   const away = litAway(useAwayReport().view)
   const jobs = useMemo(() => (away ? new Map<string, FleetJobRow>(away.jobs.map((j) => [j.fleet, j])) : null), [away])
-  const shown = board.moves.filter((m) => filter === 'all' || m.kind === filter)
+  // 0484: the country race (world.nation_race; dark: null, and nothing of it is drawn)
+  const race = litRace(useNationRace().view)
+  const raced = (m: (typeof board.moves)[number]) => m.data.kind === 'served' && (m.data.move.race?.points ?? 0) > 0
+  const shown = board.moves.filter((m) => filter === 'all' || (filter === 'race' ? raced(m) : m.kind === filter))
   const list = more ? shown : shown.slice(0, TOP_MOVES)
 
   return (
     <div className="flex flex-col gap-6" data-testid="hq-board" data-source={board.served ? 'served' : 'client'}>
       {away && <JobsAway report={away} />}
       <Bridge board={board} />
+      {race && <RaceBridge race={race} />}
 
       <SheetSection heading={t('hq.moves')} trailing={<span className="text-t-caption tabular-nums text-ink-faint">{formatInt(shown.length)}</span>}>
         <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label={t('hq.filter')} data-testid="hq-filters">
-          {(['all', ...MOVE_KINDS.filter((k) => k !== 'contract' || board.moves.some((m) => m.kind === 'contract'))] as Filter[]).map((f) => (
+          {(
+            [
+              'all',
+              ...(board.moves.some(raced) ? (['race'] as const) : []),
+              ...MOVE_KINDS.filter((k) => k !== 'contract' || board.moves.some((m) => m.kind === 'contract')),
+            ] as Filter[]
+          ).map((f) => (
             <Chip key={f} on={filter === f} onClick={() => setFilter(f)} data-testid={`hq-filter-${f}`}>
               <span className="inline-flex items-center gap-1">
-                {f !== 'all' && <Icon name={KIND_ICON[f]} size={16} aria-hidden />}
+                {f !== 'all' && <Icon name={f === 'race' ? 'banner' : KIND_ICON[f]} size={16} aria-hidden />}
                 {t(FILTER_WORD[f])}
               </span>
             </Chip>

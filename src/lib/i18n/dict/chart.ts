@@ -10,6 +10,8 @@ export const chartDict = defineDict({
     filter: 'Filter',
     layerOff: 'Off',
     seas: 'Seas',
+    // 0484: the country race on the map (each contested city ringed by who leads it this week)
+    race: 'Race',
     opening: 'Opening…',
     findOrder: 'Show fleet and plan cities',
   },
@@ -21,6 +23,7 @@ export const chartDict = defineDict({
     filter: '필터',
     layerOff: '끔',
     seas: '바다',
+    race: '경쟁',
     opening: '여는 중…',
     findOrder: '선단과 계획 도시 표시',
   },

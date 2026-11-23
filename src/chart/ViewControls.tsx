@@ -63,6 +63,7 @@ export function ViewControls({
   findTestId,
   testId,
   seas = false,
+  race = false,
 }: {
   /** The surface these buttons steer — `zoomIn`, `zoomOut` and `fit`— plus `view`, which they only
    *  READ, to print how far in the chart is. */
@@ -73,6 +74,8 @@ export function ViewControls({
   testId?: string
   /** Whether this surface draws the sea zones (the Map tab): the filter then offers Seas too. */
   seas?: boolean
+  /** 0484: whether this surface draws the country race (the Map tab, the race lit): the filter then offers Race too. */
+  race?: boolean
 }) {
   const t = useT()
   const zoom = surface.view ? zoomPercent(surface.view.spanX) : 0
@@ -134,20 +137,22 @@ export function ViewControls({
       >
         <Icon name="locate" size={16} />
       </Button>
-      <LayerFilter seas={seas} />
+      <LayerFilter seas={seas} race={race} />
     </div>
   )
 }
 
-const LAYER_WORD: Record<MapLayer, 'chart.filter' | 'chart.regions' | 'chart.seas'> = {
+const LAYER_WORD: Record<MapLayer, 'chart.filter' | 'chart.regions' | 'chart.seas' | 'chart.race'> = {
   off: 'chart.filter',
   regions: 'chart.regions',
   seas: 'chart.seas',
+  race: 'chart.race',
 }
-const CHOICE_WORD: Record<MapLayer, 'chart.layerOff' | 'chart.regions' | 'chart.seas'> = {
+const CHOICE_WORD: Record<MapLayer, 'chart.layerOff' | 'chart.regions' | 'chart.seas' | 'chart.race'> = {
   off: 'chart.layerOff',
   regions: 'chart.regions',
   seas: 'chart.seas',
+  race: 'chart.race',
 }
 /** ONE GLYPH A LAYER (2026-11-23, the visual overhaul's slice 4: "filters are glyph chips"): the plain chart is the stacked
  *  sheets, Regions the parted globe, Seas the swells. The button wears the glyph of the layer that is on. */
@@ -155,6 +160,7 @@ const LAYER_GLYPH: Record<MapLayer, IconName> = {
   off: 'layers',
   regions: 'regions',
   seas: 'waves',
+  race: 'banner',
 }
 
 /** The filter's one button and its chips — its own component so the store subscription re-renders
@@ -163,15 +169,15 @@ const LAYER_GLYPH: Record<MapLayer, IconName> = {
  *  2026-11-23 (slice 4): A GLYPH, NOT A WORD, ON THE GLASS. The button is the column's fourth 44-px square, wearing the glyph of the
  *  layer that is on (brass while one is), with its word as the accessible name, as the find button does. The choices hang under it
  *  as chips: each layer's glyph on a disc and its one word, the one that is on lit in brass and pressed. */
-function LayerFilter({ seas }: { seas: boolean }) {
+function LayerFilter({ seas, race }: { seas: boolean; race: boolean }) {
   const t = useT()
   const stored = useMapLayer()
-  // a surface that draws no seas reads a kept "Seas" as off
-  const layer: MapLayer = stored === 'seas' && !seas ? 'off' : stored
+  // a surface that draws no seas reads a kept "Seas" as off; one that draws no race (or the race dark), a kept "Race"
+  const layer: MapLayer = (stored === 'seas' && !seas) || (stored === 'race' && !race) ? 'off' : stored
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement | null>(null)
   useDismiss(open, box, () => setOpen(false))
-  const choices = MAP_LAYERS.filter((l) => seas || l !== 'seas')
+  const choices = MAP_LAYERS.filter((l) => (seas || l !== 'seas') && (race || l !== 'race'))
   const on = layer !== 'off'
   return (
     <div ref={box} className="relative self-end">

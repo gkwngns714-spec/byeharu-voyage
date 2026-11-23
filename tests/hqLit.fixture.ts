@@ -24,23 +24,26 @@ const LIT = [
 
 /** Serve the lit world to `page` in place of the shipped image. `served`: the HQ board from the server lit too (0480, hq_board_enabled).
  *  `jobs`: the standing fleet jobs lit too (0481, fleet_jobs_enabled). `contracts`: courier contracts lit (0483, contracts_enabled, with
- *  the stored courses), and one house contract posted from Lisbon to the nearest harbour 150 miles or more away that trades its good. */
+ *  the stored courses), and one house contract posted from Lisbon to the nearest harbour 150 miles or more away that trades its good.
+ *  `race`: the country race lit (0484, nation_race_enabled), with Castile leading the first three contested harbours by code this week. */
 export async function serveHqLit(
   page: Page,
-  { served = false, jobs = false, contracts = false }: { served?: boolean; jobs?: boolean; contracts?: boolean } = {},
+  { served = false, jobs = false, contracts = false, race = false }: { served?: boolean; jobs?: boolean; contracts?: boolean; race?: boolean } = {},
 ): Promise<void> {
   const keys = [
     ...LIT,
     ...(served ? ['hq_board_enabled'] : []),
     ...(jobs ? ['fleet_jobs_enabled'] : []),
     ...(contracts ? ['contracts_enabled', 'sea_courses_enabled'] : []),
+    ...(race ? ['nation_race_enabled'] : []),
   ]
   await serveWorldImage(
     page,
-    await patchedWorldImage(contracts ? 'hq-contracts' : jobs ? 'hq-jobs' : served ? 'hq-served' : 'hq-lit', async (pg) => {
+    await patchedWorldImage(race ? 'hq-race' : contracts ? 'hq-contracts' : jobs ? 'hq-jobs' : served ? 'hq-served' : 'hq-lit', async (pg) => {
       await pg.exec(`update public.world_config set value = 'true'::jsonb where key in (${keys.map((k) => `'${k}'`).join(', ')})`)
       await pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite'`)
       if (contracts) await pg.exec(POST_ONE_CONTRACT)
+      if (race) await pg.exec(CASTILE_LEADS)
     }),
   )
 }
@@ -58,3 +61,11 @@ const POST_ONE_CONTRACT = `
   select public.courier_post('house', (select h.player_id from h), (select lis.id from lis), (select b.port_id from b), (select g.id from g),
                              10, 800, 1000, 7200, now());
   update public.courier_contracts set expires_at = now() + interval '30 days';`
+
+/** 0484: Castile leads the first three contested harbours by code this week (a house's points: the race book has no foreign key). */
+const CASTILE_LEADS = `
+  insert into public.nation_race_book (week, port_id, nation_id, player_id, points, updated_at)
+  select public.nation_race_week(now()), c.id, (select n.id from public.nations n where n.code = 'ESP'),
+         (select h.player_id from public.npc_houses h order by h.roster_ord limit 1), 500, now()
+    from (select p.id from public.port_allegiance a join public.ports p on p.id = a.port_id and p.kind = 'HARBOUR'
+           where not a.home order by p.code limit 3) c;`
