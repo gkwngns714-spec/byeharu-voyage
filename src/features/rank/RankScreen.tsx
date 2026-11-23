@@ -155,10 +155,11 @@ function RankBody() {
         <>
           <Segmented
             segments={[
-              ...(weekOn ? [{ id: 'week' as const, label: t('rank.weekly') }] : []),
-              { id: 'captains' as const, label: t('rank.captains') },
-              { id: 'countries' as const, label: t('rank.countries') },
-              ...(bountiesOn ? [{ id: 'bounties' as const, label: t('bounty.tab') }] : []),
+              // each board's mark over its word (visual pass 3): the week's calendar, the captains' helm, the countries' flag, the pirates' skull
+              ...(weekOn ? [{ id: 'week' as const, label: t('rank.weekly'), icon: 'calendar' as const }] : []),
+              { id: 'captains' as const, label: t('rank.captains'), icon: 'helm' as const },
+              { id: 'countries' as const, label: t('rank.countries'), icon: 'nation' as const },
+              ...(bountiesOn ? [{ id: 'bounties' as const, label: t('bounty.tab'), icon: 'pirate' as const }] : []),
             ]}
             value={face}
             onChange={setPicked}

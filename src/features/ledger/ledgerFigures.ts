@@ -1,5 +1,6 @@
 import type { LedgerEvent } from '../../lib/rpc'
 import type { TKey } from '../../lib/i18n'
+import type { IconName } from '../../components/ui'
 
 // THE RECORD'S FIGURES — what the History page's side column prints, derived from the SERVED entries and nothing else
 // (2026-11-03, the page slice; owner row 267: *"too packed"* — the side column is the tray's and is used).
@@ -20,11 +21,12 @@ import type { TKey } from '../../lib/i18n'
 export type Face = 'all' | 'trade' | 'voyage' | 'crew'
 
 /** The four faces, by id and the dictionary key of their word (the Codex's words for Voyage / Crew; Trade is spelt Trades here, the bar's Trade being on this screen). */
-export const FACES: readonly { id: Face; label: TKey }[] = [
-  { id: 'all', label: 'codex.all' },
-  { id: 'trade', label: 'history.f_trade' },
-  { id: 'voyage', label: 'codex.voyage' },
-  { id: 'crew', label: 'codex.crew' },
+/** Each face's mark over its word in the strip (visual pass 3): the record's open book, the trade's scales, a sail under way, the crew. */
+export const FACES: readonly { id: Face; label: TKey; icon: IconName }[] = [
+  { id: 'all', label: 'codex.all', icon: 'ledger' },
+  { id: 'trade', label: 'history.f_trade', icon: 'scales' },
+  { id: 'voyage', label: 'codex.voyage', icon: 'sailing' },
+  { id: 'crew', label: 'codex.crew', icon: 'crew' },
 ]
 
 /** Which face a served kind belongs to. A kind not named here (the founding, a gift, a change of flag) is on the All face only. */
