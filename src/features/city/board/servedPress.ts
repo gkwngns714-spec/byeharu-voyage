@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { cmdInvest, cmdLandCollect, cmdOrderHull, type FleetView, type HqMove, type Refusal, type RpcResult } from '../../../lib/rpc'
 import { t } from '../../../lib/i18n'
 import { useWorld } from '../../../live/worldStore'
-import { planLines } from '../../command/plans/planLines'
+import { planLines } from '../../../domain/plan'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE PRESS, THE SERVED ACT (0480, docs/design/hq-command-2026-11-23.md v2): lit, every card on HQ's board names the command that commits

@@ -1,10 +1,9 @@
 import { useMemo } from 'react'
 import { useWorld } from '../../../live/worldStore'
 import type { BoardBuyRow, BoardSellRow, FleetView } from '../../../lib/rpc'
-import type { PlanDraft } from './planDraft'
+import { planLines, type PlanDraft } from '../../../domain/plan'
 import type { PlanLeg } from '../../../domain/passage'
 import { useHeldFleet } from '../../../live/useSailLegs'
-import { planLines } from './planLines'
 
 // THE COURSES THE TRADE PAGE DRAWS (owner rows 183 and 217) — proposed ONCE, by the one course author
 // (`planLines` for a plan being made, `sailLegs` for a trip already queued), and handed to THE map on top of the
