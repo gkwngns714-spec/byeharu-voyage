@@ -59,7 +59,7 @@ const SIZES = [
 /** Every route this pass walks. `command` is the Trade desk; `office` its old City · Invest · Report faces (2026-11-16); `city` is
  *  the HQ page with its own rail. The City's BUILDING faces are owned by the city slice and are
  *  measured only by its own spec today (the audit's evidence is in the dev-log). */
-const ROUTES = ['command', 'office', 'fleets', 'map', 'stats', 'ledger', 'rank', 'routes', 'compendium', 'profile', 'you', 'city'] as const
+const ROUTES = ['command', 'office', 'fleets', 'map', 'stats', 'ledger', 'rank', 'lanes', 'compendium', 'profile', 'you', 'city'] as const
 
 /** The tab screens that print a Sheet title, and the route each one's rail word belongs to. */
 const TITLED = [
@@ -67,7 +67,8 @@ const TITLED = [
   ['stats', '/stats'],
   ['ledger', '/ledger'],
   ['rank', '/rank'],
-  ['routes', '/routes'],
+  // X3 (2026-11-23): the world's lanes moved off the Menu to /lanes (its door on Stats > Markets); /routes opens the desk
+  ['lanes', '/lanes'],
   ['compendium', '/compendium'],
   ['profile', '/profile'],
   ['you', '/you'],
@@ -361,6 +362,11 @@ test.describe('the screen says the rail’s word', () => {
         // THE ACCOUNT LEFT THE MENU (2026-11-23, the visual overhaul's slice 2, X4): its word is on You's Account row, which reaches it.
         await screen(page, 'you')
         word = (await page.getByTestId('you-account-row').locator('[data-row-cell="label"]').innerText()).trim()
+      } else if (to === '/lanes') {
+        // THE LANES LEFT THE MENU (2026-11-23, roadmap X3): its word is on Stats > Markets' row, which reaches it.
+        await page.goto('stats?face=markets')
+        await ready(page)
+        word = (await page.getByTestId('stats-lanes-row').locator('[data-row-cell="label"]').innerText({ timeout: 60_000 })).trim()
       } else {
         // A CABIN MEMBER: its word is on the Menu row that reaches it.
         const group = page.locator('[data-testid="nav-bar"] > button').first()
@@ -674,7 +680,7 @@ test('one home per fact: the captains board is Rank’s, the desk’s cargo door
   if (!/\d/.test(strip)) failures.push('desk: the strip lost the acting cargo figure')
 
   // THE HALL'S FIVE FIGURES — the City screen only
-  for (const route of ['fleets', 'map', 'stats', 'rank', 'routes', 'compendium', 'you', 'profile', 'ledger', 'command', 'office']) {
+  for (const route of ['fleets', 'map', 'stats', 'rank', 'lanes', 'compendium', 'you', 'profile', 'ledger', 'command', 'office']) {
     await screen(page, route)
     for (const id of ['city-population', 'city-gold', 'city-status', 'city-relationship', 'city-employees']) {
       if ((await page.getByTestId(id).count()) !== 0) failures.push(`${route} prints the hall's ${id}`)

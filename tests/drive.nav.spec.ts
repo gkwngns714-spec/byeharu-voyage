@@ -233,8 +233,8 @@ for (const size of [PHONE, LAPTOP]) {
     const panel = page.getByTestId('nav-group-panel')
     await expect(panel).toBeVisible()
     // one place per destination: the two the rail carries are not in its Menu
-    // (the Account left the Menu for You's foot on 2026-11-23, X4)
-    await expect(panel.getByRole('link')).toHaveCount(onRail ? 4 : 6)
+    // (the Account left the Menu for You's foot on 2026-11-23, X4; Routes for the desk's From here line and Stats > Markets, X3)
+    await expect(panel.getByRole('link')).toHaveCount(onRail ? 3 : 5)
     await expect(panel.locator('a[href$="/you"], a[href$="/stats"]')).toHaveCount(onRail ? 0 : 2)
     await panel.getByRole('link', { name: /History|기록/ }).click()
     await expect(page.getByTestId('ledger')).toBeVisible({ timeout: 120_000 })

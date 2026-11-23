@@ -80,7 +80,7 @@ import { companiesOf, figuresOf, groupsOf, rankedOf, sortRoutes, topOf, type Ord
 
 export function RoutesScreen() {
   // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord) — one authority with the lit nav cell.
-  const title = tabWord(useLocale(), '/routes')
+  const title = tabWord(useLocale(), '/lanes')
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)

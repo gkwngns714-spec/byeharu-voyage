@@ -22,7 +22,7 @@ import { reachable, ready } from './appReady.fixture'
 // The City page already carried its own no-scroll proof (tests/city.page.spec.ts) and is asserted
 // here too, without touching src/features/city/** (another slice owns those files).
 
-const ROUTES = ['command', 'office', 'fleets', 'map', 'stats', 'ledger', 'rank', 'routes', 'compendium', 'profile', 'city'] as const
+const ROUTES = ['command', 'office', 'fleets', 'map', 'stats', 'ledger', 'rank', 'lanes', 'compendium', 'profile', 'city'] as const
 const SIZES = [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },

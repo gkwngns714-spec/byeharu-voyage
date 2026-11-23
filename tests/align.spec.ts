@@ -56,7 +56,8 @@ const SCREENS: Screen[] = [
   { name: 'Rank', route: 'rank', faces: [[null, 'Captains'], [null, 'Countries']] },
   // THE BOARD STANDS ON THE GLASS (the unfold slice, 2026-11-02, owner row 260): it was a page behind `routes-open`, which this walk
   // pressed to reach the sort strip; the strip is now in the panel's header, the first tablist, where the walk finds it.
-  { name: 'Routes', route: 'routes', faces: [[null, 'Distance'], [null, 'Earnings'], [null, 'Calls']] },
+  // X3 (2026-11-23): the board left the Menu for /lanes, its door on Stats > Markets
+  { name: 'Routes', route: 'lanes', faces: [[null, 'Distance'], [null, 'Earnings'], [null, 'Calls']] },
   { name: 'Compendium', route: 'compendium', faces: [[null, 'Goods'], [null, 'Ships'], [null, 'Captains'], [null, 'Nations']] },
   { name: 'You', route: 'you' },
   { name: 'Profile', route: 'profile' },

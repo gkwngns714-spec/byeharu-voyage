@@ -71,6 +71,8 @@ export const deskDict = defineDict({
     // 0475: a Trade card's second good for the same harbour (the sheet's tick), and a card whose sale is beyond the first hour's near trips
     alsoLoad: 'Also load',
     farTrip: 'Far',
+    // slice 4: the desk's line of the best sale per harbour from where she lies (FromHere.tsx)
+    fromHere: 'From here',
     route: 'Route',
     noMoney: 'No money',
     // 0433: her purse against what the full load needs (world.best_sales have / need)
@@ -228,6 +230,7 @@ export const deskDict = defineDict({
     insure: '보험',
     alsoLoad: '함께 싣기',
     farTrip: '먼 길',
+    fromHere: '여기서',
     route: '항로',
     noMoney: '돈 부족',
     moneyHaveNeed: '돈 {have} / {need}',

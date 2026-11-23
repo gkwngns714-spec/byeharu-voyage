@@ -63,7 +63,7 @@ const NAME_RE = new RegExp(NAMES.map(escape).join('|'), 'g')
 /** The Latin words left in a text once every served name in it is taken out. */
 const leftover = (text: string) => text.replace(NAME_RE, ' ').match(/[A-Za-z][A-Za-z'’-]{2,}/g) ?? []
 
-const ROUTES = ['command', 'fleets', 'map', 'ledger', 'rank', 'routes', 'compendium', 'profile'] as const
+const ROUTES = ['command', 'fleets', 'map', 'ledger', 'rank', 'lanes', 'compendium', 'profile'] as const
 
 async function open(page: Page, route: string) {
   await page.goto(route)
