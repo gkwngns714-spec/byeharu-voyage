@@ -973,12 +973,49 @@ html:lang(ko) body {
   opacity: 0;
   animation: bv-level-up 1.2s ease-out forwards;
 }
+/* THE LEVEL-UP CARD (src/app/LevelUpCard.tsx, roadmap slice 10): it springs in, stands, and fades by itself at six seconds;
+   behind its rows a slow gold sunburst turns. Under reduced motion it simply stands, without the rays, and goes. */
+@keyframes bv-level-card {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  8% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  14% {
+    transform: scale(1);
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes bv-level-rays {
+  to {
+    transform: rotate(1turn);
+  }
+}
+.bv-level-card {
+  animation: bv-level-card 6s var(--ease-sheet) both;
+}
+.bv-level-rays {
+  inset: -50%;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--color-accent) 14%, transparent) 0deg 10deg, transparent 10deg 30deg);
+  mask-image: radial-gradient(circle, black 0%, transparent 60%);
+  animation: bv-level-rays 24s linear infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   .bv-level-glow,
-  .bv-level-up {
+  .bv-level-up,
+  .bv-level-rays {
     display: none;
   }
-  .bv-level-pop {
+  .bv-level-pop,
+  .bv-level-card {
     animation: none;
   }
 }

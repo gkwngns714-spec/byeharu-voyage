@@ -8,9 +8,9 @@ import { useYourCaptains } from '../../live/useYourCaptains'
 import { tabHref, tabWord } from '../../app/navTabs'
 import { properName, useLocale, useT } from '../../lib/i18n'
 import { Link, useNavigate } from 'react-router-dom'
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { companyRoom, useHouseRoom } from '../../live/houseRoom'
-import { YouLevelTray, YouLevels } from './Levels'
+import { YouLevelsDoor } from './Levels'
 import { useLevels } from './useLevels'
 import { HullCountry } from '../../live/HullCountry'
 import { seasOpened } from '../../live/levelWords'
@@ -27,7 +27,8 @@ import { seasOpened } from '../../live/levelWords'
 //   Levels         MOVED HERE FROM PROFILE, not copied: §6 put them there because there was no personal tab, and
 //                  the owner has now asked for one by name. Two screens drawing one ladder is two answers to "what
 //                  level am I". 2026-11-16: the Trade desk's Levels face moved here too, for the same reason
-//                  (Levels.tsx says how): every level as a tile, the title, seamanship, the countries' regard.
+//                  (Levels.tsx says how). 2026-11-23 (roadmap slice 10) the levels got a page of their own (`/levels`);
+//                  You keeps the title on its plate and a door: every level as a ring.
 //   Your ships     EVERY hull you own, in one list, with the fleet she sails in. FLEETS lists
 //                  FLEETS — where each one is, her stores, her hold, her hull — and a hull inside
 //                  it sits behind a fold, so "what do I own" had no page. This is that page: a
@@ -68,8 +69,6 @@ function YouBody({ title }: { title: string }) {
   // 0160: the one captains face — her grade, the traits she uses, the cabin she sits in. ONE read and ONE open captain; her rows
   // stand in the panel below and her tray beside it.
   const face = useYourCaptains()
-  // the level pressed on the levels card; its tray stands beside the captain's, outside the side column (Levels.tsx says why)
-  const [level, setLevel] = useState<string | null>(null)
 
   return (
     // THE PAGE (2026-11-05, owner row 267): MAIN the ships and the captains as two card lists, SIDE (the tray's column) the levels. The page
@@ -102,13 +101,13 @@ function YouBody({ title }: { title: string }) {
               <Row label={t('you.noCompany')} tone="muted" hairline={false} data-testid="you-no-company" />
             </Card>
           ) : (
-            <YouLevels picked={level} onPick={setLevel} />
+            // slice 10: the levels have their own page (`/levels`); You keeps its door, every level as a ring (Levels.tsx)
+            <YouLevelsDoor />
           )
         }
       />
       <AccountRow />
       <CaptainTray face={face} />
-      <YouLevelTray picked={level} onClose={() => setLevel(null)} />
     </Sheet>
   )
 }

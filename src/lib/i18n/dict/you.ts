@@ -7,6 +7,8 @@ export const youDict = defineDict({
   en: {
     noCompany: 'No company yet.',
     levels: 'Levels',
+    // slice 10: a level tile's one press to the act that raises it (its accessible name; the tile shows the place's mark and word)
+    fastest: 'Fastest way',
     levelOf: '{name} level',
     ships: 'Ships',
     noShips: 'No ships yet.',
@@ -18,6 +20,7 @@ export const youDict = defineDict({
   ko: {
     noCompany: '아직 회사 없음.',
     levels: '레벨',
+    fastest: '지름길',
     levelOf: '{name} 레벨',
     ships: '배',
     noShips: '아직 배 없음.',

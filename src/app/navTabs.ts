@@ -181,6 +181,9 @@ const ALL_TABS: readonly (NavTab & {
   // already addresses the player ("Your fleets", "Your week"); PROFILE stays the account beside it
   // (the papers that say who you are signed in as), and nothing is printed on both.
   { to: '/you', label: 'You', icon: 'person', enabled: true, group: 'cabin', rail: 1 },
+  // LEVELS (roadmap 2026-11-23, slice 10: "One Skills page"): every level on its own page, its door the levels card on You. Not a
+  // Menu row (the Menu holds its rows whole at 320 x 640, nav.geometry.spec): the route stands and the You cell is lit on it.
+  { to: '/levels', label: 'Levels', icon: 'levelUp', enabled: false, group: 'cabin', under: '/you' },
   // ACCOUNT (was "Profile"), OFF THE MENU since 2026-11-23 (slice 2, roadmap X4): the language and the sign-in are an "Account" row
   // at the foot of You, which opens this route; `/profile` stays, and the You cell is lit on it. Reversible: `enabled: true`.
   { to: '/profile', label: 'Account', icon: 'cog', enabled: false, group: 'cabin', under: '/you' },

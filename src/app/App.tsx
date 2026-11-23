@@ -24,6 +24,7 @@ import { CompendiumScreen } from '../features/compendium/CompendiumScreen'
 import { CityScreen } from '../features/city/CityScreen'
 import { ProfileScreen } from '../features/profile/ProfileScreen'
 import { YouScreen } from '../features/you/YouScreen'
+import { LevelsScreen } from '../features/you/LevelsScreen'
 import { LandScreen } from '../features/land/LandScreen'
 
 // THE ROUTE TABLE. One destination per tab (src/app/navTabs.ts is the tab table; these are the
@@ -106,6 +107,7 @@ export function App() {
           <Route path="/routes" element={<RoutesScreen />} />
           <Route path="/compendium" element={<CompendiumScreen />} />
           <Route path="/you" element={<YouScreen />} />
+          <Route path="/levels" element={<LevelsScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
         </Route>
         <Route path="/" element={<Navigate to={HOME_TAB} replace />} />
