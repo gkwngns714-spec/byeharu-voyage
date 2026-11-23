@@ -84,3 +84,11 @@ export function tileWordsGridClass(): string {
 /** A HEAD LINE THAT MAY TURN: words at the left, a control or a figure at the right, and where the glass is too narrow for both the
  *  right one goes under, whole (2026-11-13: the Trade panel's other sale and the City face's heading wrote it twice). */
 export const WRAP_ROW_CLASS = 'flex flex-wrap items-center justify-between gap-x-3 gap-y-1'
+
+/** A pressable tile's tone: lit (accent wash and ring) or at rest. One recipe for TileChoice and the desk's From here tiles. */
+export function tileToneClass(on: boolean): string {
+  return on ? 'bg-accent-soft text-accent ring-1 ring-accent' : 'bg-surface-2 text-ink-muted hover:text-ink'
+}
+
+/** One line under the Buy & sell plan (Also load, If attacked): a label and its presses, wrapping on a phone. */
+export const PLAN_LINE_CLASS = 'mt-2 flex flex-wrap items-center gap-x-3 gap-y-1'

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { WIDE_QUERY } from './screenLayout'
-import { COLUMN_CLASS, WORDS_COLUMN_CLASS, WORDS_COLUMN_WIDE_CLASS, tileCellClass, tileWordsGridClass, type ChoiceColumns, type WordColumns } from './tileStyles'
+import { COLUMN_CLASS, WORDS_COLUMN_CLASS, WORDS_COLUMN_WIDE_CLASS, tileCellClass, tileToneClass, tileWordsGridClass, type ChoiceColumns, type WordColumns } from './tileStyles'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE GRID FOR EVERY SET OF TAPPABLE CHOICES (owner, 2026-10-31)
@@ -96,7 +96,7 @@ export function TileChoice({
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className={`${tileCellClass()} ${on ? 'bg-accent-soft text-accent ring-1 ring-accent' : 'bg-surface-2 text-ink-muted hover:text-ink'} ${className}`}
+      className={`${tileCellClass()} ${tileToneClass(on)} ${className}`}
       {...rest}
     >
       {children}
