@@ -54,7 +54,7 @@ const POST_ONE_CONTRACT = `
        b as (select r.port_id from lis cross join voyage.reach_from(lis.id) r join public.ports p on p.id = r.port_id and p.kind = 'HARBOUR'
                join public.port_goods pg on pg.port_id = r.port_id and pg.good_id = (select g.id from g)
               where r.nm >= 150 and public.sea_course(lis.id, r.port_id) is not null order by r.nm, r.code limit 1),
-       h as (select h.player_id from public.npc_houses h join public.players p on p.id = h.player_id order by p.ducats desc, h.roster_ord limit 1),
-       c as (select public.courier_post('house', (select h.player_id from h), (select lis.id from lis), (select b.port_id from b), (select g.id from g),
-                                        10, 800, 1000, 7200, now()) as id)
-  update public.courier_contracts x set expires_at = now() + interval '30 days' from c where x.id = c.id`
+       h as (select h.player_id from public.npc_houses h join public.players p on p.id = h.player_id order by p.ducats desc, h.roster_ord limit 1)
+  select public.courier_post('house', (select h.player_id from h), (select lis.id from lis), (select b.port_id from b), (select g.id from g),
+                             10, 800, 1000, 7200, now());
+  update public.courier_contracts set expires_at = now() + interval '30 days';`

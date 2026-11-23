@@ -198,6 +198,7 @@ test.describe('courier contracts (0483, lit)', () => {
       test.setTimeout(600_000)
       await openHq(page, glass.width, glass.height, true, false, true)
       await expect(page.getByTestId('hq-board')).toHaveAttribute('data-source', 'served', { timeout: 180_000 })
+      await expect(page.locator('[data-testid="hq-move"]').first()).toBeVisible({ timeout: 180_000 })
       await page.getByTestId('hq-filter-contract').click()
       const card = page.locator('[data-testid="hq-moves"] [data-testid="hq-move"][data-kind="contract"]').first()
       await expect(card).toBeVisible({ timeout: 180_000 })
