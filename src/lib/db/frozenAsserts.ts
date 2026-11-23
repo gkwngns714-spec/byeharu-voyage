@@ -161,6 +161,23 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
       '    update public.ships set durability = durability * 0.5 where fleet_id = v_f2;   -- the second fleet is the slower now\n',
     why: "0367 (b): the probe halves the second fleet's hull to make her the slower, but each flagship rolls her own speed and hull from her id (0276: 1.000 to 1.200 here), and a halved hull that rolled 1.2 still sails at 0.84 of her speed: 0.84 x 1.2 = 1.008, so a first fleet that rolled 1.000 against a second that rolled both near 1.2 is not the faster and the assert raises. Rare (0 of 8,000 pairs measured; the same step at 0.6 of a hull, proof 68's, 15 of 8,000), but it is the dice and not the chain; the two speed rolls are made equal first, inside the rolled-back probe, so the worn hull alone decides (at most 0.84 against 1)",
   },
+  {
+    file: '20260818000466_requests_a_ship_can_carry.sql',
+    find: "    v_city := (select count(*) from public.trade_contracts t where t.port_id = v_port and t.status = 'open');\n",
+    replace:
+      '    -- frozenAsserts: the probe harbour is the first, LIS first, whose two jobs today post (tried in a rolled-back block)\n' +
+      "    for x in select p.id from public.ports p where p.kind = 'HARBOUR' order by (p.id = v_port) desc, p.code loop\n" +
+      '      begin\n' +
+      '        v_n := public.hold_request_post(x.id, now());\n' +
+      '        v_n := v_n + public.hold_request_post(x.id, now());\n' +
+      "        raise exception sqlstate 'BV467';\n" +
+      "      exception when sqlstate 'BV467' then null;\n" +
+      '      end;\n' +
+      '      if v_n = 2 then v_port := x.id; exit; end if;\n' +
+      '    end loop;\n' +
+      "    v_city := (select count(*) from public.trade_contracts t where t.port_id = v_port and t.status = 'open');\n",
+    why: "0466 (8): the probe's two hold jobs at LIS are drawn from the game day (4 real hours); on about 1 game day in 10 there (12 of 120 measured) the drawn good is dear or its allowance thin, the lot falls under hold_request_units_min and the writer posts nothing (main, run 45180194236, the growth test from zero, 2026-11-23 14:41 UTC). The probe now runs at the first harbour, LIS first, whose two posts land today, tried in a rolled-back block; if none does, it stays at LIS and fails as written",
+  },
   digestSortsBlankedRows('20260818000266_a_lap_starts_in_its_own_job.sql', '0266', 'uuid,uuid,uuid'),
   digestSortsBlankedRows('20260818000269_the_quay_writes_down_its_long_holds.sql', '0269', 'uuid,uuid,uuid'),
   digestSortsBlankedRows('20260818000270_the_clear_replans_her_lines_before_the_quay.sql', '0270', 'uuid,uuid,uuid'),

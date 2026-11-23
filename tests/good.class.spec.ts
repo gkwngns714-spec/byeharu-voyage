@@ -481,6 +481,10 @@ for (const vp of [
       await page.goto('city')
       await ready(page)
       await page.getByTestId('city-building-market').click()
+      // The face turned in step 2 (Requests) is kept for the tab (live/tradeFace.ts, session storage), and Lisbon is the home city,
+      // so the Market opens on Requests once world.requests says `home`; before that it shows Buy. Turn it to Buy, not the race.
+      await page.getByRole('tablist', { name: 'Market', exact: true }).getByRole('tab', { name: 'Buy', exact: true }).click()
+      await expect(page.getByRole('tablist', { name: 'Market', exact: true }).getByRole('tab', { name: 'Buy', exact: true })).toHaveAttribute('aria-selected', 'true')
       // THE ONE GOODS CARD (S5, 2026-11-11): the HQ Market draws the Trade screen's card, and the card wears the class
       await expect(page.getByTestId('city-market-buy').getByTestId('trade-good').first()).toBeVisible({ timeout: 60_000 })
       expectList(`${vp.name} · City market`, await page.evaluate(inspectRows, '[data-testid="city-market-buy"] [data-testid="trade-good"]'), colours)
