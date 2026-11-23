@@ -1,6 +1,6 @@
 import { Card, CardMark, Clip, Facts, Icon, ListPanel, MasteryRing, PageSplit, PlateDisc, Ring, Row, Sheet, goodIcon, masteredTone } from '../../components/ui'
 import { useMasteryLevels } from '../../live/goodsMastery'
-import { ShipPicture } from '../fleets/ShipPicture'
+import { ShipPicture } from '../../live/ShipPicture'
 import { formatInt } from '../../lib/format'
 import type { FleetView, PlayerHouse } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'

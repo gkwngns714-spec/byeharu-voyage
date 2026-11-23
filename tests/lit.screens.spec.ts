@@ -118,7 +118,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         await page.getByTestId('map-set-route').click()
         const bar = page.getByTestId('route-bar')
         await expect(bar).toBeVisible()
-        const refusals = (['map.routeConfirm', 'map.routeNoWater', 'map.routeSame', 'map.routeTooFar', 'map.routeSupplies', 'map.routeSeaShut', 'map.routeChecking'] as TKey[]).map((k) => translate(lang, k))
+        const refusals = (['map.routeConfirm', 'map.routeNoWater', 'map.routeSame', 'map.routeTooFar', 'map.routeSupplies', 'map.routeChecking'] as TKey[]).map((k) => translate(lang, k))
         const faults = await page.evaluate((words) => {
           const out: string[] = []
           const bar = document.querySelector('[data-testid="route-bar"]')!.getBoundingClientRect()

@@ -17,7 +17,7 @@ import {
   goodIcon,
   type TrayDetent,
 } from '../components/ui'
-import { ShipPicture } from '../features/fleets/ShipPicture'
+import { ShipPicture } from './ShipPicture'
 import { HullCountry } from './HullCountry'
 import { HullCrown } from './HullCrown'
 import { HullTech } from './HullTech'

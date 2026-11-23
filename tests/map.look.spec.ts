@@ -1,7 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { serveNpcOn } from './npcOn.fixture'
-import { serveLitSeas } from './seasLit.fixture'
 import { buildChartModel, quietHarbours, type PortRole } from '../src/chart/chartModel'
 import { clampView, maxSpanX, MAX_SPAN_X, viewBoxOf, zoomAt } from '../src/chart/chartView'
 import { GLYPH, harbourLightHalo, WIDE_SCALE, wideScale } from '../src/chart/glyphs'
@@ -350,7 +349,6 @@ for (const lang of ['en', 'ko'] as const) {
       test('no shade on the water, and nothing on the glass covers anything else on it', async ({ page, request, baseURL }) => {
         test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
         test.setTimeout(600_000)
-        await serveLitSeas(page)
         await openMap(page, lang)
         // the sea is one colour: no shade on the water and no key for one (owner, 2026-11-14)
         await page.waitForTimeout(3000)

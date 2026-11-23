@@ -93,8 +93,7 @@ import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
 import { SendFleet } from './SendFleet'
-import { useFleetSeas, useSeaZoneCells } from '../../live/useFleetSeas'
-import { useSeaConditions } from '../../live/useSeaConditions'
+import { useSeaRows, useSeaZoneCells } from '../../live/useSeas'
 import { ZoneTray } from './ZoneTray'
 import { zoneAt } from '../../domain/seas'
 import { RouteBar } from './RouteBar'
@@ -104,7 +103,6 @@ import { useRouteSeed } from './routeSeed'
 import { CityHarbour } from './CityHarbour'
 import { merchantsCount, merchantsSummary } from '../../live/merchantGroups'
 import { viewLeftFrame } from './frame'
-import { seaAsksLine, seaShortLine } from './seaLines'
 import { useLocale, useT, t as tNow } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -308,17 +306,13 @@ function Chart({
   const fleets = useMemo(() => armadaMarks(mapFleetsOf(fleetViews), armadaList), [fleetViews, armadaList])
   const [selection, setSelection] = useState<MapSelection>(null)
 
-  // THE SEAS, AS THE FLEET IN HAND MEETS THEM (useFleetSeas): which sea a pressed place lies in, and whether it is
-  // closed to her. The chart itself does NOT shade the closed seas (owner, 2026-11-14: "north pacific ocean, south
-  // pacific ocean color, square, not in sync"): the shade was the server's zone raster, squares of a second colour
-  // on the water. The sea is one colour; a closed sea is said in words where it is pressed and on the Seas face.
-  const seas = useFleetSeas()
-  // THE MAP'S FILTER (src/chart/regionsFilter.ts): off, Regions or Seas, one at a time. Seas asks the zone raster too
-  // (the same once-a-session read the press on a place already makes when the conditions bite).
+  // THE SEAS BY NAME (useSeaRows): which sea a pressed place lies in. The sea is one colour on the chart, and no sea is closed
+  // (the sea limits are off, owner 2026-11-23; docs/design/hq-command-2026-11-23.md).
+  const seas = useSeaRows()
+  // THE MAP'S FILTER (src/chart/regionsFilter.ts): off, Regions or Seas, one at a time. Seas asks the zone raster (once a session).
   const layer = useMapLayer()
   const seasOn = layer === 'seas'
-  const seaCells = useSeaZoneCells((seas.bite && seas.judged) || seasOn)
-  const seaConditions = useSeaConditions()
+  const seaCells = useSeaZoneCells(seasOn)
   const locale = useLocale()
   // a press on the water while Seas is on: the zone under it (set below, once the raster is in hand)
   const zoneTap = useRef<((at: Point) => string | null) | null>(null)
@@ -563,11 +557,9 @@ function Chart({
     tapRef.current = onTap
   }, [onTap])
 
-  // THE SEAS FILTER (owner, 2026-11-15: "have option to see seas, showing waves, requirement to pass etc."): each zone's
-  // border and its name with what it asks; a zone closed to the fleet in hand says what it lacks, in the danger ink.
-  // Every figure is the server's (world.sea_conditions); the borders and the names' places come from its raster, worked
-  // out once per raster (src/chart/seaZones.ts).
-  const walledSeas = seas.bite && seas.judged
+  // THE SEAS FILTER (owner, 2026-11-15: "have option to see seas"): each zone's border and its name. The sea limits are off
+  // (owner, 2026-11-23), so a name carries no ask and no zone is marked closed. The borders and the names' places come from the
+  // server's raster, worked out once per raster (src/chart/seaZones.ts).
   const zoneCode = seasOn && selection?.kind === 'zone' ? selection.code : null
   const zones = useMemo<ZonesOnChart | null>(() => {
     if (!seasOn || !seaCells) return null
@@ -575,20 +567,10 @@ function Chart({
     const labels = seas.rows.flatMap((r) => {
       const at = shape.anchors.get(r.zone.code)
       if (!at || at.length === 0) return []
-      const wall = walledSeas ? r.wall : null
-      return [
-        {
-          code: r.zone.code,
-          name: seaName(locale, { zoneName: r.zone.name }),
-          note: wall ? seaShortLine(locale, wall) : seaAsksLine(locale, r.zone),
-          closed: wall !== null,
-          at,
-          selected: r.zone.code === zoneCode,
-        },
-      ]
+      return [{ code: r.zone.code, name: seaName(locale, { zoneName: r.zone.name }), at, selected: r.zone.code === zoneCode }]
     })
     return { outline: shape.outline, labels }
-  }, [seasOn, seaCells, seas.rows, walledSeas, locale, zoneCode])
+  }, [seasOn, seaCells, seas.rows, locale, zoneCode])
   useEffect(() => {
     zoneTap.current = seasOn && seaCells ? (at: Point) => {
       const ll = unproject(at)
@@ -631,14 +613,13 @@ function Chart({
     if (selection?.kind === 'sea') return { dest: { kind: 'sea' as const, at: selection.at }, port: null }
     return null
   }, [selection, portsByCode])
-  // THE SEA THE PLACE IS IN, and the wall in it for the fleet in hand: named on the tray, so a press on shaded water
-  // says why it is shaded. A harbour is judged at its roads, as the sail door judges it.
+  // THE SEA THE PLACE IS IN (while the Seas filter is on): named on the tray's line. A harbour is placed at its roads.
   const placeSea = useMemo(() => {
     if (!place || !seaCells) return null
     const at = place.port ? place.port.roadstead : place.dest.kind === 'sea' ? place.dest.at : null
     const code = at ? zoneAt(seaCells, at.lat, at.lon) : null
     const row = code === null ? null : (seas.rows.find((r) => r.zone.code === code) ?? null)
-    return row ? { name: row.zone.name, wall: row.wall } : null
+    return row ? { name: row.zone.name } : null
   }, [place, seaCells, seas.rows])
   const placePortCode = place?.port?.code ?? null
   const placePortId = placePortCode ? (snapshotPorts.find((p) => p.code === placePortCode)?.id ?? null) : null
@@ -913,14 +894,7 @@ function Chart({
         />
       )}
       {zoneRow && !routeView && (
-        <ZoneTray
-          key={zoneRow.zone.code}
-          row={zoneRow}
-          seas={seas}
-          title={seaConditions.view?.title ?? null}
-          homeRank={seaConditions.view?.home_sea?.title_min ?? null}
-          onClose={() => setSelection(null)}
-        />
+        <ZoneTray key={zoneRow.zone.code} row={zoneRow} onClose={() => setSelection(null)} />
       )}
       {openFight && !routeView && (
         <FightSheet

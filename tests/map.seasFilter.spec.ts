@@ -1,7 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import { reachable, ready, WORLD_BOOT_MS } from './appReady.fixture'
-import { serveLitSeas } from './seasLit.fixture'
 import { MAP_LAYER_KEY, readMapLayer, REGIONS_FILTER_KEY, zoneAnchors, zoneOutline } from '../src/chart'
 import type { ZoneCells } from '../src/domain/seas'
 
@@ -12,9 +11,8 @@ import type { ZoneCells } from '../src/domain/seas'
 // Pure: the borders are traced only between two zones (never along a shore), a cut on a meridian stays one straight
 // line, and a zone's name stands in its deepest water. The kept choice reads the old Regions switch.
 //
-// Browser (the lit world, seasLit.fixture.ts: a title-1 barca at Lisbon, Europe open, the rest closed): the filter
-// offers three choices, one at a time; Seas draws the borders and N zone names each with its ask, a closed zone is
-// marked, the water names give way; a press on the water opens that sea's tray; the choice survives a reload. Phone
+// Browser (the shipped world): the filter offers three choices, one at a time; Seas draws the borders and N zone names,
+// with NO ask under a name and no zone marked closed (the sea limits are off, owner 2026-11-23), the water names give way; a press on the water opens that sea's tray; the choice survives a reload. Phone
 // 390 and 320, desktop, EN and KO; the chrome covers none of itself; screenshots to SEAS_SHOTS.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -92,7 +90,6 @@ const zonesOnGlass = (page: Page) =>
   page.evaluate(() => ({
     names: [...document.querySelectorAll('[data-label-id^="zone:"]')].map((t) => t.textContent ?? ''),
     notes: [...document.querySelectorAll('[data-label-note^="zone:"]')].map((t) => t.textContent ?? ''),
-    closed: document.querySelectorAll('[data-zone-closed="yes"]').length,
     borders: (document.querySelector('[data-testid="map-zone-borders"] path')?.getAttribute('d') ?? '').length,
     seaNames: document.querySelectorAll('[data-label-id^="sea:"]').length,
     regionNames: document.querySelectorAll('[data-label-id^="region:"]').length,
@@ -112,10 +109,9 @@ for (const glass of [
     test.use({ viewport: { width: glass.width, height: glass.height }, locale: glass.lang === 'ko' ? 'ko-KR' : 'en-US' })
     test.beforeAll(() => mkdirSync(SHOTS, { recursive: true }))
 
-    test('off, regions, seas: one at a time; seas names each zone with its ask, marks the closed, and is kept', async ({ page, request, baseURL }) => {
+    test('off, regions, seas: one at a time; seas names each zone, with no ask and none closed, and is kept', async ({ page, request, baseURL }) => {
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
       test.setTimeout(600_000)
-      await serveLitSeas(page)
       await openMap(page, glass.lang)
 
       // off by default: no zone, the water named as before
@@ -137,12 +133,11 @@ for (const glass of [
       await page.screenshot({ path: `${SHOTS}/${glass.tag}-seas-wide.png` })
       expect(wide.borders, 'the borders are drawn').toBeGreaterThan(1000)
       expect(wide.names.length, 'zones are named').toBeGreaterThan(2)
-      expect(wide.notes.length, 'every zone name carries its ask').toBe(wide.names.length)
-      expect(wide.notes.every((n) => n.length > 0)).toBe(true)
-      expect(wide.closed, 'a zone closed to the fleet in hand is marked').toBeGreaterThan(0)
+      expect(wide.notes, 'no zone name carries an ask: the sea limits are off').toEqual([])
+      expect(await page.locator('.bv-sun-name-closed').count(), 'no zone is marked closed').toBe(0)
       expect(wide.seaNames, 'the water names give way to the zones').toBe(0)
       expect(wide.sideScroll).toBe(false)
-      console.log(`${glass.tag}: ${wide.names.length} zones named (${wide.closed} closed): ${wide.names.map((n, i) => `${n} [${wide.notes[i]}]`).join(' · ')}`)
+      console.log(`${glass.tag}: ${wide.names.length} zones named: ${wide.names.join(' · ')}`)
 
       // the chrome covers none of itself, and the column keeps one right edge
       const column = await page.getByTestId('map-view-controls').evaluate((col) => [...col.children].map((c) => Math.round(c.getBoundingClientRect().right)))

@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Button, Hint, Row, SheetSection, Skyline, skylineOf, Tray, TrayTitle, seaName, type TrayDetent } from '../../components/ui'
 import { useWorld } from '../../live/worldStore'
-import type { SeaWall } from '../../lib/rpc'
 import { PortFlag } from '../../live/PortFlag'
 import { CHART_CHROME, GoToLink } from '../../chart'
 import { CityTabs } from './CityTabs'
@@ -11,7 +10,6 @@ import { SendArmadaRow } from './SendArmadaRow'
 import { useArmadas } from '../../live/armadas'
 import { canGo, type SailDest } from './sendRules'
 import { useSendFleet } from './useSendFleet'
-import { seaShortLine } from './seaLines'
 import { useLocale, useT } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -56,10 +54,8 @@ export function SendFleet({
   onClose,
 }: {
   dest: SailDest
-  /** The sea this place is in, and the wall in it for the fleet in hand (null: open to her): named on the title's line,
-   *  with the short reason when closed. Each fleet's own row says the whole wall. Null while the sea conditions are dark:
-   *  the tray is then exactly as it was. */
-  sea?: { name: string; wall: SeaWall | null } | null
+  /** The sea this place is in, named on the title's line while the Map's Seas filter is on; null otherwise. */
+  sea?: { name: string } | null
   /** The one line under the name — `Portugal · 27 merchants · 2 in port`, `Open sea`. */
   line: ReactNode
   /** The Port tab's ships — in port and incoming (CityHarbour), built by MapScreen, which holds
@@ -139,9 +135,8 @@ export function SendFleet({
           }
           line={
             sea ? (
-              <span data-testid="map-place-sea" data-closed={sea.wall ? 'yes' : 'no'}>
+              <span data-testid="map-place-sea">
                 {line} · {seaName(locale, { zoneName: sea.name })}
-                {sea.wall && <span className="text-warning"> · {seaShortLine(locale, sea.wall)}</span>}
               </span>
             ) : (
               line

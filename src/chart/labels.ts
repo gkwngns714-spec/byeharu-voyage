@@ -86,7 +86,7 @@ import type { MapPort, MapSelection } from './mapTypes'
 /** What a label is FOR, which is also how it is coloured. `sea` (row 90) is a water's name set on
  *  the water itself — ground, not a place to go, and drawn under every other name. `region`
  *  (row 93) is a region's name on its tint, only while the regions filter is on: ground too. */
-export type LabelTone = 'fleet' | 'port-active' | 'port-quiet' | 'sea' | 'region' | 'zone' | 'zone-closed'
+export type LabelTone = 'fleet' | 'port-active' | 'port-quiet' | 'sea' | 'region' | 'zone'
 
 /** Which side of the glyph a label ended up on. Tried in this order: the cardinals the map reads
  *  most naturally, then the diagonals as a last resort before dropping it. */
