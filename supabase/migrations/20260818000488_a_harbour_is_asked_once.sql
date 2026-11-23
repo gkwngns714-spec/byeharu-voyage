@@ -1,4 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+-- news: none (a speed-up: the same answers, faster; nothing a player is told)
 -- 0488 - A HARBOUR IS ASKED ONCE  (no switch; the same answers: the HQ best-sales read asks each harbour's quote terms, dock fee terms and
 --        profit tax rate once a read, not once for every good and every row; and her captains' share of the spread once a good, not once a quote)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
