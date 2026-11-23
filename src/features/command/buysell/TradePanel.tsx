@@ -3,6 +3,7 @@ import { Button, Chip, Figure, GoodKind, Hint, Note, PriceChart, Row, Skeleton, 
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { taxFactorWords } from '../../../domain/port'
 import { CityGoodTrades } from '../../../live/CityGoodTrades'
+import { IfAttacked } from '../../../live/IfAttacked'
 import { PortFlag } from '../../../live/PortFlag'
 import { usePriceWhy } from '../../../live/useDesk'
 import { usePriceSeries } from '../../../live/usePriceSeries'
@@ -566,6 +567,8 @@ function SailAct({
             </Chip>
             <Hint className="mt-0">{mine?.insure ? t('desk.insuredHint') : t('desk.uninsuredHint')}</Hint>
           </div>
+          {/* 0477: her standing order when raiders close, one press (drawn only while the early sighting is lit) */}
+          <IfAttacked fleetId={fleet.id} />
           {go.noCourse && (
             <Note tone="danger" className="mt-3">
               {t('desk.noWater', { port: portNameOf(useWorld.getState().portByCode, go.noCourse) })}

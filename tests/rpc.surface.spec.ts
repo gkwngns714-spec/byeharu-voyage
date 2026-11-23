@@ -1608,6 +1608,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-23 with migration 0476 (first voyages): world.first_voyages() - no argument, no player id; dark
       // {on: false}; lit a read that pays a starter step met, once (its row the guard). Landed WITH the face (FirstVoyageLine.tsx).
       'worldFirstVoyages',
+      // Pin moved deliberately 2026-11-23 with migration 0477 (early sighting): world.early_sighting() - no argument, no player id; dark
+      // {on: false}; lit her row's state and its report. A read. Landed WITH the faces (IfAttacked.tsx on the Buy & sell sheet, the arrival card).
+      'worldEarlySighting',
       // Pin moved deliberately with migration 0327 (docs/WORLD_POWERS.md §4.2): A FLEET ATTACKS A CARGO SHIP, and its dry run. No player id; dark (E_NOT_IN_USE) until
       // attack_enabled. Landed WITH the face (src/live/AttackSection.tsx).
       'cmdAttack', 'cmdPreviewAttack',

@@ -3048,6 +3048,40 @@ export interface FirstVoyages {
   just?: { step: number; code: FirstVoyageCode; ducats: number; reputation: number }[]
 }
 
+/** An EARLY_SIGHTING event's payload, and `world.early_sighting().report` (0477): a weak pirate's sighting, told once at its close. */
+export interface EarlySightingReport {
+  fleet: string | null
+  battle_id: string | null
+  /** The pirate's fleet name. */
+  pirate: string | null
+  /** The raid's end: EVADED, DRIVEN_OFF, RANSOM, PLUNDERED, or NO_FIGHT. */
+  outcome: string
+  /** Her standing order as the fight opened: FIGHT, FLEE or PAY. */
+  order: string | null
+  /** The ransom that left her purse. */
+  lost: number
+  hull_lost: number
+  hull_max: number
+  crew_lost: number
+  insured: boolean
+  /** What the insurer paid back (insured), and what it would pay back of `lost` ((1 - keep_pct) of it). */
+  insurance_paid: number
+  insurance_back: number
+  keep_pct: number
+  /** She had guns that could fire; with none, `guns_outcome` is the same fight's end with her hulls armed like the pirate's. */
+  guns: boolean
+  guns_outcome: string | null
+  /** Port CODE she was bound for. */
+  to: string | null
+}
+
+/** `world.early_sighting()` (0477). Dark `{on: false}`; lit her row's state (null: none set) and, once told, its report. */
+export interface EarlySighting {
+  on: boolean
+  state?: 'due' | 'open' | 'done' | 'missed' | null
+  report?: EarlySightingReport | null
+}
+
 /** The `bounty` a BATTLE_REPORT (and a battle's result) carries when a company collected (0471). */
 export interface BountyPaid {
   name: string

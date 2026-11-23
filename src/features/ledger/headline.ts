@@ -401,6 +401,11 @@ export function headline(
         short: short !== null && short > 0 ? t('history.owed', { amount: formatDucats(short) }) : '',
       })
     }
+    case 'EARLY_SIGHTING': {
+      // 0477: a weak pirate's sighting, told once: the pirate and the end, as the arrival card's line (battle.sighted).
+      const outcome = str(p, 'outcome') ?? 'NO_FIGHT'
+      return t('battle.sighted', { pirate: str(p, 'pirate') ?? '', end: outcome === 'NO_FIGHT' ? t('battle.noFight') : t(`battle.out_${outcome}` as TKey) })
+    }
     case 'LEVEL_UP': {
       // 0356: {track, level, reputation}. The arrival card's own sentence (dict/feed.ts), so a level-up reads the same in both places.
       const track = str(p, 'track')

@@ -68,6 +68,8 @@ export const deskDict = defineDict({
     onCredit: 'On credit',
     profit: 'Profit',
     insure: 'Insure',
+    // 0477: the Buy & sell sheet's standing-order line (Fight / Flee / Pay)
+    ifAttacked: 'If attacked',
     // 0475: a Trade card's second good for the same harbour (the sheet's tick), and a card whose sale is beyond the first hour's near trips
     alsoLoad: 'Also load',
     farTrip: 'Far',
@@ -226,6 +228,7 @@ export const deskDict = defineDict({
     onCredit: '외상',
     profit: '이익',
     insure: '보험',
+    ifAttacked: '피습 시',
     alsoLoad: '함께 싣기',
     farTrip: '먼 길',
     route: '항로',
