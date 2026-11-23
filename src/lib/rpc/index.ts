@@ -89,6 +89,8 @@ import type {
   HqBoardView,
   NationRaceView,
   ShipRolesView,
+  SeaChoicesView,
+  SeaChosen,
   ShipRoleSet,
   ShipRole,
   FleetJobsReport,
@@ -820,6 +822,16 @@ export function worldShipRoles(): Promise<RpcResult<ShipRolesView>> {
 /** 0485: give her hull a role, or take it off (null). Dark E_NOT_IN_USE; no slot free E_NO_ROLE_SLOT; at sea E_NOT_DOCKED. */
 export function cmdSetShipRole(shipId: string, role: ShipRole | null): Promise<RpcResult<ShipRoleSet>> {
   return call<ShipRoleSet>('cmdSetShipRole', [shipId, role])
+}
+
+/** 0486: her open choices at sea and the lately settled ones. Dark: `{on: false}`. */
+export function worldSeaChoices(): Promise<RpcResult<SeaChoicesView>> {
+  return call<SeaChoicesView>('worldSeaChoices', [])
+}
+
+/** 0486: her pick of a choice's options, until her arrival. Dark E_NOT_IN_USE; closed E_TOO_LATE; not hers or not shown E_NO_CHOICE. */
+export function cmdSeaChoose(choiceId: string, option: string): Promise<RpcResult<SeaChosen>> {
+  return call<SeaChosen>('cmdSeaChoose', [choiceId, option])
 }
 
 /** 0481: her fleets' standing jobs and what each did since she last read this. Dark: `{on: false}`. */

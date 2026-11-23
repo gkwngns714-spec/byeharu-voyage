@@ -3335,6 +3335,65 @@ export type ShipRolesView =
       }
     }
 
+/** 0486: an event a long trip meets (`world.sea_choices()`): a storm, a wreck or a strange sail. */
+export type SeaChoiceKind = 'storm' | 'wreck' | 'sail'
+
+/** 0486: one option of an event, as the server's one table serves it: the odds of the good end, the coin of each end (a loss negative),
+ *  the expected coin, and whether it is the safe default. */
+export interface SeaOption {
+  key: string
+  p: number
+  win: number
+  lose: number
+  ev: number
+  safe: boolean
+}
+
+/** 0486: the end of a settled choice: the option, whether it came good, the coin that moved (cut to a purse), the coin of its end. */
+export interface SeaOutcome {
+  option: string
+  good: boolean
+  amount: number
+  full: number
+  by: 'you' | 'default'
+  kind: SeaChoiceKind
+}
+
+/** 0486: one choice at sea. `id` is her voyage's; `deadline` her arrival (the safe default applies then); `best` the highest expected coin. */
+export interface SeaChoice {
+  id: string
+  kind: SeaChoiceKind
+  fleet: string
+  fleet_name: string | null
+  from: string | null
+  to: string | null
+  appears_at: string
+  deadline: string
+  stake: number
+  danger: number
+  guns: number
+  options: SeaOption[]
+  best: string
+  chosen: string | null
+  state: 'open' | 'settled' | 'lapsed'
+  by: 'you' | 'default' | null
+  outcome: SeaOutcome | null
+  settled_at: string | null
+}
+
+/** `world.sea_choices()` (0486). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her open and lately settled choices. */
+export type SeaChoicesView =
+  | { on: false }
+  | { on: true; company: false }
+  | { on: true; company: true; open: SeaChoice[]; recent: SeaChoice[] }
+
+/** `cmd.sea_choose` committed. */
+export interface SeaChosen {
+  ok: true
+  choice: string
+  option: string
+}
+
 /** `cmd.set_ship_role` committed. */
 export interface ShipRoleSet {
   ok: true
