@@ -82,6 +82,7 @@ import type {
   NavyShipCard,
   PirateShipCard,
   PirateBounties,
+  FirstVoyages,
   MerchantCard,
   InsuranceView,
   FleetTrades,
@@ -765,6 +766,11 @@ export function worldCargoShipCard(fleetId: string): Promise<RpcResult<CargoShip
 /** 0331: one navy ship's card, read at a tap. Refuses E_NOT_FOUND for any other fleet. */
 export function worldNavyShipCard(fleetId: string): Promise<RpcResult<NavyShipCard>> {
   return call<NavyShipCard>('worldNavyShipCard', [fleetId])
+}
+
+/** 0476: the starter chain: pays each step met once, then names the one she is on. Dark: `{on: false}`. */
+export function worldFirstVoyages(): Promise<RpcResult<FirstVoyages>> {
+  return call<FirstVoyages>('worldFirstVoyages', [])
 }
 
 /** 0471: the named pirates and their bounties. Dark: `{on: false}`. */

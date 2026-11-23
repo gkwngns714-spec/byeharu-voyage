@@ -3012,6 +3012,42 @@ export interface PirateBounties {
   mine?: { battle: string; epithet: string; given: string; name: string; home: string | null; paid: number; at: string }[]
 }
 
+/** A starter step's code (0476, world_config `first_voyages_steps`): what `have` / `need` count. */
+export type FirstVoyageCode = 'deliver' | 'profit' | 'trading' | 'captain' | 'hull'
+
+/** `world.first_voyages()` (0476): the starter chain. Dark `{on: false}`; a merchant, an old company or the chain done `{on, open: false}`. */
+export interface FirstVoyages {
+  on: boolean
+  open?: boolean
+  /** The step she is on (1-based), of `of`. */
+  step?: number
+  of?: number
+  /** Steps paid, once the chain is done. */
+  done?: number
+  code?: FirstVoyageCode
+  /** Her figure for the step and what it must reach (requests delivered, trade profit, the Trading mark, captains, ships with orders). */
+  have?: number | null
+  need?: number
+  /** What the step pays, coin and Reputation. */
+  ducats?: number
+  reputation?: number
+  /** Her capital (and its realm) cannot pay yet: the step is met and waits. */
+  waiting?: boolean
+  /** The deliver step: the hold job to take, bought at `from` and delivered to `port`; a Barca's seconds from her capital. */
+  job?: {
+    id: string
+    port: { code: string; name: string }
+    from: { code: string; name: string }
+    good: { code: string; name: string }
+    qty: number
+    nm: number
+    sail_seconds: number
+    expires_at: string
+  } | null
+  /** The steps this read paid. */
+  just?: { step: number; code: FirstVoyageCode; ducats: number; reputation: number }[]
+}
+
 /** The `bounty` a BATTLE_REPORT (and a battle's result) carries when a company collected (0471). */
 export interface BountyPaid {
   name: string

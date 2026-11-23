@@ -14,7 +14,9 @@
 do $p$
 declare
   v_cap   uuid;
-  v_t0    timestamptz := date_trunc('minute', now());
+  -- the scene runs 25 minutes on one UTC day: started within 30 minutes of midnight, the room would renew mid-scene and build the 0339 hull
+  -- (CI on #815 at 23:46 UTC built 2 and 3). So it starts no later than 23:30 UTC; every clock below is passed in, never read.
+  v_t0    timestamptz := least(date_trunc('minute', now()), date_trunc('day', now() at time zone 'UTC') at time zone 'UTC' + interval '23 hours 30 minutes');
   v_head  int;
   v_spent bigint := 4215000;
   v_n     int;
