@@ -25,10 +25,18 @@ const LIT = [
 /** Serve the lit world to `page` in place of the shipped image. `served`: the HQ board from the server lit too (0480, hq_board_enabled).
  *  `jobs`: the standing fleet jobs lit too (0481, fleet_jobs_enabled). `contracts`: courier contracts lit (0483, contracts_enabled, with
  *  the stored courses), and one house contract posted from Lisbon to the nearest harbour 150 miles or more away that trades its good.
- *  `race`: the country race lit (0484, nation_race_enabled), with Castile leading the first three contested harbours by code this week. */
+ *  `race`: the country race lit (0484, nation_race_enabled), with Castile leading the first three contested harbours by code this week.
+ *  `roles`: a hull's roles lit (0485, ship_roles_enabled), the first slot opening at her first hull (ship_roles_free_from 1), so the fresh
+ *  company's one barca has a role to take. */
 export async function serveHqLit(
   page: Page,
-  { served = false, jobs = false, contracts = false, race = false }: { served?: boolean; jobs?: boolean; contracts?: boolean; race?: boolean } = {},
+  {
+    served = false,
+    jobs = false,
+    contracts = false,
+    race = false,
+    roles = false,
+  }: { served?: boolean; jobs?: boolean; contracts?: boolean; race?: boolean; roles?: boolean } = {},
 ): Promise<void> {
   const keys = [
     ...LIT,
@@ -36,14 +44,16 @@ export async function serveHqLit(
     ...(jobs ? ['fleet_jobs_enabled'] : []),
     ...(contracts ? ['contracts_enabled', 'sea_courses_enabled'] : []),
     ...(race ? ['nation_race_enabled'] : []),
+    ...(roles ? ['ship_roles_enabled'] : []),
   ]
   await serveWorldImage(
     page,
-    await patchedWorldImage(race ? 'hq-race' : contracts ? 'hq-contracts' : jobs ? 'hq-jobs' : served ? 'hq-served' : 'hq-lit', async (pg) => {
+    await patchedWorldImage(roles ? 'hq-roles' : race ? 'hq-race' : contracts ? 'hq-contracts' : jobs ? 'hq-jobs' : served ? 'hq-served' : 'hq-lit', async (pg) => {
       await pg.exec(`update public.world_config set value = 'true'::jsonb where key in (${keys.map((k) => `'${k}'`).join(', ')})`)
       await pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite'`)
       if (contracts) await pg.exec(POST_ONE_CONTRACT)
       if (race) await pg.exec(CASTILE_LEADS)
+      if (roles) await pg.exec(`update public.world_config set value = to_jsonb(1) where key = 'ship_roles_free_from'`)
     }),
   )
 }

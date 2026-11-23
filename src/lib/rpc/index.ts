@@ -88,6 +88,9 @@ import type {
   GoodsMasteryView,
   HqBoardView,
   NationRaceView,
+  ShipRolesView,
+  ShipRoleSet,
+  ShipRole,
   FleetJobsReport,
   CourierContractsView,
   CourierOutcome,
@@ -807,6 +810,16 @@ export function worldHqBoard(): Promise<RpcResult<HqBoardView>> {
 /** 0484: the country race: this week's countries and contested cities, her points, place and title. Dark: `{on: false}`. */
 export function worldNationRace(): Promise<RpcResult<NationRaceView>> {
   return call<NationRaceView>('worldNationRace', [])
+}
+
+/** 0485: her hulls' roles, slots, the pick for a new hull and the ladder. Dark: `{on: false}`. */
+export function worldShipRoles(): Promise<RpcResult<ShipRolesView>> {
+  return call<ShipRolesView>('worldShipRoles', [])
+}
+
+/** 0485: give her hull a role, or take it off (null). Dark E_NOT_IN_USE; no slot free E_NO_ROLE_SLOT; at sea E_NOT_DOCKED. */
+export function cmdSetShipRole(shipId: string, role: ShipRole | null): Promise<RpcResult<ShipRoleSet>> {
+  return call<ShipRoleSet>('cmdSetShipRole', [shipId, role])
 }
 
 /** 0481: her fleets' standing jobs and what each did since she last read this. Dark: `{on: false}`. */

@@ -3,6 +3,7 @@ import { cmdDeliverContract, cmdInvest, cmdLandCollect, cmdOrderHull, cmdTakeCon
 import { t } from '../../../lib/i18n'
 import { useWorld } from '../../../live/worldStore'
 import { planLines } from '../../../domain/plan'
+import { setShipRole } from '../../../live/useShipRoles'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE PRESS, THE SERVED ACT (0480, docs/design/hq-command-2026-11-23.md v2): lit, every card on HQ's board names the command that commits
@@ -17,6 +18,7 @@ import { planLines } from '../../../domain/plan'
 //   cmd.land_collect  the Land party's Collect (PartyFace's call), then the world read back
 //   cmd.take_contract / cmd.deliver_contract  0483: the contract's own doors (one act: the take sends her plan on stored courses), then the
 //                     world read back
+//   cmd.set_ship_role 0485: the hull's role, through the fleet row's own door (live/useShipRoles.ts), which re-asks the roles' read
 // A refusal is the server's own words, kept under the card until its next press; the card stays. Nothing here judges what the
 // server judges.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -91,6 +93,8 @@ async function commit(move: HqMove, fleet: FleetView | null): Promise<Refusal | 
       return readBack(cmdTakeContract(act.args.fleet, act.args.contract, act.args.version))
     case 'cmd.deliver_contract':
       return readBack(cmdDeliverContract(act.args.contract))
+    case 'cmd.set_ship_role':
+      return setShipRole(act.args.ship, act.args.role, `card:${move.id}`)
   }
 }
 

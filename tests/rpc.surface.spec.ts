@@ -1636,6 +1636,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // {on: false}; lit this week's countries and contested cities, her points, place and title. A read. Landed WITH the faces (HQ's race
       // strip and Influence chips, the map's Race layer).
       'worldNationRace',
+      // Pin moved deliberately 2026-11-23 with migration 0485 (a fleet that grows to five ships): world.ship_roles() - no argument, no
+      // player id; dark {on: false}; lit her hulls' roles, slots, the pick and the ladder. A read. And its door, no player id:
+      // cmd.set_ship_role(ship, role); a hull not hers refused; dark E_NOT_IN_USE. Landed WITH the faces (HQ's fleet rows' role chips, the
+      // board's role card and the yard card's next role, the goal card's ladder).
+      'worldShipRoles', 'cmdSetShipRole',
       // Pin moved deliberately with migration 0327 (docs/WORLD_POWERS.md §4.2): A FLEET ATTACKS A CARGO SHIP, and its dry run. No player id; dark (E_NOT_IN_USE) until
       // attack_enabled. Landed WITH the face (src/live/AttackSection.tsx).
       'cmdAttack', 'cmdPreviewAttack',

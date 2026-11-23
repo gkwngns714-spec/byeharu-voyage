@@ -3196,7 +3196,7 @@ export type GoodsMasteryView =
     }
 
 /** 0480: a served HQ move's kind (world.hq_board). */
-export type HqMoveKind = 'trade' | 'request' | 'yard' | 'land' | 'crew' | 'invest' | 'contract'
+export type HqMoveKind = 'trade' | 'request' | 'yard' | 'land' | 'crew' | 'invest' | 'contract' | 'role'
 
 /** 0480: a trade run's risk: the highest danger level (1-5) of the waters of the harbours it calls at, and the richest bounty pirate
  *  whose home or sea is on it (null with none). */
@@ -3233,6 +3233,8 @@ export type HqAct =
   | { rpc: 'cmd.take_contract'; args: { fleet: string; contract: string; version: number } }
   /** 0483: deliver a contract she carries, her fleet lying at its harbour with the goods. */
   | { rpc: 'cmd.deliver_contract'; args: { contract: string } }
+  /** 0485: give her hull a role (one press). */
+  | { rpc: 'cmd.set_ship_role'; args: { ship: string; role: ShipRole } }
 
 /** 0480: what a card needs, as served (each kind fills its own). */
 export interface HqNeeds {
@@ -3256,6 +3258,15 @@ export interface HqNeeds {
   deliver_by?: string
   poster?: CourierPoster
   poster_name?: string | null
+  /** 0485: a role card's hull (id, name), the role, why it is the pick (and the count), what it gives, her slots. */
+  ship?: string
+  ship_name?: string
+  role?: ShipRole
+  why?: ShipRoleWhy
+  n?: number
+  gain?: number
+  slots?: number
+  used?: number
 }
 
 /** 0480: one move on the served board, in the server's order. */
@@ -3278,6 +3289,58 @@ export interface HqMove {
   /** 0484 (nation_race_enabled): a trade or request in a contested harbour: the points it adds for her country, and who leads there this
    *  week ('mine', 'rival', or 'open' when nobody has scored). Absent otherwise. */
   race?: HqRace
+  /** 0485 (ship_roles_enabled): the yard's card: the role the next hull should fill. Absent otherwise. */
+  role?: ShipRole
+}
+
+/** 0485: a hull's role (a tag on the hull). */
+export type ShipRole = 'guard' | 'fast' | 'hold'
+
+/** 0485: why a role is the pick: the raids her fleets were in (guard), her standing jobs and carried contracts (fast), her routes (hold). */
+export type ShipRoleWhy = 'raids' | 'jobs' | 'routes'
+
+/** 0485: the ladder's step (the goal card's line): her ships, then her fleets working by themselves, then her fleets with a captain. */
+export type LadderStep = 'ships' | 'routes' | 'captains'
+
+/** `world.ship_roles()` (0485). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her hulls' roles, slots and ladder. */
+export type ShipRolesView =
+  | { on: false }
+  | { on: true; company: false }
+  | {
+      on: true
+      company: true
+      ships: number
+      /** The role slots her hulls open (each from `free_from` on, up to three), and how many are set. */
+      slots: number
+      used: number
+      guard: number
+      fast: number
+      hold: number
+      max: number
+      free_from: number
+      /** What each role gives: the guard's weight on her miles, the fast hull's and the big hold's share. */
+      gain: Record<ShipRole, number>
+      hulls: { ship: string; fleet: string; name: string; hull: string; role: ShipRole | null; can: boolean }[]
+      /** The best role for a new hull, why, and (with a slot free) the hull it fits best. */
+      pick: { role: ShipRole; why: ShipRoleWhy; n: number; ship: string | null }
+      /** The role the next hull should fill; null when the next hull opens no slot or she has her five. */
+      next: ShipRole | null
+      ladder: {
+        step: LadderStep | null
+        have: number | null
+        of: number | null
+        ships: { have: number; of: number }
+        routes: { have: number; of: number }
+        captains: { have: number; of: number }
+      }
+    }
+
+/** `cmd.set_ship_role` committed. */
+export interface ShipRoleSet {
+  ok: true
+  ship: string
+  role: ShipRole | null
+  was: ShipRole | null
 }
 
 /** 0484: what a board card adds to her country's weekly race. */

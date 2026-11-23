@@ -5,10 +5,11 @@ import type { Move } from '../../../domain/hq'
 import { routePorts } from '../../../domain/route'
 import { formatDucatsDelta } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
-import type { FleetJobRow } from '../../../lib/rpc'
+import type { FleetJobRow, ShipRolesView } from '../../../lib/rpc'
 import { ShipPicture } from '../../../live/ShipPicture'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { JobControl } from './JobControl'
+import { RoleControl } from './RoleControl'
 import { FLEET_JOB_TONE, FLEET_JOB_WORD } from './jobMarks'
 import { MoveCard } from './MoveCard'
 import type { BoardFleet, MoveData } from './useBoard'
@@ -18,16 +19,20 @@ import { useFleetPress, useMovePress } from './useMovePress'
 // job (a route, a trip, idle), what her route earned today, and one press: Route (the desk's route page, RouteFold) or Plan (the desk
 // with her in hand). AN IDLE FLEET GLOWS (the gold edge, "you may act") and offers her best card under her row.
 // 0481 (lit): her standing job's mark and setter under her row (JobControl).
+// 0485 (lit): each of her hulls' role chips under her row (RoleControl), one press each.
 
 export function FleetRows({
   fleets,
   moves,
   jobs = null,
+  roles = null,
 }: {
   fleets: readonly BoardFleet[]
   moves: readonly Move<MoveData>[]
   /** 0481: her fleets' standing jobs, by fleet; null while dark (no job is drawn). */
   jobs?: ReadonlyMap<string, FleetJobRow> | null
+  /** 0485: her hulls' roles and slots; null while dark (no role is drawn). */
+  roles?: Extract<ShipRolesView, { company: true }> | null
 }) {
   const t = useT()
   const { nowMs } = useShellState()
@@ -76,6 +81,7 @@ export function FleetRows({
               </Button>
             </div>
             {jobs && <JobControl fleet={f.id} job={jobs.get(f.id) ?? null} />}
+            {roles && <RoleControl fleet={f.id} roles={roles} />}
             {best && (
               <div data-testid="hq-fleet-best">
                 <MoveCard move={best} onPress={pressMove} inline jobs={jobs} />
