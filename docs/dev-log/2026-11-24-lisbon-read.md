@@ -129,7 +129,10 @@ chain) is STABLE on prod, so the reads below were allowed.
   should fall by several hundred ms, below its 2.5 s budget. This is an estimate until `after-0487.sql` measures it.
 
 ## CI
-(filled in from the PR's disposable-chain log)
+- **disposable-chain (real PostgreSQL 17, Supabase's roles):** 0487 applied on main's snapshot in about 3.7 s. The self-assert passed:
+  the readers and the pieces were the same before and after on PostgreSQL 17. `supabase migration up` does not print a migration's
+  notices, so CI gives no PostgreSQL 17 timing. The first one is the prod push's own notice (`bv-deploy.sh` prints it).
+- **pglite-gate** (PostgreSQL 18): the self-assert passed in every leg; proof 190 is in "the rest".
 
 ## Load
 - No rows, no tables, no cron job, no step on the beat. The self-assert reads (and lights switches only where they are off, rolled back).
