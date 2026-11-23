@@ -44,6 +44,7 @@ export function Podium({ steps, label }: { steps: readonly PodiumStep[]; label: 
       {order.map((i) => {
         const s = steps[i]
         const height = STEP_MIN + Math.round((Math.abs(s.value) / widest) * (STEP_MAX - STEP_MIN))
+        // a step is a wash, no border: a surface has none (docs/UI_DIRECTION.md §4.3; tests/duplication.spec.ts); yours is the gold wash
         return (
           <div key={s.key} role="listitem" className="flex min-w-0 flex-col items-center gap-1 text-center" data-testid="rank-podium-step" data-place={s.place ?? undefined} data-mine={s.mine ? '' : undefined}>
             {i === 0 ? <Icon name="trophy" size={22} className={s.mine ? 'text-accent' : 'text-ink-muted'} aria-hidden="true" /> : <span className="h-[22px]" aria-hidden="true" />}
@@ -53,7 +54,7 @@ export function Podium({ steps, label }: { steps: readonly PodiumStep[]; label: 
             </span>
             <Figure value={s.text} tone={s.mine ? 'accent' : 'ink'} />
             <div
-              className={`flex w-full items-start justify-center rounded-t-[10px] border border-b-0 pt-1 ${s.mine ? 'border-accent/60 bg-accent-soft' : 'border-edge bg-surface-2'}`}
+              className={`flex w-full items-start justify-center rounded-t-[10px] pt-1 ${s.mine ? 'bg-accent-soft' : 'bg-surface-2'}`}
               style={{ height }}
               aria-hidden="true"
             >

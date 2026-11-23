@@ -440,14 +440,13 @@ for (const field of FIELDS) {
 // nothing at or above its own row. The COMPENDIUM field proofs above keep the grid rule for the
 // catalogue faces the owner has not spoken about since.
 // The Trade face is the face PORT opens on (portView.ts), so nothing has to be pressed to reach it.
-test(`PORT: the ledger's price cells are the trade, and a press moves nothing above it`, async ({
+if (!TRADE_ON_DESK) test(`PORT: the ledger's price cells are the trade, and a press moves nothing above it`, async ({
   page,
   request,
   baseURL,
 }) => {
   test.setTimeout(420_000)
   // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
-  test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
@@ -758,14 +757,13 @@ test(`COMMAND: the route row opens the route page, the queue below it may not mo
 // PORT's field. A distant city's prices are read on the desk's good page (desk.layout.spec) and on the map's
 // city panel (map.townhall / PortPrices); the field itself lives on in the route editor (route.stopface.spec).
 
-test(`PORT: a line staged onto the basket docks the one tray at peek, moves nothing, and lands as a receipt`, async ({
+if (!TRADE_ON_DESK) test(`PORT: a line staged onto the basket docks the one tray at peek, moves nothing, and lands as a receipt`, async ({
   page,
   request,
   baseURL,
 }) => {
   test.setTimeout(420_000)
   // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
-  test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
@@ -871,14 +869,13 @@ test(`PORT: a line staged onto the basket docks the one tray at peek, moves noth
 // Then the good is BOUGHT — one step of the book, the tray's own default — so its SELL cell comes
 // alive, and the same row stands on the SELL face and takes a press there too. The in-tab PGlite
 // world is disposable, so real attempts and a real buy are fine here.
-test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, moves nothing, and a press adds a turn`, async ({
+if (!TRADE_ON_DESK) test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, moves nothing, and a press adds a turn`, async ({
   page,
   request,
   baseURL,
 }) => {
   test.setTimeout(420_000)
   // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
-  test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
@@ -1031,14 +1028,13 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
 // slots at every port), and a good whose two mids happen to agree draws a flat line with ONE label,
 // which is the honest answer for it; so this proof walks the rows for the first good whose record
 // MOVED, and requires that there is one.
-test(`PORT: the Trend row opens the price chart with an axis, and closes back to the sparkline`, async ({
+if (!TRADE_ON_DESK) test(`PORT: the Trend row opens the price chart with an axis, and closes back to the sparkline`, async ({
   page,
   request,
   baseURL,
 }) => {
   test.setTimeout(420_000)
   // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
-  test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,

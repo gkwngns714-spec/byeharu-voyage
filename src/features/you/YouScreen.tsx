@@ -191,7 +191,9 @@ function HousePlate({ player }: { player: PlayerHouse }) {
   )
 }
 
-/** A house figure: its mark in a ring, the figure, one quiet word under it. */
+/** A house figure: its mark in a ring, and under it the figure and one quiet word, centred. STACKED, not side by side: beside a 44-px
+ *  ring a two-line figure's first line sits off the ring's middle (the align law's LINE), and on a 320-px phone half the plate left the
+ *  title's name too narrow to stand whole ("Apprentice" broke inside the word). The caller's box is `HOUSE_FIGURE`. */
 function RingFigure({
   ring,
   figure,
@@ -204,7 +206,7 @@ function RingFigure({
   return (
     <>
       {ring}
-      <span className="min-w-0">
+      <span className="min-w-0 max-w-full">
         {figure}
         <span className="block break-words text-t-caption text-ink-muted">{word}</span>
       </span>
@@ -214,6 +216,9 @@ function RingFigure({
 
 /** THE TITLE (0215; moved here from the levels card, slice 9): her title's name and level in a ring that fills toward the next
  *  title, by the lower of her Trading and Exploration levels against the level it asks (the served figures; nothing summed). */
+/** The box of one house figure: the ring over its words (RingFigure says why). */
+const HOUSE_FIGURE = 'flex min-w-0 flex-col items-center gap-1 text-center'
+
 function HouseTitle() {
   const t = useT()
   const v = useLevels().view
@@ -222,7 +227,7 @@ function HouseTitle() {
   const next = v.title.next
   const pct = next ? (Math.min(v.tracks.trading.level, v.tracks.exploration.level) / next.level) * 100 : 100
   return (
-    <div className="flex min-w-0 items-center gap-2" data-testid="levels-title" data-level={v.title.level}>
+    <div className={HOUSE_FIGURE} data-testid="levels-title" data-level={v.title.level}>
       <RingFigure
         ring={
           <Ring pct={pct} size={44} label={`${t('command.lvTitle')} · ${name} · ${t('command.lvLevel', { n: v.title.level })}`}>
@@ -272,7 +277,7 @@ function Reputation({ player }: { player: PlayerHouse }) {
   if (!rep) return null
   const today = t('shell.repToday', { a: formatInt(rep.today), b: formatInt(rep.cap) })
   return (
-    <div className="flex min-w-0 items-center gap-2" data-testid="you-reputation">
+    <div className={HOUSE_FIGURE} data-testid="you-reputation">
       <RingFigure
         ring={
           <Ring pct={rep.cap > 0 ? (rep.today / rep.cap) * 100 : 0} size={44} label={`${t('shell.reputation')} · ${today}`} data-testid="you-reputation-ring">
@@ -282,7 +287,7 @@ function Reputation({ player }: { player: PlayerHouse }) {
           </Ring>
         }
         figure={
-          <span className="flex flex-wrap items-baseline gap-x-1.5" data-testid="you-reputation-balance" data-value={rep.balance}>
+          <span className="flex flex-wrap items-baseline justify-center gap-x-1.5" data-testid="you-reputation-balance" data-value={rep.balance}>
             <span className="text-t-title tabular-nums text-ink">{formatInt(rep.balance)}</span>
             <span className="text-t-caption text-ink-muted">{t('shell.reputation')}</span>
           </span>

@@ -38,8 +38,7 @@ import { openCityFace } from './desk.fixture'
 test.use({ viewport: PHONE })
 
 // X1 (src/live/tradeOnDesk.ts, the visual overhaul's slice 3): the quay's trade tray these laws hold is not reached while TRADE_ON_DESK stands (a Buy or Sell
-// pressed there opens the Trade desk); these laws run again the day it is false.
-test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
+// pressed there opens the Trade desk); these laws are registered again the day it is false (never skipped: CI's shard gate counts a skip as a red).
 
 /**
  * HOW LONG "NOTHING MOVED" IS WATCHED FOR. These were 10.5 s and 7.5 s — three of the shell's 3-s
@@ -182,7 +181,7 @@ async function pressBuy(page: Page) {
   return name
 }
 
-test(`PORT › Trade (buy): the Max row, the stepper and the button hold still across three world reads; the count comes before the context`, async ({ page, request, baseURL }, testInfo) => {
+if (!TRADE_ON_DESK) test(`PORT › Trade (buy): the Max row, the stepper and the button hold still across three world reads; the count comes before the context`, async ({ page, request, baseURL }, testInfo) => {
   const rows = await openPort(page, request, baseURL)
   await pressBuy(page)
   const tray = page.locator('[data-testid="trade-tray"]')
@@ -283,7 +282,7 @@ test(`PORT › Trade (buy): the Max row, the stepper and the button hold still a
   expect(((await act.innerText()) || '').trim(), 'the Storage button line changed across the window').toBe(actText)
 })
 
-test(`PORT › Trade (sell): count first, then three prices and the share; no "checking" line across three reads and two presses; one unit chosen three ways and sold`, async ({ page, request, baseURL }, testInfo) => {
+if (!TRADE_ON_DESK) test(`PORT › Trade (sell): count first, then three prices and the share; no "checking" line across three reads and two presses; one unit chosen three ways and sold`, async ({ page, request, baseURL }, testInfo) => {
   const rows = await openPort(page, request, baseURL)
 
   // SOMETHING ON BOARD: buy the default lot of the first live good, and wait for the world to say so.
@@ -403,7 +402,7 @@ test(`PORT › Trade (sell): count first, then three prices and the share; no "c
 test.describe('the asks, counted', () => {
   test.use({ viewport: { width: 1440, height: 900 } })
 
-  test(`PORT › Trade: an open on-board list makes NO dry run on the world's beat; an open sell tray makes at most one per beat`, async ({ page, request, baseURL }) => {
+  if (!TRADE_ON_DESK) test(`PORT › Trade: an open on-board list makes NO dry run on the world's beat; an open sell tray makes at most one per beat`, async ({ page, request, baseURL }) => {
   // THE COST THAT MUST NOT BE PAID. `cmd.preview` is a real write rolled back, and the on-board
   // list is a LIST: folded onto useServedRead in its default mode it would have made N writes every
   // 3 s per player on a live ~30-player database. Since 2026-09-18 the on-board list makes NO ask

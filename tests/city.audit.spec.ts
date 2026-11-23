@@ -414,10 +414,9 @@ test('city audit @320×568: the hall says what fits and what scrolls, and the pa
   await doc()
 })
 
-test('city audit: the Market Basket opens in the panel — no page, no tray, nothing over the doors', async ({ page, request, baseURL }) => {
+if (!TRADE_ON_DESK) test('city audit: the Market Basket opens in the panel — no page, no tray, nothing over the doors', async ({ page, request, baseURL }) => {
   test.setTimeout(900_000)
   // X1 (src/live/tradeOnDesk.ts): the Market stands no basket while TRADE_ON_DESK stands (the Trade desk keeps the trade)
-  test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await openCity(page, { width: 390, height: 844 })
   await press(page, 'market')

@@ -250,7 +250,8 @@ async function measure(page: Page, where: string, scope: string, o: { headlines:
  *  used all of it. */
 const TEST_MS = 300_000
 
-const face = (page: Page, name: string) => page.getByRole('tablist').first().getByRole('tab', { name, exact: true })
+// a face by its word in either strip: since slice 2 (#804) Merchants stands in the "More" strip under the first, Cities in the first
+const face = (page: Page, name: string) => page.getByTestId('stats').getByRole('tablist').getByRole('tab', { name, exact: true }).first()
 
 test.use({ deviceScaleFactor: 2 })
 

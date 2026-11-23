@@ -38,7 +38,7 @@ export function NewFleet({ open, onOpen }: { open: boolean; onOpen: () => void }
   if (!room.on) {
     return (
       <Row
-        mark={<IconDisc name="plus" tone="muted" />}
+        mark={<NewMark tone="muted" />}
         label={t('fleets.moveNew')}
         value={<span className="text-t-caption">{t('fleets.roomNotOpen')}</span>}
         tone="muted"
@@ -47,7 +47,7 @@ export function NewFleet({ open, onOpen }: { open: boolean; onOpen: () => void }
       />
     )
   }
-  return <Row mark={<IconDisc name="plus" tone="accent" />} label={t('fleets.moveNew')} chevron tone={open ? 'accent' : 'default'} onClick={onOpen} hairline={false} data-testid="fleet-new" />
+  return <Row mark={<NewMark tone="accent" />} label={t('fleets.moveNew')} chevron tone={open ? 'accent' : 'default'} onClick={onOpen} hairline={false} data-testid="fleet-new" />
 }
 
 /** The New fleet page, mounted by FleetsScreen beside the list panel (never inside it). Nothing while fleet room is dark or not read. */
@@ -225,5 +225,15 @@ function LeadChoices({ fleet, picked, onPick }: { fleet: FleetView; picked: stri
         <Row label={t('fleets.newNeedDock')} tone="muted" hairline={false} data-testid="fleet-new-busy" />
       )}
     </SheetSection>
+  )
+}
+
+/** The plus, in a box as wide as a fleet row's ship picture (ShipPicture's `row` plate, 56 px): the New fleet row stands in the fleets'
+ *  list, so its label starts in their column (the align law's COLUMN; a bare 32-px disc put it 24 px left of theirs). */
+function NewMark({ tone }: { tone: 'muted' | 'accent' }) {
+  return (
+    <span className="flex w-14 shrink-0 justify-center">
+      <IconDisc name="plus" tone={tone} />
+    </span>
   )
 }

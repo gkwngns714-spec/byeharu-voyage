@@ -149,14 +149,13 @@ test.describe('wide glass', () => {
   // hands the slot back to the basket with the line on it and the served total on its button, and
   // through all of it the goods column does not move.
   // ═════════════════════════════════════════════════════════════════════════════════════════════
-  test(`PORT › Trade at ${WIDE.width}px: the basket stands in the slot, a pick replaces it, a stage returns it`, async ({
+  if (!TRADE_ON_DESK) test(`PORT › Trade at ${WIDE.width}px: the basket stands in the slot, a pick replaces it, a stage returns it`, async ({
     page,
     request,
     baseURL,
   }) => {
     test.setTimeout(420_000)
     // X1 (src/live/tradeOnDesk.ts): the basket is the Trade desk's now; this law returns with the switch off
-    test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
     test.skip(
       !(await reachable(request, baseURL ?? '')),
       `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,

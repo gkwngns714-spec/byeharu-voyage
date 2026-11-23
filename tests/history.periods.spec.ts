@@ -114,7 +114,8 @@ test.describe('the page', () => {
       test.setTimeout(420_000)
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
       await page.setViewportSize(vp)
-      await page.goto('stats')
+      // the world's history card is on Overview, which since slice 2 (#804) stands under "More": its own door
+      await page.goto('stats?face=overview')
       await ready(page)
       const card = page.getByTestId('history-world')
       await expect(card).toBeVisible({ timeout: 120_000 })

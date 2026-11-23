@@ -15,10 +15,9 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         test.setTimeout(480_000)
         test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
         await page.setViewportSize(glass)
-        await page.goto('stats')
+        // Cities by its own door: since slice 2 (#804) the strip opens on News and folds Overview under "More", so the face's place moved
+        await page.goto('stats?face=cities')
         await ready(page)
-        // Cities is the 4th face since 0347 put News after Overview (a Korean strip has other words, so by place)
-        await page.getByRole('tablist').first().getByRole('tab').nth(3).click()
         const rows = page.getByTestId('stats-city-open')
         await expect.poll(() => rows.count(), { timeout: 60_000 }).toBeGreaterThan(10)
         await rows.first().click()
