@@ -30,7 +30,8 @@ for (const vp of [PHONE, WIDE]) {
       }
     })
     await page.setViewportSize(vp)
-    await page.goto('stats')
+    // Overview by its own door: since slice 2 (#804) Stats opens on News and Overview stands under "More"
+    await page.goto('stats?face=overview')
     // the face's own read has landed and the world's chart is drawn; the watch read is still out
     const chart = page.getByTestId('stats-chart-world')
     await expect(chart.locator('[role="img"]').first()).toBeVisible({ timeout: WORLD_BOOT_MS })

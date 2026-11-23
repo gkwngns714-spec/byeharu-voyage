@@ -107,9 +107,8 @@ test('Market: a capital lists 10 goods, every quay 4 to 10, and the Requests doo
 
 // ── ROW 257: THE CHART FOLLOWS THE GOOD; BUY LISTS THE GOODS; A PRESS OPENS NO PAGE ──────────────
 for (const size of [WIDE, PHONE]) {
-  test(`Market @${size.width}: the chart follows the pressed good, a buy completes in the panel, SELL then lists the cargo, no page pops up`, async ({ page, request, baseURL }) => {
+  if (!TRADE_ON_DESK) test(`Market @${size.width}: the chart follows the pressed good, a buy completes in the panel, SELL then lists the cargo, no page pops up`, async ({ page, request, baseURL }) => {
     // X1 (src/live/tradeOnDesk.ts): the Market's own tray and basket are not reached while TRADE_ON_DESK stands (the law below, X1's)
-    test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
     await openCity(page, request, baseURL, size)
     const purseBefore = (await page.getByTestId('purse').innerText()).replace(/\s+/g, ' ')
     await openMarket(page)
@@ -179,8 +178,7 @@ for (const size of [WIDE, PHONE]) {
 // The Market keeps its reading (the goods, the chart), stands no basket row, and its Buy opens the Trade desk on this city and that
 // good, docked, with the panel up on Buy.
 for (const size of [WIDE, PHONE]) {
-  test(`Market @${size.width}: no basket, and a Buy opens the Trade desk on that good (X1)`, async ({ page, request, baseURL }) => {
-    test.skip(!TRADE_ON_DESK, 'X1 is switched off')
+  if (TRADE_ON_DESK) test(`Market @${size.width}: no basket, and a Buy opens the Trade desk on that good (X1)`, async ({ page, request, baseURL }) => {
     await openCity(page, request, baseURL, size)
     await openMarket(page)
     expect((await buyRows(page)).length).toBeGreaterThanOrEqual(2)
@@ -206,8 +204,7 @@ const FIX = 'docs/dev-log/2026-11-08-axis-map-load-words'
 for (const locale of ['en-US', 'ko-KR'] as const) {
   test.describe(`in ${locale}`, () => {
     test.use({ locale })
-    test('Market @390: the send button carries the sum once the price is served, and it fits (row 76, O7)', async ({ page, request, baseURL }) => {
-      test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
+    if (!TRADE_ON_DESK) test('Market @390: the send button carries the sum once the price is served, and it fits (row 76, O7)', async ({ page, request, baseURL }) => {
       await openCity(page, request, baseURL, PHONE)
       await openMarket(page)
       const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]')

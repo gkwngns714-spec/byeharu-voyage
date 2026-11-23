@@ -71,11 +71,25 @@ for (const glass of GLASSES) {
     test.setTimeout(600_000)
     test.skip(!(await reachable(request, baseURL ?? '')), NOT_SERVED(baseURL))
     await openYou(page, glass)
-    const before = await rosterBoxes(page)
     let measured = 0
 
     for (const captain of SHEET_CAPTAINS) {
-      await page.getByTestId('your-captain').filter({ hasText: captain.name }).click()
+      // her row is brought into view FIRST, and the roster read there: since slice 9 (#816) the house plate stands above the roster,
+      // so a third row starts below the fold, and the scroll that reaches it is the player's, not the press's
+      const row = page.getByTestId('your-captain').filter({ hasText: captain.name })
+      await row.scrollIntoViewIfNeeded()
+      // …and once that scroll has settled (the Sheet's title pins small on scroll, Sheet.tsx, and the browser's scroll anchoring follows a frame later)
+      let before = await rosterBoxes(page)
+      await expect
+        .poll(async () => {
+          await page.waitForTimeout(250)
+          const now = await rosterBoxes(page)
+          const still = JSON.stringify(now) === JSON.stringify(before)
+          before = now
+          return still
+        }, { timeout: 15_000 })
+        .toBe(true)
+      await row.click()
       const tray = page.getByTestId('your-captain-tray')
       await expect(tray).toBeVisible()
       const stats = tray.getByTestId('captain-stats')

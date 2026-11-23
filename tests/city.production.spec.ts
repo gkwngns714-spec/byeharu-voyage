@@ -81,7 +81,9 @@ test('Production, three columns: cargo to storage, storage to cargo and Finished
   await buyOneLot(page)
   await openProduction(page)
 
-  await expect(page.getByTestId('city-building-production')).toHaveText('Production')
+  // slice 7 (#810) drew the places as plates: a mark, the word, then one figure of the place (production's is the free hold here), so the
+  // word is read from its own line, the one after the mark
+  await expect(page.getByTestId('city-building-production').locator('[data-plate-mark] + span')).toHaveText('Production')
   await expect(page.getByTestId('city-building-storage')).toHaveCount(0)
   await expect(page.getByTestId('city-building-forge')).toHaveCount(0)
   await expect(page.getByTestId('port-production').getByRole('tab', { name: 'Storage', exact: true })).toBeHidden()

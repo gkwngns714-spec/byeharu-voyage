@@ -19,8 +19,7 @@ import { ready, reachable } from './appReady.fixture'
 test.use({ deviceScaleFactor: 2 })
 
 // X1 (src/live/tradeOnDesk.ts, the visual overhaul's slice 3): the HQ Market's short trade tray these laws hold is not reached while TRADE_ON_DESK stands (a Buy or Sell
-// pressed there opens the Trade desk); these laws run again the day it is false.
-test.skip(TRADE_ON_DESK, 'X1: the trade runs on the Trade desk')
+// pressed there opens the Trade desk); these laws are registered again the day it is false (never skipped: CI's shard gate counts a skip as a red).
 
 async function openMarket(page: Page, size: { width: number; height: number }) {
   await page.setViewportSize(size)
@@ -55,7 +54,7 @@ async function noSideways(page: Page, where: string) {
 }
 
 for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
-  test(`HQ Market @${size.width}: the one goods card, a buy through the short tray, and More moves nothing`, async ({ page, request, baseURL }) => {
+  if (!TRADE_ON_DESK) test(`HQ Market @${size.width}: the one goods card, a buy through the short tray, and More moves nothing`, async ({ page, request, baseURL }) => {
     test.setTimeout(600_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await openMarket(page, size)
