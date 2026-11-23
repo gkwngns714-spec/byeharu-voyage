@@ -86,6 +86,9 @@ export { SkillTile } from './SkillTile'
 //    A CAPTAIN'S PORTRAIT PLATE and THE RING a level fills around its mark (the visual overhaul's slice 6): pure props, drawn inline.
 export { Portrait } from './Portrait'
 export { Ring, type RingTone } from './Ring'
+//    A GOOD'S MASTERY (0479): its level as a ring, and a mastered good's name in gold, one recipe for every face that shows it.
+export { MasteryRing } from './Mastery'
+export { masteredTone } from './masteryStyles'
 
 // 7. BAR — one proportion, 4px, continuous or countable. Meter + Gauge + stockBar + pips, folded.
 export { Bar, type BarTone } from './Bar'

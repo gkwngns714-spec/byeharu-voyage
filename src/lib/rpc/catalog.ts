@@ -422,6 +422,8 @@ const TABLE = {
   worldEarlySighting: { schema: 'world', fn: 'early_sighting', args: [] },
   // 0478 (roadmap 2026-11-23 slice 9): the logbook page's one read. Dark {on: false}.
   worldLogbook: { schema: 'world', fn: 'logbook', args: [] },
+  // 0479 (roadmap 2026-11-23 slice 11): goods mastery's one read. Dark {on: false}.
+  worldGoodsMastery: { schema: 'world', fn: 'goods_mastery', args: [] },
   // 0213 — INSURANCE: the caller's insured voyages under way and the last ones the insurance paid on.
   // A READ at a face (the desk's Plans), never on the beat. The price itself is `cmd.preview`'s: a SAIL's
   // estimate carries `insurance` (quoted unasked, charged with the word INSURED).

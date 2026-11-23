@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { Button, GoodKind, Icon, KEEP_WORDS_CLASS, Sparkline, goodClassRow, goodIcon } from '../components/ui'
+import { Button, GoodKind, Icon, KEEP_WORDS_CLASS, Sparkline, goodClassRow, goodIcon, masteredTone } from '../components/ui'
+import { useMasteryLevels } from './goodsMastery'
 import { PortFlag } from './PortFlag'
 import { usePriceWhy } from './useDesk'
 import { usePriceSeries } from './usePriceSeries'
@@ -70,6 +71,7 @@ export function TradeCard({
   // THE GOOD'S CLASS (0294) rides on the card as on every list a good stands in: the mark beside the name, the wash from
   // class 4 (goodClassRow) — tests/good.class.spec.ts. A good the city does not list has no class served here.
   const { className: wash = '', ...cls } = goodClassRow(r.row?.class)
+  const mastered = useMasteryLevels().mastered(r.code)
   return (
     <div
       className={[
@@ -98,7 +100,12 @@ export function TradeCard({
       <span className="flex min-w-0 flex-col gap-y-0.5">
         <span className="flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-0.5">
           <Icon name={goodIcon(r.code, r.category)} size={18} className="mt-px shrink-0 text-ink-muted" />
-          <span className={`flex-1 ${KEEP_WORDS_CLASS} text-t-label font-medium leading-tight text-ink`} data-testid="trade-good-name">
+          {/* 0479 (goods mastery): a good at the top of her ladder is named in gold (`data-mastered`) */}
+          <span
+            className={`flex-1 ${KEEP_WORDS_CLASS} text-t-label leading-tight ${masteredTone(mastered, 'font-medium text-ink')}`}
+            data-testid="trade-good-name"
+            data-mastered={mastered ? 'true' : undefined}
+          >
             {r.name}
             {/* 0255 (E6b): the city wants this good and pays a multiple for it this period */}
             {r.row?.wanted != null && (

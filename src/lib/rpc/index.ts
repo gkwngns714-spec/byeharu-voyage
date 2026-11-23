@@ -85,6 +85,7 @@ import type {
   FirstVoyages,
   EarlySighting,
   LogbookView,
+  GoodsMasteryView,
   MerchantCard,
   InsuranceView,
   FleetTrades,
@@ -783,6 +784,11 @@ export function worldEarlySighting(): Promise<RpcResult<EarlySighting>> {
 /** 0478: the logbook: her firsts by region, kind and family, the seas and captains, the sets done. Dark: `{on: false}`. */
 export function worldLogbook(): Promise<RpcResult<LogbookView>> {
   return call<LogbookView>('worldLogbook', [])
+}
+
+/** 0479: goods mastery: each good she has sold with its level 1-10, her specialty, the ladder. Dark: `{on: false}`. */
+export function worldGoodsMastery(): Promise<RpcResult<GoodsMasteryView>> {
+  return call<GoodsMasteryView>('worldGoodsMastery', [])
 }
 
 /** 0471: the named pirates and their bounties. Dark: `{on: false}`. */

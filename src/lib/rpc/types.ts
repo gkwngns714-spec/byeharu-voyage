@@ -3151,6 +3151,50 @@ export type LogbookView =
       reward: { rep: number; region_cut: number; kind_cut: number }
     }
 
+/** One good on her mastery ladder (0479): its level 1-10, her units sold of it, the units its level began at and the next level's
+ *  (null at the top). */
+export interface GoodMastery {
+  /** Good CODE and its kind (category). */
+  good: string
+  kind: string
+  level: number
+  units: number
+  at: number
+  next: number | null
+}
+
+/** `mastery` on a SOLD event (0479): her level of the good after the sale; `from` the level before it, `up` whether it rose. */
+export interface MasterySale {
+  good: string
+  level: number
+  from: number
+  units: number
+  at: number | null
+  next: number | null
+  up: boolean
+}
+
+/** `world.goods_mastery()` (0479). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her ladder. Every figure is the
+ *  server's: the faces draw it. */
+export type GoodsMasteryView =
+  | { on: false }
+  | { on: true; company: false }
+  | {
+      on: true
+      company: true
+      /** Each good she has sold, the highest level first (then the most units). */
+      goods: GoodMastery[]
+      /** Her specialty: the first of `goods`, null before her first sale. */
+      specialty: GoodMastery | null
+      /** The units each level 1..top begins at. */
+      ladder: number[]
+      /** The top level (the ladder's length): a good there is named in gold. */
+      top: number
+      /** What a level adds: to her sale price, to her day's allowance (shares). */
+      price_step: number
+      cap_step: number
+    }
+
 /** The `bounty` a BATTLE_REPORT (and a battle's result) carries when a company collected (0471). */
 export interface BountyPaid {
   name: string
