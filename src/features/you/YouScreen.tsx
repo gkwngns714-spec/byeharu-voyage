@@ -1,4 +1,5 @@
-import { Card, CardMark, Clip, Facts, Icon, ListPanel, PageSplit, PlateDisc, Ring, Row, Sheet } from '../../components/ui'
+import { Card, CardMark, Clip, Facts, Icon, ListPanel, MasteryRing, PageSplit, PlateDisc, Ring, Row, Sheet, goodIcon, masteredTone } from '../../components/ui'
+import { useMasteryLevels } from '../../live/goodsMastery'
 import { ShipPicture } from '../fleets/ShipPicture'
 import { formatInt } from '../../lib/format'
 import type { FleetView, PlayerHouse } from '../../lib/rpc'
@@ -179,10 +180,13 @@ function HousePlate({ player }: { player: PlayerHouse }) {
               <HullCountry nation={player.nation} compact size="title" />
             </PlateDisc>
           )}
-          {/* the name whole (names.whole): it wraps, never clips */}
-          <h2 className="min-w-0 text-t-card text-ink">
-            <Clip data-testid="you-plate-name">{player.company_name}</Clip>
-          </h2>
+          <div className="flex min-w-0 flex-col gap-1">
+            {/* the name whole (names.whole): it wraps, never clips */}
+            <h2 className="min-w-0 text-t-card text-ink">
+              <Clip data-testid="you-plate-name">{player.company_name}</Clip>
+            </h2>
+            <Specialty />
+          </div>
         </div>
         <div className="grid min-w-0 flex-[1_1_18rem] grid-cols-2 gap-3">
           <HouseTitle />
@@ -194,6 +198,27 @@ function HousePlate({ player }: { player: PlayerHouse }) {
         <RoomLine className="" />
       </div>
     </Card>
+  )
+}
+
+/** HER SPECIALTY (0479, roadmap slice 11, goods mastery: "a trader gets a specialty"): her highest good on its ladder, as the good's mark
+ *  in its level ring and its name, gold at the top. The served specialty (world.goods_mastery); dark, or before her first sale, nothing. */
+function Specialty() {
+  const t = useT()
+  const levels = useMasteryLevels()
+  const goodByCode = useWorld((s) => s.goodByCode)
+  const s = levels.specialty
+  if (!s) return null
+  const name = goodByCode[s.good]?.name ?? s.good
+  return (
+    <span className="flex min-w-0 items-center gap-1.5" data-testid="you-specialty" data-good={s.good} data-level={s.level}>
+      <MasteryRing level={s.level} top={levels.top} size={28} label={t('mastery.ring', { good: name, n: s.level, top: levels.top })}>
+        <Icon name={goodIcon(s.good, s.kind)} size={14} className="text-accent" />
+      </MasteryRing>
+      <span className="min-w-0 break-words text-t-caption">
+        <span className="text-ink-muted">{t('mastery.specialty')}</span> <span className={masteredTone(s.level >= levels.top, 'text-ink')}>{name}</span>
+      </span>
+    </span>
   )
 }
 

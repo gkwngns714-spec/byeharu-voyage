@@ -5,6 +5,7 @@ import { ShellFrame } from './ShellFrame'
 import { RebuildNotice } from './RebuildNotice'
 import { ArrivalCard } from './ArrivalCard'
 import { LevelUpCard } from './LevelUpCard'
+import { MasteryToast } from '../live/MasteryUp'
 import { WelcomeCard } from './WelcomeCard'
 import { AwayCard } from './AwayCard'
 import { LaunchOffer } from './LaunchOffer'
@@ -115,6 +116,8 @@ export function AppShell() {
             <ArrivalCard />
             {/* a level crossed: its own loud card over the glass's middle, which takes no press (LevelUpCard.tsx, roadmap slice 10) */}
             <LevelUpCard />
+            {/* a sale raised a good's mastery, with no arrival card to say it (src/live/MasteryUp.tsx, roadmap slice 11) */}
+            <MasteryToast />
             <AwayCard />
             {/* a hull joined her fleet: its own fleet on her best route, or stay (LaunchOffer.tsx, the roadmap's slice 6) */}
             <LaunchOffer />

@@ -1614,6 +1614,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-23 with migration 0478 (the logbook): world.logbook() - no argument, no player id; dark
       // {on: false}; lit her firsts. A read. Landed WITH the faces (the Logbook page and You's door, the arrival card's lines).
       'worldLogbook',
+      // Pin moved deliberately 2026-11-23 with migration 0479 (goods mastery): world.goods_mastery() - no argument, no player id; dark
+      // {on: false}; lit her ladder per good and her specialty. A read. Landed WITH the faces (the logbook's Goods rings, You's plate,
+      // the gold names, the arrival card's level chip and the level-up toast).
+      'worldGoodsMastery',
       // Pin moved deliberately with migration 0327 (docs/WORLD_POWERS.md §4.2): A FLEET ATTACKS A CARGO SHIP, and its dry run. No player id; dark (E_NOT_IN_USE) until
       // attack_enabled. Landed WITH the face (src/live/AttackSection.tsx).
       'cmdAttack', 'cmdPreviewAttack',
