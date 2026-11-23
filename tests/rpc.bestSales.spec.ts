@@ -292,15 +292,18 @@ test('the pieces are server-only, and world.board_sell no longer prices a harbou
     `select f as fn, has_function_privilege('authenticated', f, 'execute') as may, has_function_privilege('anon', f, 'execute') as anon,
             (select p.provolatile::text from pg_proc p where p.oid = f::regprocedure) as volatile
        from unnest(array['world.best_sales(uuid,uuid)', 'world.board_sell(uuid,uuid,jsonb)', 'world.board_legs(uuid,jsonb)', 'world.board_trips(uuid,jsonb,jsonb)', 'world.good_mids(uuid)',
-                         'world.board_origin(uuid)', 'world.board_passages(uuid,uuid,uuid,numeric)', 'world.board_amount(uuid,uuid,numeric)']) f`,
+                         'world.board_origin(uuid)', 'world.board_passages(uuid,uuid,uuid,numeric)', 'world.board_amount(uuid,uuid,numeric)',
+                         'world.board_sell_memo(uuid,uuid,jsonb,jsonb)']) f`,
   )
   for (const r of acl.rows) {
     expect(r.may, `${r.fn}: authenticated`).toBe(r.fn.startsWith('world.best_sales('))
     expect(r.anon, `${r.fn}: anon`).toBe(false)
     expect(r.volatile, `${r.fn}: a read is STABLE`).toBe('s')
   }
-  const src = await db.pg.query<{ sell: string; best: string }>(
-    `select (select prosrc from pg_proc where oid = 'world.board_sell(uuid,uuid,jsonb)'::regprocedure) as sell,
+  const src = await db.pg.query<{ sell: string; wrap: string; best: string }>(
+    // 0488: world.board_sell's body is world.board_sell_memo's (moved there whole, with the harbours' memo); world.board_sell asks it with none
+    `select (select prosrc from pg_proc where oid = 'world.board_sell_memo(uuid,uuid,jsonb,jsonb)'::regprocedure) as sell,
+            (select prosrc from pg_proc where oid = 'world.board_sell(uuid,uuid,jsonb)'::regprocedure) as wrap,
             (select prosrc from pg_proc where oid = 'world.best_sales(uuid,uuid)'::regprocedure) as best`,
   )
   expect(src.rows[0].sell).not.toContain('mid_price(')
@@ -310,6 +313,8 @@ test('the pieces are server-only, and world.board_sell no longer prices a harbou
   expect(src.rows[0].sell).toContain('world.board_legs(p_fleet, p_ctx ||')
   expect(src.rows[0].sell).toContain('world.board_trips(p_fleet, p_ctx ||')
   expect(src.rows[0].best).toContain('world.board_legs(p_fleet, v_ctx)')
+  expect(src.rows[0].wrap).toContain('world.board_sell_memo(p_good, p_fleet, p_ctx, null)')
+  expect(src.rows[0].best).toContain('world.board_sell_memo(gd.id, p_fleet, v_ctx, v_memo)')
   // the soft budget 0348 set is still there: a slow call fails soft, never raises
   expect(src.rows[0].best).toContain(`interval '2.5 seconds'`)
   // 0351: the units are the tray's Max — the one cap authority, asked once a good; no walk, step or knob of its own

@@ -42,7 +42,8 @@ declare
   v_fee bigint;
   c_hunks constant jsonb := jsonb_build_array(
     jsonb_build_array('world.tax_rate(uuid,uuid)', ' * public.regard_factor(p_player, p_port)', ''),
-    jsonb_build_array('public.port_fee(uuid,uuid,numeric)', E'\n                           * public.regard_factor(p_player, p_port)', ''),
+    -- 0488: public.port_fee's terms are public.port_fee_terms' (its regard factor taken out: 1 in its place; pg_temp.pre_port_fee is made of it below)
+    jsonb_build_array('public.port_fee_terms(uuid,uuid)', E'\n               public.regard_factor(p_player, p_port),\n', E'\n               1,\n'),
     jsonb_build_array('public.port_dues(uuid,uuid,numeric)', ' * public.regard_factor(p_player, p_port)', ''),
     jsonb_build_array('public.port_dues(uuid,uuid,numeric)', ' || public.regard_line(p_port, p_player)', ''));
 begin
@@ -83,6 +84,9 @@ begin
     v_def := regexp_replace(v_def, 'CREATE OR REPLACE FUNCTION (world|public)\.(\w+)\(', 'CREATE OR REPLACE FUNCTION pg_temp.pre_\2(');
     execute v_def;
   end loop;
+  -- 0488: the dock fee before 0319 is public.port_fee's own arithmetic (public.port_fee_of) on those terms
+  create function pg_temp.pre_port_fee(p_port uuid, p_player uuid, p_value numeric) returns bigint language sql stable
+    as $pf$ select public.port_fee_of(pg_temp.pre_port_fee_terms(p_port, p_player), p_value) $pf$;
 
   -- ── DARK: every stance, three readers, human and merchant, with a planted row that must change nothing ──
   insert into public.house_regard (player_id, nation_id, points) select v_a, n.id, -9000 from public.nations n;
