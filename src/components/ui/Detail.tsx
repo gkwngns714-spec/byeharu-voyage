@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Icon } from './Icon'
+import type { IconName } from './icons'
 import { ScrollPane } from './ScrollPane'
 import { detailColumnClass, glassBesideRailClass } from './screenLayout'
 import { KEEP_WORDS_CLASS } from './tileStyles'
@@ -34,6 +35,7 @@ import { useT } from '../../lib/i18n'
  *  is what the one-page spec walks. The test id names the row; its page is `${testid}-page`. */
 export function SummaryRow({
   title,
+  icon,
   figure,
   meter,
   onClick,
@@ -41,6 +43,8 @@ export function SummaryRow({
   ...rest
 }: {
   title: ReactNode
+  /** The row's glyph (`icons.ts`), in gold before its title (2026-11-23, visual pass 2: a door you can find by its mark, as HQ's plates are). */
+  icon?: IconName
   /** The block's key figure — a number, a formatted string, a `<Figure>`. */
   figure?: ReactNode
   /** A `<Bar>` under the row, full width: the row's share of a whole. */
@@ -71,6 +75,11 @@ export function SummaryRow({
       className={`flex min-h-11 w-full flex-wrap items-center justify-between gap-x-3 rounded-control bg-surface-2 px-3 py-2 text-left transition hover:bg-edge narrow:bg-transparent narrow:relative narrow:flex-wrap narrow:content-center narrow:justify-start narrow:gap-y-0 narrow:px-0 narrow:pr-6 ${className}`}
       {...rest}
     >
+      {icon !== undefined && (
+        <span data-row-cell="mark" className="flex shrink-0 items-center text-accent narrow:hidden" aria-hidden="true">
+          <Icon name={icon} size={20} />
+        </span>
+      )}
       <span
         title={typeof title === 'string' ? title : undefined}
         data-row-cell="label"

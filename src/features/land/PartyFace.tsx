@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bar, Button, Card, Countdown, Figure, Icon, Note, PageSplit, Row, Segmented, goodIcon } from '../../components/ui'
+import { Bar, Button, Card, Countdown, Empty, Figure, Icon, Note, PageSplit, Row, Segmented, goodIcon } from '../../components/ui'
 import { formatDucats, formatInt } from '../../lib/format'
 import { properName, useLocale, useT } from '../../lib/i18n'
 import { cmdLandCollect, cmdLandHome, cmdLandPack, cmdLandRepeat, cmdLandTool, type LandDone, type LandView, type Refusal } from '../../lib/rpc'
@@ -74,7 +74,7 @@ export function PartyFace({ v }: { v: Lit }) {
   const site = make ? v.home.name : siteWord(locale, p.region ?? v.home.region, 'mines', v.regions)
 
   const main = (
-    <Card title={`${t('land.party')} · ${site}`} data-testid="land-party">
+    <Card icon="mountain" title={`${t('land.party')} · ${site}`} data-testid="land-party">
       <div className="mb-2 overflow-hidden rounded-tile border border-edge">
         <LandSite at={fill} out={out} far={out && terms !== null && !terms.home} make={make} />
       </div>
@@ -86,6 +86,7 @@ export function PartyFace({ v }: { v: Lit }) {
         <Bar pct={fill} label={t('land.trip')} tone="accent" className="mt-1" />
       </Row>
       <Row
+        mark={<Icon name="hold" size={20} className="text-accent" />}
         label={make ? t('land.made') : t('land.packs')}
         value={
           <span className="tabular-nums" data-testid="land-packs">
@@ -94,6 +95,7 @@ export function PartyFace({ v }: { v: Lit }) {
         }
       />
       <Row
+        mark={<Icon name="history" size={20} className="text-accent" />}
         label={t('land.homeIn')}
         value={
           homeAt && out ? (
@@ -104,6 +106,7 @@ export function PartyFace({ v }: { v: Lit }) {
         }
       />
       <Row
+        mark={<Icon name="crate" size={20} className="text-accent" />}
         label={t('land.toBook')}
         value={
           <span className="tabular-nums" data-testid="land-to-book">
@@ -181,9 +184,10 @@ export function PartyFace({ v }: { v: Lit }) {
   const stored = Object.entries(v.stored).filter(([, n]) => n > 0)
   const side = (
     <>
-      <Card title={t('land.stored')} data-testid="land-stored">
+      <Card icon="crate" title={t('land.stored')} data-testid="land-stored">
         {stored.length === 0 ? (
-          <Row label={<span className="text-ink-muted">0</span>} hairline={false} />
+          // an empty store is a drawn crate and its one line (visual pass 2): it was a lone grey "0" under the title
+          <Empty icon="crate">{t('city.cargoEmpty')}</Empty>
         ) : (
           stored.map(([code, n], i) => (
             <Row
@@ -197,7 +201,7 @@ export function PartyFace({ v }: { v: Lit }) {
         )}
         <p className="mt-1 text-t-caption text-ink-faint">{`${v.home.name} · ${t('land.awayHours', { n: v.away_hours })}`}</p>
       </Card>
-      <Card title={t('land.tools')} data-testid="land-tools">
+      <Card icon="pick" title={t('land.tools')} data-testid="land-tools">
         {v.tools.map((tool) => (
           <Row
             key={tool.code}
@@ -255,9 +259,9 @@ export function PartyFace({ v }: { v: Lit }) {
           <Figure value={formatDucats(v.purse)} />
         </p>
       </Card>
-      <Card title={`${t('land.here')} · ${regionWord(locale, v.site.region, v.regions)}`} data-testid="land-here">
+      <Card icon="crew" title={`${t('land.here')} · ${regionWord(locale, v.site.region, v.regions)}`} data-testid="land-here">
         {v.site.parties.filter((x) => !x.mine).length === 0 ? (
-          <Row label={<span className="text-ink-muted">{t('land.nobody')}</span>} hairline={false} />
+          <Empty icon="crew">{t('land.nobody')}</Empty>
         ) : (
           v.site.parties
             .filter((x) => !x.mine)

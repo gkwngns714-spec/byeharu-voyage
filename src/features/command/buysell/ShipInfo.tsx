@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { CargoBar, CargoRows, Figure, Row, SheetSection, SkillTile } from '../../../components/ui'
+import { CargoBar, CargoRows, Figure, Icon, Row, SheetSection, SkillTile } from '../../../components/ui'
 import { fleetCargo, fleetCrew, fleetHoldBreakdown, fleetHoldTotal, fleetHoldUsed } from '../../../domain/fleet'
 import { formatFixed, formatInt, formatPrice } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
@@ -27,6 +27,8 @@ const BUYING: readonly SkillEffect[] = ['SPREAD', 'TRADE_CAP']
 //   · NO "No cargo." LINE: an empty hold is said by that figure. Goods aboard are listed as before;
 //   · THE SKILLS STAND TWO TO A LINE at the block's own edges (they were one to a line, 32 px in from each side). A tile is never
 //     narrower than its name's longest word (`min-w-min`, `break-keep`), so a long name takes a line of its own and is not cut.
+// EACH ROW LEADS WITH ITS MARK (visual pass 2, 2026-11-23): crew, coin, cask and hold, the glyphs the desk's top strip and the Fleets tab
+// already give these facts, so the block is found by its marks.
 export function ShipInfo({ fleet, aside = false }: { fleet: FleetView; aside?: boolean }) {
   const t = useT()
   const goodByCode = useWorld((s) => s.goodByCode)
@@ -63,6 +65,7 @@ export function ShipInfo({ fleet, aside = false }: { fleet: FleetView; aside?: b
         />
       )}
       <Row
+        mark={<Icon name="crew" size={20} className="text-accent" />}
         label={t('fleets.crew')}
         // ONE READING OF THE CREW (2026-11-23, finding 15): "Crew 8/20" here beside the sheet's "Crew needed 8 / 8" read as two counts.
         // Here: who is aboard and the room for more; the sheet says what the voyage needs.
@@ -72,14 +75,16 @@ export function ShipInfo({ fleet, aside = false }: { fleet: FleetView; aside?: b
       {/* the red crew line's next step: the hands she lacks and the one press that hires them (2026-11-23, finding 26) */}
       <CrewHint fleet={fleet} className="px-4" />
       {wages !== null && (
-        <Row label={t('desk.wages')} value={<Figure value={formatPrice(wages.per_day)} unit={t('desk.perDay')} />} data-testid="buy-ship-wages" />
+        <Row mark={<Icon name="coin" size={20} className="text-accent" />} label={t('desk.wages')} value={<Figure value={formatPrice(wages.per_day)} unit={t('desk.perDay')} />} data-testid="buy-ship-wages" />
       )}
       <Row
+        mark={<Icon name="cask" size={20} className="text-accent" />}
         label={t('desk.stores')}
         value={<Figure value={formatFixed(fleet.endurance_days, 1)} unit={t('fleets.unitDays')} />}
         data-testid="buy-ship-stores"
       />
       <Row
+        mark={<Icon name="hold" size={20} className="text-accent" />}
         label={t('desk.provisions')}
         value={<Figure value={formatFixed(hold.provisionsT, 1)} unit={t('fleets.unitTons')} />}
         hairline={skills.length > 0}

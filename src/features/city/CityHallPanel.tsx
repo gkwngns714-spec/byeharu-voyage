@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Icon, Note, Row, Skeleton, StatCell, Tray, type TrayDetent } from '../../components/ui'
+import { Icon, type IconName, Note, Row, Skeleton, StatCell, Tray, type TrayDetent } from '../../components/ui'
 import { InvestorRow } from '../../live/CityInvestors'
 import { FundsOnWay } from '../../live/FundsOnWay'
 import { TownHallInfluence } from '../../live/TownHallInfluence'
@@ -142,6 +142,7 @@ export function CityHallPanel({
         <StatCell
           look="stacked"
           label={t('city.population')}
+          mark={<HallMark icon="people" />}
           text={people ? formatInt(people.population) : '—'}
           tone="ink"
           delta={people ? { text: stepWords(t, people), tone: STEP_TONE[people.kind] } : undefined}
@@ -153,17 +154,19 @@ export function CityHallPanel({
         <StatCell
           look="stacked"
           label={t('city.gold')}
+          mark={<HallMark icon="coin" />}
           text={formatDucats(hall.purse.ducats)}
           tone="ink"
           delta={people ? { text: t('city.perDay', { n: formatDucats(people.per_day) }), tone: 'muted' } : undefined}
           data-testid="city-gold"
           data-per-day={people?.per_day ?? 'none'}
         />
-        <StatCell look="stacked" label={t('city.status')} text={you ? formatInt(you.points) : '—'} tone="ink" data-testid="city-status" />
-        <StatCell look="stacked" label={t('city.employees')} text={formatInt(employees)} tone="ink" data-testid="city-employees" />
+        <StatCell look="stacked" label={t('city.status')} mark={<HallMark icon="banner" />} text={you ? formatInt(you.points) : '—'} tone="ink" data-testid="city-status" />
+        <StatCell look="stacked" label={t('city.employees')} mark={<HallMark icon="crew" />} text={formatInt(employees)} tone="ink" data-testid="city-employees" />
         <StatCell
           look="stacked"
           label={t('city.relationship')}
+          mark={<HallMark icon="pact" />}
           text={relation.word}
           tone="ink"
           className="basis-full!"
@@ -176,6 +179,12 @@ export function CityHallPanel({
       <FundsOnWay hall={hall} />
     </CityPanel>
   )
+}
+
+/** A HALL FIGURE'S MARK (visual pass 2, 2026-11-23): the five figures were five words over five numbers of one weight, a column to read;
+ *  each now leads with its glyph in gold, so the eye finds the gold by its coin and the people by their roofs. */
+function HallMark({ icon }: { icon: IconName }) {
+  return <Icon name={icon} size={18} className="shrink-0 text-accent" />
 }
 
 /** THE INVESTORS DRAWER — the design system's slide-in panel, `Tray mode="side"` (the map's; `traySideEdgeClass` is its one authority): it

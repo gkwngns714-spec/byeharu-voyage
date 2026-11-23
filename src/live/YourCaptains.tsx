@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { Button, Clip, Facts, FactsLine, ListHeading, Note, Row, Tray } from '../components/ui'
+import { Button, Clip, Empty, Facts, FactsLine, ListHeading, Note, Row, Tray } from '../components/ui'
 import { cmdCaptainTraitsSet, cmdPromoteCaptain } from '../lib/rpc'
 import type { Refusal, YourCaptain } from '../lib/rpc'
 import { formatInt } from '../lib/format'
@@ -37,7 +37,12 @@ import { levelsThatMatter } from './captainMarks'
 export function CaptainRows({ face }: { face: YourCaptainsFace }) {
   const { captains, press } = face
   if (captains.length === 0) {
-    return <Row label={tl('books.noCaptains')} tone="muted" hairline={false} data-testid="your-captains-none" />
+    // nobody hired yet: a drawn tricorne over the one line (visual pass 2), not a grey sentence alone
+    return (
+      <Empty icon="captain" className="my-1" data-testid="your-captains-none">
+        {tl('books.noCaptains')}
+      </Empty>
+    )
   }
   // THE ROSTER STANDS BY ROLE (owner row 66: "role based on combat, exploration, trading … combat close, long range"): one heading
   // a role, in the roster's own order, her rows under it, best grade first. A role nobody fills keeps its heading and says so,

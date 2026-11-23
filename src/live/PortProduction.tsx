@@ -6,6 +6,7 @@ import {
   Card,
   CargoBar,
   Clip,
+  Empty,
   Figure,
   GoodKind,
   Note,
@@ -125,7 +126,7 @@ export function PortProduction({
 
       <PageThree data-testid="production-columns">
         <div className={shown('storage')}>
-          <Card title={t('city.storage')} data-testid="production-storage">
+          <Card icon="crate" title={t('city.storage')} data-testid="production-storage">
             <div className="@container min-w-0">
               {!hasBuilding(port, 'warehouse') ? (
                 <Note tone="neutral">{t('inn.noStorage')}</Note>
@@ -145,7 +146,10 @@ export function PortProduction({
                     label={t('inn.howFull')}
                   />
                   {stored.length === 0 ? (
-                    <Row label={t('inn.nothing')} tone="muted" hairline={false} />
+                    // an empty store is a drawn crate over its one word (visual pass 2): it was a grey "Empty" under the bar
+                    <Empty icon="crate" className="mt-3">
+                      {t('inn.nothing')}
+                    </Empty>
                   ) : (
                     stored.map((g, i) => (
                       <GoodRow
@@ -168,7 +172,7 @@ export function PortProduction({
         </div>
 
         <div className={shown('cargo')}>
-          <Card title={t('city.cargo')} data-testid="production-cargo">
+          <Card icon="hold" title={t('city.cargo')} data-testid="production-cargo">
             <div className="@container min-w-0">
               {fleet === null ? (
                 <Note tone="neutral">{t('inn.noShip')}</Note>
@@ -227,7 +231,7 @@ export function PortProduction({
         </div>
 
         <div className={shown('recipes')}>
-          <Card title={t('city.recipes')} data-testid="production-recipes">
+          <Card icon="mallet" title={t('city.recipes')} data-testid="production-recipes">
             <div className="@container min-w-0">
               <h3 className="pb-1 text-t-body font-semibold text-ink">{t('city.finished')}</h3>
               {finished.length === 0 ? (
