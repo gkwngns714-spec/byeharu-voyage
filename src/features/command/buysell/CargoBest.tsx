@@ -191,8 +191,14 @@ function PlaceRow({
               width was the name's longest word WITHOUT the flag; where the figures left the name a width between that and
               flag + word (the 9-rem start at 390 px: main's ko-KR names.whole red on 산타크루스데테네리페), the flag stood
               alone above the name and the figures beside the flag. Now the flag and its no-break space are one unbreakable
-              piece, the space glues the name's first word to it, and the name stays one text that turns at its own spaces. */}
-          <span className="whitespace-nowrap">
+              piece, the space glues the name's first word to it, and the name stays one text that turns at its own spaces.
+              THE FLAG COUNTS IN THAT WIDTH (2026-11-24, main's ko-KR names.whole red on f324df21: "157 px in 151"): the page's
+              base style gives every picture `max-width: 100%`, and a picture with a percentage max-width counts as 0 px when the
+              browser works out a box's narrowest width. So the box asked for the name's longest word without the 24-px flag
+              (about 134 px, under the 9-rem start), while the line it drew kept the flag with the word (157 px); where the
+              figures were short enough to stand beside a box under 157 px, the name ran out of it. `max-w-none` on the flag
+              here makes it count at its real width, so the box is never narrower than flag + space + longest word. */}
+          <span className="whitespace-nowrap [&_img]:max-w-none">
             <PortFlag code={port} />
             {' '}
           </span>
