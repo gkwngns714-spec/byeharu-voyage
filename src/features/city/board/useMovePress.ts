@@ -5,6 +5,7 @@ import { yardHref } from '../../../live/cityFaces'
 import { useWorld } from '../../../live/worldStore'
 import { useDeskGood } from '../../../store/deskGood'
 import { useDeskHandoff } from '../../../store/deskHandoff'
+import { pressServed } from './servedPress'
 import type { MoveData } from './useBoard'
 
 // ONE PRESS, THE BUILDING'S OWN ACTION (docs/design/hq-command-2026-11-23.md): a card never trades, orders or hires by itself. It puts
@@ -45,6 +46,10 @@ export function useMovePress(): (m: MoveData) => void {
           return
         case 'invest':
           navigate('/office?face=invest')
+          return
+        // 0480 (lit): the served card commits its own act, through the building's own door (servedPress.ts); HQ stays
+        case 'served':
+          void pressServed(m.move, m.fleet)
       }
     },
     [navigate, selectFleet],

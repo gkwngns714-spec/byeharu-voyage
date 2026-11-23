@@ -14,7 +14,7 @@
 --   THE READ world.hq_board() (the client's one door, registered; STABLE; writes nothing). Dark {"on": false}. Lit, signed out or a
 --     merchant {"on": true, "company": false}. Lit, her company: public.hq_board_for(her id), which answers
 --     {on, company, moves: [{id, kind, band, fleet, fleet_name, at, score, profit, seconds, risk, needs, act}], rate, next, threats,
---      unpriced, ms}:
+--      unpriced, clock (the market's: the client asks again at its edge), ms}:
 --     TRADE    each IDLE fleet's world.best_sales (the desk's own read: DOCKED, nothing queued, on no standing route), the oldest fleet
 --              first, at most hq_board_fleets of them, and no new read started once hq_board_budget_ms have passed (the fleets left
 --              are named in `unpriced`; each best_sales keeps its own 2.5 s budget, so a call is at most ~ budget + 2.5 s). Her best
@@ -226,7 +226,8 @@ declare
   v_next    jsonb;
 begin
   if p_player is null or v_purse is null then
-    return jsonb_build_object('moves', '[]'::jsonb, 'rate', null, 'next', null, 'threats', 0, 'unpriced', '[]'::jsonb, 'ms', 0);
+    return jsonb_build_object('moves', '[]'::jsonb, 'rate', null, 'next', null, 'threats', 0, 'unpriced', '[]'::jsonb,
+                              'clock', jsonb_build_object('now', now(), 'next_change_at', public.next_drift_change_at(now())), 'ms', 0);
   end if;
 
   -- TRADE: each idle fleet's best sales (world.best_sales), the oldest first, within the fleet count and the board's budget
@@ -431,6 +432,8 @@ begin
                         or (public.bounty_on() and exists (select 1 from public.pirate_bounties x join public.pirate_ships n on n.fleet_id = x.fleet_id
                                                             where x.closed_at is null and n.laid_up_at is null and n.sea_id = any (w.seas))))),
     'unpriced', v_unpriced,
+    -- the market's clock (best_sales' own): the client asks again at its edge, never on the beat
+    'clock', jsonb_build_object('now', now(), 'next_change_at', public.next_drift_change_at(now())),
     'ms', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
 end
 $body$
@@ -559,7 +562,7 @@ $h$      ('world',       'goods_mastery',         ''),
     v_b := world.hq_board();
     v_p := cmd.preview_fulfil(v_fl, v_ct);
     select m.e into v_m from jsonb_array_elements(v_b->'moves') m(e) where m.e->>'kind' = 'request';
-    if (v_b->>'company')::boolean is not true or v_m is null or (v_p->>'ok')::boolean is not true
+    if (v_b->>'company')::boolean is not true or v_m is null or (v_p->>'ok')::boolean is not true or jsonb_typeof(v_b #> '{clock,next_change_at}') <> 'string'
        or (v_m->>'profit')::numeric is distinct from (v_p #>> '{estimate,totals,net}')::numeric
        or (v_m->'needs'->>'units')::numeric is distinct from (v_p #>> '{estimate,contract,qty}')::numeric
        or v_m #>> '{act,rpc}' <> 'cmd.fulfil' or (v_m #>> '{act,args,contract}')::uuid <> v_ct or (v_m #>> '{act,args,fleet}')::uuid <> v_fl

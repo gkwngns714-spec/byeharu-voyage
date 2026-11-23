@@ -17,4 +17,4 @@ export const FLEET_JOB_TONE: Record<FleetJob, string> = {
 export const FLEET_JOB_WORD: Record<FleetJob, TKey> = { trip: 'hq.atSea', route: 'hq.atSea', idle: 'hq.idle', busy: 'hq.inPort', stuck: 'hq.stuck' }
 
 /** Each kind of move's glyph (the card's disc and its filter chip). */
-export const KIND_ICON: Record<MoveKind, IconName> = { trade: 'scales', request: 'crate', yard: 'mallet', crew: 'captain', invest: 'invest' }
+export const KIND_ICON: Record<MoveKind, IconName> = { trade: 'scales', request: 'crate', yard: 'mallet', land: 'pick', crew: 'captain', invest: 'invest' }

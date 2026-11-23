@@ -26,7 +26,15 @@ import { useMovePress } from './useMovePress'
 export const TOP_MOVES = 5
 
 type Filter = 'all' | MoveKind
-const FILTER_WORD: Record<Filter, TKey> = { all: 'hq.all', trade: 'hq.trade', request: 'hq.request', yard: 'hq.yard', crew: 'hq.crew', invest: 'hq.invest' }
+const FILTER_WORD: Record<Filter, TKey> = {
+  all: 'hq.all',
+  trade: 'hq.trade',
+  request: 'hq.request',
+  yard: 'hq.yard',
+  land: 'hq.land',
+  crew: 'hq.crew',
+  invest: 'hq.invest',
+}
 
 export function HqBoard({ port }: { port: SnapshotPort | null }) {
   const t = useT()
@@ -38,7 +46,7 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
   const list = more ? shown : shown.slice(0, TOP_MOVES)
 
   return (
-    <div className="flex flex-col gap-6" data-testid="hq-board">
+    <div className="flex flex-col gap-6" data-testid="hq-board" data-source={board.served ? 'served' : 'client'}>
       <Bridge board={board} />
 
       <SheetSection heading={t('hq.moves')} trailing={<span className="text-t-caption tabular-nums text-ink-faint">{formatInt(shown.length)}</span>}>

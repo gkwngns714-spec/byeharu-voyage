@@ -31,8 +31,9 @@ export function Bridge({ board }: { board: Board }) {
         </span>
         <span
           className={`text-t-caption tabular-nums ${board.perHour !== null && board.perHour < 0 ? 'text-danger' : 'text-success'}`}
-          title={t('hq.rateToday')}
+          title={t(board.served ? 'hq.rateDay' : 'hq.rateToday')}
           data-testid="hq-bridge-rate"
+          data-span={board.served ? '24h' : 'today'}
         >
           {board.perHour === null ? '—' : t('hq.perHour', { n: formatDucatsDelta(board.perHour) })}
         </span>
