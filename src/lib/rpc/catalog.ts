@@ -430,6 +430,17 @@ const TABLE = {
   worldNationRace: { schema: 'world', fn: 'nation_race', args: [] },
   // 0485 — A HULL'S ROLE (dark: the door E_NOT_IN_USE, the read {on: false}): her hulls' roles, slots and the ladder, and the one press.
   worldShipRoles: { schema: 'world', fn: 'ship_roles', args: [] },
+  // 0486 — CHOICES AT SEA (dark: the door E_NOT_IN_USE, the read {on: false}): her open and lately settled choices, and the one press.
+  worldSeaChoices: { schema: 'world', fn: 'sea_choices', args: [] },
+  cmdSeaChoose: {
+    schema: 'cmd',
+    fn: 'sea_choose',
+    mutates: true,
+    args: [
+      { name: 'p_choice', type: 'uuid' },
+      { name: 'p_option', type: 'text' },
+    ],
+  },
   cmdSetShipRole: {
     schema: 'cmd',
     fn: 'set_ship_role',

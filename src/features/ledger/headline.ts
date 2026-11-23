@@ -12,6 +12,7 @@ import { parseFightLog, parseFightLoss } from '../../live/fightLines'
 import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 import { skillWord } from '../../live/skillWords'
 import { levelName } from '../../live/levelWords'
+import { SEA_KIND_WORD, seaChoiceOf, seaOptionWord } from '../../live/seaChoiceOf'
 
 // ── THE ONE HEADLINE COMPOSER ───────────────────────────────────────────────────────────────────
 // One sentence per server kind, built from that kind's payload and nothing else. The payloads are
@@ -405,6 +406,18 @@ export function headline(
       // 0477: a weak pirate's sighting, told once: the pirate and the end, as the arrival card's line (battle.sighted).
       const outcome = str(p, 'outcome') ?? 'NO_FIGHT'
       return t('battle.sighted', { pirate: str(p, 'pirate') ?? '', end: outcome === 'NO_FIGHT' ? t('battle.noFight') : t(`battle.out_${outcome}` as TKey) })
+    }
+    case 'SEA_CHOICE': {
+      // 0486: a choice at sea settled at her arrival: the event, the option (hers or the default), and the coin it moved.
+      const end = seaChoiceOf(event)
+      if (end === null) return t('history.bare', { what: kindWords(event.kind) })
+      const word = seaOptionWord(end.option)
+      return t('history.seaChoice', {
+        fleet: end.fleet ?? '',
+        event: t(SEA_KIND_WORD[end.kind]),
+        option: word ? t(word) : end.option,
+        amount: end.amount === 0 ? '' : formatDucatsDelta(end.amount),
+      })
     }
     case 'LEVEL_UP': {
       // 0356: {track, level, reputation}. The arrival card's own sentence (dict/feed.ts), so a level-up reads the same in both places.

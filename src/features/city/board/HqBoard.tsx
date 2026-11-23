@@ -7,12 +7,14 @@ import type { FleetJobRow, SnapshotPort } from '../../../lib/rpc'
 import { litAway, useAwayReport } from '../../../live/useAwayReport'
 import { litRace, useNationRace } from '../../../live/useNationRace'
 import { litRoles, useShipRoles } from '../../../live/useShipRoles'
+import { litSea, useSeaChoices } from '../../../live/useSeaChoices'
 import { JobsAway } from './JobsAway'
 import { Bridge } from './Bridge'
 import { FleetRows } from './FleetRows'
 import { KIND_ICON } from './jobMarks'
 import { MoveCard } from './MoveCard'
 import { RaceBridge } from './RaceBridge'
+import { SeaChoiceCard } from './SeaChoiceCard'
 import { useBoard } from './useBoard'
 import { useMovePress } from './useMovePress'
 
@@ -24,6 +26,9 @@ import { useMovePress } from './useMovePress'
 //   THE BRIDGE   coin and coin per hour · each fleet a ship in her job's tone · what finishes next · pirates near
 //   BEST MOVES   every move open now as a card, ranked by domain/hq's one rule; the top few, More for the rest; icon chips to filter
 //   FLEETS       one row a fleet: picture, job, today's route money, Route / Plan; an idle fleet glows and offers her best card
+//   0486         lit (sea_choices_enabled): A CHOICE AT SEA first of all (a storm, a wreck or a strange sail her long trip met: the options,
+//                their odds as bars, the best by expected coin, the safe default, the clock to her arrival; one press), and While away
+//                says each choice's end since she last pressed OK
 //   0485         lit (ship_roles_enabled): each fleet row's role chips (guard, fast, big cargo) for each of her hulls; the board's role card
 //                (the best role for her new hull, one press) and the yard's card naming the role the next hull should fill
 //   0484         lit (nation_race_enabled): THE COUNTRY RACE under the bridge (her country's place, the countries' cities led as bars, her
@@ -66,13 +71,16 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
   const race = litRace(useNationRace().view)
   // 0485: her hulls' roles (world.ship_roles; dark: null, and nothing of them is drawn)
   const roles = litRoles(useShipRoles().view)
+  // 0486: her choices at sea (world.sea_choices; dark: null, and nothing of them is drawn)
+  const sea = litSea(useSeaChoices().view)
   const raced = (m: (typeof board.moves)[number]) => m.data.kind === 'served' && (m.data.move.race?.points ?? 0) > 0
   const shown = board.moves.filter((m) => filter === 'all' || (filter === 'race' ? raced(m) : m.kind === filter))
   const list = more ? shown : shown.slice(0, TOP_MOVES)
 
   return (
     <div className="flex flex-col gap-6" data-testid="hq-board" data-source={board.served ? 'served' : 'client'}>
-      {away && <JobsAway report={away} />}
+      {sea?.open.map((c) => <SeaChoiceCard key={c.id} c={c} />)}
+      {away && <JobsAway report={away} sea={sea?.recent ?? []} />}
       <Bridge board={board} />
       {race && <RaceBridge race={race} />}
 

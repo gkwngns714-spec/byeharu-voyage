@@ -1641,6 +1641,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // cmd.set_ship_role(ship, role); a hull not hers refused; dark E_NOT_IN_USE. Landed WITH the faces (HQ's fleet rows' role chips, the
       // board's role card and the yard card's next role, the goal card's ladder).
       'worldShipRoles', 'cmdSetShipRole',
+      // Pin moved deliberately 2026-11-23 with migration 0486 (choices at sea): world.sea_choices() - no argument, no player id; dark
+      // {on: false}; lit her open and lately settled choices. A read. And its door, no player id: cmd.sea_choose(choice, option); a choice
+      // not hers refused; dark E_NOT_IN_USE. Landed WITH the faces (HQ's decision card, While away's lines, the arrival card's line).
+      'worldSeaChoices', 'cmdSeaChoose',
       // Pin moved deliberately with migration 0327 (docs/WORLD_POWERS.md §4.2): A FLEET ATTACKS A CARGO SHIP, and its dry run. No player id; dark (E_NOT_IN_USE) until
       // attack_enabled. Landed WITH the face (src/live/AttackSection.tsx).
       'cmdAttack', 'cmdPreviewAttack',

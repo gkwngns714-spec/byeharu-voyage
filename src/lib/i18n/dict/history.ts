@@ -116,6 +116,7 @@ export const historyDict = defineDict({
     forcedHomeGift: ' City paid {amount} for repair.',
     named: '{name} · {what}.',
     bare: '{what}.',
+    seaChoice: '{fleet}: {event} · {option} {amount}',
   },
   ko: {
     entries: '기록',
@@ -226,5 +227,6 @@ export const historyDict = defineDict({
     forcedHomeGift: ' 도시 수리비 {amount} 보조.',
     named: '{name} · {what}.',
     bare: '{what}.',
+    seaChoice: '{fleet}: {event} · {option} {amount}',
   },
 })

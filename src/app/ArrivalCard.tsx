@@ -14,6 +14,8 @@ import { bountyName } from '../live/bountyWords'
 import { ArrivalRepeat } from '../live/ArrivalRepeat'
 import { ArrivalSighting } from '../live/ArrivalSighting'
 import { sightingOf, type Sighting } from '../live/sightingOf'
+import { ArrivalChoice } from '../live/ArrivalChoice'
+import { seaChoiceOf, type SeaEnd } from '../live/seaChoiceOf'
 import { arrivalLogbookOf, saleLogbookOf } from '../live/logbookOf'
 import { ArrivalFound, ArrivalNewGood, ArrivalSetDone } from '../live/ArrivalLogbook'
 import { saleMasteryOf } from '../live/goodsMastery'
@@ -46,6 +48,8 @@ import { HOME_TAB, tabWord } from './navTabs'
 // 0478 (roadmap slice 9, the logbook): a VOYAGE_REPORT's `logbook.found` is the "Discovered" moment at the card's head (it replaces
 // "New port"), a SOLD event's `logbook` is "New: Cinnamon · Spice 3 / 22" under its sale, and a set finished is its own line with the
 // Reputation it paid (src/live/ArrivalLogbook.tsx; that Reputation is not counted again in the card's Reputation line). Dark: never there.
+// 0486 (roadmap slice 16, choices at sea): a SEA_CHOICE event (public.sea_choice_settle, written at her arrival in the same act as the
+// VOYAGE_REPORT) is one line on that arrival's card (src/live/ArrivalChoice.tsx): the event, the option (hers or the default), the coin.
 // 0479 (roadmap slice 11, goods mastery): a SOLD event's mastery names the sale line in gold when the good stands at the top of its
 // ladder (the server's `next` is null), and a level it raised is a chip under the line (src/live/MasteryUp.tsx). Dark: never there.
 
@@ -93,6 +97,8 @@ interface Card {
   bounties: PaidBounty[]
   /** 0477: the early sightings told (EARLY_SIGHTING), held until her arrival when told at sea. */
   sightings: Sighting[]
+  /** 0486: the choices at sea settled at these arrivals (SEA_CHOICE). */
+  seaEnds: SeaEnd[]
 }
 
 function saleOf(e: LedgerEvent): Sale {
@@ -127,7 +133,7 @@ function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: Play
   // 0356: a level's gift is not in this sum: it stands on its own level line.
   const seenSeq = before?.reputation?.seq ?? 0
   const reputation = (now?.reputation?.recent ?? []).reduce((n, r) => (r.seq > seenSeq && r.delta > 0 && r.kind !== 'level' && r.kind !== 'logbook' ? n + r.delta : n), 0)
-  return { arrivals, levels, newPorts, reputation, bounties, sightings }
+  return { arrivals, levels, newPorts, reputation, bounties, sightings, seaEnds: fresh.flatMap((e) => seaChoiceOf(e) ?? []) }
 }
 
 function merge(a: Card | null, b: Card): Card {
@@ -147,12 +153,13 @@ function merge(a: Card | null, b: Card): Card {
     reputation: a.reputation + b.reputation,
     bounties: [...a.bounties, ...b.bounties],
     sightings: [...a.sightings, ...b.sightings],
+    seaEnds: [...a.seaEnds, ...b.seaEnds],
   }
 }
 
 /** A card with nothing on it but these sightings (told after she came in, or joining a card that is open). */
 function sightingCard(sightings: Sighting[]): Card {
-  return { arrivals: [], levels: [], newPorts: 0, reputation: 0, bounties: [], sightings }
+  return { arrivals: [], levels: [], newPorts: 0, reputation: 0, bounties: [], sightings, seaEnds: [] }
 }
 
 export function ArrivalCard() {
@@ -201,7 +208,7 @@ export function ArrivalCard() {
       // No arrival on this read. A level-up joins the card that is open; with no card open it is held for the next one.
       const lines = levelLines(fresh)
       if (lines.length === 0) return
-      if (open.current) setCard((c) => (c ? merge(c, { arrivals: [], levels: lines, newPorts: 0, reputation: 0, bounties: [], sightings: [] }) : c))
+      if (open.current) setCard((c) => (c ? merge(c, { arrivals: [], levels: lines, newPorts: 0, reputation: 0, bounties: [], sightings: [], seaEnds: [] }) : c))
       else held = levelLines(fresh, held)
     }
     read(useWorld.getState())
@@ -275,6 +282,9 @@ export function ArrivalCard() {
         <ArrivalRaids ids={card.arrivals.map((a) => a.id)} onOpen={setLogOpen} />
         {card.sightings.map((s) => (
           <ArrivalSighting key={s.id} s={s} />
+        ))}
+        {card.seaEnds.map((s) => (
+          <ArrivalChoice key={s.id} s={s} />
         ))}
         {card.bounties.map((b, i) => (
           <p key={`${b.battle}-${i}`} className="mt-1 text-t-body text-accent" data-testid="arrival-bounty" data-paid={b.paid}>
