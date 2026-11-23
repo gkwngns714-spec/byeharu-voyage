@@ -4,7 +4,7 @@
 
 import type { BuildingKind } from '../lib/rpc'
 import { t } from '../lib/i18n'
-import type { IconName } from '../components/ui/icons'
+import type { IconName } from '../components/ui'
 
 /**
  * THE FACES OF ONE PLACE, EACH DESCRIBED ONCE. Not routes: a port is one screen, and these are its

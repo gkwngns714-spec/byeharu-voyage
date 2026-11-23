@@ -8,7 +8,7 @@ import { useT } from '../lib/i18n'
 import { draftOfRoute, tripRoute, type RouteStopDraft } from '../live/standingRouteDraft'
 import { saveAndStartRoute } from '../live/startRoute'
 import { servedGoods, useWorld } from '../live/worldStore'
-import { ShipPicture } from '../features/fleets/ShipPicture'
+import { ShipPicture } from '../live/ShipPicture'
 import { useShipMoves } from '../features/fleets/useShipMoves'
 
 // THE SECOND HULL EARNS WHILE SHE IS AWAY (2026-11-23, the roadmap's slice 6, docs/design/roadmap-2026-11-23.md; play-test 3

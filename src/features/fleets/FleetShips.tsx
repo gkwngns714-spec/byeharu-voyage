@@ -4,7 +4,7 @@ import type { FleetView } from '../../lib/rpc'
 import { hullFraction, shipHoldFree, shipHoldUsed } from '../../domain/fleet'
 import { companyRoom, lockedSteps, roomStepWord, useBuyRoom, useHouseRoom, type CompanyRoom } from '../../live/houseRoom'
 import { HullGauge } from './HullGauge'
-import { ShipPicture } from './ShipPicture'
+import { ShipPicture } from '../../live/ShipPicture'
 import { properName, useT } from '../../lib/i18n'
 
 // HER SHIPS, ONE ROW EACH — the owner, 2026-11-14: *"in fleets, when pressed a fleet, show only ships, then when i press the ship, show

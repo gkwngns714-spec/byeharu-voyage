@@ -1,67 +1,31 @@
 import { defineDict } from '../define'
 
-// THE SEAS (docs/SEA_CONDITIONS_AND_REGIONS.md): what a sea asks, whether it is open to a fleet, and what a closed
-// sea says. One file, read by the Codex's Seas face, the Map and by every refusal a closed sea makes
-// (components/ui/seaWallWords.ts). Labels are one or two words. A wall is HAVE / NEED and the fix in a few words
-// (owner, 2026-11-15: "just tell me what i have, and what is required"): `Western Ocean closed · Waves 12 / 30 · fit planking`.
-// A figure and its word never part at a line end (no-break spaces).
+// THE SEAS (docs/SEA_CONDITIONS_AND_REGIONS.md): a sea's name and harbours (the Codex's Seas face, the Map's Seas filter), and the
+// words of a refusal a closed sea makes (components/ui/seaWallWords.ts). The owner switched the sea limits off on 2026-11-23
+// (docs/design/hq-command-2026-11-23.md), so no screen draws what a sea asks; the wall words stand only where the server refuses.
+// A wall is HAVE / NEED and the fix in a few words (owner, 2026-11-15): `Western Ocean closed · Waves 12 / 30 · fit planking`.
 export const seasDict = defineDict({
   en: {
     seas: 'Seas',
     filter: 'Filter seas',
-    fleet: 'Fleet',
-    yourTitle: 'Your title',
-    fleetWaves: 'Fleet waves',
-    title: 'Title',
-    waves: 'Waves',
-    open: 'Open',
-    closed: 'Closed',
-    asksTitle: 'Title {n}',
-    asksWaves: 'Waves {n}',
     harbours: { one: '{n} harbour', other: '{n} harbours' },
-    noFleet: 'No fleet yet.',
-    dark: 'Every sea is open.',
-    lit: 'Each sea needs a title and waves.',
-    // the one help line (it was three): what each figure is
-    how: 'Title: lower of Trading and Exploration · Waves: fleet average, planking adds',
-    homeWaters: 'Home waters',
-    closedTag: 'Closed',
-    closedTitle: 'Needs title {n}',
-    closedWaves: 'Needs waves {n}',
     wallHead: '{sea} closed',
-    wallTitle: 'Title {have} / {need}',
-    wallWaves: 'Waves {have} / {need}',
-    wallBoth: 'Title {title} / {needTitle} · Waves {waves} / {needWaves}',
-    wallAsks: 'Title {needTitle} · Waves {needWaves}',
-    fixTitle: 'Trading & Exploration {need}',
+    wallTitle: 'Title {have} / {need}',
+    wallWaves: 'Waves {have} / {need}',
+    wallBoth: 'Title {title} / {needTitle} · Waves {waves} / {needWaves}',
+    wallAsks: 'Title {needTitle} · Waves {needWaves}',
+    fixTitle: 'Trading & Exploration {need}',
     fixWaves: 'fit planking',
   },
   ko: {
     seas: '바다',
     filter: '바다 찾기',
-    fleet: '함대',
-    yourTitle: '내 직함',
-    fleetWaves: '함대 내파',
-    title: '직함',
-    waves: '내파',
-    open: '열림',
-    closed: '닫힘',
-    asksTitle: '직함 {n}',
-    asksWaves: '내파 {n}',
     harbours: { one: '항구 {n}곳', other: '항구 {n}곳' },
-    noFleet: '아직 함대 없음.',
-    dark: '모든 바다 열림.',
-    lit: '바다마다 직함과 내파 필요.',
-    how: '직함: 교역·탐험 중 낮은 레벨 · 내파: 함대 평균, 판재로 올림',
-    homeWaters: '본국 바다',
-    closedTag: '닫힘',
-    closedTitle: '직함 {n} 필요',
-    closedWaves: '내파 {n} 필요',
     wallHead: '{sea} 닫힘',
-    wallTitle: '직함 {have} / {need}',
-    wallWaves: '내파 {have} / {need}',
-    wallBoth: '직함 {title} / {needTitle} · 내파 {waves} / {needWaves}',
-    wallAsks: '직함 {needTitle} · 내파 {needWaves}',
+    wallTitle: '직함 {have} / {need}',
+    wallWaves: '내파 {have} / {need}',
+    wallBoth: '직함 {title} / {needTitle} · 내파 {waves} / {needWaves}',
+    wallAsks: '직함 {needTitle} · 내파 {needWaves}',
     fixTitle: '교역·탐험 {need}레벨',
     fixWaves: '판재 장착',
   },

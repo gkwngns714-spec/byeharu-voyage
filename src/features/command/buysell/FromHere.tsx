@@ -1,6 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
-import { tileToneClass } from '../../../components/ui/tileStyles'
-import { Icon, KEEP_WORDS_CLASS, goodIcon, useWide } from '../../../components/ui'
+import { Icon, KEEP_WORDS_CLASS, goodIcon, tileToneClass, useWide } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatPriceDelta } from '../../../lib/format'

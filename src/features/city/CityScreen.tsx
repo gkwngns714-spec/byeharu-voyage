@@ -27,6 +27,7 @@ import { buildingsOf, regardBandWord } from '../../domain/port'
 import { CityFacePanel, type CityBuilding } from './CityFace'
 import { CityHallPanel } from './CityHallPanel'
 import { CityScene } from './CityScene'
+import { HqBoard } from './board/HqBoard'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PAGE — a city, full screen (owner's "Game screen development", 2026-10-30)
@@ -255,6 +256,9 @@ function NoCity({ fleets, inHand }: { fleets: readonly FleetView[]; inHand: Flee
   const selectFleet = useCommandDraft((s) => s.selectFleet)
   return (
     <div className="flex min-h-0 flex-1 flex-col px-gutter pb-1.5 pt-1.5" data-testid="city-nocity">
+      <div className="mb-4">
+        <HqBoard port={null} />
+      </div>
       <Note tone="neutral">{t('city.noCity')}</Note>
       {fleets.length > 0 && (
         <section className="mt-2 flex min-h-0 flex-col rounded-tile bg-surface px-gutter pt-1" data-testid="city-nocity-fleets">
@@ -451,6 +455,9 @@ function CityFrame({
             </div>
           )}
 
+          {/* THE COMMAND BOARD FIRST (owner, 2026-11-23; docs/design/hq-command-2026-11-23.md): the bridge, the best moves and the fleets
+              stand at the top of HQ, the first thing seen; the city's buildings and doors stand under it, each one press away. */}
+          <HqBoard port={port} />
           {/* THE PLACES AS PLATES (2026-11-23, the visual overhaul's slice 7): each building and each door is a plate — its mark on a gold
               disc, its word, and ONE figure, a fact of that place already on this page (no plate asks a read of its own): the hall the city's
               gold, the market its tax, production the free hold of your fleets here, the port your fleets here, the inn their crew; the

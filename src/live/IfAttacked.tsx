@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PLAN_LINE_CLASS } from '../components/ui/tileStyles'
-import { Chip } from '../components/ui'
+import { Chip, PLAN_LINE_CLASS } from '../components/ui'
 import { useT } from '../lib/i18n'
 import { cmdRaidOrder, worldEarlySighting, worldRaidRead, type EarlySighting, type RaidOrderWord } from '../lib/rpc'
 import { useServedRead } from './useServedRead'

@@ -1,5 +1,5 @@
 import { Card, CardMark, Clip, Facts, Icon, ListPanel, PageSplit, Ring, Row, Sheet } from '../../components/ui'
-import { ShipPicture } from '../fleets/ShipPicture'
+import { ShipPicture } from '../../live/ShipPicture'
 import { formatInt } from '../../lib/format'
 import type { FleetView, PlayerHouse } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
