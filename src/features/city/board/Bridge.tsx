@@ -29,14 +29,17 @@ export function Bridge({ board }: { board: Board }) {
         <span className="flex items-center" role="img" aria-label={`${t('hq.purse')} ${board.purse === null ? '—' : formatDucats(board.purse)}`}>
           <Figure value={board.purse === null ? '—' : formatDucats(board.purse)} size="figure" />
         </span>
-        <span
-          className={`text-t-caption tabular-nums ${board.perHour !== null && board.perHour < 0 ? 'text-danger' : 'text-success'}`}
-          title={t(board.served ? 'hq.rateDay' : 'hq.rateToday')}
-          data-testid="hq-bridge-rate"
-          data-span={board.served ? '24h' : 'today'}
-        >
-          {board.perHour === null ? '—' : t('hq.perHour', { n: formatDucatsDelta(board.perHour) })}
-        </span>
+        {/* No rate yet (the Report or the board still on its way): no line, never a placeholder dash (the consistency law). */}
+        {board.perHour !== null && (
+          <span
+            className={`text-t-caption tabular-nums ${board.perHour < 0 ? 'text-danger' : 'text-success'}`}
+            title={t(board.served ? 'hq.rateDay' : 'hq.rateToday')}
+            data-testid="hq-bridge-rate"
+            data-span={board.served ? '24h' : 'today'}
+          >
+            {t('hq.perHour', { n: formatDucatsDelta(board.perHour) })}
+          </span>
+        )}
       </div>
 
       <div className="flex min-w-0 flex-col gap-1.5 rounded-tile bg-surface p-3" data-testid="hq-bridge-fleets">

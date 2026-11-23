@@ -28,8 +28,10 @@ const APPLIED_WITHOUT: Readonly<Record<string, string>> = {
   '20260818000441_an_approach_is_not_a_canal.sql': 'the canal rule and its courses repaired; shipped without "-- news: none"',
   '20260818000442_the_pair_table_keeps_step_with_the_courses.sql': 'the pair table re-read from the re-sailed courses; a repair, shipped without "-- news: none"',
   '20260818000446_the_real_straits_are_open.sql': 'the four real straits opened, courses and roadsteads re-sailed, the pair table re-read (#745); shipped without its news line',
+  // 2026-11-23: 0487 (#840) went live without its line; its PR diff did not reach this spec, main's run caught it.
+  '20260818000487_the_lisbon_read_plans_once.sql': 'the Lisbon read plans once: 27 SQL readers made plpgsql, same answers, faster (#840); a speed-up, shipped without "-- news: none"',
 }
-const LAST_APPLIED_WITHOUT = 446
+const LAST_APPLIED_WITHOUT = 487
 
 test('every migration from 0347 on posts its UPDATE row once, or says it is not news', () => {
   const files = readdirSync(DIR).filter((f) => /^\d{14}_.+\.sql$/.test(f))
@@ -52,7 +54,7 @@ test('every migration from 0347 on posts its UPDATE row once, or says it is not 
     if (!checked.includes(f)) bad.push(`${f}: listed in APPLIED_WITHOUT, but it is not a migration from 0347 on`)
     if (Number(f.slice(8, 14)) > LAST_APPLIED_WITHOUT) bad.push(`${f}: the APPLIED_WITHOUT list is closed at 0${LAST_APPLIED_WITHOUT}; a new migration carries its line`)
   }
-  expect(Object.keys(APPLIED_WITHOUT), 'the APPLIED_WITHOUT list is closed: five files, never more').toHaveLength(5)
+  expect(Object.keys(APPLIED_WITHOUT), 'the APPLIED_WITHOUT list is closed: six files, never more').toHaveLength(6)
   expect(bad, bad.join('\n')).toEqual([])
 })
 
