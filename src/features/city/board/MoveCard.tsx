@@ -1,7 +1,7 @@
 import { Figure, IconDisc, KEEP_WORDS_CLASS, NeedChip, Note, goodIcon, tileToneClass, type NeedTone } from '../../../components/ui'
 import type { Move } from '../../../domain/hq'
 import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../../../lib/format'
-import type { FleetJobParams, FleetJobRow, HqMove, HqRisk } from '../../../lib/rpc'
+import type { FleetJobParams, FleetJobRow, HqMove, HqRace, HqRisk } from '../../../lib/rpc'
 import { properName, useT } from '../../../lib/i18n'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
@@ -22,6 +22,10 @@ function riskMark(r: HqRisk): { icon: 'pirate' | 'shield'; tone: NeedTone } {
   if (r.bounty !== null) return { icon: 'pirate', tone: 'danger' }
   return { icon: 'shield', tone: r.danger >= 4 ? 'danger' : r.danger === 3 ? 'warning' : 'muted' }
 }
+
+/** 0484: an Influence chip's tone and word by who leads that city this week: hers green, a rival's amber (a race to win), nobody muted. */
+const RACE_TONE: Record<HqRace['lead'], NeedTone> = { mine: 'success', rival: 'warning', open: 'muted' }
+const RACE_WORD = { mine: 'hq.raceMine', rival: 'hq.raceRival', open: 'hq.raceOpen' } as const
 
 /** 0481: a trade card's trip as a fixed route (her fleet; buy where she lies, sell there, the passage's stops), or null: not a trade, or
  *  she sells her own cargo (no harbour to buy at). */
@@ -122,6 +126,8 @@ export function MoveCard({
   // 0483: a contract to take loads at its harbour A (a chip when she lies elsewhere) and holds her collateral
   const loadAt = s?.kind === 'contract' && s.act.rpc === 'cmd.take_contract' && s.needs.from && s.needs.from !== s.at ? s.needs.from : null
   const collateral = s?.kind === 'contract' ? (s.needs.collateral ?? null) : null
+  // 0484: what it adds for her country's weekly race (a trade or request in a contested city), in the tone of who leads there
+  const race = s?.race && s.race.points > 0 ? s.race : null
   const good = s ? (s.kind === 'trade' ? s.needs.good : undefined) : d.kind === 'trade' ? d.sale.good : undefined
   const repeat = jobs ? repeatOf(d) : null
   const held = repeat ? (jobs?.get(repeat.fleet) ?? null) : null
@@ -143,6 +149,7 @@ export function MoveCard({
         data-good={good}
         data-port={flag ?? undefined}
         data-danger={s?.risk ? String(s.risk.danger) : undefined}
+        data-race={race ? race.lead : undefined}
       >
         <IconDisc name={KIND_ICON[move.kind]} tone="accent" />
         <span className="flex min-w-0 items-center gap-1.5 self-center">
@@ -186,6 +193,17 @@ export function MoveCard({
             <span data-testid="hq-move-collateral" className="inline-flex">
               <NeedChip icon="pact" tone="warning" label={t('hq.collateral', { n: formatDucats(collateral) })}>
                 {formatDucats(collateral)}
+              </NeedChip>
+            </span>
+          )}
+          {race && (
+            <span data-testid="hq-move-race" data-lead={race.lead} className="inline-flex">
+              <NeedChip
+                icon="banner"
+                tone={RACE_TONE[race.lead]}
+                label={`${t('hq.influenceAdds', { n: formatInt(race.points) })} · ${t(RACE_WORD[race.lead])}`}
+              >
+                +{formatInt(race.points)}
               </NeedChip>
             </span>
           )}
