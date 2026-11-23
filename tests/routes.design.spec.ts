@@ -93,7 +93,7 @@ const STRIP = (sheet: string) => {
 async function open(page: Page, glass: { width: number; height: number }, played = true) {
   await page.setViewportSize(glass)
   if (played) await playedWorld(page)
-  await page.goto('routes')
+  await page.goto('lanes')
   await ready(page)
   await expect(page.getByTestId('routes')).toBeVisible()
   await expect(page.getByTestId('routes-list')).toBeVisible({ timeout: 60_000 })

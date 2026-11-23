@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   Button,
   Card,
+  CardMark,
   CardRow,
   Empty,
   FactsLine,
@@ -30,7 +31,9 @@ import {
   useFilterChoice,
 } from '../../components/ui'
 import { formatDucats, formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
-import { useT } from '../../lib/i18n'
+import { useLocale, useT } from '../../lib/i18n'
+import { useNavigate } from 'react-router-dom'
+import { tabHref, tabWord } from '../../app/navTabs'
 import { worldStatsMarkets, type StatsGood, type StatsMarkets } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { GoodTray } from './GoodTray'
@@ -246,9 +249,33 @@ export function MarketsFace() {
             empty={t('stats.nothingTraded')}
             rows={traded.map((r) => ({ id: r.g.code, g: r.g, value: r.traded, text: formatInt(r.traded), tone: 'neutral' as const }))}
           />
+          <LanesDoor />
         </>
       }
     />
+  )
+}
+
+/** THE WORLD'S LANES, ONE ROW (roadmap X3, 2026-11-23): the Routes tab left the Menu, and its board of every lane sailed stands
+ *  behind this door (`/lanes`). A real anchor whose plain click routes in place; its word is the tab table's (`tabWord`). */
+function LanesDoor() {
+  const locale = useLocale()
+  const navigate = useNavigate()
+  return (
+    <Card compact data-testid="stats-lanes">
+      <Row
+        mark={<CardMark icon="route" />}
+        label={tabWord(locale, '/lanes')}
+        chevron
+        hairline={false}
+        href={tabHref('/lanes')}
+        onClick={(e) => {
+          e.preventDefault()
+          navigate('/lanes')
+        }}
+        data-testid="stats-lanes-row"
+      />
+    </Card>
   )
 }
 

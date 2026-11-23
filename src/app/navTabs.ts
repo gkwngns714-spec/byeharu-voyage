@@ -169,7 +169,11 @@ const ALL_TABS: readonly (NavTab & {
   // and not a second word for the same idea: Command's fold is where you make one, this is where
   // you read them, as Port and Market turned out to be one place drawn twice. The bar draws FOUR
   // cells since PORT went under Command (2026-10-18, COMMAND_DESK D8) — a group member costs no cell.
-  { to: '/routes', label: 'Routes', icon: 'route', enabled: true, group: 'cabin' },
+  // OFF THE MENU since 2026-11-23 (roadmap X3, with slice 4's client half): what to sell where from her harbour is the Trade desk's
+  // "From here" line (buysell/FromHere.tsx), and her own standing routes stand on the desk (RouteFold.tsx). The world's lanes, which
+  // have no other home, stay a page: it moved to `/lanes`, its door a row on Stats > Markets, and the Stats cell is lit on it. An old
+  // `/routes` link opens the desk (App.tsx). Reversible: `enabled: true` puts the page back on the Menu.
+  { to: '/lanes', label: 'Routes', icon: 'route', enabled: false, group: 'cabin', under: '/stats' },
   // "Codex", not "Compendium": both mean the 도감, and the shorter word is the one that must fit a
   // cell. The screen's own title spells it out in full.
   { to: '/compendium', label: 'Codex', icon: 'codex', enabled: true, group: 'cabin' },

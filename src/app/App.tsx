@@ -104,7 +104,10 @@ export function App() {
           <Route path="/stats" element={<StatsScreen />} />
           <Route path="/ledger" element={<LedgerScreen />} />
           <Route path="/rank" element={<RankScreen />} />
-          <Route path="/routes" element={<RoutesScreen />} />
+          {/* X3 (2026-11-23): the world's lanes moved to /lanes (a door on Stats > Markets); an old /routes link opens the Trade
+              desk, whose "From here" line names what to sell where from her harbour. */}
+          <Route path="/lanes" element={<RoutesScreen />} />
+          <Route path="/routes" element={<Navigate to={HOME_TAB} replace />} />
           <Route path="/compendium" element={<CompendiumScreen />} />
           <Route path="/you" element={<YouScreen />} />
           <Route path="/levels" element={<LevelsScreen />} />

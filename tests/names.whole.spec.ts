@@ -437,7 +437,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         await faces('Stats')
         await open('rank')
         await faces('Rank')
-        await open('routes')
+        await open('lanes')
         await look('Routes', null, 0)
         await open('compendium')
         await faces('Compendium')

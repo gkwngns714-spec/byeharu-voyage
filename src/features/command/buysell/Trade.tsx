@@ -18,6 +18,7 @@ import { useTripBoard } from '../plans/useTripBoard'
 import { CargoBest } from './CargoBest'
 import { ShipInfo } from './ShipInfo'
 import { CityChips, TradeBoard } from './TradeBoard'
+import { FromHere } from './FromHere'
 import { tradeRows, type TradeGoodRow } from '../../../domain/market'
 import { TradePanel } from './TradePanel'
 import { saleChoices } from './saleChoice'
@@ -235,6 +236,9 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   // 0469: the world events (a famine, a festival, a blockade); a press puts the harbour in hand. Nothing while dark or none is on.
   // X8 (live/eventReach.ts): only the events within two hours' sail of her place; the far ones stand on Stats > News.
   const events = <WorldEventsLine city={city} onCity={pressCity} near={nearEvent} />
+  // FROM HERE (roadmap slice 4; X3 folded the Routes tab into it): where she lies, the best sale to each of up to three harbours,
+  // read off the board's own cards; a tile pressed is that card pressed. Only where she lies: a city pressed elsewhere is not "here".
+  const fromHere = here ? <FromHere sales={sales} open={tripNow ? { good: tripNow.good, sellAt: tripNow.sellAt } : null} onBest={pressBest} /> : null
   // WHERE SHE IS, at the head of the wide desk's left pane: in port, or under way to her destination (TradeStatus.tsx).
   // On a phone the same line stands beside her name (CommandScreen.tsx): the glass has no line to spare (tests/onepage.spec.ts).
   const status = <TradeStatus fleet={fleet} />
@@ -353,6 +357,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
             <>
               {status}
               {events}
+              {fromHere}
               {chips}
               {cargoRow}
               {mapRow}
@@ -397,6 +402,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
                   hold a whole row of them (TradeBoard.tsx); with the doors on one line the face still fits the glass without
                   scrolling (tests/onepage.spec.ts), with 22 px in hand. */}
               {events}
+              {fromHere}
               <div className="mb-2 grid grid-cols-2 gap-2">
                 {cargoRow}
                 {mapRow}
