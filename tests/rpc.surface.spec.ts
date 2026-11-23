@@ -1618,6 +1618,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // {on: false}; lit her ladder per good and her specialty. A read. Landed WITH the faces (the logbook's Goods rings, You's plate,
       // the gold names, the arrival card's level chip and the level-up toast).
       'worldGoodsMastery',
+      // Pin moved deliberately 2026-11-23 with migration 0480 (the HQ board from the server): world.hq_board() - no argument, no player id;
+      // dark {on: false}; lit her moves ranked, each with the command it commits. A read. Landed WITH the face (HQ's board reads it lit).
+      'worldHqBoard',
       // Pin moved deliberately with migration 0327 (docs/WORLD_POWERS.md §4.2): A FLEET ATTACKS A CARGO SHIP, and its dry run. No player id; dark (E_NOT_IN_USE) until
       // attack_enabled. Landed WITH the face (src/live/AttackSection.tsx).
       'cmdAttack', 'cmdPreviewAttack',

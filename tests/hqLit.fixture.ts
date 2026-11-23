@@ -22,12 +22,13 @@ const LIT = [
   'land_enabled',
 ] as const
 
-/** Serve the lit world to `page` in place of the shipped image. */
-export async function serveHqLit(page: Page): Promise<void> {
+/** Serve the lit world to `page` in place of the shipped image. `served`: the HQ board from the server lit too (0480, hq_board_enabled). */
+export async function serveHqLit(page: Page, { served = false }: { served?: boolean } = {}): Promise<void> {
+  const keys = served ? [...LIT, 'hq_board_enabled'] : LIT
   await serveWorldImage(
     page,
-    await patchedWorldImage('hq-lit', async (pg) => {
-      await pg.exec(`update public.world_config set value = 'true'::jsonb where key in (${LIT.map((k) => `'${k}'`).join(', ')})`)
+    await patchedWorldImage(served ? 'hq-served' : 'hq-lit', async (pg) => {
+      await pg.exec(`update public.world_config set value = 'true'::jsonb where key in (${keys.map((k) => `'${k}'`).join(', ')})`)
       await pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite'`)
     }),
   )

@@ -3195,6 +3195,92 @@ export type GoodsMasteryView =
       cap_step: number
     }
 
+/** 0480: a served HQ move's kind (world.hq_board). */
+export type HqMoveKind = 'trade' | 'request' | 'yard' | 'land' | 'crew' | 'invest'
+
+/** 0480: a trade run's risk: the highest danger level (1-5) of the waters of the harbours it calls at, and the richest bounty pirate
+ *  whose home or sea is on it (null with none). */
+export interface HqRisk {
+  danger: number
+  bounty: number | null
+  pirate: string | null
+}
+
+/** 0480: the trip a trade card commits: the desk's own plan (planLines over it, the course from the chart) sent by cmd.issue_lines. */
+export interface HqTripPlan {
+  good: string
+  /** Her port's code, or null when the good is her cargo (sold, not bought). */
+  buy_at: string | null
+  sell_at: string
+  units: number | null
+  /** The harbours called at on the way to the sale (world.board_passages' passage). */
+  stops: string[]
+}
+
+/** 0480: the command a card commits in one press: an existing door, with its arguments. */
+export type HqAct =
+  | { rpc: 'cmd.issue_lines'; args: { fleet: string; version: number; plan: HqTripPlan } }
+  | { rpc: 'cmd.fulfil'; args: { fleet: string; contract: string; version: number } }
+  | { rpc: 'cmd.order_hull'; args: { port: string; class: string } }
+  | { rpc: 'cmd.hire_officer'; args: { code: string; fleet: string } }
+  | { rpc: 'cmd.invest'; args: { port: string; kind: WorkKind; shares: number } }
+  | { rpc: 'cmd.land_collect'; args: Record<string, never> }
+
+/** 0480: what a card needs, as served (each kind fills its own). */
+export interface HqNeeds {
+  good?: string
+  units?: number
+  cost?: number | null
+  /** A trade run's harbour of sale. */
+  to?: string
+  bonus?: number
+  hull?: string
+  officer?: string
+  name?: string
+  wage?: number
+  work?: WorkKind
+  shares?: number
+  idle?: number
+}
+
+/** 0480: one move on the served board, in the server's order. */
+export interface HqMove {
+  id: string
+  kind: HqMoveKind
+  band: number
+  fleet: string | null
+  fleet_name: string | null
+  /** The harbour it happens at (code). */
+  at: string | null
+  /** Coin an hour, the ranking's figure; null for a move with no time. */
+  score: number | null
+  /** Coin gained (a trade's profit, a request's net, a day's coupon); null for none. */
+  profit: number | null
+  seconds: number | null
+  risk: HqRisk | null
+  needs: HqNeeds
+  act: HqAct
+}
+
+/** `world.hq_board()` (0480). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her board, ranked by the server. */
+export type HqBoardView =
+  | { on: false }
+  | { on: true; company: false }
+  | {
+      on: true
+      company: true
+      moves: HqMove[]
+      /** Her ledger's last 24 hours, and over 24. */
+      rate: { per_hour: number; net_24h: number; since: string } | null
+      next: { what: 'arrives' | 'ship' | 'training' | 'lap'; at: string; name: string | null } | null
+      /** Her voyages under way in dangerous waters or with a bounty pirate on them. */
+      threats: number
+      /** Idle fleets past the board's fleet count or budget: no trade run priced for them this read. */
+      unpriced: string[]
+      clock: { now: string; next_change_at: string }
+      ms: number
+    }
+
 /** The `bounty` a BATTLE_REPORT (and a battle's result) carries when a company collected (0471). */
 export interface BountyPaid {
   name: string

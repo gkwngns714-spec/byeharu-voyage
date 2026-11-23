@@ -7,8 +7,9 @@ import { cmdArmadaSail } from '../../../lib/rpc'
 import type { FleetView, GoodBoard, Refusal } from '../../../lib/rpc'
 import { armadaOf, useArmadas } from '../../../live/armadas'
 import { useT } from '../../../lib/i18n'
-import { useDeskPlan, type PlanDraft } from './planDraft'
-import { planAlso, planLines, reachBoard, reachWords, tripRows } from './planLines'
+import { planAlso, planLines, type PlanDraft } from '../../../domain/plan'
+import { useDeskPlan } from './planDraft'
+import { reachBoard, reachWords, tripRows } from './planLines'
 
 // GO — THE ONE WAY A PLANNED TRIP IS QUEUED (moved 2026-10-26 out of the trade card, owner row 229: the Buy / Sell
 // panel's Sail & buy and Sail & sell press it). Two trips, one rule:

@@ -86,6 +86,7 @@ import type {
   EarlySighting,
   LogbookView,
   GoodsMasteryView,
+  HqBoardView,
   MerchantCard,
   InsuranceView,
   FleetTrades,
@@ -789,6 +790,11 @@ export function worldLogbook(): Promise<RpcResult<LogbookView>> {
 /** 0479: goods mastery: each good she has sold with its level 1-10, her specialty, the ladder. Dark: `{on: false}`. */
 export function worldGoodsMastery(): Promise<RpcResult<GoodsMasteryView>> {
   return call<GoodsMasteryView>('worldGoodsMastery', [])
+}
+
+/** 0480: the HQ board, served: every move open to her now, ranked by the server, each with the command that commits it. Dark: `{on: false}`. */
+export function worldHqBoard(): Promise<RpcResult<HqBoardView>> {
+  return call<HqBoardView>('worldHqBoard', [])
 }
 
 /** 0471: the named pirates and their bounties. Dark: `{on: false}`. */

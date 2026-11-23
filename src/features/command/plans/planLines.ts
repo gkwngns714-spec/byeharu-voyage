@@ -1,4 +1,6 @@
 // A PLAN, IN THE GRAMMAR'S OWN WORDS (docs/COMMAND_DESK.md §3.5) — pure: no React, no store, no figure.
+// 0480: THE WRITER (planLines, planAlso, PlanDraft) is src/domain/plan's now (HQ's board sends the same trip); this file keeps the
+// desk's readings of the board (tripRows, reachBoard, reachWords, the sea's asks). The notes below are the writer's.
 //
 //   SAIL Mocha                       (when the fleet is not already there; the course proposed by the one
 //   BUY coffee 60 AT <= 95            course author between the roads — `proposeCourse`, as a typed SAIL
@@ -22,27 +24,13 @@
 // and would be charged nothing, so the word there is noise. The price is the server's, set when she sails
 // (public.insure_voyage over the cargo then on board); nothing here guesses it.
 
-import { courseLeg, daysAt, type PlanLeg, sailOrigin } from '../../../domain/passage'
+import { daysAt } from '../../../domain/passage'
 import { formatFixed, formatMiles, formatVoyageDays } from '../../../lib/format'
-import type { SeaNav } from '../../../lib/sea'
-import type { BoardPassage, BoardSea, FleetView, GoodBoard, PlanLine, SnapshotPort } from '../../../lib/rpc'
-import type { PlanDraft } from './planDraft'
+import type { BoardPassage, BoardSea, GoodBoard } from '../../../lib/rpc'
+import type { PlanDraft } from '../../../domain/plan'
 import { getLocale, t } from '../../../lib/i18n'
 import { seaWallWords } from '../../../components/ui'
 import { seaWallOf } from '../../../lib/rpc'
-
-export type PlanText = { ok: true; lines: PlanLine[]; legs: PlanLeg[] } | { ok: false; noCourseTo: string }
-
-/** A number as the grammar reads it: no grouping, at most two decimals. */
-function num(n: number): string {
-  return String(Math.round(n * 100) / 100)
-}
-
-/** The harbours between, per leg, as world.good_board serves them (0188): to the buy city, then to the sell city. */
-export interface PlanPassage {
-  toBuy: readonly string[]
-  toSell: readonly string[]
-}
 
 /** THE TRIP'S ROWS ON THE BOARD — the buy row (the plan's buy city), the sell row (its sell city), the trip's days and
  *  the supplies it asks. THE TRIP'S END ROW SAYS BOTH, WHOLE (0361): a trip that ends in a sale reads its sell row (the
@@ -56,69 +44,6 @@ export function tripRows(b: GoodBoard | null, plan: Pick<PlanDraft, 'buyAt' | 's
   return { buyRow, sellRow, days: plan.buyAt && !buyRow ? null : (sellRow?.days ?? null), supplies: sellRow?.supplies ?? null }
 }
 
-/** 0475: THE SECOND GOOD the plan's lines carry (a Trade card's `top`, world.best_sales), or null: none, ticked off on the sheet, a
- *  one-ended trip, or the first good's units moved off the count it was served for (the room and the coin it was sized to are gone). */
-export function planAlso(plan: Pick<PlanDraft, 'also' | 'units' | 'buyAt' | 'sellAt'>): { good: string; units: number } | null {
-  const a = plan.also
-  return a && a.on && plan.buyAt && plan.sellAt && plan.units === a.with && a.units > 0 ? { good: a.good, units: a.units } : null
-}
-
-export function planLines(
-  plan: PlanDraft,
-  fleet: FleetView,
-  nav: SeaNav,
-  portByCode: Record<string, SnapshotPort>,
-  passage: PlanPassage = { toBuy: [], toSell: [] },
-): PlanText {
-  const lines: PlanLine[] = []
-  const legs: PlanLeg[] = []
-  const docked = fleet.status === 'DOCKED' ? fleet.port : null
-  let here = docked
-  let from = sailOrigin(fleet, portByCode)
-  // 0213: laden from the start when the plan sells what is on board; otherwise from the BUY on
-  let laden = plan.buyAt === null
-  const also = planAlso(plan)
-  /** A SAIL with its proposed course. */
-  const sail = (code: string): boolean => {
-    const next = courseLeg(nav, portByCode, from, here, code)
-    if (!next) return false
-    legs.push(next.leg)
-    lines.push({ text: `SAIL ${code}${plan.insure && laden ? ' INSURED' : ''}`, path: next.leg.path })
-    from = next.at
-    here = code
-    return true
-  }
-  /** Through each stop, then on to the city; the first harbour without a course, or null. */
-  const passageTo = (stops: readonly string[], city: string): string | null => {
-    for (const stop of stops) {
-      if (stop === here || stop === city) continue
-      if (!sail(stop)) return stop
-    }
-    return sail(city) ? null : city
-  }
-  if (plan.buyAt) {
-    if (plan.buyAt !== here) {
-      const missed = passageTo(passage.toBuy, plan.buyAt)
-      if (missed) return { ok: false, noCourseTo: missed }
-      here = plan.buyAt
-    }
-    lines.push({
-      text: `BUY ${plan.good} ${plan.units !== null && plan.units > 0 ? num(plan.units) : 'ALL'}${plan.max !== null ? ` AT <= ${num(plan.max)}` : ''}`,
-    })
-    // 0475: the second good, bought right after the first at the same quay (planAlso: only for the units it was served for)
-    if (also) lines.push({ text: `BUY ${also.good} ${num(also.units)}` })
-    laden = true
-  }
-  if (plan.sellAt) {
-    if (plan.sellAt !== here) {
-      const missed = passageTo(passage.toSell, plan.sellAt)
-      if (missed) return { ok: false, noCourseTo: missed }
-    }
-    lines.push({ text: `SELL ${plan.good} ALL${plan.min !== null ? ` AT >= ${num(plan.min)}` : ''}` })
-    if (also) lines.push({ text: `SELL ${also.good} ALL` })
-  }
-  return { ok: true, lines, legs }
-}
 
 /** What the board served about the fleet reading a row (0188): its speed, the farthest one leg its captain
  *  plots (null for a company sailing without one), the days of supplies on board now (null when the

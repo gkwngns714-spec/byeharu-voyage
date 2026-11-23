@@ -28,7 +28,7 @@ already makes, and ranked on the client by one documented rule. Every press goes
 
 **v2 (server, one migration each, in number order after the open 0479):**
 
-- **`world.hq_board()`: the server ranks.** It is a STABLE read for the caller, asked at the market's edge (like `world.best_sales`) and
+- **`world.hq_board()`: the server ranks.** (Built in 0480 with the risk and the rate below, dark: `hq_board_enabled`; `docs/dev-log/2026-11-23-hq-board-server.md`. The risk is computed in the board, not in `world.best_sales`.) It is a STABLE read for the caller, asked at the market's edge (like `world.best_sales`) and
   never on the beat. It returns `{moves: [{kind, fleet, score, profit, seconds, risk, needs, act}], rate, next, threats}`, where:
   - `trade` is each idle fleet's `world.best_sales` answer. It is not capped at three fleets.
   - `request` covers every port where a fleet of hers lies, not only the city in hand. The figures are `cmd.preview_fulfil`'s net,

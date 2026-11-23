@@ -15,7 +15,7 @@ import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
 import { courseBetweenPorts, seaNav } from './seaCourse.fixture'
 import { sailEstimate } from '../src/domain/order'
-import { planLines } from '../src/features/command/plans/planLines'
+import { planLines } from '../src/domain/plan'
 import { headline } from '../src/features/ledger/headline'
 import { formatDucats } from '../src/lib/format'
 import {

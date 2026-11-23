@@ -50,9 +50,9 @@ test.describe('the ranking rule', () => {
   })
 })
 
-async function openHq(page: Page, width: number, height: number) {
+async function openHq(page: Page, width: number, height: number, served = false) {
   await page.setViewportSize({ width, height })
-  await serveHqLit(page)
+  await serveHqLit(page, { served })
   await page.goto('city')
   await ready(page)
   await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: WORLD_BOOT_MS })
@@ -112,6 +112,38 @@ test.describe('the board, driven', () => {
     await expect(panel).toHaveAttribute('data-city', 'LIS')
     await expect(panel).toHaveAttribute('data-sell-at', port)
     await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'buy-sell', { timeout: 120_000 })
+  })
+})
+
+// 0480: THE BOARD FROM THE SERVER (hq_board_enabled lit): world.hq_board() ranks every move; each card names its own act and one press
+// commits it through the desk's own door (the trip: planLines and cmd.issue_lines), HQ kept; a trade card wears its risk as a mark.
+test.describe('the board from the server (0480, lit)', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('served, ranked by coin per hour, the risk marked, and one press queues the trip', async ({ page, request, baseURL }) => {
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+    test.setTimeout(600_000)
+    await openHq(page, 390, 844, true)
+    await expect(page.getByTestId('hq-board')).toHaveAttribute('data-source', 'served', { timeout: 180_000 })
+    await expect(page.getByTestId('hq-bridge-rate')).toHaveAttribute('data-span', '24h')
+
+    const trades = page.locator('[data-testid="hq-moves"] [data-testid="hq-move"][data-kind="trade"]')
+    await expect(trades.first()).toBeVisible({ timeout: 180_000 })
+    const top = trades.first()
+    await expect(top).toHaveAttribute('data-served', 'true')
+    await expect(top).toHaveAttribute('data-act', 'cmd.issue_lines')
+    await expect(top.getByTestId('hq-move-risk')).toBeVisible()
+    expect(['shield', 'pirate']).toContain(await top.getByTestId('hq-move-risk').getAttribute('data-risk'))
+    const rates = (await trades.evaluateAll((els) => els.map((e) => e.getAttribute('data-per-hour') ?? ''))).filter((r) => r !== '').map(Number)
+    expect(rates.length, 'served trade cards with coin an hour').toBeGreaterThan(0)
+    expect(rates, 'the server ranks trade runs by coin an hour').toEqual([...rates].sort((a, b) => b - a))
+
+    // ONE PRESS: the trip is queued for her fleet and HQ stays; no refusal stands under the card
+    const fleet = (await top.getAttribute('data-fleet'))!
+    await top.click()
+    await expect(page.locator(`[data-testid="hq-fleet"][data-fleet="${fleet}"]`)).not.toHaveAttribute('data-job', 'idle', { timeout: 120_000 })
+    await expect(page).toHaveURL(/\/city/)
+    await expect(page.getByTestId('hq-move-refusal')).toHaveCount(0)
   })
 })
 
