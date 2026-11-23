@@ -77,6 +77,11 @@
   - the row's Fast chip changes the role;
   - nothing scrolls sideways and every press is at least 44 px.
 
+  It passed headless at 320 and 1280 (32.8 s) against a local build. A role press moves no fleet's version, so the board's question
+  carries the role presses (`useBoard.ts`): the card leaves and the yard's next role moves. The shots are local to the PC that took them:
+  `C:\Users\gkwng\AppData\Local\Temp\claude\f5388e2006711d23\20c3c33b-2e64-4a9f-9933-ae93974d7413\scratchpad\hq-roles\`, named
+  `roles-<320|1280>.png` (before the press) and `roles-set-<320|1280>.png` (after).
+
 ## Measured
 - **Local chain (PGlite).**
   - The self-assert takes **129 ms**, with 8 hunks once and reversing.
