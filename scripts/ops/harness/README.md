@@ -121,3 +121,64 @@ Two pure reads are neither, each tied to the runner that executes it with `db.qu
 - `stores-quote/` is 0454 (a trip is quoted at each departure's speed; docs/dev-log/2026-11-18-stores-quote.md): `before.sql` (the read-only prod check before: the new names free, the probe's needs there, the seven bodies' md5s) and `after.sql` (after: the five new functions server-only, the old walk gone, the head).
 - `land/` is 0455 (the land, slice L1: the party digs, shipped dark behind `land_enabled`; docs/dev-log/2026-11-18-land-l1.md): `before-0455.sql` (the read-only prod check before: each hunk once on the live bodies and none of the new text, the two constraints it swaps, the 57 goods, 25 regions, Lisbon to Plymouth 760.2, nothing of the land there yet) and `after-l1.sql` (after the deploy and at +10 and +30 minutes after the owner lights it: the switch, parties, rows written, the sea's levels as before).
 - `invest-return/` is 0456 (the Invest tray says what a share pays a day; docs/dev-log/2026-11-18-invest-return.md): `before.sql` (hunk counts, the two bodies' md5s, the new name free) and `after.sql` (the head, `coupon_day_of` server only and stable, `invest_for` serves `coupon_day`).
+
+**Index, 0400 to 0487 (one line a folder; the dev-log has what each file reads).**
+- `at-sea-2/` is 0425 (docs/dev-log/2026-11-15-at-sea-2.md): `after.sql`, `before.sql`, `measure.sql`, `rollback-0425.sql`.
+- `at-sea-3/` is 0426 (docs/dev-log/2026-11-15-at-sea-3.md): `after.sql`, `before.sql`, `measure.sql`, `rollback-0426.sql`.
+- `cargo-home/` is 0437 (docs/dev-log/2026-11-15-cargo-home.md): `after.sql`, `before.sql`, `hunks.sql`, `probe-select.sql`, `rollback-0437.sql`.
+- `cargo-ships/` is 0308, 0309, 0310 (docs/dev-log/2026-11-05-cargo-visible.md): `proof-0308.mjs`, `proof-0309.mjs`, `proof-0310.mjs`.
+- `combat-speed/` is 0422 (docs/dev-log/2026-11-15-combat-speed.md): `after.sql`, `before.sql`, `measure-duty.sql`, `measure-speeds.sql`, `rollback-0422.sql`.
+- `contracts/` is 0483 (docs/dev-log/2026-11-23-contracts.md): `after-0483.sql`, `before-0483.sql`.
+- `crown-call/` is 0307 (docs/dev-log/2026-11-05-crown-call.md): `proof-0307.mjs`.
+- `dividends/` is 0312 (docs/dev-log/2026-11-05-dividends.md): `proof-0312.mjs`.
+- `drift-15/` is 0420 (docs/dev-log/2026-11-15-drift-15.md): `after.sql`, `before.sql`, `rollback-0420.sql`.
+- `early-sighting/` is 0477: `after-0477.sql`, `before-0477.sql`.
+- `escort-refit/` is 0452 (docs/dev-log/2026-11-16-escort-refit.md): `after.sql`, `before.sql`, `probe.mjs`, `rollback-0452.sql`, `scene.sql`.
+- `evasion/` is 0453 (docs/dev-log/2026-11-16-evasion.md): `after-check.sh`, `check.sql`, `gen-checks.mjs`, `replay.mjs`, `rollback-0453.sql`.
+- `far-traders/` is 0404 (docs/dev-log/2026-11-14-far-traders.md): `after-0404.sql`, `before-0404.sql`, `calls-0404.sql`, `legs-0404.sql`, `rollback-0404.sql`.
+- `first-hour/` is 0472 (docs/dev-log/2026-11-22-first-hour.md): `after-0472.sql`, `before-0472.sql`.
+- `first-voyages/` is 0476 (docs/dev-log/2026-11-23-first-voyages.md): `after-0476.sql`, `before-0476.sql`.
+- `fleet-jobs/` is 0481: `after-0481.sql`, `before-0481.sql`.
+- `gift-profit/` is 0474 (docs/dev-log/2026-11-23-gift-and-profit.md): `after-0474.sql`, `before-0474.sql`.
+- `goods-mastery/` is 0479: `after-0479.sql`, `before-0479.sql`.
+- `history/` is 0316 (docs/dev-log/2026-11-05-history-graphs.md): `bytes-0316.mjs`, `proof-0316.mjs`.
+- `hot-set/` is 0463, 0470 (docs/dev-log/2026-11-22-hot-set-packed.md): `after-0463.sql`, `after-0470.sql`, `before-0463.sql`, `before-0470.sql`.
+- `houses-board/` is 0467 (docs/dev-log/2026-11-22-houses-board.md): `after-0467.sql`, `before-0467.sql`.
+- `hq-board/` is 0480: `after-0480.sql`, `before-0480.sql`.
+- `insurance/` is 0314 (docs/dev-log/2026-11-05-insurance.md): `proof-0314.mjs`.
+- `isthmus/` is 0441 (docs/dev-log/2026-11-15-isthmus.md): `after.sql`, `before.sql`, `prod-shaped.mjs`, `rollback-0441.sql`.
+- `lap-keep/` is 0301 (docs/dev-log/2026-11-02-lap-history-100.md): `proof-0301.mjs`.
+- `level-unlocks/` is 0468: `after-0468.sql`, `before-0468.sql`.
+- `lisbon-read/` is 0487 (docs/dev-log/2026-11-24-lisbon-read.md): `after-0487.sql`, `before-0487.sql`, `diagnose-1.sql`, `diagnose-2.sql`.
+- `logbook/` is 0478: `after-0478.sql`, `before-0478.sql`.
+- `nation-race/` is 0484 (docs/dev-log/2026-11-23-country-race.md): `after-0484.sql`, `before-0484.sql`.
+- `near-choice/` is 0475 (docs/dev-log/2026-11-23-near-choice.md): `after-0475.sql`, `before-0475.sql`.
+- `no-land/` is 0440 (docs/dev-log/2026-11-15-land-channels.md): `after.sql`, `before.sql`, `prod-courses.sql`, `prod-legs.sql`, `rollback-0440.sql`.
+- `npc-origin/` is 0322 (docs/dev-log/2026-11-06-every-npc-ship-has-an-origin.md): `after.sql`, `before.sql`, `proof-0322.mjs`.
+- `pace-up/` is 0421 (docs/dev-log/2026-11-15-pace-up.md): `after.sql`, `before.sql`, `measure-cron.sql`, `measure-knobs.sql`, `measure-rings.sql`, `rollback-0421.sql`.
+- `pacific-pirates/` is 0414 (docs/dev-log/2026-11-14-pacific-pirates.md): `after.sql`, `before.sql`, `gen-0414.mjs`, `gen-legs.mjs`, `gen-sea.mjs`, `head.sql`, `health.sql`, `plot-98.mjs`, `probe.mjs`, `rollback-0414.sql`, `roster.mjs`, `scene-sail.sql`, `tail.sql`.
+- `pirate-bounties/` is 0471 (docs/dev-log/2026-11-22-pirate-bounties.md): `after-0471.sql`, `before-0471.sql`.
+- `pirate-war/` is 0427, 0429, 0432 (docs/dev-log/2026-11-15-pirates-strike.md): `after-0429.sql`, `after-0432.sql`, `after.sql`, `before-0429.sql`, `before-0432.sql`, `before.sql`, `cargo-0429.sql`, `dump.mjs`, `probe.mjs`, `purse.sql`, `q.mjs`, `rollback-0427.sql`, `rollback-0429.sql`, `rollback-0432.sql`, `scene-hunting.sql`.
+- `quay-goods/` is 0460 (docs/dev-log/2026-11-19-quay-goods.md): `after-0460.sql`, `before-0460.sql`.
+- `quote-faults/` is 0462 (docs/dev-log/2026-11-19-quote-faults.md): `after-0462.sql`, `after.sql`, `before-0462.sql`, `before.sql`.
+- `raid-companies/` is 0464 (docs/dev-log/2026-11-22-raid-companies.md): `after-0464.sql`, `before-0464.sql`.
+- `reputation/` (docs/dev-log/2026-11-12-level-up.md): `after-beats.sql`, `after.sql`, `before-beats.sql`, `before-hunks.sql`, `gen-checks.mjs`, `gen-level-checks.mjs`, `level-after-beats.sql`, `level-after-seed.sql`, `level-after.sql`, `level-before-beats.sql`, `level-before-hunks.sql`, `level-before-seed.sql`.
+- `requests-source/` is 0473 (docs/dev-log/2026-11-22-requests-source.md): `after-0473.sql`, `before-0473.sql`, `hunks-0473.sql`.
+- `reserve-floor/` is 0306 (docs/dev-log/2026-11-05-reserve-floor.md): `proof-0306.mjs`.
+- `route-legs/` (docs/dev-log/2026-11-11-route-builder.md): `before.sql`, `cost.sql`.
+- `sea-choices/` is 0486 (docs/dev-log/2026-11-23-sea-choices.md): `after-0486.sql`, `before-0486.sql`.
+- `sea-courses/` is 0482 (docs/dev-log/2026-11-23-sea-courses.md): `after-0482.sql`, `before-0482.sql`.
+- `seas-memo/` is 0442 (docs/dev-log/2026-11-15-seas-memo.md): `after.sql`, `before.sql`, `measure-reaches.mjs`, `rollback-0442.sql`.
+- `ship-requests/` is 0466 (docs/dev-log/2026-11-22-ship-requests.md): `after-0466.sql`, `before-0466.sql`.
+- `ship-roles/` is 0485 (docs/dev-log/2026-11-23-ship-roles.md): `after-0485.sql`, `before-0485.sql`.
+- `short-server/` is 0433 (docs/dev-log/2026-11-15-short-server.md): `after.sql`, `before.sql`, `rollback-0433.sql`, `rollback.mjs`.
+- `slim-autovac/` is 0412: `after.sql`, `before.sql`, `gen.mjs`, `rollback-0412.sql`.
+- `slim-db/` is 0409 (docs/dev-log/2026-11-14-slim-laps.md): `RUNBOOK.md`, `after.sql`, `before.sql`, `gen.mjs`, `health.sql`, `rollback-0409.sql`.
+- `slim-laps/` is 0416: `after.sql`, `before.sql`, `gen.mjs`, `rollback-0416.sql`.
+- `starter-gear/` is 0424 (docs/dev-log/2026-11-15-starter-gear.md): `after.sql`, `before.sql`, `rollback-0424.sql`.
+- `straits/` is 0446 (docs/dev-log/2026-11-16-straits.md): `after-pairs.sql`, `after.sql`, `before.sql`, `prod-shaped.mjs`, `rollback-0446.sql`, `rollback-pairs-0446.sql`.
+- `the-navy-hunts/` is 0340 (docs/dev-log/2026-11-07-the-navy-hunts.md): `after.sql`, `before.sql`, `cost-0340.mjs`, `dark-scene.sql`, `mutations-0340.mjs`, `proof-0340.mjs`.
+- `tick-combat/` is 0435, 0436: `before-0436.sql`, `check.sql`, `rollback-0435.sql`.
+- `wanted/` is 0334 (docs/dev-log/2026-11-06-wanted.md): `after.sql`, `before.sql`, `dark-scene.sql`, `mutations-0334.mjs`, `proof-0334.mjs`.
+- `world-events/` is 0469 (docs/dev-log/2026-11-22-world-events.md): `after-0469.sql`, `before-0469.sql`.
+- `yard-order/` is 0465: `after-0465.sql`, `before-0465.sql`.
