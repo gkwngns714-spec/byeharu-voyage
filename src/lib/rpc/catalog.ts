@@ -420,6 +420,8 @@ const TABLE = {
   // 0477 — THE EARLY SIGHTING (dark: {on: false}): whether it is lit, her row's state and, once told, its report. A READ, no argument,
   // no player id. The Buy & sell sheet's "If attacked" line shows while it is on.
   worldEarlySighting: { schema: 'world', fn: 'early_sighting', args: [] },
+  // 0478 (roadmap 2026-11-23 slice 9): the logbook page's one read. Dark {on: false}.
+  worldLogbook: { schema: 'world', fn: 'logbook', args: [] },
   // 0213 — INSURANCE: the caller's insured voyages under way and the last ones the insurance paid on.
   // A READ at a face (the desk's Plans), never on the beat. The price itself is `cmd.preview`'s: a SAIL's
   // estimate carries `insurance` (quoted unasked, charged with the word INSURED).

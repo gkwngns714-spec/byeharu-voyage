@@ -12,6 +12,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { companyRoom, useHouseRoom } from '../../live/houseRoom'
 import { YouLevelsDoor } from './Levels'
+import { LogbookDoor } from './Logbook'
 import { useLevels } from './useLevels'
 import { HullCountry } from '../../live/HullCountry'
 import { seasOpened } from '../../live/levelWords'
@@ -102,8 +103,12 @@ function YouBody({ title }: { title: string }) {
               <Row label={t('you.noCompany')} tone="muted" hairline={false} data-testid="you-no-company" />
             </Card>
           ) : (
-            // slice 10: the levels have their own page (`/levels`); You keeps its door, every level as a ring (Levels.tsx)
-            <YouLevelsDoor />
+            // slice 10: the levels have their own page (`/levels`); You keeps its door, every level as a ring (Levels.tsx).
+            // 0478: and the logbook's door (`/logbook`), drawn only while the server serves it on (Logbook.tsx)
+            <>
+              <YouLevelsDoor />
+              <LogbookDoor />
+            </>
           )
         }
       />

@@ -21,6 +21,7 @@ import { historyDict } from './history'
 import { innDict } from './inn'
 import { joinDict } from './join'
 import { landDict } from './land'
+import { logbookDict } from './logbook'
 import { mapDict } from './map'
 import { marketsDict } from './markets'
 import { newsDict } from './news'
@@ -61,6 +62,7 @@ export const DICT = {
   inn: innDict,
   join: joinDict,
   land: landDict,
+  logbook: logbookDict,
   map: mapDict,
   markets: marketsDict,
   news: newsDict,

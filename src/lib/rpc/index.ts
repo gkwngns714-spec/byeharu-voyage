@@ -84,6 +84,7 @@ import type {
   PirateBounties,
   FirstVoyages,
   EarlySighting,
+  LogbookView,
   MerchantCard,
   InsuranceView,
   FleetTrades,
@@ -777,6 +778,11 @@ export function worldFirstVoyages(): Promise<RpcResult<FirstVoyages>> {
 /** 0477: the early sighting: whether it is lit, her row's state, and once told its report. Dark: `{on: false}`. */
 export function worldEarlySighting(): Promise<RpcResult<EarlySighting>> {
   return call<EarlySighting>('worldEarlySighting', [])
+}
+
+/** 0478: the logbook: her firsts by region, kind and family, the seas and captains, the sets done. Dark: `{on: false}`. */
+export function worldLogbook(): Promise<RpcResult<LogbookView>> {
+  return call<LogbookView>('worldLogbook', [])
 }
 
 /** 0471: the named pirates and their bounties. Dark: `{on: false}`. */
