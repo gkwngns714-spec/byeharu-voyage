@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready } from './appReady.fixture'
+import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MARKET DESK (0288 + the Market face) — the owner's 2026-10-31 instructions, held
@@ -31,7 +32,9 @@ async function openMarket(page: Page, size: { width: number; height: number } = 
 
 test.describe.configure({ mode: 'serial' })
 
-test('market @390: the chart is the city’s left region and follows the pressed good', async ({ page }) => {
+// X1 (src/live/tradeOnDesk.ts, slice 3): while TRADE_ON_DESK stands a press on a card opens the Trade desk (tests/drive.market.spec.ts holds
+// that law), so the chart cannot follow a press here; this law is registered again the day it is false (never skipped: a skip is a red)
+if (!TRADE_ON_DESK) test('market @390: the chart is the city’s left region and follows the pressed good', async ({ page }) => {
   await openMarket(page)
   // the good in hand is printed on the chart, and it is not empty
   const chartGood = page.getByTestId('city-market-chart-good')

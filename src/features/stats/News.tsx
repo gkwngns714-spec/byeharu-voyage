@@ -19,13 +19,20 @@ const PAGE = 50
 
 const FILTERS: readonly NewsFilter[] = ['world', 'cities']
 
+type NewsList = { filter: NewsFilter; items: NewsItem[]; more: boolean }
+
+/** THE LAST LIST OF EACH FILTER, kept across a remount (row 250, *"keep it even though you move from tab to tab"*; src/live/liveRead.ts
+ *  `keep` says the same for the other Stats reads): since slice 2 Stats opens on News, so a return to Stats draws the list it left at once,
+ *  while the first page is asked again, and shows no skeleton (tests/drive.nav.spec.ts). */
+const keptNews = new Map<NewsFilter, NewsList>()
+
 export function NewsFace({ live }: { live: StatsNow | null }) {
   const t = useT()
   const navigate = useNavigate()
   const setDeskCity = useDeskGood((s) => s.setFocus)
   const { nowMs } = useShellState()
   const [filter, setFilter] = useState<NewsFilter>('world')
-  const [list, setList] = useState<{ filter: NewsFilter; items: NewsItem[]; more: boolean } | null>(null)
+  const [list, setList] = useState<NewsList | null>(() => keptNews.get('world') ?? null)
   const seen = useRef<{ filter: NewsFilter; head: number } | null>(null)
   const head = live?.news_head ?? null
 
@@ -59,6 +66,11 @@ export function NewsFace({ live }: { live: StatsNow | null }) {
     })
   }, [head, filter])
 
+  // what is on screen is kept for the next mount
+  useEffect(() => {
+    if (list !== null) keptNews.set(list.filter, list)
+  }, [list])
+
   const older = () => {
     if (list === null || list.items.length === 0) return
     const before = Math.min(...list.items.map((i) => Number(i.id)))
@@ -68,7 +80,7 @@ export function NewsFace({ live }: { live: StatsNow | null }) {
     })
   }
 
-  const shown = list !== null && list.filter === filter ? list : null
+  const shown = list !== null && list.filter === filter ? list : (keptNews.get(filter) ?? null)
   const openHarbour = (code: string) => {
     setDeskCity(code)
     navigate('/command')

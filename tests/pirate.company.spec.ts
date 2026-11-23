@@ -96,8 +96,8 @@ for (const lang of LANGS) {
       await fits(page, 'Profile')
       await shot(page, `profile-${lang}-${size.width}`)
 
-      // her levels stand on the You page (the desk's Levels face moved there, 2026-11-16)
-      await page.goto('you')
+      // her levels stand on their own Levels page (the desk's Levels face moved to You on 2026-11-16, and to /levels in roadmap slice 10, #819)
+      await page.goto('levels')
       await ready(page)
       const rows = page.getByTestId('levels-country')
       await expect(rows).toHaveCount(CROWNS.length, { timeout: 60_000 })

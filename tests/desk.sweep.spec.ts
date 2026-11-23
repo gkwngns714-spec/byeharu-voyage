@@ -118,6 +118,15 @@ for (const size of SIZES) {
       // Trade — its own tab: the docked city's goods as priced cards, and its Buy button in the trade panel (owner 2026-10-30)
       await page.locator('a[href$="/command"]:visible').first().click()
       const tradeFace = page.getByTestId('desk-trade')
+      // X1 (slice 3, #817): the desk keeps the good last handed to it (store/deskGood.ts), so it opens on the good the Sell above
+      // handed over; on a phone that good's sheet may stand over the cards, and its ✕ lets go of it before a card's Buy is pressed
+      await expect(tradeFace.getByTestId('trade-buy').first()).toBeVisible({ timeout: 60_000 })
+      await page.waitForTimeout(1_000)
+      const held = page.getByRole('dialog')
+      if ((await held.count()) > 0) {
+        await held.first().getByRole('button', { name: 'Close', exact: true }).click()
+        await expect(held).toHaveCount(0)
+      }
       await tradeFace.getByTestId('trade-buy').first().click()
       await expect(page.getByTestId('good-detail-price')).toContainText(/\d/, { timeout: 60_000 })
       await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'buy', { timeout: 30_000 })
