@@ -83,6 +83,7 @@ import type {
   PirateShipCard,
   PirateBounties,
   FirstVoyages,
+  EarlySighting,
   MerchantCard,
   InsuranceView,
   FleetTrades,
@@ -771,6 +772,11 @@ export function worldNavyShipCard(fleetId: string): Promise<RpcResult<NavyShipCa
 /** 0476: the starter chain: pays each step met once, then names the one she is on. Dark: `{on: false}`. */
 export function worldFirstVoyages(): Promise<RpcResult<FirstVoyages>> {
   return call<FirstVoyages>('worldFirstVoyages', [])
+}
+
+/** 0477: the early sighting: whether it is lit, her row's state, and once told its report. Dark: `{on: false}`. */
+export function worldEarlySighting(): Promise<RpcResult<EarlySighting>> {
+  return call<EarlySighting>('worldEarlySighting', [])
 }
 
 /** 0471: the named pirates and their bounties. Dark: `{on: false}`. */

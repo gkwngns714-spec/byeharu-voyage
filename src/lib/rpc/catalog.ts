@@ -417,6 +417,9 @@ const TABLE = {
   // 0476 — THE STARTER CHAIN (dark: {on: false}). A read that pays a step met, once (as world.contracts winds its board); no argument,
   // no player id. NOT `mutates`: the purse it may move is the shell's own read, re-asked when a step was paid (FirstVoyageLine.tsx).
   worldFirstVoyages: { schema: 'world', fn: 'first_voyages', args: [] },
+  // 0477 — THE EARLY SIGHTING (dark: {on: false}): whether it is lit, her row's state and, once told, its report. A READ, no argument,
+  // no player id. The Buy & sell sheet's "If attacked" line shows while it is on.
+  worldEarlySighting: { schema: 'world', fn: 'early_sighting', args: [] },
   // 0213 — INSURANCE: the caller's insured voyages under way and the last ones the insurance paid on.
   // A READ at a face (the desk's Plans), never on the beat. The price itself is `cmd.preview`'s: a SAIL's
   // estimate carries `insurance` (quoted unasked, charged with the word INSURED).

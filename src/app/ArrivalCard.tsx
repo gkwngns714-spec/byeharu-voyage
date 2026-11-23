@@ -12,6 +12,8 @@ import { ArrivalRaids } from '../live/ArrivalRaids'
 import { bountyOf, type PaidBounty } from '../live/bountyPaid'
 import { bountyName } from '../live/bountyWords'
 import { ArrivalRepeat } from '../live/ArrivalRepeat'
+import { ArrivalSighting } from '../live/ArrivalSighting'
+import { sightingOf, type Sighting } from '../live/sightingOf'
 import { HOME_TAB, tabWord } from './navTabs'
 
 // THE ARRIVAL CARD (owner row 307, the remaster's S3): a fleet comes in, sells, and the player was told nothing. One
@@ -34,6 +36,9 @@ import { HOME_TAB, tabWord } from './navTabs'
 // 0468 (P2, each level opens something): what a level OPENS stood under its line here ("Opens: Ships a fleet +1"). Since roadmap slice 10
 // it stands on the level-up card (LevelUpCard.tsx), the one loud moment a level has; this card keeps the level's line and its gift.
 // An overlay: fixed, never in the flow, pointer-events only on the card itself; reduced motion is index.css's rule.
+// 0477 (roadmap slice 7): an EARLY_SIGHTING event (a weak pirate's sighting, told at its close) is said on the card of her next arrival
+// (src/live/ArrivalSighting.tsx: what happened, what insurance and guns would have done). Told while her fleet is still at sea it waits for
+// that arrival; told after she came in (or while a card is open) it is said at once.
 
 const SHOWN_MS = 20_000
 
@@ -70,6 +75,8 @@ interface Card {
   reputation: number
   /** 0471: the bounties collected on the read(s) this card holds (a fight's BATTLE_REPORT that paid one). */
   bounties: PaidBounty[]
+  /** 0477: the early sightings told (EARLY_SIGHTING), held until her arrival when told at sea. */
+  sightings: Sighting[]
 }
 
 function saleOf(e: LedgerEvent): Sale {
@@ -79,7 +86,7 @@ function saleOf(e: LedgerEvent): Sale {
 }
 
 /** The facts of one read: the events not seen before, against the house as it stood on the read before. */
-function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: PlayerHouse | null, held: LevelLine[]): Card | null {
+function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: PlayerHouse | null, held: LevelLine[], sightings: Sighting[]): Card | null {
   const reports = fresh.filter((e) => e.kind === 'VOYAGE_REPORT')
   // 0471: a fight that paid a bounty brings the card up on its own, as an arrival does
   const bounties = fresh.flatMap((e) => bountyOf(e) ?? [])
@@ -101,7 +108,7 @@ function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: Play
   // 0356: a level's gift is not in this sum: it stands on its own level line.
   const seenSeq = before?.reputation?.seq ?? 0
   const reputation = (now?.reputation?.recent ?? []).reduce((n, r) => (r.seq > seenSeq && r.delta > 0 && r.kind !== 'level' ? n + r.delta : n), 0)
-  return { arrivals, levels, newPorts, reputation, bounties }
+  return { arrivals, levels, newPorts, reputation, bounties, sightings }
 }
 
 function merge(a: Card | null, b: Card): Card {
@@ -120,7 +127,13 @@ function merge(a: Card | null, b: Card): Card {
     newPorts: a.newPorts + b.newPorts,
     reputation: a.reputation + b.reputation,
     bounties: [...a.bounties, ...b.bounties],
+    sightings: [...a.sightings, ...b.sightings],
   }
+}
+
+/** A card with nothing on it but these sightings (told after she came in, or joining a card that is open). */
+function sightingCard(sightings: Sighting[]): Card {
+  return { arrivals: [], levels: [], newPorts: 0, reputation: 0, bounties: [], sightings }
 }
 
 export function ArrivalCard() {
@@ -138,6 +151,8 @@ export function ArrivalCard() {
     let before: PlayerHouse | null = null
     // 0356: the level-ups that came on a read with no arrival and no open card. The next arrival's card says them.
     let held: LevelLine[] = []
+    // 0477: the sightings told while her fleet was at sea, for her next arrival's card
+    let heldSightings: Sighting[] = []
     const read = (s: ReturnType<typeof useWorld.getState>) => {
       if (s.phase !== 'ready') return
       if (seen.current === null) {
@@ -148,17 +163,26 @@ export function ArrivalCard() {
       }
       const fresh = s.events.filter((e) => !seen.current!.has(e.id))
       fresh.forEach((e) => seen.current!.add(e.id))
-      const found = readArrival(fresh, before, s.player, held)
+      const sighted = fresh.flatMap((e) => sightingOf(e) ?? [])
+      const found = readArrival(fresh, before, s.player, held, [...heldSightings, ...sighted])
       before = s.player
       if (found) {
         held = []
+        heldSightings = []
         setCard((c) => merge(c, found))
         return
+      }
+      // 0477: a sighting with no arrival on this read: said on the open card, or at once when her fleet is not at sea, else held
+      if (sighted.length > 0) {
+        const atSea = (x: Sighting) => s.fleets.some((f) => f.name === x.fleet && f.voyage != null)
+        const now = open.current ? sighted : sighted.filter((x) => !atSea(x))
+        heldSightings = [...heldSightings, ...sighted.filter((x) => !now.includes(x))]
+        if (now.length > 0) setCard((c) => merge(c, sightingCard(now)))
       }
       // No arrival on this read. A level-up joins the card that is open; with no card open it is held for the next one.
       const lines = levelLines(fresh)
       if (lines.length === 0) return
-      if (open.current) setCard((c) => (c ? merge(c, { arrivals: [], levels: lines, newPorts: 0, reputation: 0, bounties: [] }) : c))
+      if (open.current) setCard((c) => (c ? merge(c, { arrivals: [], levels: lines, newPorts: 0, reputation: 0, bounties: [], sightings: [] }) : c))
       else held = levelLines(fresh, held)
     }
     read(useWorld.getState())
@@ -199,7 +223,9 @@ export function ArrivalCard() {
         className={FLOAT_CARD_CLASS}
       >
         <p className="text-t-label font-semibold">
-          {card.arrivals.length === 0 ? t('bounty.title') : port ? t('feed.arrivedAt', { port }) : t('feed.arrived')}
+          {card.arrivals.length === 0
+            ? card.bounties.length > 0 ? t('bounty.title') : t('battle.sightTitle')
+            : port ? t('feed.arrivedAt', { port }) : t('feed.arrived')}
         </p>
         {sales.map((s) => (
           <p key={s.id} className="mt-1 flex justify-between gap-3 text-t-body" data-testid="arrival-sale" data-profit={s.profit ?? undefined}>
@@ -218,6 +244,9 @@ export function ArrivalCard() {
           </p>
         ))}
         <ArrivalRaids ids={card.arrivals.map((a) => a.id)} onOpen={setLogOpen} />
+        {card.sightings.map((s) => (
+          <ArrivalSighting key={s.id} s={s} />
+        ))}
         {card.bounties.map((b, i) => (
           <p key={`${b.battle}-${i}`} className="mt-1 text-t-body text-accent" data-testid="arrival-bounty" data-paid={b.paid}>
             {t('bounty.claimed', { n: formatInt(b.paid) })} · {bountyName(locale, b, portByCode)}
