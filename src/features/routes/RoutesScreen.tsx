@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, Empty, Figure, Hint, ListHeading, ListPanel, Note, PageSplit, RankBars, type RankRow, Row, Segmented, Sheet, Skeleton, StackedBar, type StackedPart, StatCell, Tray, type TrayDetent } from '../../components/ui'
+import { Button, Card, Empty, Figure, Hint, Icon, ListHeading, ListPanel, MarkRow, Note, PageSplit, RankBars, type RankRow, Row, Segmented, Sheet, Skeleton, StackedBar, type StackedPart, StatCell, Tray, shareOf, type TrayDetent } from '../../components/ui'
 import { formatDucats, formatInt, formatMiles, formatRelative } from '../../lib/format'
 import type { RouteBoard, RouteBoardRow } from '../../lib/rpc'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
@@ -224,22 +224,20 @@ function Side({ board, rows, order }: { board: RouteBoard; rows: readonly RouteB
     <>
       <Card title={t('stats.overview')} data-testid="routes-overview">
         <div className="grid grid-cols-2 gap-4">
-          <StatCell look="stacked" label={t('routes.lanes')} value={figures.lanes} format={formatInt} tone="accent" data-testid="routes-lanes" />
-          <StatCell look="stacked" label={t('routes.yours')} value={figures.mine} format={formatInt} data-testid="routes-mine" />
+          <StatCell look="stacked" mark={<Icon name="route" size={18} className="text-ink-muted" />} label={t('routes.lanes')} value={figures.lanes} format={formatInt} tone="accent" data-testid="routes-lanes" />
+          <StatCell look="stacked" mark={<Icon name="person" size={18} className="text-ink-muted" />} label={t('routes.yours')} value={figures.mine} format={formatInt} data-testid="routes-mine" />
         </div>
-        {/* THE SPLIT, drawn — the bar draws itself only once there is a lane to split; before that the two lines say 0 */}
-        {figures.lanes > 0 ? (
-          <StackedBar parts={reach} format={formatInt} label={t('routes.byReach')} className="mt-5" data-testid="routes-reach" />
-        ) : (
-          <div className="mt-3">
-            <StatCell look="line" label={t('routes.inReach')} value={figures.inReach} format={formatInt} />
-            <StatCell look="line" label={t('routes.outOfReach')} value={figures.outOfReach} format={formatInt} />
-          </div>
+        {/* THE SPLIT, drawn, and the merchants' and the fleetless lanes as mark rows against the lanes (visual pass 3). A board with no
+            lane stands nothing more: the two figures say 0, and the list beside says "No routes" over its mark. */}
+        {figures.lanes > 0 && (
+          <>
+            <StackedBar parts={reach} format={formatInt} label={t('routes.byReach')} className="mt-5" data-testid="routes-reach" />
+            <div className="mt-3">
+              <MarkRow icon="merchant" label={t('stats.merchants')} figure={<Figure value={formatInt(figures.merchants)} />} pct={shareOf(figures.merchants, figures.lanes)} />
+              <MarkRow icon="ship" label={t('routes.noFleet')} figure={<Figure value={formatInt(figures.noFleet)} />} pct={shareOf(figures.noFleet, figures.lanes)} />
+            </div>
+          </>
         )}
-        <div className="mt-3">
-          <StatCell look="line" label={t('stats.merchants')} value={figures.merchants} format={formatInt} />
-          <StatCell look="line" label={t('routes.noFleet')} value={figures.noFleet} format={formatInt} />
-        </div>
       </Card>
       {/* THE TOP LANES FOLLOW THE ORDER ON THE GLASS: the card's one small control is the order's word */}
       <Card title={t('routes.top')} aside={<span className="text-t-label text-ink-muted">{t(ORDERS.find((o) => o.id === order)!.label)}</span>} data-testid="routes-top">

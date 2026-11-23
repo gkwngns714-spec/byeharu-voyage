@@ -112,7 +112,7 @@ type CitySelection = 'hall' | typeof PRODUCTION_PLACE | CityBuilding
 const CITY_TILES: readonly { id: CitySelection; icon: IconName; label: TKey }[] = [
   { id: 'hall', icon: 'wreath', label: 'city.cityHall' },
   { id: 'market', icon: 'chart', label: 'city.market' },
-  { id: PRODUCTION_PLACE, icon: 'mallet', label: 'city.production' },
+  { id: PRODUCTION_PLACE, icon: 'works', label: 'city.production' },
   { id: 'port', icon: 'ship', label: 'city.port' },
   { id: 'inn', icon: 'crew', label: 'city.inn' },
 ]

@@ -86,9 +86,17 @@ export { SkillTile } from './SkillTile'
 //    A CAPTAIN'S PORTRAIT PLATE and THE RING a level fills around its mark (the visual overhaul's slice 6): pure props, drawn inline.
 export { Portrait } from './Portrait'
 export { Ring, type RingTone } from './Ring'
+//    A GOOD'S MASTERY (0479): its level as a ring, and a mastered good's name in gold, one recipe for every face that shows it.
+export { MasteryRing } from './Mastery'
+export { masteredTone } from './masteryStyles'
 
 // 7. BAR — one proportion, 4px, continuous or countable. Meter + Gauge + stockBar + pips, folded.
 export { Bar, type BarTone } from './Bar'
+// The mark row: a glyph, a short word, its figure and a bar under them (visual pass 3), and the share its bar draws.
+export { MarkRow, MarkRowHead } from './MarkRow'
+// The round inset a plate leads with: a house's flag on You and on the Account page (visual pass 3).
+export { PlateDisc } from './PlateDisc'
+export { shareOf } from './barShare'
 //    THE STACKED BAR — one whole cut into the KINDS that make it up, with the legend that keeps
 //    colour from being the only channel (the world's money by holder; the merchants' fleets).
 export { StackedBar, type StackedPart } from './StackedBar'

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Card, Flag, Icon, Ring, Segmented, Skeleton, goodIcon, categoryLabel, type IconName } from '../../components/ui'
-import { Portrait } from '../../components/ui/Portrait'
+import { Card, Flag, Icon, MasteryRing, Ring, Segmented, Skeleton, goodIcon, categoryLabel, masteredTone, Portrait, type IconName } from '../../components/ui'
+import { useMasteryLevels } from '../../live/goodsMastery'
 import { ShipArtIcon } from '../../live/battle/ShipArt'
 import { shipTierOf } from '../../chart'
 import { formatInt } from '../../lib/format'
@@ -155,8 +155,9 @@ function SetCard({
   )
 }
 
-/** One slot: lit when she has it, a silhouette when not. Its name is its tooltip and its accessible name. */
-function Slot({ seen, name, children }: { seen: boolean; name: string; children: ReactNode }) {
+/** One slot: lit when she has it, a silhouette when not. Its name is its tooltip and its accessible name. 0479: a good's slot carries
+ *  her mastery level (`data-level`) when she has sold it and the ladder is lit. */
+function Slot({ seen, name, level, children }: { seen: boolean; name: string; level?: number; children: ReactNode }) {
   return (
     <span
       role="img"
@@ -164,6 +165,7 @@ function Slot({ seen, name, children }: { seen: boolean; name: string; children:
       title={name}
       data-testid="logbook-slot"
       data-seen={seen ? 'true' : 'false'}
+      data-level={level}
       className={`flex aspect-square items-center justify-center overflow-hidden rounded-control ${
         seen ? 'bg-accent-soft text-accent ring-1 ring-accent/40' : 'bg-surface-2 text-ink-faint'
       }`}
@@ -233,17 +235,35 @@ function HarbourSets({ v }: { v: Ready }) {
 function GoodSets({ v }: { v: Ready }) {
   const t = useT()
   const goodByCode = useWorld((s) => s.goodByCode)
+  // 0479 (goods mastery, roadmap slice 11): a good she has sold wears its mastery level as a ring round its mark (dark: no ring)
+  const mastery = useMasteryLevels()
   const seen = new Set(v.seen.goods)
   const reward = t('logbook.rewardKind', { rep: formatInt(v.reward.rep), pct: pctWord(v.reward.kind_cut) })
   return (
     <>
       {v.kinds.map((k) => (
         <SetCard key={k.code} code={k.code} name={categoryLabel(k.code)} n={k.n} of={k.of} done={k.done} reward={reward}>
-          {k.goods.map((code) => (
-            <Slot key={code} seen={seen.has(code)} name={goodByCode[code]?.name ?? code}>
-              <Icon name={goodIcon(code, k.code)} size={22} />
-            </Slot>
-          ))}
+          {k.goods.map((code) => {
+            const name = goodByCode[code]?.name ?? code
+            const m = seen.has(code) ? mastery.of(code) : null
+            const mark = <Icon name={goodIcon(code, k.code)} size={m ? 18 : 22} />
+            return (
+              <Slot
+                key={code}
+                seen={seen.has(code)}
+                name={m ? `${name} · ${t('mastery.up', { n: m.level })}` : name}
+                level={m ? m.level : undefined}
+              >
+                {m ? (
+                  <MasteryRing level={m.level} top={mastery.top} size={34} label={t('mastery.ring', { good: name, n: m.level, top: mastery.top })}>
+                    <span className={masteredTone(m.level >= mastery.top, 'text-accent')}>{mark}</span>
+                  </MasteryRing>
+                ) : (
+                  mark
+                )}
+              </Slot>
+            )
+          })}
         </SetCard>
       ))}
     </>

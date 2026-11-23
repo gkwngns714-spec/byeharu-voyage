@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, FLOAT_CARD_CLASS, glassBesideRailClass } from '../components/ui'
+import { Button, FLOAT_CARD_CLASS, glassBesideRailClass, masteredTone } from '../components/ui'
 import { formatInt, moneyFigure, moneyWord, type MoneyKind } from '../lib/format'
 import { num, str } from '../lib/json'
 import { useLocale, useT } from '../lib/i18n'
 import { levelName } from '../live/levelWords'
 import { levelLines, type LevelLine } from './levelLines'
-import type { LedgerEvent, LogbookFound, LogbookSale, LogbookSetDone, PlayerHouse } from '../lib/rpc'
+import type { LedgerEvent, LogbookFound, LogbookSale, LogbookSetDone, MasterySale, PlayerHouse } from '../lib/rpc'
 import { goodWordOf, portNameOf, useWorld } from '../live/worldStore'
 import { ArrivalRaids } from '../live/ArrivalRaids'
 import { bountyOf, type PaidBounty } from '../live/bountyPaid'
@@ -16,6 +16,8 @@ import { ArrivalSighting } from '../live/ArrivalSighting'
 import { sightingOf, type Sighting } from '../live/sightingOf'
 import { arrivalLogbookOf, saleLogbookOf } from '../live/logbookOf'
 import { ArrivalFound, ArrivalNewGood, ArrivalSetDone } from '../live/ArrivalLogbook'
+import { saleMasteryOf } from '../live/goodsMastery'
+import { MasteryUpChip } from '../live/MasteryUp'
 import { HOME_TAB, tabWord } from './navTabs'
 
 // THE ARRIVAL CARD (owner row 307, the remaster's S3): a fleet comes in, sells, and the player was told nothing. One
@@ -44,6 +46,8 @@ import { HOME_TAB, tabWord } from './navTabs'
 // 0478 (roadmap slice 9, the logbook): a VOYAGE_REPORT's `logbook.found` is the "Discovered" moment at the card's head (it replaces
 // "New port"), a SOLD event's `logbook` is "New: Cinnamon · Spice 3 / 22" under its sale, and a set finished is its own line with the
 // Reputation it paid (src/live/ArrivalLogbook.tsx; that Reputation is not counted again in the card's Reputation line). Dark: never there.
+// 0479 (roadmap slice 11, goods mastery): a SOLD event's mastery names the sale line in gold when the good stands at the top of its
+// ladder (the server's `next` is null), and a level it raised is a chip under the line (src/live/MasteryUp.tsx). Dark: never there.
 
 const SHOWN_MS = 20_000
 
@@ -59,6 +63,8 @@ interface Sale {
   kind: MoneyKind
   /** 0478: the good's first sale ("New: Cinnamon · Spice 3 / 22"), when the logbook is lit; else null. */
   logbook: LogbookSale | null
+  /** 0479: her mastery of the good after the sale (its level, whether it rose), when the ladder is lit; else null. */
+  mastery: MasterySale | null
 }
 
 interface Arrival {
@@ -92,7 +98,7 @@ interface Card {
 function saleOf(e: LedgerEvent): Sale {
   const profit = num(e.payload, 'profit')
   const net = num(e.payload, 'trip_net') ?? profit
-  return { id: e.id, good: str(e.payload, 'good') ?? '', qty: num(e.payload, 'qty'), figure: net ?? num(e.payload, 'total'), kind: net === null ? 'total' : 'profit', profit, logbook: saleLogbookOf(e) }
+  return { id: e.id, good: str(e.payload, 'good') ?? '', qty: num(e.payload, 'qty'), figure: net ?? num(e.payload, 'total'), kind: net === null ? 'total' : 'profit', profit, logbook: saleLogbookOf(e), mastery: saleMasteryOf(e) }
 }
 
 /** The facts of one read: the events not seen before, against the house as it stood on the read before. */
@@ -245,7 +251,9 @@ export function ArrivalCard() {
         {sales.map((s) => (
           <div key={s.id}>
           <p className="mt-1 flex justify-between gap-3 text-t-body" data-testid="arrival-sale" data-profit={s.profit ?? undefined}>
-            <span className="min-w-0 break-words">{t('feed.arrSold', { n: s.qty === null ? '' : formatInt(s.qty), good: goodWordOf(s.good) })}</span>
+            <span className={`min-w-0 break-words ${masteredTone(s.mastery?.next === null, '')}`} data-mastered={s.mastery?.next === null ? 'true' : undefined}>
+              {t('feed.arrSold', { n: s.qty === null ? '' : formatInt(s.qty), good: goodWordOf(s.good) })}
+            </span>
             {/* THE FIGURE HAS ITS WORD (2026-11-11, the trade-flow slice): "−1,182" stood bare. It is the trip's served net (0474:
                 "Profit" / "Loss": the sale's money less what the goods cost, the profit tax, the wages and the dock fee; the sheet's
                 figure and what the purse moved), or its total. */}
@@ -260,6 +268,8 @@ export function ArrivalCard() {
           </p>
           {/* 0478: the good's first sale: "New: Cinnamon · Spice 3 / 22" */}
           {s.logbook && <ArrivalNewGood s={s.logbook} />}
+          {/* 0479: the good's mastery rose with this sale */}
+          {s.mastery?.up && <MasteryUpChip m={s.mastery} className="mt-0.5" />}
           </div>
         ))}
         <ArrivalRaids ids={card.arrivals.map((a) => a.id)} onOpen={setLogOpen} />

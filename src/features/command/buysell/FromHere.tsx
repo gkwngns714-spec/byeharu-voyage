@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
-import { Icon, KEEP_WORDS_CLASS, goodIcon, tileToneClass, useWide } from '../../../components/ui'
+import { Icon, KEEP_WORDS_CLASS, goodIcon, masteredTone, tileToneClass, useWide } from '../../../components/ui'
+import { useMasteryLevels } from '../../../live/goodsMastery'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatPriceDelta } from '../../../lib/format'
@@ -36,6 +37,8 @@ export function FromHere({
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
   const best = useMemo(() => fromHere(sales), [sales])
+  // 0479 (goods mastery): a good at the top of her ladder wears its mark in gold on its tile
+  const mastery = useMasteryLevels()
   const row = useRef<HTMLDivElement>(null)
   useGiveWay(row, wide, best)
   if (best.length === 0) return null
@@ -50,7 +53,7 @@ export function FromHere({
       key: port,
       on: open !== null && open.good === s.good && open.sellAt === port,
       press: () => onBest(s),
-      data: { 'data-testid': 'from-here-tile', 'data-port': port, 'data-good': s.good, 'data-profit': String(s.profit ?? '') },
+      data: { 'data-testid': 'from-here-tile', 'data-port': port, 'data-good': s.good, 'data-profit': String(s.profit ?? ''), 'data-mastered': mastery.mastered(s.good) ? 'true' : undefined },
       title: `${city} · ${properName('good', s.good, good?.name ?? s.good)} ${profit}`,
       city: (
         // the flag beside the name, never over it (a line of its own would make the tile a line taller); a long name turns at its
@@ -62,7 +65,7 @@ export function FromHere({
       ),
       profit: (
         <span className={`flex shrink-0 items-center gap-0.5 font-semibold tabular-nums text-success ${wide ? 'justify-end' : ''}`} data-testid="from-here-profit">
-          <Icon name={goodIcon(s.good, good?.category ?? '')} size={14} className="shrink-0 text-ink-muted" />
+          <Icon name={goodIcon(s.good, good?.category ?? '')} size={14} className={`shrink-0 ${masteredTone(mastery.mastered(s.good), 'text-ink-muted')}`} />
           {profit}
         </span>
       ),

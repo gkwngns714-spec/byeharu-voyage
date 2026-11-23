@@ -79,6 +79,17 @@ export const ICON_NAMES = [
   // A price's side on the goods card (slice 3): bought into the hold, sold out of it
   'buyIn',
   'sellOut',
+  // Visual pass 3: the face strips' own marks (Stats, History, Rank) and Production's building
+  'news',
+  'candles',
+  'pirate',
+  'more',
+  'merchant',
+  'navy',
+  'calendar',
+  'helm',
+  'nation',
+  'works',
   // The seven trade-good CATEGORIES. Not a good's own mark any more — the fallback, for a good
   // that arrives from a migration before anyone has drawn it. See goodIcons.ts.
   'spice',
@@ -368,6 +379,44 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   // it — SELL (what the city bids: goods go out, coin comes in). Not the chevron, not levelUp: those are a door and the Levels.
   buyIn: ['M12 3.5v11', 'm7.5 10 4.5 4.5 4.5-4.5', 'M4 15.5v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3'],
   sellOut: ['M12 14.5v-11', 'm7.5 8 4.5-4.5 4.5 4.5', 'M4 15.5v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3'],
+  // ── VISUAL PASS 3 (2026-11-23): the Stats, History and Rank face strips draw a mark over each word ──
+  // A folded news sheet, its columns of lines — Stats > News. Not the report's page: that is the company's book.
+  news: ['M4 4.5h12.5v14.5a1.5 1.5 0 0 0 1.5 1.5H6A2 2 0 0 1 4 18.5V4.5Z', 'M16.5 8.5h3.5V19a1.5 1.5 0 0 1-3 0', 'M7 8h6.5', 'M7 11.5h6.5', 'M7 15h4'],
+  // Two price candles on their wicks — Stats > Markets (what the goods trade at). Not `stats` (the tab) nor `invest`.
+  candles: ['M7.5 3.5v17', 'M5.5 7.5h4v8h-4z', 'M16.5 3.5v17', 'M14.5 10h4v6h-4z'],
+  // A skull over crossed bones — the pirates (Stats > Pirates, Rank > Bounties: the named pirates).
+  pirate: [
+    'M12 3.5a6 6 0 0 0-6 6c0 2 1 3.4 2.2 4.3V16h7.6v-2.2C17 12.9 18 11.5 18 9.5a6 6 0 0 0-6-6Z',
+    'M9.8 9.2a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z',
+    'M14.2 9.2a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z',
+    'M5 17.5 19 21',
+    'M19 17.5 5 21',
+  ],
+  // Three dots — More (the faces folded behind one cell). Not the Menu's four tiles.
+  more: ['M5.5 10.7a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Z', 'M12 10.7a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Z', 'M18.5 10.7a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Z'],
+  // A tied sack of goods — the merchant companies. Not the hold (cargo space) nor the crate (a store).
+  merchant: ['M9 4h6l-1.6 3.2c3.4 1.1 5.6 4.6 5.6 8.3a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4c0-3.7 2.2-7.2 5.6-8.3L9 4Z', 'M10.6 7.2h2.8'],
+  // A star over the swell — a country's navy. Not the shield: that is a captain's trait.
+  navy: ['M12 3l1.8 3.7 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6L12 3Z', 'M3 19c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0'],
+  // A page of a calendar — Rank > Week (the houses' board of the week).
+  calendar: ['M4 6h16v14H4z', 'M4 10h16', 'M8 3.5v4', 'M16 3.5v4', 'M8 14h2', 'M14 14h2', 'M8 17h2'],
+  // A ship's wheel — Rank > Captains (the companies' board). Not the tricorne: that is a hired captain.
+  helm: [
+    'M12 5.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Z',
+    'M12 10.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z',
+    'M12 2.5v7.8',
+    'M12 13.7v7.8',
+    'M2.5 12h7.8',
+    'M13.7 12h7.8',
+    'M5.3 5.3l5.5 5.5',
+    'M13.2 13.2l5.5 5.5',
+    'M18.7 5.3l-5.5 5.5',
+    'M10.8 13.2l-5.5 5.5',
+  ],
+  // A square flag with its cross on a pole — Rank > Countries. Not the pennant: that is your Status in a city.
+  nation: ['M5 21V3.5', 'M5 4.5h14v9H5', 'M11 4.5v9', 'M5 9h14'],
+  // A workshop under its saw-tooth roof, its chimney — HQ's Production (storage, cargo, recipes). The mallet stays the build yard.
+  works: ['M3.5 20.5h17', 'M4.5 20.5v-9l5 3v-3l5 3v-3l5 3v6', 'M16.5 12.5V4h2.5v10'],
 
   // ── THE SEVEN CATEGORY MARKS — now the FALLBACK, not the answer ───────────────────────────────
   // Every good in `data/goods.json` has its own mark below. These seven remain because a good can

@@ -1,4 +1,4 @@
-import { wholePeriods, type RankRow, type SeriesPoint, type SumPeriod } from '../../components/ui'
+import { wholePeriods, type IconName, type RankRow, type SeriesPoint, type SumPeriod } from '../../components/ui'
 import { instantMs } from '../../lib/format'
 import { properName, t } from '../../lib/i18n'
 import type { PriceSpan, StatsBonus, StatsFlowLine } from '../../lib/rpc'
@@ -64,17 +64,21 @@ export type StatsFace = 'overview' | 'news' | 'markets' | 'cities' | 'merchants'
  *  THE "MORE" FOLD (2026-11-23, the visual overhaul's slice 2, roadmap X5): a player meets News, Markets, Cities, Pirates and Me; the
  *  builder-facing faces (the Overview's world money, Merchants, Navy, Cargo, Ships) stand under one "More" in the strip, kept for the
  *  owner. `more: true` is the whole switch: drop it and the face is up front again. The strip opens on the first face up front. */
-export const STATS_FACES: readonly { id: StatsFace; more?: true }[] = [
-  { id: 'overview', more: true },
-  { id: 'news' },
-  { id: 'markets' },
-  { id: 'cities' },
-  { id: 'merchants', more: true },
-  { id: 'navy', more: true },
-  { id: 'pirates' },
-  { id: 'cargo', more: true },
-  { id: 'ships', more: true },
-  { id: 'me' },
+/**
+ *  THE MARK OF A FACE (2026-11-23, visual pass 3): each cell of the strip draws its glyph over its word. A face that is a destination's
+ *  subject wears that destination's glyph (Cities the city's roofs, Me You's person, Ships the ship, Cargo the hold); the rest have their
+ *  own (icons.ts, visual pass 3). */
+export const STATS_FACES: readonly { id: StatsFace; icon: IconName; more?: true }[] = [
+  { id: 'overview', icon: 'stats', more: true },
+  { id: 'news', icon: 'news' },
+  { id: 'markets', icon: 'candles' },
+  { id: 'cities', icon: 'people' },
+  { id: 'merchants', icon: 'merchant', more: true },
+  { id: 'navy', icon: 'navy', more: true },
+  { id: 'pirates', icon: 'pirate' },
+  { id: 'cargo', icon: 'hold', more: true },
+  { id: 'ships', icon: 'ship', more: true },
+  { id: 'me', icon: 'person' },
 ]
 
 /** The faces up front, and the faces under "More", each in the table's order. */

@@ -36,6 +36,9 @@ export function SignedBars({
 } & { 'data-testid'?: string }) {
   if (bars.length === 0) return null
   const top = Math.max(1, ...bars.map((b) => Math.abs(b.value)))
+  // A ROW OF ONE OR TWO IS A MARK, NOT A SLAB (2026-11-23, visual pass 3: History's Money card drew one day as one fat 24-px block): with
+  // under three bars each is a thin 6-px stroke in its slot.
+  const width = bars.length < 3 ? 'max-w-1.5' : 'max-w-6'
 
   return (
     <div
@@ -52,7 +55,7 @@ export function SignedBars({
             // CAPPED AT 24px AND CENTRED IN ITS SLOT: a bar is a mark, and a bar that fills its
             // whole slot is a block. Seven days across a sheet would be 47px slabs otherwise.
             <div
-              className={`absolute left-1/2 w-full max-w-6 -translate-x-1/2 rounded-chip ${b.value > 0 ? 'bottom-1/2 bg-success' : 'top-1/2 bg-danger'}`}
+              className={`absolute left-1/2 w-full ${width} -translate-x-1/2 rounded-chip ${b.value > 0 ? 'bottom-1/2 bg-success' : 'top-1/2 bg-danger'}`}
               style={{ height: `${(Math.abs(b.value) / top) * 50}%` }}
             />
           )}
