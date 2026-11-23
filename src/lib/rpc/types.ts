@@ -3219,7 +3219,11 @@ export interface HqTripPlan {
 
 /** 0480: the command a card commits in one press: an existing door, with its arguments. */
 export type HqAct =
-  | { rpc: 'cmd.issue_lines'; args: { fleet: string; version: number; plan: HqTripPlan } }
+  | {
+      rpc: 'cmd.issue_lines'
+      /** 0482 (sea_courses_enabled): `lines`, the trip's lines whole as the server wrote them (each SAIL with its stored course). */
+      args: { fleet: string; version: number; plan: HqTripPlan; lines?: PlanLine[] }
+    }
   | { rpc: 'cmd.fulfil'; args: { fleet: string; contract: string; version: number } }
   | { rpc: 'cmd.order_hull'; args: { port: string; class: string } }
   | { rpc: 'cmd.hire_officer'; args: { code: string; fleet: string } }
