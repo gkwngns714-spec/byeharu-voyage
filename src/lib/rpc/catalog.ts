@@ -426,6 +426,21 @@ const TABLE = {
   worldGoodsMastery: { schema: 'world', fn: 'goods_mastery', args: [] },
   // 0480 (docs/design/hq-command-2026-11-23.md v2): the HQ board's one read, ranked by the server. Dark {on: false}.
   worldHqBoard: { schema: 'world', fn: 'hq_board', args: [] },
+  // 0481 (docs/design/hq-command-2026-11-23.md v2, standing fleet jobs): the away report's one read (dark {on: false}), and the doors that
+  // give a fleet her job, take it away, and mark the report read. None takes a player id; a fleet that is not hers is refused.
+  worldAwayReport: { schema: 'world', fn: 'away_report', args: [] },
+  cmdSetFleetJob: {
+    schema: 'cmd',
+    fn: 'set_fleet_job',
+    mutates: true,
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_kind', type: 'text' },
+      { name: 'p_params', type: 'jsonb' },
+    ],
+  },
+  cmdClearFleetJob: { schema: 'cmd', fn: 'clear_fleet_job', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }] },
+  cmdFleetJobsSeen: { schema: 'cmd', fn: 'fleet_jobs_seen', mutates: true, args: [] },
   // 0213 — INSURANCE: the caller's insured voyages under way and the last ones the insurance paid on.
   // A READ at a face (the desk's Plans), never on the beat. The price itself is `cmd.preview`'s: a SAIL's
   // estimate carries `insurance` (quoted unasked, charged with the word INSURED).

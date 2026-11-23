@@ -1,12 +1,13 @@
 import { Figure, IconDisc, KEEP_WORDS_CLASS, NeedChip, Note, goodIcon, tileToneClass, type NeedTone } from '../../../components/ui'
 import type { Move } from '../../../domain/hq'
 import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../../../lib/format'
-import type { HqMove, HqRisk } from '../../../lib/rpc'
+import type { FleetJobParams, FleetJobRow, HqMove, HqRisk } from '../../../lib/rpc'
 import { properName, useT } from '../../../lib/i18n'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
+import { RepeatChip } from './JobControl'
 import { KIND_ICON } from './jobMarks'
-import { useServedPress } from './servedPress'
+import { pressServed, useServedPress } from './servedPress'
 import type { MoveData } from './useBoard'
 
 // ONE MOVE AS A CARD (docs/design/hq-command-2026-11-23.md): the activity's glyph on a disc, what it is (whole names, never cut), the
@@ -22,7 +23,30 @@ function riskMark(r: HqRisk): { icon: 'pirate' | 'shield'; tone: NeedTone } {
   return { icon: 'shield', tone: r.danger >= 4 ? 'danger' : r.danger === 3 ? 'warning' : 'muted' }
 }
 
-export function MoveCard({ move, onPress, inline = false }: { move: Move<MoveData>; onPress: (m: MoveData) => void; inline?: boolean }) {
+/** 0481: a trade card's trip as a fixed route (her fleet; buy where she lies, sell there, the passage's stops), or null: not a trade, or
+ *  she sells her own cargo (no harbour to buy at). */
+function repeatOf(d: MoveData): { fleet: string; params: Required<Pick<FleetJobParams, 'good' | 'buy' | 'sell'>> & FleetJobParams } | null {
+  if (d.kind === 'served') {
+    const a = d.move.act
+    if (a.rpc !== 'cmd.issue_lines' || a.args.plan.buy_at === null) return null
+    return { fleet: a.args.fleet, params: { good: a.args.plan.good, buy: a.args.plan.buy_at, sell: a.args.plan.sell_at, stops: a.args.plan.stops } }
+  }
+  if (d.kind !== 'trade' || d.sale.basis === 'on_board' || d.sale.port === null) return null
+  return { fleet: d.fleet.id, params: { good: d.sale.good, buy: d.at, sell: d.sale.port, stops: [] } }
+}
+
+export function MoveCard({
+  move,
+  onPress,
+  inline = false,
+  jobs = null,
+}: {
+  move: Move<MoveData>
+  onPress: (m: MoveData) => void
+  inline?: boolean
+  /** 0481: her fleets' standing jobs, by fleet (lit); a trade card then offers Repeat. Null while dark. */
+  jobs?: ReadonlyMap<string, FleetJobRow> | null
+}) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
@@ -92,6 +116,8 @@ export function MoveCard({ move, onPress, inline = false }: { move: Move<MoveDat
   const flag = s ? (s.kind === 'trade' ? (s.needs.to ?? null) : null) : d.kind === 'trade' ? d.sale.port : null
   const risk = s ? (s.kind === 'trade' && s.risk ? riskMark(s.risk) : null) : null
   const good = s ? (s.kind === 'trade' ? s.needs.good : undefined) : d.kind === 'trade' ? d.sale.good : undefined
+  const repeat = jobs ? repeatOf(d) : null
+  const held = repeat ? (jobs?.get(repeat.fleet) ?? null) : null
 
   return (
     <div className="flex min-w-0 flex-col gap-1">
@@ -157,6 +183,22 @@ export function MoveCard({ move, onPress, inline = false }: { move: Move<MoveDat
           )}
         </span>
       </button>
+      {repeat && (
+        <RepeatChip
+          id={move.id}
+          fleet={repeat.fleet}
+          params={repeat.params}
+          on={held?.kind === 'fixed' && held.params.good === repeat.params.good && held.params.buy === repeat.params.buy && held.params.sell === repeat.params.sell}
+          send={
+            s && d.kind === 'served'
+              ? async () => {
+                  await pressServed(s, d.fleet)
+                  return !useServedPress.getState().refused[move.id]
+                }
+              : null
+          }
+        />
+      )}
       {refusal && (
         <Note tone="danger" code={refusal.code} figures={refusal.figures} sea={refusal.sea} data-testid="hq-move-refusal">
           {refusal.sentence}

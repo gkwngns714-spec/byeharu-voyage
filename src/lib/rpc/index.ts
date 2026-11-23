@@ -87,6 +87,10 @@ import type {
   LogbookView,
   GoodsMasteryView,
   HqBoardView,
+  FleetJobsReport,
+  FleetJobKind,
+  FleetJobParams,
+  FleetJobSet,
   MerchantCard,
   InsuranceView,
   FleetTrades,
@@ -795,6 +799,26 @@ export function worldGoodsMastery(): Promise<RpcResult<GoodsMasteryView>> {
 /** 0480: the HQ board, served: every move open to her now, ranked by the server, each with the command that commits it. Dark: `{on: false}`. */
 export function worldHqBoard(): Promise<RpcResult<HqBoardView>> {
   return call<HqBoardView>('worldHqBoard', [])
+}
+
+/** 0481: her fleets' standing jobs and what each did since she last read this. Dark: `{on: false}`. */
+export function worldAwayReport(): Promise<RpcResult<FleetJobsReport>> {
+  return call<FleetJobsReport>('worldAwayReport', [])
+}
+
+/** 0481: give her fleet a standing job (best | fixed | land). Dark E_NOT_IN_USE; a fleet on a route E_ROUTE_TAKEN. */
+export function cmdSetFleetJob(fleetId: string, kind: FleetJobKind, params: FleetJobParams): Promise<RpcResult<FleetJobSet>> {
+  return call<FleetJobSet>('cmdSetFleetJob', [fleetId, kind, params])
+}
+
+/** 0481: take her fleet's standing job away (orders already queued run out). */
+export function cmdClearFleetJob(fleetId: string): Promise<RpcResult<{ ok: true; fleet: string }>> {
+  return call<{ ok: true; fleet: string }>('cmdClearFleetJob', [fleetId])
+}
+
+/** 0481: she has read the away report: each job's tallies start again. */
+export function cmdFleetJobsSeen(): Promise<RpcResult<{ ok: true; seen_at: string }>> {
+  return call<{ ok: true; seen_at: string }>('cmdFleetJobsSeen', [])
 }
 
 /** 0471: the named pirates and their bounties. Dark: `{on: false}`. */

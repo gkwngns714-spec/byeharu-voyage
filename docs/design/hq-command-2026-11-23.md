@@ -45,7 +45,10 @@ already makes, and ranked on the client by one documented rule. Every press goes
   can only mark a sale whose harbour is a bounty pirate's home.
 - **The rate.** `world.player` (or `world.report('day')`) serves `rate_per_hour`: the trailing 24-hour ledger net over 24. The client
   then stops dividing today's net by the hours since 00:00 UTC.
-- **Standing fleet jobs** (owner idea 3). A new table `public.fleet_jobs(fleet uuid primary key, kind text check (kind in ('route',
+- **Standing fleet jobs** (owner idea 3). (Built in 0481 with the Land carry and the away report, dark: `fleet_jobs_enabled`;
+  `docs/dev-log/2026-11-23-fleet-jobs.md`. As built: the kinds are `best`, `fixed` and `land`; a fleet on a standing route is refused a
+  job; the tick is its own 2-minute job, not a beat step; a course is one already sailed: a merchant lane, a coast course, or her own
+  voyage.) The plan as first written: a new table `public.fleet_jobs(fleet uuid primary key, kind text check (kind in ('route',
   'requests', 'best_trade', 'land_carry')), params jsonb, since timestamptz, paused_reason text)`, with:
   - `cmd.set_fleet_job(fleet, kind, params)`, `cmd.clear_fleet_job(fleet)` and `world.fleet_jobs()`;
   - one step on the existing beat, `public.tick_fleet_jobs()`. It acts only on a DOCKED fleet with an empty queue. `best_trade`

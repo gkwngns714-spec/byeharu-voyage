@@ -22,12 +22,13 @@ const LIT = [
   'land_enabled',
 ] as const
 
-/** Serve the lit world to `page` in place of the shipped image. `served`: the HQ board from the server lit too (0480, hq_board_enabled). */
-export async function serveHqLit(page: Page, { served = false }: { served?: boolean } = {}): Promise<void> {
-  const keys = served ? [...LIT, 'hq_board_enabled'] : LIT
+/** Serve the lit world to `page` in place of the shipped image. `served`: the HQ board from the server lit too (0480, hq_board_enabled).
+ *  `jobs`: the standing fleet jobs lit too (0481, fleet_jobs_enabled). */
+export async function serveHqLit(page: Page, { served = false, jobs = false }: { served?: boolean; jobs?: boolean } = {}): Promise<void> {
+  const keys = [...LIT, ...(served ? ['hq_board_enabled'] : []), ...(jobs ? ['fleet_jobs_enabled'] : [])]
   await serveWorldImage(
     page,
-    await patchedWorldImage(served ? 'hq-served' : 'hq-lit', async (pg) => {
+    await patchedWorldImage(jobs ? 'hq-jobs' : served ? 'hq-served' : 'hq-lit', async (pg) => {
       await pg.exec(`update public.world_config set value = 'true'::jsonb where key in (${keys.map((k) => `'${k}'`).join(', ')})`)
       await pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite'`)
     }),

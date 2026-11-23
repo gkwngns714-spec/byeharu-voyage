@@ -3281,6 +3281,68 @@ export type HqBoardView =
       ms: number
     }
 
+/** 0481: a standing fleet job's kind: repeat her best run, a fixed route, carry the Land's output to the yard. */
+export type FleetJobKind = 'best' | 'fixed' | 'land'
+
+/** 0481: a job's settings as served (each kind its own): a fixed route's good and harbours, the Land haul's yard and good. */
+export interface FleetJobParams {
+  good?: string
+  buy?: string
+  sell?: string
+  stops?: string[]
+  to?: string
+}
+
+/** 0481: what a job did last: a run it started (its note), a wait for nothing to do, or the code it stopped on. */
+export interface FleetJobLast {
+  at: string
+  ok?: boolean
+  wait?: string
+  code?: string
+  sentence?: string | null
+  kind?: FleetJobKind
+  good?: string | null
+  from?: string
+  to?: string
+  units?: number | null
+  profit?: number
+  seconds?: number
+}
+
+/** 0481: one fleet's job in the away report. */
+export interface FleetJobRow {
+  fleet: string
+  fleet_name: string
+  kind: FleetJobKind
+  params: FleetJobParams
+  /** stopped (it waits for her), working (at sea or orders queued), waiting (nothing to do now). */
+  state: 'working' | 'waiting' | 'stopped'
+  fleet_state: string
+  /** Runs started since she last read the report. */
+  runs: number
+  /** Her fleet's ledger since then (coin in less coin out). */
+  earned: number
+  last: FleetJobLast | null
+  paused: string | null
+  since: string
+  seen_at: string
+  next_at: string | null
+}
+
+/** `world.away_report()` (0481). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her jobs. */
+export type FleetJobsReport =
+  | { on: false }
+  | { on: true; company: false }
+  | { on: true; company: true; jobs: FleetJobRow[]; since: string | null; runs: number; earned: number }
+
+/** `cmd.set_fleet_job` committed. */
+export interface FleetJobSet {
+  ok: true
+  fleet: string
+  kind: FleetJobKind
+  params: FleetJobParams
+}
+
 /** The `bounty` a BATTLE_REPORT (and a battle's result) carries when a company collected (0471). */
 export interface BountyPaid {
   name: string

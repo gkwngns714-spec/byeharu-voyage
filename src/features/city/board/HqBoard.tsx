@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Chip, Empty, Icon, SheetSection } from '../../../components/ui'
 import { MOVE_KINDS, type MoveKind } from '../../../domain/hq'
 import { formatInt } from '../../../lib/format'
 import { useT, type TKey } from '../../../lib/i18n'
-import type { SnapshotPort } from '../../../lib/rpc'
+import type { FleetJobRow, SnapshotPort } from '../../../lib/rpc'
+import { litAway, useAwayReport } from '../../../live/useAwayReport'
+import { JobsAway } from './JobsAway'
 import { Bridge } from './Bridge'
 import { FleetRows } from './FleetRows'
 import { KIND_ICON } from './jobMarks'
@@ -19,6 +21,8 @@ import { useMovePress } from './useMovePress'
 //   THE BRIDGE   coin and coin per hour · each fleet a ship in her job's tone · what finishes next · pirates near
 //   BEST MOVES   every move open now as a card, ranked by domain/hq's one rule; the top few, More for the rest; icon chips to filter
 //   FLEETS       one row a fleet: picture, job, today's route money, Route / Plan; an idle fleet glows and offers her best card
+//   0481         lit (fleet_jobs_enabled): WHILE AWAY at the top (what each standing job did), each fleet row's job mark and setter, and a
+//                trade card's Repeat (that trip as her fixed route)
 //
 // It stands at the top of HQ, over the city's buildings, so it is the first thing seen; every building stays one press below it.
 
@@ -42,11 +46,15 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
   const press = useMovePress()
   const [filter, setFilter] = useState<Filter>('all')
   const [more, setMore] = useState(false)
+  // 0481: her fleets' standing jobs (world.away_report; dark: null, and nothing of them is drawn)
+  const away = litAway(useAwayReport().view)
+  const jobs = useMemo(() => (away ? new Map<string, FleetJobRow>(away.jobs.map((j) => [j.fleet, j])) : null), [away])
   const shown = board.moves.filter((m) => filter === 'all' || m.kind === filter)
   const list = more ? shown : shown.slice(0, TOP_MOVES)
 
   return (
     <div className="flex flex-col gap-6" data-testid="hq-board" data-source={board.served ? 'served' : 'client'}>
+      {away && <JobsAway report={away} />}
       <Bridge board={board} />
 
       <SheetSection heading={t('hq.moves')} trailing={<span className="text-t-caption tabular-nums text-ink-faint">{formatInt(shown.length)}</span>}>
@@ -66,7 +74,7 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
           <ol className="grid grid-cols-1 gap-2 lg:grid-cols-2" data-testid="hq-moves">
             {list.map((m) => (
               <li key={m.id} className="min-w-0">
-                <MoveCard move={m} onPress={press} />
+                <MoveCard move={m} onPress={press} jobs={jobs} />
               </li>
             ))}
           </ol>
@@ -79,7 +87,7 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
       </SheetSection>
 
       <SheetSection heading={t('hq.fleets')}>
-        <FleetRows fleets={board.fleets} moves={board.moves} />
+        <FleetRows fleets={board.fleets} moves={board.moves} jobs={jobs} />
       </SheetSection>
     </div>
   )
