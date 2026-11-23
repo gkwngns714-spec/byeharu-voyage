@@ -390,7 +390,11 @@ begin
                                              order by s.created_at, s.id)
                               from public.ships s join public.fleets f on f.id = s.fleet_id join public.ship_classes c on c.id = s.class_id
                              where s.player_id = v_player), '[]'::jsonb),
-         'pick', public.ship_role_pick(v_player) || jsonb_build_object('ship', (select public.ship_role_best_ship(v_player, public.ship_role_pick(v_player)->>'role'))),
+         -- the pick's hull only while a slot is free (the one the role card would name)
+         'pick', public.ship_role_pick(v_player)
+                 || jsonb_build_object('ship', (select public.ship_role_best_ship(v_player, public.ship_role_pick(v_player)->>'role')
+                                                 from (select public.ship_role_slots(v_player) as s) x
+                                                where (x.s->>'used')::int < (x.s->>'slots')::int)),
          'next', public.ship_role_next(v_player),
          'ladder', public.ship_role_ladder(v_player));
 end
@@ -609,7 +613,7 @@ $h$      ('world',       'nation_race',           ''),
     v_r := world.ship_roles();
     if (v_r->>'ships')::int <> 3 or (v_r->>'slots')::int <> 1 or (v_r->>'used')::int <> 0
        or v_r->'ladder'->>'step' is distinct from 'ships' or (v_r->'ladder'->>'have')::int <> 3 or (v_r->'ladder'->>'of')::int <> 5
-       or v_r->'pick'->>'role' is distinct from 'guard' or v_r->>'next' is distinct from 'guard'
+       or v_r->'pick'->>'role' is distinct from 'guard' or v_r->'pick'->>'ship' is null or v_r->>'next' is distinct from 'guard'
        or public.ship_role_yard(v_a) is distinct from '{"role": "guard"}'::jsonb or public.ship_roles_build_below() <> 5 then
       raise exception '0485 self-assert FAIL: lit with three hulls, the read is not one slot, the pick guard and the ladder ships 3 of 5: %', v_r;
     end if;
@@ -629,8 +633,9 @@ $h$      ('world',       'nation_race',           ''),
       raise exception '0485 self-assert FAIL: a big hold does not hold x1.2: %', v_r;
     end if;
     -- a second tag: no slot
-    if cmd.set_ship_role(v_s2, 'fast')->>'error_code' is distinct from 'E_NO_ROLE_SLOT' then
-      raise exception '0485 self-assert FAIL: a second tag with one slot was not refused';
+    if cmd.set_ship_role(v_s2, 'fast')->>'error_code' is distinct from 'E_NO_ROLE_SLOT'
+       or world.ship_roles()->'pick'->>'ship' is not null or public.ship_role_moves(v_a) <> '[]'::jsonb then
+      raise exception '0485 self-assert FAIL: a second tag with one slot was not refused, or the read or the board still offers a hull';
     end if;
     -- the same hull changes her role: fast (the slot is hers)
     v_r := cmd.set_ship_role(v_s1, 'fast');
