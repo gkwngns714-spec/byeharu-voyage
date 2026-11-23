@@ -6,7 +6,7 @@ import { num, str } from '../lib/json'
 import { useLocale, useT } from '../lib/i18n'
 import { levelName } from '../live/levelWords'
 import { levelLines, type LevelLine } from './levelLines'
-import type { LedgerEvent, PlayerHouse } from '../lib/rpc'
+import type { LedgerEvent, LogbookFound, LogbookSale, LogbookSetDone, PlayerHouse } from '../lib/rpc'
 import { goodWordOf, portNameOf, useWorld } from '../live/worldStore'
 import { ArrivalRaids } from '../live/ArrivalRaids'
 import { bountyOf, type PaidBounty } from '../live/bountyPaid'
@@ -14,6 +14,8 @@ import { bountyName } from '../live/bountyWords'
 import { ArrivalRepeat } from '../live/ArrivalRepeat'
 import { ArrivalSighting } from '../live/ArrivalSighting'
 import { sightingOf, type Sighting } from '../live/sightingOf'
+import { arrivalLogbookOf, saleLogbookOf } from '../live/logbookOf'
+import { ArrivalFound, ArrivalNewGood, ArrivalSetDone } from '../live/ArrivalLogbook'
 import { HOME_TAB, tabWord } from './navTabs'
 
 // THE ARRIVAL CARD (owner row 307, the remaster's S3): a fleet comes in, sells, and the player was told nothing. One
@@ -39,6 +41,9 @@ import { HOME_TAB, tabWord } from './navTabs'
 // 0477 (roadmap slice 7): an EARLY_SIGHTING event (a weak pirate's sighting, told at its close) is said on the card of her next arrival
 // (src/live/ArrivalSighting.tsx: what happened, what insurance and guns would have done). Told while her fleet is still at sea it waits for
 // that arrival; told after she came in (or while a card is open) it is said at once.
+// 0478 (roadmap slice 9, the logbook): a VOYAGE_REPORT's `logbook.found` is the "Discovered" moment at the card's head (it replaces
+// "New port"), a SOLD event's `logbook` is "New: Cinnamon · Spice 3 / 22" under its sale, and a set finished is its own line with the
+// Reputation it paid (src/live/ArrivalLogbook.tsx; that Reputation is not counted again in the card's Reputation line). Dark: never there.
 
 const SHOWN_MS = 20_000
 
@@ -52,6 +57,8 @@ interface Sale {
   profit: number | null
   /** Which of the two the figure is, so it is printed with its word: Profit / Loss, or Total. */
   kind: MoneyKind
+  /** 0478: the good's first sale ("New: Cinnamon · Spice 3 / 22"), when the logbook is lit; else null. */
+  logbook: LogbookSale | null
 }
 
 interface Arrival {
@@ -63,6 +70,9 @@ interface Arrival {
   /** The fleet's NAME, as the events carry it. */
   fleet: string | null
   sales: Sale[]
+  /** 0478: a first harbour (the "Discovered" moment) and the sets it finished, when the logbook is lit. */
+  found: LogbookFound | null
+  sets: LogbookSetDone[]
 }
 
 interface Card {
@@ -82,7 +92,7 @@ interface Card {
 function saleOf(e: LedgerEvent): Sale {
   const profit = num(e.payload, 'profit')
   const net = num(e.payload, 'trip_net') ?? profit
-  return { id: e.id, good: str(e.payload, 'good') ?? '', qty: num(e.payload, 'qty'), figure: net ?? num(e.payload, 'total'), kind: net === null ? 'total' : 'profit', profit }
+  return { id: e.id, good: str(e.payload, 'good') ?? '', qty: num(e.payload, 'qty'), figure: net ?? num(e.payload, 'total'), kind: net === null ? 'total' : 'profit', profit, logbook: saleLogbookOf(e) }
 }
 
 /** The facts of one read: the events not seen before, against the house as it stood on the read before. */
@@ -94,8 +104,11 @@ function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: Play
   const arrivals = reports.map((r): Arrival => {
     const to = str(r.payload, 'to')
     const fleet = str(r.payload, 'fleet')
+    const lb = arrivalLogbookOf(r)
     return {
       id: r.id,
+      found: lb?.found ?? null,
+      sets: lb?.sets ?? [],
       to,
       from: str(r.payload, 'from'),
       fleet,
@@ -107,7 +120,7 @@ function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: Play
   // 0352: the served book's rows past the row the read before ended on. Earns only; the server's own amounts, added.
   // 0356: a level's gift is not in this sum: it stands on its own level line.
   const seenSeq = before?.reputation?.seq ?? 0
-  const reputation = (now?.reputation?.recent ?? []).reduce((n, r) => (r.seq > seenSeq && r.delta > 0 && r.kind !== 'level' ? n + r.delta : n), 0)
+  const reputation = (now?.reputation?.recent ?? []).reduce((n, r) => (r.seq > seenSeq && r.delta > 0 && r.kind !== 'level' && r.kind !== 'logbook' ? n + r.delta : n), 0)
   return { arrivals, levels, newPorts, reputation, bounties, sightings }
 }
 
@@ -227,8 +240,11 @@ export function ArrivalCard() {
             ? card.bounties.length > 0 ? t('bounty.title') : t('battle.sightTitle')
             : port ? t('feed.arrivedAt', { port }) : t('feed.arrived')}
         </p>
+        {/* 0478: a first harbour's "Discovered" moment, at the head of the card */}
+        {card.arrivals.map((a) => (a.found ? <ArrivalFound key={`found-${a.id}`} f={a.found} /> : null))}
         {sales.map((s) => (
-          <p key={s.id} className="mt-1 flex justify-between gap-3 text-t-body" data-testid="arrival-sale" data-profit={s.profit ?? undefined}>
+          <div key={s.id}>
+          <p className="mt-1 flex justify-between gap-3 text-t-body" data-testid="arrival-sale" data-profit={s.profit ?? undefined}>
             <span className="min-w-0 break-words">{t('feed.arrSold', { n: s.qty === null ? '' : formatInt(s.qty), good: goodWordOf(s.good) })}</span>
             {/* THE FIGURE HAS ITS WORD (2026-11-11, the trade-flow slice): "−1,182" stood bare. It is the trip's served net (0474:
                 "Profit" / "Loss": the sale's money less what the goods cost, the profit tax, the wages and the dock fee; the sheet's
@@ -242,6 +258,9 @@ export function ArrivalCard() {
               </span>
             )}
           </p>
+          {/* 0478: the good's first sale: "New: Cinnamon · Spice 3 / 22" */}
+          {s.logbook && <ArrivalNewGood s={s.logbook} />}
+          </div>
         ))}
         <ArrivalRaids ids={card.arrivals.map((a) => a.id)} onOpen={setLogOpen} />
         {card.sightings.map((s) => (
@@ -252,7 +271,12 @@ export function ArrivalCard() {
             {t('bounty.claimed', { n: formatInt(b.paid) })} · {bountyName(locale, b, portByCode)}
           </p>
         ))}
-        {card.newPorts > 0 && (
+        {/* 0478: a logbook set finished by this card's arrivals or sales (its Reputation paid once) */}
+        {[...card.arrivals.flatMap((a) => a.sets), ...sales.flatMap((s) => s.logbook?.sets ?? [])].map((x) => (
+          <ArrivalSetDone key={`${x.set}-${x.code}`} s={x} />
+        ))}
+        {/* the served count's "New port"; the logbook's Discovered moment says it better, so it stands alone only when that is not there */}
+        {card.newPorts > 0 && !card.arrivals.some((a) => a.found) && (
           <p className="mt-1 text-t-body text-accent" data-testid="arrival-newport">
             {t('feed.newPort')}
           </p>

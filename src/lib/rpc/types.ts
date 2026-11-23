@@ -3082,6 +3082,75 @@ export interface EarlySighting {
   report?: EarlySightingReport | null
 }
 
+/** A logbook set finished now (0478): every harbour of a region (`code` a region code), or every good of a kind (`code` a category). */
+export interface LogbookSetDone {
+  set: 'region' | 'kind'
+  code: string
+  /** The served name (a region's; a kind's is its code). */
+  name: string
+  /** The Reputation it paid (0 when Reputation was off). */
+  rep: number
+}
+
+/** `logbook.found` on a VOYAGE_REPORT (0478): a first harbour, THE "DISCOVERED" MOMENT. */
+export interface LogbookFound {
+  /** Port CODE. */
+  port: string
+  /** Region CODE and its served name, and her harbours of it / its harbours, this one counted. */
+  region: string | null
+  region_name: string | null
+  n: number
+  of: number
+  /** All the harbours she has made. */
+  harbours: number
+  /** Sea CODE, and whether it is the first harbour she has made in it. */
+  sea: string | null
+  sea_new: boolean
+  /** Up to three goods the harbour is known for (`public.port_specialties`), the most valuable first: good CODES. */
+  specialty: string[]
+}
+
+/** `logbook` on a VOYAGE_REPORT (0478): a first harbour and / or the sets it finished. */
+export interface LogbookArrival {
+  found?: LogbookFound
+  sets?: LogbookSetDone[]
+}
+
+/** `logbook` on a SOLD event (0478): a first sale of a good ("New: Cinnamon · Spice 3 / 22") and the sets it finished. */
+export interface LogbookSale {
+  /** Good CODE and its kind (category); her goods of that kind / the kind's goods; all the goods she has sold. */
+  good: string
+  kind: string
+  n: number
+  of: number
+  goods: number
+  sets?: LogbookSetDone[]
+}
+
+/** `world.logbook()` (0478). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her firsts. Every list is served in
+ *  order and every count is the server's: the page draws them, it works nothing out. */
+export type LogbookView =
+  | { on: false }
+  | { on: true; company: false }
+  | {
+      on: true
+      company: true
+      totals: Record<'harbours' | 'goods' | 'seas' | 'hulls' | 'captains', { n: number; of: number }>
+      /** Each region: its harbours (port codes, by name), hers of them, whether the set is finished. */
+      regions: { code: string; name: string; n: number; of: number; done: boolean; harbours: string[] }[]
+      /** Each goods kind (category): its goods (codes, the most valuable first), hers of them, whether the set is finished. */
+      kinds: { code: string; n: number; of: number; done: boolean; goods: string[] }[]
+      /** Each hull family: its classes (codes, by tier), hers of them. */
+      families: { code: string; n: number; of: number; hulls: string[] }[]
+      captains: { code: string; name: string }[]
+      seas: { code: string; name: string }[]
+      /** What she has of each, as codes. */
+      seen: Record<'harbours' | 'goods' | 'hulls' | 'captains' | 'seas', string[]>
+      sets: { done: number; of: number }
+      /** The reward knobs: a set's Reputation, a finished region's dock-fee cut there, each finished kind's cut everywhere (shares). */
+      reward: { rep: number; region_cut: number; kind_cut: number }
+    }
+
 /** The `bounty` a BATTLE_REPORT (and a battle's result) carries when a company collected (0471). */
 export interface BountyPaid {
   name: string

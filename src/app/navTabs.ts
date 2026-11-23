@@ -188,6 +188,10 @@ const ALL_TABS: readonly (NavTab & {
   // LEVELS (roadmap 2026-11-23, slice 10: "One Skills page"): every level on its own page, its door the levels card on You. Not a
   // Menu row (the Menu holds its rows whole at 320 x 640, nav.geometry.spec): the route stands and the You cell is lit on it.
   { to: '/levels', label: 'Levels', icon: 'levelUp', enabled: false, group: 'cabin', under: '/you' },
+  // LOGBOOK (0478, roadmap 2026-11-23 slice 9: "The logbook: discovery and collections"): her firsts as collection grids, RS3's
+  // collection log. Like Levels, not a Menu row (the Menu's rows stand as measured): the route stands, You's logbook card is its door
+  // (drawn only while the server serves `world.logbook().on`), and the You cell is lit on it.
+  { to: '/logbook', label: 'Logbook', icon: 'compass', enabled: false, group: 'cabin', under: '/you' },
   // ACCOUNT (was "Profile"), OFF THE MENU since 2026-11-23 (slice 2, roadmap X4): the language and the sign-in are an "Account" row
   // at the foot of You, which opens this route; `/profile` stays, and the You cell is lit on it. Reversible: `enabled: true`.
   { to: '/profile', label: 'Account', icon: 'cog', enabled: false, group: 'cabin', under: '/you' },
