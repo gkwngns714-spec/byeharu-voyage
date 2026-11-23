@@ -8,7 +8,8 @@ import { planLines } from '../../../domain/plan'
 // ONE PRESS, THE SERVED ACT (0480, docs/design/hq-command-2026-11-23.md v2): lit, every card on HQ's board names the command that commits
 // it (`act`), and its press sends it, through the door the building's own press sends it by:
 //   cmd.issue_lines   the desk's trip: planLines over the served plan (the course from the chart, as the desk's Go sends it), then the
-//                     store's issueLines (the desk's own verb: the fleet's version, the read-back)
+//                     store's issueLines (the desk's own verb: the fleet's version, the read-back). 0482, lit: the act's own `lines`
+//                     (the server's, each SAIL with its stored course) are sent as they are, with no chart
 //   cmd.fulfil        the store's fulfil (the market's Requests press)
 //   cmd.order_hull    the yard's Order (PortYard's call), then the world read back
 //   cmd.hire_officer  the store's hireOfficer (the Inn's Hire), into her fleet: seated
@@ -56,6 +57,8 @@ async function commit(move: HqMove, fleet: FleetView | null): Promise<Refusal | 
   const act = move.act
   switch (act.rpc) {
     case 'cmd.issue_lines': {
+      // 0482 (sea_courses_enabled): the server wrote the trip's lines whole, each SAIL with its stored course: sent as they are, no chart
+      if (fleet && act.args.lines?.length) return (await w.issueLines(fleet.id, act.args.lines)) ? null : storeRefusal()
       if (!fleet || !w.seaNav) return storeRefusal()
       const p = act.args.plan
       const text = planLines(
