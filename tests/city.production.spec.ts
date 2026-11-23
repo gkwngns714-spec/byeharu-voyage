@@ -50,6 +50,10 @@ const unitsIn = async (page: Page, cell: string) => Number(((await page.getByTes
 
 async function move(page: Page, cell: string, qty: number, word: RegExp) {
   const list = page.getByTestId('production-columns')
+  // the page stands under HQ's command board (2026-11-23, docs/design/hq-command-2026-11-23.md), so the columns start below the
+  // glass: the cell is brought into view BEFORE the columns are measured, and the law reads what the press moves, not the scroll to it
+  await page.getByTestId(cell).scrollIntoViewIfNeeded()
+  await page.waitForTimeout(250)
   const before = await list.boundingBox()
   await page.getByTestId(cell).click()
   const tray = page.getByTestId('storage-tray')
