@@ -1,6 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
-import { tileToneClass } from '../../../components/ui/tileStyles'
-import { Icon, KEEP_WORDS_CLASS, goodIcon, masteredTone, useWide } from '../../../components/ui'
+import { Icon, KEEP_WORDS_CLASS, goodIcon, masteredTone, tileToneClass, useWide } from '../../../components/ui'
 import { useMasteryLevels } from '../../../live/goodsMastery'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'

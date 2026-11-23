@@ -4,7 +4,7 @@ import type { SeaZoneMap } from '../../lib/rpc'
 // (`world.sea_zone_map`, 0396: public.sea_zone_cells, the raster the sail door samples a course on).
 //
 // The client never works out a zone from a sea and its boxes: it reads the cell. Row 0 is the north edge, column 0
-// is 180° W. Pure: no React, no store, no canvas (the chart turns `closedMask` into a picture).
+// is 180° W. Pure: no React, no store, no canvas.
 
 export interface ZoneCells {
   readonly cols: number
@@ -46,12 +46,4 @@ export function zoneAt(z: ZoneCells, lat: number, lon: number): string | null {
   const col = Math.floor(wrapped / z.cellDeg)
   if (row < 0 || row >= z.rows || col < 0 || col >= z.cols) return null
   return z.codes[z.cells[row * z.cols + col]] ?? null
-}
-
-/** One byte a cell: 1 where the cell's zone is in `closed`, else 0. The picture of the closed seas, before any colour. */
-export function closedMask(z: ZoneCells, closed: ReadonlySet<string>): Uint8Array {
-  const shut = z.codes.map((code) => code !== null && closed.has(code))
-  const out = new Uint8Array(z.cells.length)
-  for (let i = 0; i < out.length; i++) if (shut[z.cells[i]]) out[i] = 1
-  return out
 }

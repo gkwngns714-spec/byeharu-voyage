@@ -7,7 +7,7 @@ import { FleetStores } from './FleetStores'
 import { HullGauge } from './HullGauge'
 import { MoveShip } from './MoveShip'
 import { useShipMoves } from './useShipMoves'
-import { ShipPicture } from './ShipPicture'
+import { ShipPicture } from '../../live/ShipPicture'
 import { properName, useT } from '../../lib/i18n'
 
 // ONE SHIP'S PAGE: HER CARGO AND HER SUPPLIES — the owner, 2026-11-14: *"in fleets, when pressed a fleet, show only ships, then when i

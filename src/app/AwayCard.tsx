@@ -6,7 +6,7 @@ import { properName, useLocale, useT } from '../lib/i18n'
 import { worldLand } from '../lib/rpc'
 import { levelName } from '../live/levelWords'
 import { useWorld } from '../live/worldStore'
-import { ShipPicture } from '../features/fleets/ShipPicture'
+import { ShipPicture } from '../live/ShipPicture'
 
 // WHILE YOU WERE AWAY (2026-11-16, the content plan's slice B; docs/design/content-plan-2026-11.md §5.3 no. 2). The route
 // trades by itself, and when she came back nothing said what it did. One card says it, once, on her return.

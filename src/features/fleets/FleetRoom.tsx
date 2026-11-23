@@ -4,7 +4,7 @@ import { formatDucats, formatInt, formatOfTotal } from '../../lib/format'
 import type { RoomLadder } from '../../lib/rpc'
 import { lockedSteps, roomStepWord, useBuyRoom, useHouseRoom } from '../../live/houseRoom'
 import { useT } from '../../lib/i18n'
-import { ShipPicture } from './ShipPicture'
+import { ShipPicture } from '../../live/ShipPicture'
 
 // THE ROOM A COMPANY HAS, AND HOW MORE OPENS (0354, docs/FLEETS_AND_SLOTS.md section 2.2; owner row 180: "unlock slots by purchasing with gold, and some with levels").
 // Every row is the server's (`world.house_room`): how many fleets and how many ships a fleet, and each step: a level of a track, or a price, open or locked.

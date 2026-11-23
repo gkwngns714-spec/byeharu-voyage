@@ -54,16 +54,8 @@ const TONE: Record<LabelTone, string> = {
   sea: 'bv-sun-name-water fill-chart-sea-name',
   // A region's name (row 93) is ground like a sea's, in the same thinned ink, a size up.
   region: 'bv-sun-name-water fill-chart-sea-name',
-  // A sea zone's name (the Seas filter): read for its figures, so a place's ink and a city's pale day halo; a zone
-  // closed to the fleet in hand is set in the quiet ink and its ask (the note) in the danger ink.
+  // A sea zone's name (the Seas filter): a place's ink and a city's pale day halo.
   zone: 'bv-sun-name-active fill-ink',
-  'zone-closed': 'bv-sun-name-quiet fill-ink-faint',
-}
-
-/** The note's ink: what a zone asks (quiet), or what it lacks for the fleet in hand (closed). */
-const NOTE_TONE: Partial<Record<LabelTone, string>> = {
-  zone: 'bv-sun-name-quiet fill-ink-faint',
-  'zone-closed': 'bv-sun-name-closed fill-danger',
 }
 
 /**
@@ -176,7 +168,7 @@ const Name = memo(function Name({
   if (label.note) {
     const noteSize = (label.noteSizePx ?? label.sizePx) * unitsPerPx
     return (
-      <g style={nightStyle(unproject({ x: label.x, y: label.y }), sun)} data-zone-closed={label.tone === 'zone-closed' ? 'yes' : undefined}>
+      <g style={nightStyle(unproject({ x: label.x, y: label.y }), sun)}>
         {text}
         <text
           x={label.x}
@@ -184,7 +176,7 @@ const Name = memo(function Name({
           fontSize={noteSize}
           textAnchor="middle"
           dominantBaseline="middle"
-          className={`bv-sun-name-halo stroke-chart-sea font-mono ${NOTE_TONE[label.tone] ?? TONE[label.tone]}`}
+          className={`bv-sun-name-halo stroke-chart-sea font-mono ${TONE[label.tone]}`}
           strokeWidth={GLYPH.labelHaloWidth * unitsPerPx}
           strokeLinejoin="round"
           strokeLinecap="round"
@@ -250,7 +242,7 @@ export function LabelsLayer({
   /** Where the Sun is overhead (./sun.ts). */
   sun: LatLon
 }) {
-  const isGround = (l: PlacedLabel) => l.tone === 'sea' || l.tone === 'region' || l.tone === 'zone' || l.tone === 'zone-closed'
+  const isGround = (l: PlacedLabel) => l.tone === 'sea' || l.tone === 'region' || l.tone === 'zone'
   const ground = labels.filter(isGround)
   const places = labels.filter((l) => !isGround(l))
   // The names actually drawn, for the map's tap (./placedNames.ts): a tap on a name opens its city.

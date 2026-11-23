@@ -18,6 +18,7 @@ import { fleetsDict } from './fleets'
 import { formatDict } from './format'
 import { foundDict } from './found'
 import { historyDict } from './history'
+import { hqDict } from './hq'
 import { innDict } from './inn'
 import { joinDict } from './join'
 import { landDict } from './land'
@@ -60,6 +61,7 @@ export const DICT = {
   format: formatDict,
   found: foundDict,
   history: historyDict,
+  hq: hqDict,
   inn: innDict,
   join: joinDict,
   land: landDict,

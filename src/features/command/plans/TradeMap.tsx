@@ -11,7 +11,7 @@ import type { FleetView, GoodBoard } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
 import { orderTrips, tripOf, type OrderTrip } from '../../../domain/order'
 import { daysAt, type PlanLeg } from '../../../domain/passage'
-import { seaTagWords, tripRows } from './planLines'
+import { tripRows } from './planLines'
 import { useSailLegs } from '../../../live/useSailLegs'
 import { LegLines } from '../../../live/LegLines'
 
@@ -41,8 +41,8 @@ import { LegLines } from '../../../live/LegLines'
 // ROW 191 (docs/COMMAND_REDESIGN.md §3): WHILE THE PLAN IS BEING MADE the map is THE MINI ROUTE MAP — the plan's
 // stops only, numbered 1..n with the start marked "Now", framed on the legs by the chart's own opening rule
 // (`openingBounds`), and STILL: no pan, no zoom, no live fleets layer, no controls; it redraws only when the legs
-// change. Under it stands one line per leg — its number, from → to, the days, and the sea's one short ask, printed
-// from the served `sea` field and never compared (`seaTagWords`). An order pressed still draws its estimate.
+// change. Under it stands one line per leg — its number, from → to and the days (no sea ask: the sea limits are off,
+// 2026-11-23). An order pressed still draws its estimate.
 //
 // Time is printed in both clocks (`formatTwoClocks`); days at sea from miles are `daysAt`, the plan's one arithmetic.
 
@@ -196,7 +196,7 @@ export function TradeMap({
         ariaLabel={t(planMap ? 'desk.routeChart' : pick ? 'desk.mapChart' : 'desk.citiesChart')}
         className="aspect-[2/1] w-full"
       />
-      {planMap && plan && <PlanLegs legs={plan.legs} ends={plan.ends} board={plan.board ?? null} speedKn={fleet.speed_kn} name={name} />}
+      {planMap && plan && <PlanLegs legs={plan.legs} speedKn={fleet.speed_kn} name={name} />}
       {pick && (
         <OrderEstimate
           key={pickKey ?? ''}
@@ -212,38 +212,18 @@ export function TradeMap({
 }
 
 /** THE PLAN'S LEGS UNDER ITS MAP (owner row 191, docs/COMMAND_REDESIGN.md §3) — one line per leg: its number,
- *  where it leaves and where it ends, the days at this fleet's speed (`daysAt`, the plan's one arithmetic), and
- *  — where the row the leg ENDS at serves a `sea` — the sea's one short ask, printed from the server's field and
- *  never compared (`seaTagWords`). An intermediate stop wears no tag: it is not the plan's end. */
-function PlanLegs({
-  legs,
-  ends,
-  board,
-  speedKn,
-  name,
-}: {
-  legs: readonly PlanLeg[]
-  /** The plan's own ends (buyAt / sellAt): only a leg ending AT one wears that row's sea tag. */
-  ends: readonly string[]
-  board: GoodBoard | null
-  speedKn: number
-  name: (code: string) => string
-}) {
+ *  where it leaves and where it ends, and the days at this fleet's speed (`daysAt`, the plan's one arithmetic). The sea's ask
+ *  that stood at a leg's end left with the sea limits (owner, 2026-11-23). */
+function PlanLegs({ legs, speedKn, name }: { legs: readonly PlanLeg[]; speedKn: number; name: (code: string) => string }) {
   return (
     <LegLines
       name={name}
-      legs={legs.map((leg) => {
-        const row =
-          board && ends.includes(leg.to)
-            ? (board.buy.find((r) => r.port === leg.to) ?? board.sell.find((r) => r.port === leg.to) ?? null)
-            : null
-        return {
-          from: leg.from,
-          to: leg.to,
-          days: speedKn > 0 ? formatVoyageDays(daysAt(leg.nm, speedKn)) : '—',
-          tag: row?.sea && board?.sea ? seaTagWords(row.sea, board.sea.bite) : null,
-        }
-      })}
+      legs={legs.map((leg) => ({
+        from: leg.from,
+        to: leg.to,
+        days: speedKn > 0 ? formatVoyageDays(daysAt(leg.nm, speedKn)) : '—',
+        tag: null,
+      }))}
     />
   )
 }

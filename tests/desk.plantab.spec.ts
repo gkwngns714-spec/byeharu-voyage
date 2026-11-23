@@ -80,7 +80,6 @@ for (const size of SIZES) {
       await expect(card.getByTestId('plan-supplies')).not.toContainText('—', { timeout: 60_000 })
       await expect(voyage.getByTestId('plan-crew-min')).toBeAttached()
       await expect(voyage.getByTestId('plan-restrictions')).toBeAttached()
-      await expect(voyage.getByTestId('plan-sea-state')).not.toBeEmpty({ timeout: 30_000 })
 
       // A STEP OF THE UNITS (the press law): a press changes the figures in place and moves nothing that
       // follows it. Read the face with the map's page CLOSED — an open page covers the screen, so the

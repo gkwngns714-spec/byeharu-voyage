@@ -112,12 +112,13 @@ export { CargoBar } from './CargoBar'
 
 // 8. CHIP / SEGMENTED — one token in a set; one set of faces.
 export { Chip, Segmented, type SegmentSpec } from './Chip'
+export { NeedChip, type NeedTone } from './NeedChip'
 //    THE CHOICE GRID (owner, 2026-10-31: *"make it into square and allign properly orderly. this
 //    applies to all the places throughout the game."*). Every set of tappable choices is a fixed
 //    number of equal cells with aligned edges — one grid, composed by Segmented and by every
 //    filter row, never a ragged row of shrink-wrapped pills.
 export { TileChoice, TileGrid } from './TileGrid'
-export { KEEP_WORDS_CLASS, WRAP_ROW_CLASS, tileCellClass, type ChoiceColumns } from './tileStyles'
+export { KEEP_WORDS_CLASS, WRAP_ROW_CLASS, PLAN_LINE_CLASS, tileCellClass, tileToneClass, type ChoiceColumns } from './tileStyles'
 //    THE BOUNDED PANE: a long list scrolls inside its own box while the tab's composition stands.
 export { ScrollPane } from './ScrollPane'
 //    THE LIST PANEL (owner, 2026-11-01: *"everything is folded … make things unfolded"*): a list that
@@ -148,7 +149,7 @@ export { Stepper } from './Stepper'
 export { Note, type NoteTone } from './Note'
 //    A refusal in the viewer's language (the code's Korean entry with its figures): Note's own rule, read also by a caption under a greyed button.
 export { refusalWords } from './refusalWords'
-export { seaName, seaWallAsks, seaWallFix, seaWallTag, seaWallWords } from './seaWallWords'
+export { seaName, seaWallWords } from './seaWallWords'
 
 // 12. HINT — the caption voice, printed rather than hidden, one per section. Long text opens a Tray.
 export { Hint } from './Hint'

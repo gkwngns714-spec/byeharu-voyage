@@ -13,11 +13,10 @@
 //     cut on a parallel or a meridian (most of them: a zone is a raster sea cut by boxes) stays
 //     exactly straight. One path for the world, built once per raster: a pan moves it, it never
 //     re-derives it, and it is the same line at every zoom.
-//   · EACH ZONE'S NAME with what it asks, as a request to the ONE label planner (./labels.ts), at
+//   · EACH ZONE'S NAME, as a request to the ONE label planner (./labels.ts), at
 //     the zone's deepest water: the cell furthest from any other zone or the shore (a chamfer
 //     distance over the raster), so the name sits in the middle of its own sea and not on a cape.
-// Every figure on a name is served (what the zone asks, open or closed for the fleet in hand): the
-// screen hands the words in, this file only places them.
+// The screen hands the names in (no ask, no closed sea: the sea limits are off, 2026-11-23); this file only places them.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { project, type LatLon, type ViewBox } from '../lib/geo'
@@ -30,10 +29,6 @@ export interface ZoneLabel {
   readonly code: string
   /** The zone's name (full, never cut). */
   readonly name: string
-  /** What it asks, or what it lacks for the fleet in hand, in one or two words ("Title 3 · Waves 6"). */
-  readonly note: string
-  /** The server's verdict: closed to the fleet in hand (only while the conditions bite). */
-  readonly closed: boolean
   /** Where the name may stand, deepest water first (`zoneAnchors`): it is set at the first one on the glass. */
   readonly at: readonly LatLon[]
   /** The zone the player pressed: always named. */
@@ -262,12 +257,10 @@ export function zoneNameRequests(labels: readonly ZoneLabel[], view: ViewBox): L
     out.push({
       id: `zone:${zone.code}`,
       text: zone.name,
-      note: zone.note,
-      noteSizePx: GLYPH.zoneNoteSize,
       at,
       priority: zone.selected ? LABEL_PRIORITY.selected : LABEL_PRIORITY.region,
       force: zone.selected,
-      tone: zone.closed ? 'zone-closed' : 'zone',
+      tone: 'zone',
       placement: 'centred',
       slackLines: 3,
       sizePx: GLYPH.zoneNameSize,

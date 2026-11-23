@@ -67,7 +67,17 @@ const FIRST_GLASS = (panel: string) => {
   // 2026-11-11 (S9): from `lg` the nav is a RAIL down the left edge and takes nothing off the glass's foot — only a bar (wider than
   // tall) has a top the page must end above.
   const footBar = rail !== null && rail.width > rail.height
-  return { panelTop: card?.top ?? null, planBottom: plan?.bottom ?? null, railTop: footBar ? rail.top : innerHeight, glass: innerHeight }
+  // 2026-11-23 (the HQ command board, docs/design/hq-command-2026-11-23.md): the board stands over the places, so the laws read the
+  // places' own glass — from the top of their row, as the player sees them once she has scrolled to them.
+  const places = top('city-buildings')?.top ?? 0
+  const head = top('city-header')?.bottom ?? 0
+  const shift = Math.max(0, places - head)
+  return {
+    panelTop: card ? card.top - shift : null,
+    planBottom: plan ? plan.bottom - shift : null,
+    railTop: footBar ? rail.top : innerHeight,
+    glass: innerHeight,
+  }
 }
 
 async function open(page: Page, glass: { width: number; height: number }) {
@@ -83,6 +93,9 @@ async function open(page: Page, glass: { width: number; height: number }) {
 async function openPlace(page: Page, id: string) {
   await page.getByTestId(`city-building-${id}`).click()
   await page.waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, undefined, { timeout: 120_000 }).catch(() => {})
+  // 2026-11-23 (the HQ command board): the tiles stand under the board, so the press scrolls the sheet and content passes under the
+  // pinned title. The laws read the page as it opens (scrolled to its top); (g) and (h) read the places' own glass (FIRST_GLASS).
+  await page.evaluate(() => document.querySelectorAll('[data-sheet]').forEach((s) => (s.scrollTop = 0)))
   await page.waitForTimeout(700)
 }
 

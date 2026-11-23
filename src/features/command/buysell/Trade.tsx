@@ -6,6 +6,8 @@ import { usePortMarket } from '../../../live/usePortMarket'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import type { BestSale, FleetView } from '../../../lib/rpc'
 import { useDeskGood } from '../../../store/deskGood'
+import { useDeskHandoff } from '../../../store/deskHandoff'
+import { useDeskView } from '../deskView'
 import { formatInt, formatOfTotal } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import type { DeskLayout } from '../DeskFrame'
@@ -195,6 +197,33 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
     pickGood(s.good)
     setBackTo(null)
   }
+  // A BEST SALE HANDED OVER FROM HQ'S BOARD (store/deskHandoff.ts, docs/design/hq-command-2026-11-23.md): once that fleet is in hand
+  // at the city the board priced it from, it is pressed here, by the one press a card on this board makes. Taken once.
+  // It is taken in the store's callback (now, and on any later hand-over), so the press runs as an event, not in the render.
+  useEffect(() => {
+    let live = true
+    const take = () => {
+      const h = useDeskHandoff.getState().best
+      if (!live || !h || h.fleet !== fleet.id || city !== h.at) return
+      useDeskHandoff.getState().clearBest()
+      pressBest(h.sale)
+    }
+    queueMicrotask(take)
+    const stop = useDeskHandoff.subscribe(take)
+    return () => {
+      live = false
+      stop()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `pressBest` is rebuilt every render; the fleet and the city are the dependency
+  }, [fleet.id, city])
+  // A ROUTE ASKED FOR FROM HQ'S FLEET ROW: the route page opens for this fleet (RouteFold's own page).
+  const routeAsk = useDeskHandoff((s) => s.route)
+  const setRouteOpen = useDeskView((s) => s.setRouteOpen)
+  useEffect(() => {
+    if (routeAsk !== fleet.id) return
+    useDeskHandoff.getState().clearRoute()
+    setRouteOpen(true)
+  }, [routeAsk, fleet.id, setRouteOpen])
   const pickedSale = pickedRow ? sales?.get(pickedRow.code) : undefined
   // A CHOICE OF WHERE TO SELL (2026-11-22, P1; saleChoice.ts): the open trip's best three places to sell, rows of the trip's
   // own board (served, at the units the sheet holds); the card's sale is the default. A place pressed is the same trip

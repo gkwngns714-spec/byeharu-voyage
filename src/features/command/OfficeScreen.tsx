@@ -4,7 +4,8 @@ import { DeskShell } from './DeskShell'
 import { City } from './city/City'
 import { Invest } from './invest/Invest'
 import { Report } from './report/Report'
-import { OFFICE_FACES, useOfficeView } from './officeView'
+import { OFFICE_FACES, openOfficeCity, useOfficeView } from './officeView'
+import { PORT_FACES, type PortFace } from '../../live/cityFaces'
 import { tabWord } from '../../app/navTabs'
 import { useLocale, useT } from '../../lib/i18n'
 import { useLevelGate } from '../../live/levelGate'
@@ -29,13 +30,21 @@ export function OfficeScreen() {
   // HQ'S DOORS (2026-11-23, slice 2: the Office's faces stand on HQ as buildings): `?face=city|invest|report` turns to that face, once,
   // and the URL drops it, so the face strip stays the one control of which face is up.
   const [params, setParams] = useSearchParams()
+  // HQ'S BOARD (docs/design/hq-command-2026-11-23.md): `?face=city&building=inn|market|building_yard[&hull=]` opens the City face at that
+  // building through the one door (`openOfficeCity`), so a card's press lands on the building's own press (hire, fulfil, order).
   const asked = params.get('face')
+  const building = params.get('building')
+  const hull = params.get('hull')
   useEffect(() => {
     if (asked === null) return
-    const hit = OFFICE_FACES.find((f) => f.id === asked)
-    if (hit) turnTo(hit.id)
+    const face = PORT_FACES.find((f) => f.id === building)
+    if (asked === 'city' && face) openOfficeCity(face.id as PortFace, hull ?? undefined)
+    else {
+      const hit = OFFICE_FACES.find((f) => f.id === asked)
+      if (hit) turnTo(hit.id)
+    }
     setParams({}, { replace: true })
-  }, [asked, turnTo, setParams])
+  }, [asked, building, hull, turnTo, setParams])
   return (
     <DeskShell
       testid="office"

@@ -1,5 +1,5 @@
-import { hullTierOf, type ShipTier } from '../../chart'
-import { ShipArtIcon } from '../../live/battle/ShipArt'
+import { hullTierOf, type ShipTier } from '../chart'
+import { ShipArtIcon } from './battle/ShipArt'
 
 // HER PICTURE ON THE FLEETS TAB (2026-11-23, the visual overhaul's slice 5: "each fleet is a tile with its flagship's silhouette").
 //
