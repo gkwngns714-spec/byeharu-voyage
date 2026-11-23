@@ -90,7 +90,7 @@ function StatsBody({ title }: { title: string }) {
       {/* FIVE FACES AND "MORE" (2026-11-23, slice 2, X5): six cells, three over three on a phone and one row from 640 px (Segmented's
           own rule for six). Pressing More opens its first face; the folded faces stand as a second strip while one of them is up. */}
       <Segmented<StatsFace | 'more'>
-        segments={[...FRONT_FACES.map((f) => ({ id: f.id, label: t(`stats.${f.id}`) })), { id: 'more' as const, label: t('stats.more') }]}
+        segments={[...FRONT_FACES.map((f) => ({ id: f.id, label: t(`stats.${f.id}`), icon: f.icon })), { id: 'more' as const, label: t('stats.more'), icon: 'more' as const }]}
         value={folded ? 'more' : face}
         onChange={(id) => setFace(id === 'more' ? (folded ? face : MORE_FACES[0].id) : id)}
         label={t('stats.facesLabel')}
@@ -99,7 +99,7 @@ function StatsBody({ title }: { title: string }) {
       {folded && (
         <div data-testid="stats-more-faces">
           <Segmented<StatsFace>
-            segments={MORE_FACES.map((f) => ({ id: f.id, label: t(`stats.${f.id}`) }))}
+            segments={MORE_FACES.map((f) => ({ id: f.id, label: t(`stats.${f.id}`), icon: f.icon }))}
             value={face}
             onChange={setFace}
             label={t('stats.moreLabel')}

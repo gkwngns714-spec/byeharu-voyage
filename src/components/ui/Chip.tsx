@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { Icon } from './Icon'
+import type { IconName } from './icons'
 import { TileGrid } from './TileGrid'
 import { tileCellClass, type ChoiceColumns, type WordColumns } from './tileStyles'
 
@@ -56,6 +58,9 @@ export function Chip({
 export interface SegmentSpec<T extends string> {
   id: T
   label: ReactNode
+  /** THE FACE'S MARK (2026-11-23, visual pass 3: "the tabs are words only"): its glyph over its word, the word kept short under it. The
+   *  glyph is decorative (the word is the tab's name), and the cell stays the 44-px line. */
+  icon?: IconName
 }
 
 // THE SET OF FACES STAND ON THE CHOICE GRID (owner, 2026-10-31: *"make it into square and allign
@@ -112,9 +117,11 @@ export function Segmented<T extends string>({
             type="button"
             aria-selected={on}
             onClick={() => onChange(s.id)}
-            className={`${tileCellClass()} min-w-11 ${on ? 'bg-surface-2 text-ink shadow-raise' : 'text-ink-muted'}`}
+            className={`${tileCellClass()} min-w-11 ${s.icon ? 'flex-col gap-0.5 py-1' : ''} ${on ? 'bg-surface-2 text-ink shadow-raise' : 'text-ink-muted'}`}
+            data-face-mark={s.icon}
           >
-            {s.label}
+            {s.icon && <Icon name={s.icon} size={18} strokeWidth={on ? 1.9 : 1.5} className={on ? 'text-accent' : ''} />}
+            {s.icon ? <span className="block min-w-0 break-keep">{s.label}</span> : s.label}
           </button>
         )
       })}
