@@ -50,9 +50,9 @@ test.describe('the ranking rule', () => {
   })
 })
 
-async function openHq(page: Page, width: number, height: number, served = false, jobs = false) {
+async function openHq(page: Page, width: number, height: number, served = false, jobs = false, contracts = false) {
   await page.setViewportSize({ width, height })
-  await serveHqLit(page, { served, jobs })
+  await serveHqLit(page, { served, jobs, contracts })
   await page.goto('city')
   await ready(page)
   await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: WORLD_BOOT_MS })
@@ -181,6 +181,38 @@ test.describe('standing fleet jobs (0481, lit)', () => {
       )
       expect(small, 'job presses under 44 px').toBe(0)
       if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/jobs-${glass.width}.png`, fullPage: true })
+    })
+  }
+})
+
+// 0483: COURIER CONTRACTS (contracts_enabled lit, the board served, one house contract posted at Lisbon): her board offers it as a
+// `contract` card (the pact, Carry <good> to <harbour>, the reward and coin an hour, the collateral and the risk as marks) and one press
+// takes it and sends her: the fleet leaves Lisbon, HQ stays, no refusal. The Requests face's door is "Post a contract".
+test.describe('courier contracts (0483, lit)', () => {
+  for (const glass of [
+    { width: 390, height: 844 },
+    { width: 1280, height: 800 },
+  ]) {
+    test(`a contract card takes it in one press, and nothing leaves the glass at ${glass.width}`, async ({ page, request, baseURL }) => {
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      test.setTimeout(600_000)
+      await openHq(page, glass.width, glass.height, true, false, true)
+      await expect(page.getByTestId('hq-board')).toHaveAttribute('data-source', 'served', { timeout: 180_000 })
+      await page.getByTestId('hq-filter-contract').click()
+      const card = page.locator('[data-testid="hq-moves"] [data-testid="hq-move"][data-kind="contract"]').first()
+      await expect(card).toBeVisible({ timeout: 180_000 })
+      await expect(card).toHaveAttribute('data-served', 'true')
+      await expect(card).toHaveAttribute('data-act', 'cmd.take_contract')
+      await expect(card.getByTestId('hq-move-risk')).toBeVisible()
+      await expect(card.getByTestId('hq-move-collateral')).toBeVisible()
+      expect(Number(await card.getAttribute('data-per-hour'))).toBeGreaterThan(0)
+      expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
+      if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/contracts-${glass.width}.png`, fullPage: true })
+      const fleet = (await card.getAttribute('data-fleet'))!
+      await card.click()
+      await expect(page.locator(`[data-testid="hq-fleet"][data-fleet="${fleet}"]`)).not.toHaveAttribute('data-job', 'idle', { timeout: 120_000 })
+      await expect(page).toHaveURL(/\/city/)
+      await expect(page.getByTestId('hq-move-refusal')).toHaveCount(0)
     })
   }
 })

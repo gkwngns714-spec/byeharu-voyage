@@ -3196,7 +3196,7 @@ export type GoodsMasteryView =
     }
 
 /** 0480: a served HQ move's kind (world.hq_board). */
-export type HqMoveKind = 'trade' | 'request' | 'yard' | 'land' | 'crew' | 'invest'
+export type HqMoveKind = 'trade' | 'request' | 'yard' | 'land' | 'crew' | 'invest' | 'contract'
 
 /** 0480: a trade run's risk: the highest danger level (1-5) of the waters of the harbours it calls at, and the richest bounty pirate
  *  whose home or sea is on it (null with none). */
@@ -3229,6 +3229,10 @@ export type HqAct =
   | { rpc: 'cmd.hire_officer'; args: { code: string; fleet: string } }
   | { rpc: 'cmd.invest'; args: { port: string; kind: WorkKind; shares: number } }
   | { rpc: 'cmd.land_collect'; args: Record<string, never> }
+  /** 0483: take a courier contract with this fleet (the collateral, the goods, one plan on stored courses). */
+  | { rpc: 'cmd.take_contract'; args: { fleet: string; contract: string; version: number } }
+  /** 0483: deliver a contract she carries, her fleet lying at its harbour with the goods. */
+  | { rpc: 'cmd.deliver_contract'; args: { contract: string } }
 
 /** 0480: what a card needs, as served (each kind fills its own). */
 export interface HqNeeds {
@@ -3245,6 +3249,13 @@ export interface HqNeeds {
   work?: WorkKind
   shares?: number
   idle?: number
+  /** 0483: a contract's harbours (A, B), its collateral, its window (s) or deadline, who posted it. */
+  from?: string
+  collateral?: number
+  window?: number
+  deliver_by?: string
+  poster?: CourierPoster
+  poster_name?: string | null
 }
 
 /** 0480: one move on the served board, in the server's order. */
@@ -3283,6 +3294,60 @@ export type HqBoardView =
       unpriced: string[]
       clock: { now: string; next_change_at: string }
       ms: number
+    }
+
+/** 0483: who posted a courier contract. */
+export type CourierPoster = 'house' | 'city' | 'company'
+
+/** 0483: how a contract settled (public.courier_settle). */
+export interface CourierOutcome {
+  how: 'deliver' | 'fail' | 'lapse' | 'cancel'
+  why?: string | null
+  returned?: number
+  lost?: number
+  reward?: number
+  collateral?: number
+}
+
+/** 0483: one of her courier contracts, posted or carried (public.courier_rows). */
+export interface CourierContract {
+  id: string
+  status: 'open' | 'taken' | 'delivered' | 'failed' | 'lapsed' | 'cancelled'
+  poster: CourierPoster
+  good: string
+  qty: number
+  from: string
+  to: string
+  nm: number
+  value: number
+  reward: number
+  collateral: number
+  /** The delivery window, real seconds from the take. */
+  window: number
+  posted_at: string
+  expires_at: string
+  taken_at: string | null
+  deliver_by: string | null
+  settled_at: string | null
+  fleet: string | null
+  fleet_name: string | null
+  /** A taken contract now: deliver, late or wait; null otherwise. */
+  state: 'deliver' | 'late' | 'wait' | null
+  outcome: CourierOutcome | null
+}
+
+/** `world.courier_contracts()` (0483). Dark `{on: false}`; lit with no company `{on, company: false}`. */
+export type CourierContractsView =
+  | { on: false }
+  | { on: true; company: false }
+  | {
+      on: true
+      company: true
+      /** Open contracts in the world. */
+      open: number
+      posted: CourierContract[]
+      carried: CourierContract[]
+      limits: { post_max: number; carry_max: number; hours_min: number; hours_max: number }
     }
 
 /** 0481: a standing fleet job's kind: repeat her best run, a fixed route, carry the Land's output to the yard. */

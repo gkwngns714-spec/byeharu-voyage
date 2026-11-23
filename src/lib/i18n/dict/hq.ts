@@ -64,6 +64,12 @@ export const hqDict = defineDict({
     away: 'While away',
     runs: '{n} runs',
     seen: 'OK',
+    // 0483: courier contracts
+    contract: 'Contracts',
+    carry: 'Carry {good} to {port}',
+    deliver: 'Deliver {good}',
+    collateral: 'Collateral {n}',
+    loadAt: 'Load at {port}',
   },
   ko: {
     bridge: '한눈에',
@@ -125,5 +131,10 @@ export const hqDict = defineDict({
     away: '자리 비운 사이',
     runs: '{n}회',
     seen: '확인',
+    contract: '계약',
+    carry: '{good} → {port} 운송',
+    deliver: '{good} 인도',
+    collateral: '담보 {n}',
+    loadAt: '{port} 적재',
   },
 })

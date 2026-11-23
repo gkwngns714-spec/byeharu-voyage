@@ -88,6 +88,8 @@ import type {
   GoodsMasteryView,
   HqBoardView,
   FleetJobsReport,
+  CourierContractsView,
+  CourierOutcome,
   FleetJobKind,
   FleetJobParams,
   FleetJobSet,
@@ -819,6 +821,44 @@ export function cmdClearFleetJob(fleetId: string): Promise<RpcResult<{ ok: true;
 /** 0481: she has read the away report: each job's tallies start again. */
 export function cmdFleetJobsSeen(): Promise<RpcResult<{ ok: true; seen_at: string }>> {
   return call<{ ok: true; seen_at: string }>('cmdFleetJobsSeen', [])
+}
+
+/** 0483: her courier contracts (posted and carried) and the limits. Dark: `{on: false}`. */
+export function worldCourierContracts(): Promise<RpcResult<CourierContractsView>> {
+  return call<CourierContractsView>('worldCourierContracts', [])
+}
+
+/** 0483: take a courier contract with this fleet: the collateral, the goods, one plan on stored courses. Dark E_NOT_IN_USE. */
+export function cmdTakeContract(fleetId: string, contractId: string, version: number | null): Promise<RpcResult<{ ok: true; contract: string }>> {
+  return call<{ ok: true; contract: string }>('cmdTakeContract', [fleetId, contractId, version])
+}
+
+/** 0483: deliver a contract she carries (her fleet lies at B with the goods, in time): the reward and the collateral are hers. */
+export function cmdDeliverContract(contractId: string): Promise<RpcResult<{ ok: true; outcome: CourierOutcome }>> {
+  return call<{ ok: true; outcome: CourierOutcome }>('cmdDeliverContract', [contractId])
+}
+
+/** 0483: give up a contract she carries: the collateral is the poster's; the goods still hers to give go back. */
+export function cmdFailContract(contractId: string): Promise<RpcResult<{ ok: true; outcome: CourierOutcome }>> {
+  return call<{ ok: true; outcome: CourierOutcome }>('cmdFailContract', [contractId])
+}
+
+/** 0483: take her own untaken contract down: the reward and the goods come back. */
+export function cmdCancelContract(contractId: string): Promise<RpcResult<{ ok: true; outcome: CourierOutcome }>> {
+  return call<{ ok: true; outcome: CourierOutcome }>('cmdCancelContract', [contractId])
+}
+
+/** 0483: post a contract ("Post a contract"): her goods out of her Storage at `from`, the reward held, for another company to carry. */
+export function cmdPostContract(
+  fromPort: string,
+  toPort: string,
+  goodId: string,
+  qty: number,
+  reward: number,
+  collateral: number,
+  hours: number,
+): Promise<RpcResult<{ ok: true; contract: string }>> {
+  return call<{ ok: true; contract: string }>('cmdPostContract', [fromPort, toPort, goodId, qty, reward, collateral, hours])
 }
 
 /** 0471: the named pirates and their bounties. Dark: `{on: false}`. */

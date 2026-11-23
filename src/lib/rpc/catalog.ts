@@ -441,6 +441,35 @@ const TABLE = {
   },
   cmdClearFleetJob: { schema: 'cmd', fn: 'clear_fleet_job', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdFleetJobsSeen: { schema: 'cmd', fn: 'fleet_jobs_seen', mutates: true, args: [] },
+  // 0483 — COURIER CONTRACTS (dark: the doors E_NOT_IN_USE, the read {on: false})
+  worldCourierContracts: { schema: 'world', fn: 'courier_contracts', args: [] },
+  cmdTakeContract: {
+    schema: 'cmd',
+    fn: 'take_contract',
+    mutates: true,
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_contract', type: 'uuid' },
+      { name: 'p_expected_version', type: 'integer' },
+    ],
+  },
+  cmdDeliverContract: { schema: 'cmd', fn: 'deliver_contract', mutates: true, args: [{ name: 'p_contract', type: 'uuid' }] },
+  cmdFailContract: { schema: 'cmd', fn: 'fail_contract', mutates: true, args: [{ name: 'p_contract', type: 'uuid' }] },
+  cmdCancelContract: { schema: 'cmd', fn: 'cancel_contract', mutates: true, args: [{ name: 'p_contract', type: 'uuid' }] },
+  cmdPostContract: {
+    schema: 'cmd',
+    fn: 'post_contract',
+    mutates: true,
+    args: [
+      { name: 'p_from', type: 'uuid' },
+      { name: 'p_to', type: 'uuid' },
+      { name: 'p_good', type: 'uuid' },
+      { name: 'p_qty', type: 'numeric' },
+      { name: 'p_reward', type: 'bigint' },
+      { name: 'p_collateral', type: 'bigint' },
+      { name: 'p_hours', type: 'numeric' },
+    ],
+  },
   // 0213 — INSURANCE: the caller's insured voyages under way and the last ones the insurance paid on.
   // A READ at a face (the desk's Plans), never on the beat. The price itself is `cmd.preview`'s: a SAIL's
   // estimate carries `insurance` (quoted unasked, charged with the word INSURED).
