@@ -1621,6 +1621,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-23 with migration 0480 (the HQ board from the server): world.hq_board() - no argument, no player id;
       // dark {on: false}; lit her moves ranked, each with the command it commits. A read. Landed WITH the face (HQ's board reads it lit).
       'worldHqBoard',
+      // Pin moved deliberately 2026-11-23 with migration 0481 (standing fleet jobs): world.away_report() - no argument, no player id; dark
+      // {on: false}; lit her fleets' jobs and what each did since she last read it. A read. And its three doors, none taking a player id:
+      // cmd.set_fleet_job(fleet, kind, params), cmd.clear_fleet_job(fleet), cmd.fleet_jobs_seen(); a fleet not hers refused; dark
+      // E_NOT_IN_USE. Landed WITH the faces (HQ's away card, each fleet row's job and a trade card's Repeat).
+      'worldAwayReport', 'cmdSetFleetJob', 'cmdClearFleetJob', 'cmdFleetJobsSeen',
       // Pin moved deliberately with migration 0327 (docs/WORLD_POWERS.md §4.2): A FLEET ATTACKS A CARGO SHIP, and its dry run. No player id; dark (E_NOT_IN_USE) until
       // attack_enabled. Landed WITH the face (src/live/AttackSection.tsx).
       'cmdAttack', 'cmdPreviewAttack',

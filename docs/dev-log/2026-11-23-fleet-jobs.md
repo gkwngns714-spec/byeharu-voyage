@@ -20,10 +20,11 @@ choosing best options available, finding best options."
   either direction (`public.fleet_job_course`). The sources, in order:
   1. a merchant lane (`public.npc_known_legs`);
   2. a coast course (`public.npc_coast_legs`);
-  3. the newest voyage her own company sailed between the two harbours (`voyage.course_of` over the stored segments). This is what her
-     chart plotted, returned exactly, read by the `(fleet_id, eta)` index of ended voyages.
+  3. the newest voyage her own company sailed between the two harbours, ended or under way (`voyage.course_of` over the stored
+     segments). This is what her chart plotted, returned exactly, read through the two partial indexes of a fleet's voyages (ended and
+     sailing).
 
-  `cmd.do_sail` judges the course again at every departure. A trip she has sailed once by hand can be her job from then on.
+  `cmd.do_sail` judges the course again at every departure. A trip she has sent once by hand can be her job from then on.
 - **The doors** are registered for signed-in players, check the owner, and refuse with the `{ok: false}` envelope. Dark, every door
   refuses `E_NOT_IN_USE`.
   - `cmd.set_fleet_job(fleet, kind, params)` refuses a fleet that is not hers, a bad kind, a fixed route with one harbour, and a fixed
@@ -62,10 +63,18 @@ choosing best options available, finding best options."
   - the mark is the kind's glyph (a trophy for the best run, a route for a fixed route, a pick for the Land haul) in the tone of its
     state (working green, waiting muted, stopped red), with ×runs;
   - the setter is two chips, Best and Land (plus Fixed once one is set). Pressing the chip that is on takes the job away.
-- **A trade card** offers **Repeat**. Repeat sets that trip (her port, the sale's harbour, the passage's stops) as her fixed route. The
-  chip is on while that trip is her job. Repeat appears on the served cards and on v1's.
+- **A trade card** offers **Repeat**, which works in one press:
+  - On a served card it first sends the trip through the card's own act, the same as pressing the card. Then it sets that trip (her
+    port, the sale's harbour, the passage's stops) as her fixed route. The voyage now under way is the course the route keeps, so a trip
+    no merchant lane covers can still be repeated.
+  - On v1's card it sets the route alone.
+  - The chip is on while that trip is her job. A refusal stands under the card in the server's own words.
 - **The read** is `live/useAwayReport.ts`. It is asked when HQ opens, when one of her fleets acts (a new version), and after a press
   here. It is never asked on the beat. A dark answer is kept a minute.
+- **Screens:** headless shots at 390 and 1280 are at
+  `C:\Users\gkwng\AppData\Local\Temp\claude\f5388e2006711d23\20c3c33b-2e64-4a9f-9933-ae93974d7413\scratchpad\hq-jobs\` (`jobs-390.png`, `jobs-1280.png`, local to the PC that took them). `tests/hq.board.spec.ts` covers them: "standing
+  fleet jobs (0481, lit)" checks that Best sets the mark and that a served card's Repeat sends the trip and keeps it as a working fixed
+  route. It also checks that nothing scrolls sideways and that every press is at least 44 px.
 - **Words** (EN / KO, `dict/hq.ts`): Job, Best run, Fixed run, Land haul, Working, Waiting, Stopped, Repeat, While away, {n} runs, OK.
 
 ## Measured
@@ -106,3 +115,6 @@ choosing best options available, finding best options."
 - **The away report's window** is "since she last pressed OK" (`cmd.fleet_jobs_seen`), not a device's last visit. The existing
   route-and-purse "While you were away" overlay (`app/AwayCard.tsx`, local to the device) is unchanged.
 - **The fleet row sets Best and Land.** A fixed route is set from a trade card's Repeat, because it needs the card's good and harbours.
+  On a served card, Repeat sends the trip first, so its voyage is the course the route keeps.
+- **A fixed route with stops** needs a sailed course for every leg, out and back. The voyage under way covers only its first leg, so
+  such a Repeat is refused (`E_NO_COURSE`) until each leg has been sailed.

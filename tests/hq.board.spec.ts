@@ -50,9 +50,9 @@ test.describe('the ranking rule', () => {
   })
 })
 
-async function openHq(page: Page, width: number, height: number, served = false) {
+async function openHq(page: Page, width: number, height: number, served = false, jobs = false) {
   await page.setViewportSize({ width, height })
-  await serveHqLit(page, { served })
+  await serveHqLit(page, { served, jobs })
   await page.goto('city')
   await ready(page)
   await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: WORLD_BOOT_MS })
@@ -145,6 +145,44 @@ test.describe('the board from the server (0480, lit)', () => {
     await expect(page).toHaveURL(/\/city/)
     await expect(page.getByTestId('hq-move-refusal')).toHaveCount(0)
   })
+})
+
+// 0481: STANDING FLEET JOBS (fleet_jobs_enabled lit, the board served): each fleet row carries her job's setter; Best gives her the best
+// run and her row then wears the job's mark; a served trade card's Repeat sends the trip and keeps it as her fixed route (working).
+test.describe('standing fleet jobs (0481, lit)', () => {
+  for (const glass of [
+    { width: 390, height: 844 },
+    { width: 1280, height: 800 },
+  ]) {
+    test(`a fleet row sets her job, a trade card repeats its trip, and nothing leaves the glass at ${glass.width}`, async ({ page, request, baseURL }) => {
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      test.setTimeout(600_000)
+      await openHq(page, glass.width, glass.height, true, true)
+      const control = page.getByTestId('hq-job-control').first()
+      await expect(control).toBeVisible({ timeout: 180_000 })
+      const fleet = (await control.getAttribute('data-fleet'))!
+      await control.getByTestId('hq-job-set-best').click()
+      const mark = page.locator(`[data-testid="hq-job-control"][data-fleet="${fleet}"] [data-testid="hq-job"]`)
+      await expect(mark).toHaveAttribute('data-kind', 'best', { timeout: 120_000 })
+      await expect(page.getByTestId('hq-job-refusal')).toHaveCount(0)
+      // a served trade card's Repeat: the trip goes now (the card's own act) and stays her job as a fixed route (its course her voyage)
+      const card = page.locator(`[data-testid="hq-moves"] li:has([data-testid="hq-move"][data-kind="trade"][data-served="true"][data-fleet="${fleet}"])`).first()
+      await expect(card).toBeVisible({ timeout: 180_000 })
+      await card.getByTestId('hq-move-repeat').click()
+      await expect(mark).toHaveAttribute('data-kind', 'fixed', { timeout: 120_000 })
+      await expect(mark).toHaveAttribute('data-state', 'working')
+      await expect(page.getByTestId('hq-move-repeat-refusal')).toHaveCount(0)
+      await expect(page.getByTestId('hq-move-refusal')).toHaveCount(0)
+      expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
+      const small = await page.evaluate(() =>
+        [...document.querySelectorAll('[data-testid="hq-job-control"] button, [data-testid="hq-move-repeat"]')]
+          .map((b) => b.getBoundingClientRect())
+          .filter((r) => r.width > 0 && (r.height < 43.5 || r.width < 43.5)).length,
+      )
+      expect(small, 'job presses under 44 px').toBe(0)
+      if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/jobs-${glass.width}.png`, fullPage: true })
+    })
+  }
 })
 
 for (const glass of [

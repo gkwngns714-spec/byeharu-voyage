@@ -24,8 +24,8 @@
 --   A COURSE IS THE WORLD'S: the server cannot plot one (cmd.do_sail refuses E_NO_COURSE a SAIL with no course when land is in the way),
 --     so a job sails only a course already sailed and verified between two harbours, either way: a merchant lane (public.npc_known_legs),
 --     a coast course (public.npc_coast_legs), or the newest voyage her own company sailed there (voyage.course_of over its stored
---     segments: what her chart plotted). cmd.do_sail re-judges it at every departure. public.fleet_job_course. So a trip she has sailed
---     once by hand can be her job from then on.
+--     segments: what her chart plotted, ended or under way). cmd.do_sail re-judges it at every departure. public.fleet_job_course.
+--     So a trip she has sent once by hand (a board card's press) can be her job from then on (the card's Repeat).
 --   THE DOORS (registered, signed-in players only, owner-checked, the {ok:false} envelope): cmd.set_fleet_job(fleet, kind, params),
 --     cmd.clear_fleet_job(fleet), cmd.fleet_jobs_seen() (she has read the away report: its tallies start again). Dark: E_NOT_IN_USE.
 --     A fleet that runs a standing route is refused (E_ROUTE_TAKEN): the route is her job already.
@@ -212,17 +212,22 @@ set search_path = public, pg_temp
 as $body$
   -- 0481: THE COURSE A JOB SAILS from one harbour to another, one the world has already sailed and cmd.do_sail verified: a merchant lane,
   -- either way (public.npc_known_legs), a coast course (public.npc_coast_courses), or the newest voyage her company sailed between the two,
-  -- either way (voyage.course_of over its stored segments: the course her chart plotted, to the point; the (fleet_id, eta) index of ended
-  -- voyages). Null when none: the server plots no course of its own. cmd.do_sail judges it again at every departure.
+  -- either way, ended or under way (voyage.course_of over its stored segments: the course her chart plotted, to the point; each read by
+  -- its fleet through the two partial indexes, ended and sailing). Null when none: the server plots no course of its own. cmd.do_sail
+  -- judges it again at every departure. So the trip she has just sent can be her job at once.
   select coalesce(
     (select k.course from public.npc_known_legs(p_from) k where k.to_port = p_to),
     (select c.course from public.npc_coast_legs(p_from) c where c.to_port = p_to),
     (select case when v.origin_port_id = p_from then voyage.course_of(v.path)
                  else (select jsonb_agg(t.x order by t.i desc) from jsonb_array_elements(voyage.course_of(v.path)) with ordinality t(x, i)) end
-       from public.fleets mine
-       join public.voyages v on v.fleet_id = mine.id and v.status <> 'SAILING'
-      where mine.player_id = (select f.player_id from public.fleets f where f.id = p_fleet)
-        and ((v.origin_port_id = p_from and v.dest_port_id = p_to) or (v.origin_port_id = p_to and v.dest_port_id = p_from))
+       from (select x.origin_port_id, x.dest_port_id, x.path, x.eta
+               from public.fleets mine join public.voyages x on x.fleet_id = mine.id and x.status <> 'SAILING'
+              where mine.player_id = (select f.player_id from public.fleets f where f.id = p_fleet)
+             union all
+             select x.origin_port_id, x.dest_port_id, x.path, x.eta
+               from public.fleets mine join public.voyages x on x.fleet_id = mine.id and x.status = 'SAILING'
+              where mine.player_id = (select f.player_id from public.fleets f where f.id = p_fleet)) v
+      where ((v.origin_port_id = p_from and v.dest_port_id = p_to) or (v.origin_port_id = p_to and v.dest_port_id = p_from))
         and jsonb_typeof(v.path) = 'array' and jsonb_array_length(v.path) > 0
       order by (v.origin_port_id = p_from) desc, v.eta desc
       limit 1))
@@ -1077,10 +1082,14 @@ $h$      ('world',       'hq_board',              ''),
       raise exception '0481 self-assert FAIL: seen did not start her tallies again: %', left(v_rep::text, 300);
     end if;
     v_note := format('fixed LIS-%s %s, land %s to %s', v_sell, v_gcode, v_lcode, v_yard);
-    -- her own voyage is a course: her voyage under way, ended and re-addressed (probe only) to the harbour no lane reaches, serves its course
-    -- LIS -> there as it was sailed, and there -> LIS the same water backwards; another company's fleet is not served it
-    update public.voyages v set status = 'ARRIVED', dest_port_id = (select p.id from public.ports p where p.code = v_far)
+    -- her own voyage is a course: her voyage under way, re-addressed (probe only) to the harbour no lane reaches, serves its course
+    -- LIS -> there as it was sailed, and there -> LIS the same water backwards, under way and then ended; another company's fleet is not served it
+    update public.voyages v set dest_port_id = (select p.id from public.ports p where p.code = v_far)
      where v.fleet_id = v_fa and v.status = 'SAILING';
+    if public.fleet_job_course(v_fa, v_lis, (select p.id from public.ports p where p.code = v_far)) is null then
+      raise exception '0481 self-assert FAIL: her voyage under way is not served as her course';
+    end if;
+    update public.voyages v set status = 'ARRIVED' where v.fleet_id = v_fa and v.status = 'SAILING';
     if public.fleet_job_course(v_fa, v_lis, (select p.id from public.ports p where p.code = v_far))
          is distinct from (select voyage.course_of(v.path) from public.voyages v where v.fleet_id = v_fa and v.origin_port_id = v_lis order by v.eta desc limit 1)
        or public.fleet_job_course(v_fa, (select p.id from public.ports p where p.code = v_far), v_lis)->0
