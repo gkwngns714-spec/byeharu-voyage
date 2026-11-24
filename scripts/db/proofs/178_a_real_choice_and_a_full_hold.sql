@@ -7,6 +7,12 @@
 --   units), the one press that buys both goods (cmd.issue_lines: BUY, BUY at the quay), and the near rule's horizon
 --   (public.first_hour_near_seconds). Rolled back by proof.mjs.
 --
+--   THE MARKET IS PINNED (proof.pin_market, scripts/db/market-fixture.mjs: the one authority, this proof's own key). Which Lisbon goods pay
+--   within the horizon, which card moves and which load is topped up are facts of the market, and every from-zero apply deals another
+--   (0010's random() drift): on main's from-zero run of 2026-11-24 every Lisbon good had a paying sale near by, so no card was far and
+--   NC_MARK had nothing to mark; three of ten other deals do the same. The pinned market is drawn on the authored codes, the same in every
+--   world: Lisbon holds near cards and far ones, cards move, loads are topped up. Every assertion is as it was.
+--
 -- @pass NC_DARK    dark: no card carries `spread`, `top` or `near`; a Trading 5 newcomer has no near horizon (0472's rule)
 -- @pass NC_SPREAD  lit: at Lisbon and Amsterdam a card moved off a harbour holding the knob's count, to a paying harbour of its good
 --                  within the knob of its best an hour of play; the moved card is the trip board's own row (profit and cost to the
@@ -39,6 +45,10 @@ declare
   x      record;
   p      record;
 begin
+  v_r := proof.pin_market('00000000-0475-4000-8000-000000000174'::uuid, 'proof-178');
+  if (v_r ->> 'nonzero')::int < 14000 then
+    raise exception 'PROOF 178 FAILED: the market was not pinned: %', v_r;
+  end if;
   update public.world_config set value = 'true'::jsonb where key = 'first_hour_enabled';
   update public.world_config set value = 'false'::jsonb where key = 'near_choice_enabled';
   v_a := public.new_house(c_a, 'Casa da Escolha A 178', 'PRT');
