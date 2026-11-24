@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
-import { closeTop, openMarket, openPlate, tradeOnDesk } from './desk.fixture'
+import { tradeOnDesk } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE HQ'S PRODUCTION PAGE (owner, 2026-11-06)
@@ -22,22 +22,24 @@ import { closeTop, openMarket, openPlate, tradeOnDesk } from './desk.fixture'
 const GOOD = 'silk-cloth'
 
 async function buyOneLot(page: Page) {
-  await page.goto('city')
+  await page.goto('office')
   await ready(page)
-  await openMarket(page)
-  const card = page.locator(`[data-testid="city-market-buy"] [data-testid="trade-good"][data-good="${GOOD}"]`)
-  await expect(card).toBeVisible({ timeout: 60_000 })
-  await card.getByTestId('trade-buy').click()
-  // the Buy opens the trade sheet over HQ on that good; the lot is bought there, and its close returns to the Market
+  await page.getByRole('tab', { name: 'City', exact: true }).first().click()
+  await expect(page.getByTestId('desk-city')).toBeVisible()
+  const row = page.getByTestId('trade-row').filter({ hasText: 'Silk Cloth' }).first()
+  await expect(row).toBeVisible({ timeout: 60_000 })
+  await row.getByRole('button').filter({ hasText: /^buy/i }).first().click()
+  // X1 (src/live/tradeOnDesk.ts): the price opens the Trade desk on that good; the lot is bought there, and Back returns to the City
   await tradeOnDesk(page, 5)
-  await closeTop(page)
-  await expect(page.getByTestId('good-detail')).toHaveCount(0, { timeout: 30_000 })
-  await expect(card.getByTestId('trade-good-aboard')).toContainText('5', { timeout: 30_000 })
+  await page.goBack()
+  await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })
+  await expect(row).toContainText(/\d units? on board/, { timeout: 30_000 })
 }
 
-/** HQ's Production plate is the door. */
+/** The desk's tab is the door: an old way to Storage lands on the merged page. */
 async function openProduction(page: Page) {
-  await openPlate(page, 'production')
+  await page.getByRole('tab', { name: 'Production', exact: true }).first().click()
+  await expect(page).toHaveURL(/place=production/)
   await expect(page.getByTestId('port-production')).toBeVisible({ timeout: 60_000 })
   // THE PAGE HAS LANDED: the hall's load meter has left and the recipes' read is drawn, so a box read now is the page's and not its loading.
   await expect(page.getByTestId('city-load-host')).toHaveCount(0, { timeout: 60_000 })
@@ -148,11 +150,9 @@ test('Production on a phone: one column under a fixed control, and a press moves
   await expect(face).toBeVisible({ timeout: 60_000 })
   const control = face.getByRole('tablist', { name: 'Production', exact: true })
   await expect(control.getByRole('tab')).toHaveText(['Storage', 'Cargo', 'Recipes'])
-  // THE CONTROL IS BROUGHT ONTO THE GLASS FIRST (H3, 2026-11-24: the goal card stands on HQ now, and from the page's top the
-  // control stood under the bar, so the driver's own scroll to the first press read as the control moving). The first tab is
-  // pressed once, which brings it up; the law is then read on the presses that follow.
-  await control.getByRole('tab').first().click()
-  await page.waitForTimeout(400)
+  // on the glass first: HQ is taller than a phone, and a press on a control off the glass scrolls the page to it (that is the scroll, not a re-flow)
+  await control.scrollIntoViewIfNeeded()
+  await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 60_000 })
   const before = await control.boundingBox()
   const only = { Storage: 'production-storage', Cargo: 'production-cargo', Recipes: 'production-recipes' } as const
   for (const [word, id] of Object.entries(only)) {

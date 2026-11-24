@@ -45,8 +45,8 @@ const signed = (n: number) => (n > 0 ? `+${formatInt(n)}` : formatInt(n))
 const spent = (n: number) => (n < 0 ? formatInt(-n) : signed(n))
 const toneOf = (n: number) => (n < 0 ? 'text-danger' : n > 0 ? 'text-success' : 'text-ink-muted')
 
-/** Two lines of caption on a phone's half-width tile, one from `md`: the height never moves with the words. */
-const FIXED_LINE = 'flex h-9 min-w-0 flex-wrap content-start gap-x-1 overflow-hidden text-t-caption tabular-nums md:h-[1.125rem]'
+/** A slot one caption line high, held whether its words are here yet or not: nothing under the strip moves when they arrive. */
+const HELD_LINE = 'flex h-[1.125rem] min-w-0 flex-wrap content-start gap-x-1 overflow-hidden text-t-caption tabular-nums text-ink-muted md:justify-end'
 
 export function RateWhy({ board }: { board: Board }) {
   const t = useT()
@@ -58,7 +58,7 @@ export function RateWhy({ board }: { board: Board }) {
   if (!rate || !lines) {
     return (
       <span
-        className={`text-t-caption tabular-nums ${board.perHour < 0 ? 'text-danger' : 'text-success'}`}
+        className={`flex min-h-11 items-center text-t-figure tabular-nums ${toneOf(board.perHour)}`}
         title={t(board.served ? 'hq.rateDay' : 'hq.rateToday')}
         data-testid="hq-bridge-rate"
         data-span={board.served ? '24h' : 'today'}
@@ -84,15 +84,15 @@ export function RateWhy({ board }: { board: Board }) {
         data-testid="hq-bridge-rate"
         data-span="24h"
         data-per-hour={rate.per_hour}
-        className="-mx-1 flex min-h-11 min-w-0 flex-col items-start justify-center rounded-control px-1 text-left text-t-caption tabular-nums transition hover:bg-surface-2"
+        className="-mx-1 flex h-11 min-w-0 items-center gap-2 rounded-control px-1 text-left tabular-nums transition hover:bg-surface-2"
       >
-        <span className={`flex items-center gap-1 ${toneOf(rate.per_hour)}`}>
+        <span className={`flex items-center gap-1 text-t-figure ${toneOf(rate.per_hour)}`} data-testid="hq-rate-figure">
           {t('hq.perHour', { n: formatDucatsDelta(rate.per_hour) })}
           <Icon name="chevron" size={14} aria-hidden />
         </span>
-        <span className="text-ink-faint">{t('hq.rateLast')}</span>
+        <span className="whitespace-nowrap text-t-caption text-ink-faint">{t('hq.rateLast')}</span>
       </button>
-      <span className={`${FIXED_LINE} text-ink-muted`} data-testid="hq-rate-causes">
+      <span className={HELD_LINE} data-testid="hq-rate-causes">
         {top.map((l, i) => (
           <span key={l.line} className="whitespace-nowrap" data-line={l.line}>
             {`${t(wordOf(l.line))} ${signed(l.total_24h)}${i < top.length - 1 ? ' ·' : ''}`}
@@ -101,7 +101,7 @@ export function RateWhy({ board }: { board: Board }) {
       </span>
       {/* her biggest purchase of the day (the server's order: the largest first), neutral; the rest are in the sheet */}
       {once.length > 0 && (
-        <span className={`${FIXED_LINE} text-ink-muted`} data-testid="hq-rate-once" data-line={once[0].line}>
+        <span className={HELD_LINE} data-testid="hq-rate-once" data-line={once[0].line}>
           <span className="whitespace-nowrap">{`${t(wordOf(once[0].line))} ${spent(once[0].total_24h)}`}</span>
           <span className="whitespace-nowrap">{`· ${t('hq.rateOnceLow')}`}</span>
         </span>

@@ -38,6 +38,8 @@ export interface Board {
   rate: HqRate | null
   /** The figures are the server's (`source === 'served'`), in the word RateWhy.tsx reads. */
   served: boolean
+  /** The first answer is still on the wire: nothing is known yet, so a face says neither "off" nor "none" (HqBoard.tsx holds its line). */
+  asking: boolean
 }
 
 export function useBoard(): Board {
@@ -57,7 +59,7 @@ export function useBoard(): Board {
   const hq = useHqBoard(company, `${all.map((f) => (f.status === 'DOCKED' ? `${f.id}.${f.version}` : f.id)).join(',')}:${roleEdits}:${kept}`)
   const lit = litBoard(hq.view)
 
-  if (!lit) return { moves: [], perHour: null, source: hq.view && !hq.view.on ? 'off' : null, rate: null, served: false }
+  if (!lit) return { moves: [], perHour: null, source: hq.view && !hq.view.on ? 'off' : null, rate: null, served: false, asking: hq.view === null && hq.loading }
 
   // the server's moves in the server's order (an invest card only where the one level gate opens Invest)
   const byId = new Map(all.map((f) => [f.id, f]))
@@ -72,7 +74,7 @@ export function useBoard(): Board {
       fleet: m.fleet,
       data: { kind: 'served', move: m, fleet: m.fleet ? (byId.get(m.fleet) ?? null) : null },
     }))
-  return { moves, perHour: lit.rate?.per_hour ?? null, source: 'served', rate: lit.rate, served: true }
+  return { moves, perHour: lit.rate?.per_hour ?? null, source: 'served', rate: lit.rate, served: true, asking: false }
 }
 
 /** The served board, when it is lit for her company; else null (dark, signed out, a merchant, unread). */

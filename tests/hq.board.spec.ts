@@ -40,8 +40,8 @@ const stripBoxes = (page: Page) =>
     return { strip: h('hq-bridge'), slot: h('hq-bridge-rate-slot') }
   })
 
-/** The per-hour slot's height: one 44 px line, with a figure in it or not (a server that serves no rate lines). */
-const SLOT = 44
+/** The per-hour slot's height: the figure's 44 px and two held lines of causes (18 px each), with words in them or not. */
+const SLOT = 80
 
 /** Her fleet's row of the one worker list. */
 const worker = (page: Page, fleet: string) => page.locator(`[data-testid="corp-worker"][data-worker="${fleet}"]`)
@@ -75,9 +75,9 @@ test.describe('the Rank strip (H2)', () => {
       await expect(rate).toHaveAttribute('data-span', '24h')
       const perHour = Number(await rate.getAttribute('data-per-hour'))
       expect(Number.isFinite(perHour)).toBe(true)
-      const digits = (await rate.innerText()).replace(/[^0-9]/g, '')
+      const digits = (await page.getByTestId('hq-rate-figure').innerText()).replace(/[^0-9]/g, '')
       expect(Number(digits), 'the figure drawn is not the served per-hour').toBe(Math.abs(Math.round(perHour)))
-      await expect(rate).toHaveText(/\/ hour$/)
+      await expect(page.getByTestId('hq-rate-figure')).toHaveText(/\/ hour$/)
       const boxes = await stripBoxes(page)
       expect(boxes.slot, "the per-hour slot is not the figure's own line").toBe(SLOT)
 

@@ -17,7 +17,15 @@ const ROOM_KEPT_MS = 60_000
 
 /** `world.house_room`, asked when a face that draws it opens and again on the world's beat. Null before the first answer. */
 export function useHouseRoom(): HouseRoom | null {
-  return useServedRead<HouseRoom>('house-room', () => worldHouseRoom(), { name: 'worldHouseRoom', freshMs: ROOM_KEPT_MS }).view
+  return useHouseRoomRead().view
+}
+
+/** The same read with its `loading`: true only while the FIRST answer is on the wire. A face whose block stands INSIDE a list (the New fleet row) holds that block's
+ *  room while it is true, so the answer fills a place that is already there and pushes nothing (2026-11-25: main's Acceptance read a Fleets panel 52 px shorter than
+ *  the one it stood in a moment later, tests/fleets.you.grow.spec.ts). */
+export function useHouseRoomRead(): { view: HouseRoom | null; loading: boolean } {
+  const { view, loading } = useServedRead<HouseRoom>('house-room', () => worldHouseRoom(), { name: 'worldHouseRoom', freshMs: ROOM_KEPT_MS })
+  return { view, loading }
 }
 
 /** The read, narrowed to a company's (a visitor with no company has no room to draw). */
