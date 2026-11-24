@@ -1,3 +1,4 @@
+import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 import { test, expect, type Locator } from '@playwright/test'
 import { ready } from './appReady.fixture'
 import { openMarket } from './desk.fixture'
@@ -23,6 +24,9 @@ import { openMarket } from './desk.fixture'
 
 test.use({ locale: 'en-US' })
 
+/** The good the served world makes a loss of (a good Lisbon's quay lists): see the test's first lines. */
+const LOSER = 'cork'
+
 const SIZES = [
   { width: 1280, height: 900 },
   { width: 390, height: 844 },
@@ -37,6 +41,26 @@ for (const size of SIZES) {
     test('a card names its best sale, opens that trip at the same figure, and a loss is marked before buying', async ({ page }) => {
       test.setTimeout(600_000)
       // H3 (2026-11-24): the goods list is HQ's Market plate (it was the Trade desk's board)
+      // A WORLD WITH ONE LINE THAT CANNOT PAY (2026-11-25). The loss this spec marks used to be HUNTED: fill her hold, then press
+      // city after city until the served board called some line a loss. In today's world nearly every line pays whatever she
+      // holds; the one that sometimes did not (salted tuna at Gibraltar) flipped between two runs minutes apart as the hour's price
+      // moved, so the step passed or failed by the clock. The world is now served with ONE good that loses by construction:
+      // ${LOSER} is scarce where she lies (its quay nearly empty, so its ask stands at the top of its range) and glutted in every
+      // other harbour (quays ten times over their target, the glut term at its most, so every bid stands at its floor). The client
+      // is not touched by this: it prints the served `pays`, and the steps below are the spec's own.
+      await serveWorldImage(
+        page,
+        await patchedWorldImage('one-losing-good', async (pg) => {
+          await pg.exec(`
+            update public.port_goods pg set stock = round(pg.stock_target * 0.02, 2), glut = 0
+              from public.goods g, public.ports p
+             where g.id = pg.good_id and p.id = pg.port_id and g.code = '${LOSER}' and p.code = 'LIS';
+            update public.port_goods pg set stock = round(pg.stock_target * 10, 2), glut = 0.9
+              from public.goods g, public.ports p
+             where g.id = pg.good_id and p.id = pg.port_id and g.code = '${LOSER}' and p.code <> 'LIS';
+          `)
+        }),
+      )
       await page.goto('city')
       await ready(page)
       const read = await openMarket(page)
@@ -171,13 +195,13 @@ for (const size of SIZES) {
       // the strip re-orders as a city is pressed (the city in hand leads), so its codes are read once, nearest first
       const codes = await page.getByTestId('city-chip').evaluateAll((els) => els.map((e) => e.getAttribute('data-port') ?? ''))
       for (const code of codes.filter((c) => c !== home).reverse()) {
-        console.log(`hunt @${size.width} ${await read.getAttribute('data-city')} purse ${(await page.getByTestId('purse').first().innerText()).replace(/\s+/g, ' ')} date ${(await page.getByTestId('game-date').first().innerText()).replace(/\s+/g, ' ')}: ${(await board.locator('[data-testid="trade-good"]').evaluateAll((els) => els.map((e) => { const b = e.querySelector('[data-testid="best-sale"]'); return `${e.getAttribute('data-good')}:${b?.getAttribute('data-state')}/${b?.getAttribute('data-pays')}/${b?.getAttribute('data-short') ?? ''}/${e.querySelector('[data-testid="trade-good-aboard"]')?.textContent}` }))).join(' ')}`)
         if ((await loss.count()) > 0) break
         await page.locator(`[data-testid="city-chip"][data-port="${code}"]`).click()
         await expect(read).toHaveAttribute('data-city', code)
         await expect(landed.first()).toBeVisible({ timeout: 180_000 })
       }
       await expect(loss.first()).toBeVisible()
+      expect(await loss.first().locator('xpath=ancestor::*[@data-testid="trade-good"][1]').getAttribute('data-good'), 'the loss marked is not the good the world makes a loss of').toBe(LOSER)
       await expect(loss.first()).toContainText('No gain')
       await expect(loss.first()).toHaveClass(/text-danger/)
       const lossCard = loss.first().locator('xpath=ancestor::*[@data-testid="trade-good"][1]')

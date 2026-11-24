@@ -46,6 +46,18 @@ export async function makeLate(pg: PGlite, read: string, seconds: number): Promi
   `)
 }
 
+/** Make the no-argument read `schema.fn` answer `value` instead of its own answer (a world state a spec cannot walk to: a choice open at sea).
+ *  The stub keeps the read's name, so `makeLate` can still wrap it afterwards. */
+export async function stubRead(pg: PGlite, read: string, value: unknown): Promise<void> {
+  const [schema, fn] = read.split('.')
+  const json = JSON.stringify(value).replace(/'/g, "''")
+  await pg.exec(`
+    alter function ${schema}.${fn}() rename to ${fn}__real;
+    create function ${schema}.${fn}() returns jsonb language sql stable as $stub$ select '${json}'::jsonb $stub$;
+    grant execute on function ${schema}.${fn}() to authenticated;
+  `)
+}
+
 /** The shipped world with these reads late. Built once per worker per list. */
 export function lateWorld(reads: readonly string[], seconds = 2): Promise<Buffer> {
   return patchedWorldImage(`late:${seconds}:${reads.join(',')}`, async (pg) => {
