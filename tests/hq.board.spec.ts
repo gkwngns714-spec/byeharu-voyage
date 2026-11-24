@@ -1,56 +1,23 @@
 import { test, expect, type Page } from '@playwright/test'
-import { rankMoves, perHourOf, REQUEST_FLOOR_S, type Move } from '../src/domain/hq'
 import { reachable, ready, WORLD_BOOT_MS } from './appReady.fixture'
 import { serveHqLit } from './hqLit.fixture'
+import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// HQ'S COMMAND BOARD, v1 (owner, 2026-11-23: "all the work (activities) are done in HQ … choosing best options available, finding best
-// options"; docs/design/hq-command-2026-11-23.md).
+// HQ'S COMMAND BOARD (owner, 2026-11-23: "all the work (activities) are done in HQ … choosing best options available, finding best
+// options"; docs/design/hq-command-2026-11-23.md), and its RANK STRIP (docs/design/hq-corp-2026-11-24.md, slice H2).
 //
-// Pure: the one ranking rule (domain/hq): the yard first, then trade runs and requests by coin per hour, then crew, then invest.
+// THE BOARD IS THE SERVER'S (world.hq_board, 0480). The client's own ranking and its own rate (v1) are deleted, so there is no pure
+// ranking test here: the order is asserted on the served cards.
 // Browser (the shipped world with production's switches lit, the sea limits dark; a fresh company, one barca at Lisbon):
-//   - the bridge renders: coin, the fleets as ships, what is next, the pirate mark
-//   - the best moves: the trade cards stand by coin per hour, the best first
-//   - a trade card's press starts the same plan the desk's best-sale press does (the desk's trip, that good, sold there)
+//   - the Rank strip: her rank and its bar, what the next level opens, the net per hour as served; no purse figure on the board
+//   - the best moves: the served trade cards stand by coin per hour, the best first; one press queues the trip, HQ kept
 //   - an idle fleet glows and shows its best card inline
+//   - the board's switch dark: one line, "Board off", no card and no rate, and the strip keeps its height
 //   - no sideways scroll at 320, 390 and 1280
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-const move = (id: string, kind: Move['kind'], perHour: number | null, gain: number | null = null): Move => ({
-  id,
-  kind,
-  perHour,
-  gain,
-  seconds: null,
-  fleet: null,
-  data: null,
-})
-
-test.describe('the ranking rule', () => {
-  test('the yard first, then trade and requests by coin per hour, then crew, then invest', () => {
-    const order = rankMoves([
-      move('invest', 'invest', null, 90_000),
-      move('crew', 'crew', null),
-      move('slow', 'trade', 100, 5_000),
-      move('none', 'trade', null, 9_000),
-      move('fast', 'trade', 900, 1_000),
-      move('req', 'request', 400, 100),
-      move('yard', 'yard', null, 52_000),
-    ]).map((m) => m.id)
-    expect(order).toEqual(['yard', 'fast', 'req', 'slow', 'none', 'crew', 'invest'])
-  })
-  test('coin per hour is the gain over the served time; a request takes a quarter hour', () => {
-    expect(perHourOf(1_000, 1_800)).toBe(2_000)
-    expect(perHourOf(1_000, null)).toBeNull()
-    expect(perHourOf(1_000, 0)).toBeNull()
-    expect(perHourOf(100, REQUEST_FLOOR_S)).toBe(400)
-  })
-  test('ties go to the bigger figure, then the id, so a card does not jump', () => {
-    expect(rankMoves([move('b', 'trade', 10, 5), move('a', 'trade', 10, 5), move('c', 'trade', 10, 9)]).map((m) => m.id)).toEqual(['c', 'a', 'b'])
-  })
-})
-
-async function openHq(page: Page, width: number, height: number, served = false, jobs = false, contracts = false, race = false, roles = false) {
+async function openHq(page: Page, width: number, height: number, served = true, jobs = false, contracts = false, race = false, roles = false) {
   await page.setViewportSize({ width, height })
   await serveHqLit(page, { served, jobs, contracts, race, roles })
   await page.goto('city')
@@ -64,58 +31,93 @@ const sideScroll = (page: Page) =>
     return over || document.documentElement.scrollWidth > window.innerWidth
   })
 
-test.describe('the board, driven', () => {
-  test.use({ viewport: { width: 390, height: 844 } })
-
-  test('the bridge, the ranked trade cards, the idle fleet, and the press that starts the desk\'s plan', async ({ page, request, baseURL }) => {
-    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
-    test.setTimeout(600_000)
-    await openHq(page, 390, 844)
-
-    // THE BRIDGE
-    const bridge = page.getByTestId('hq-bridge')
-    await expect(bridge).toBeVisible()
-    for (const id of ['hq-bridge-purse', 'hq-bridge-fleets', 'hq-bridge-next', 'hq-bridge-threat']) await expect(page.getByTestId(id)).toBeVisible()
-    await expect(page.getByTestId('hq-bridge-purse')).toContainText(/\d/)
-    await expect(page.getByTestId('hq-bridge-fleets').locator('[data-ship-picture]')).toHaveCount(1)
-    // the board is the first thing seen: it begins on the first glass, above the city's buildings
-    const board = (await page.getByTestId('hq-board').boundingBox())!
-    const places = (await page.getByTestId('city-buildings').boundingBox())!
-    expect(board.y).toBeLessThan(844)
-    expect(board.y).toBeLessThan(places.y)
-
-    // THE BEST MOVES: the trade cards, by coin per hour, the best first
-    const trades = page.locator('[data-testid="hq-moves"] [data-testid="hq-move"][data-kind="trade"]')
-    await expect(trades.first()).toBeVisible({ timeout: 180_000 })
-    const rates = (await trades.evaluateAll((els) => els.map((e) => e.getAttribute('data-per-hour') ?? ''))).filter((r) => r !== '').map(Number)
-    expect(rates.length, 'trade cards with a served time').toBeGreaterThan(0)
-    expect(rates, 'trade cards stand by coin per hour').toEqual([...rates].sort((a, b) => b - a))
-
-    // AN IDLE FLEET GLOWS AND OFFERS ITS BEST CARD INLINE (the same card as the board's best for her)
-    const idle = page.locator('[data-testid="hq-fleet"][data-job="idle"]').first()
-    await expect(idle).toBeVisible()
-    const inline = idle.getByTestId('hq-fleet-best').getByTestId('hq-move')
-    await expect(inline).toBeVisible()
-    await expect(inline).toHaveAttribute('data-kind', 'trade')
-    const top = trades.first()
-    await expect(inline).toHaveAttribute('data-good', (await top.getAttribute('data-good'))!)
-
-    // THE PRESS: the best-sale trip in THE trade sheet over HQ (S1, src/app/HqSheet.tsx) — that good, on Buy, at her city, sold where the
-    // card said; the URL stays HQ's
-    const good = (await top.getAttribute('data-good'))!
-    const port = (await top.getAttribute('data-port'))!
-    const url = page.url()
-    await top.click()
-    await expect(page.getByTestId('hq-sheet-trade')).toBeAttached({ timeout: 60_000 })
-    expect(page.url(), 'the trade card left HQ').toBe(url)
-    const panel = page.getByTestId('good-detail')
-    await expect(panel).toBeVisible({ timeout: 120_000 })
-    await expect(panel).toHaveAttribute('data-good', good)
-    await expect(panel).toHaveAttribute('data-side', 'buy')
-    await expect(panel).toHaveAttribute('data-city', 'LIS')
-    await expect(panel).toHaveAttribute('data-sell-at', port)
-    await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'buy-sell', { timeout: 120_000 })
+/** The strip's box and its per-hour slot's box, in whole pixels. */
+const stripBoxes = (page: Page) =>
+  page.evaluate(() => {
+    const h = (id: string) => Math.round(document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().height)
+    return { strip: h('hq-bridge'), slot: h('hq-bridge-rate-slot') }
   })
+
+test.describe('the Rank strip (H2)', () => {
+  for (const glass of [
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ]) {
+    test(`her rank, the next opening and the served net per hour at ${glass.width}`, async ({ page, request, baseURL }) => {
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      test.setTimeout(600_000)
+      await openHq(page, glass.width, glass.height)
+      await expect(page.getByTestId('hq-board')).toHaveAttribute('data-source', 'served', { timeout: 180_000 })
+      const strip = page.getByTestId('hq-bridge')
+      await expect(strip).toBeVisible()
+
+      // THE RANK: the title's name, its step and the bar to the next
+      const rank = page.getByTestId('hq-rank')
+      await expect(page.getByTestId('hq-rank-name')).toHaveText(/\S/, { timeout: 120_000 })
+      expect(Number(await rank.getAttribute('data-level'))).toBeGreaterThanOrEqual(1)
+      await expect(rank.getByRole('meter')).toHaveAccessibleName(/^Rank \d+ \/ \d+$/)
+      // THE NEXT OPENING: a served level_perks step, named with its level (level_unlocks_enabled is lit in this world)
+      const next = page.getByTestId('hq-rank-next')
+      await expect(next).toHaveText(/\S/)
+      expect(Number(await next.getAttribute('data-level')), 'no next level_perks opening on the strip').toBeGreaterThan(1)
+
+      // NET PER HOUR: the served figure, drawn as served ("+N / hour"), green or red, in its own held slot
+      const rate = page.getByTestId('hq-bridge-rate')
+      await expect(rate).toBeVisible({ timeout: 180_000 })
+      await expect(rate).toHaveAttribute('data-span', '24h')
+      const perHour = Number(await rate.getAttribute('data-per-hour'))
+      expect(Number.isFinite(perHour)).toBe(true)
+      const digits = (await rate.innerText()).replace(/[^0-9]/g, '')
+      expect(Number(digits), 'the figure drawn is not the served per-hour').toBe(Math.abs(Math.round(perHour)))
+      await expect(rate).toHaveText(/\/ hour$/)
+      const boxes = await stripBoxes(page)
+      expect(boxes.slot, "the per-hour slot is not the figure's own line").toBe(28)
+
+      // NO PURSE ON THE BOARD (the top bar's figure, said once), and none of the old bridge's tiles
+      for (const id of ['hq-bridge-purse', 'hq-bridge-fleets', 'hq-bridge-next', 'hq-bridge-threat']) await expect(page.getByTestId(id)).toHaveCount(0)
+      // the board is the first thing seen: it begins on the first glass, above the city's buildings
+      const board = (await page.getByTestId('hq-board').boundingBox())!
+      const places = (await page.getByTestId('city-buildings').boundingBox())!
+      expect(board.y).toBeLessThan(glass.height)
+      expect(board.y).toBeLessThan(places.y)
+      // the strip stands whole inside the glass
+      const box = (await strip.boundingBox())!
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(glass.width + 1)
+      expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
+
+      // AN IDLE FLEET GLOWS AND OFFERS ITS BEST CARD INLINE (the same card as the board's best for her)
+      const trades = page.locator('[data-testid="hq-moves"] [data-testid="hq-move"][data-kind="trade"]')
+      await expect(trades.first()).toBeVisible({ timeout: 180_000 })
+      const idle = page.locator('[data-testid="hq-fleet"][data-job="idle"]').first()
+      await expect(idle).toBeVisible()
+      const inline = idle.getByTestId('hq-fleet-best').getByTestId('hq-move')
+      await expect(inline).toBeVisible()
+      await expect(inline).toHaveAttribute('data-kind', 'trade')
+      await expect(inline).toHaveAttribute('data-good', (await trades.first().getAttribute('data-good'))!)
+      if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/rank-${glass.width}.png`, fullPage: true })
+      if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/rank-top-${glass.width}.png` })
+    })
+
+    test(`the board's switch dark: "Board off", no card, no rate, the strip's height kept at ${glass.width}`, async ({ page, request, baseURL }) => {
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      test.setTimeout(600_000)
+      await openHq(page, glass.width, glass.height, false)
+      await expect(page.getByTestId('hq-board')).toHaveAttribute('data-source', 'off', { timeout: 180_000 })
+      await expect(page.getByTestId('hq-board-off')).toHaveText('Board off')
+      await expect(page.getByTestId('hq-move')).toHaveCount(0)
+      await expect(page.getByTestId('hq-bridge-rate')).toHaveCount(0)
+      // the rank is drawn all the same (world.levels is not the board's read)
+      await expect(page.getByTestId('hq-rank-name')).toHaveText(/\S/, { timeout: 120_000 })
+      // the per-hour line's room is held with no figure in it
+      const boxes = await stripBoxes(page)
+      expect(boxes.slot, 'the empty per-hour slot gave its room up').toBe(28)
+      // her fleets stand under it as before
+      await expect(page.locator('[data-testid="hq-fleet"]').first()).toBeVisible()
+      expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
+      if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/off-${glass.width}.png`, fullPage: true })
+    })
+  }
 })
 
 // 0480: THE BOARD FROM THE SERVER (hq_board_enabled lit): world.hq_board() ranks every move; each card names its own act and one press
@@ -184,6 +186,45 @@ test.describe('standing fleet jobs (0481, lit)', () => {
       )
       expect(small, 'job presses under 44 px').toBe(0)
       if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/jobs-${glass.width}.png`, fullPage: true })
+    })
+  }
+})
+
+// A STOPPED JOB SAYS WHY IN PLAIN WORDS (owner row 381: the away card's chip read "E_LEG_TOO_FAR"). The world: the board and the jobs
+// lit, and every job written is stopped on E_LEG_TOO_FAR by a trigger of this spec's own (the image only; no such trigger ships). She
+// sets a job; While away then lists it stopped: the chip is the code's label ("Range"), its sentence stands under her name, and no
+// code is printed anywhere on the board.
+const STOP_EVERY_JOB = `
+  update public.world_config set value = 'true'::jsonb where key in ('hq_board_enabled', 'fleet_jobs_enabled', 'standing_routes_enabled', 'land_enabled', 'level_unlocks_enabled');
+  update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite';
+  create function public.spec_stop_job() returns trigger language plpgsql as $$ begin new.paused_reason := 'E_LEG_TOO_FAR'; return new; end $$;
+  create trigger spec_stop_job before insert or update on public.fleet_jobs for each row execute function public.spec_stop_job();`
+
+test.describe('a stopped job (owner row 381)', () => {
+  for (const glass of [
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ]) {
+    test(`its chip and its line are plain words, and no code is printed on the board at ${glass.width}`, async ({ page, request, baseURL }) => {
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      test.setTimeout(600_000)
+      await page.setViewportSize(glass)
+      await serveWorldImage(page, await patchedWorldImage('hq-job-stopped', async (pg) => void (await pg.exec(STOP_EVERY_JOB))))
+      await page.goto('city')
+      await ready(page)
+      await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: WORLD_BOOT_MS })
+      const control = page.getByTestId('hq-job-control').first()
+      await expect(control).toBeVisible({ timeout: 180_000 })
+      await control.getByTestId('hq-job-set-best').click()
+      const row = page.locator('[data-testid="hq-away-job"][data-state="stopped"]')
+      await expect(row).toBeVisible({ timeout: 120_000 })
+      await expect(row, 'the world did not stop her job on the code under test').toHaveAttribute('data-code', 'E_LEG_TOO_FAR')
+      await expect(row.getByTestId('hq-away-stopped')).toHaveText('Range')
+      await expect(row.getByTestId('hq-away-why')).toHaveText('Leg too far.')
+      const text = await page.getByTestId('hq-board').innerText()
+      expect(text.match(/E_[A-Z_]+/g) ?? [], 'a code is printed on the HQ board').toEqual([])
+      expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
+      if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/stopped-${glass.width}.png`, fullPage: true })
     })
   }
 })

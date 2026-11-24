@@ -23,8 +23,10 @@ import { useMovePress } from './useMovePress'
 // HQ - words with graphics. choosing best options available, finding best options."* — docs/design/hq-command-2026-11-23.md)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-//   THE BRIDGE   coin and coin per hour · each fleet a ship in her job's tone · what finishes next · pirates near
-//   BEST MOVES   every move open now as a card, ranked by domain/hq's one rule; the top few, More for the rest; icon chips to filter
+//   RANK STRIP   her Rank and a bar to the next, what the next level opens, and net coin per hour as served (Bridge.tsx; H2,
+//                docs/design/hq-corp-2026-11-24.md)
+//   BEST MOVES   every move open now as a card, in the server's order (world.hq_board, 0480); the top few, More for the rest; icon
+//                chips to filter. While the board's switch is dark: one line, "Board off" (the client ranks nothing of its own)
 //   FLEETS       one row a fleet: picture, job, today's route money, Route / Plan; an idle fleet glows and offers her best card
 //   0486         lit (sea_choices_enabled): A CHOICE AT SEA first of all (a storm, a wreck or a strange sail her long trip met: the options,
 //                their odds as bars, the best by expected coin, the safe default, the clock to her arrival; one press), and While away
@@ -58,9 +60,11 @@ const FILTER_WORD: Record<Filter, TKey> = {
   invest: 'hq.invest',
 }
 
-export function HqBoard({ port }: { port: SnapshotPort | null }) {
+/** `port` (the city in hand) is no longer read: the board is the server's, for her whole company. CityScreen.tsx still passes it. */
+export function HqBoard(props: { port: SnapshotPort | null }) {
+  void props
   const t = useT()
-  const board = useBoard(port)
+  const board = useBoard()
   const press = useMovePress()
   const [filter, setFilter] = useState<Filter>('all')
   const [more, setMore] = useState(false)
@@ -78,30 +82,37 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
   const list = more ? shown : shown.slice(0, TOP_MOVES)
 
   return (
-    <div className="flex flex-col gap-6" data-testid="hq-board" data-source={board.served ? 'served' : 'client'}>
+    <div className="flex flex-col gap-6" data-testid="hq-board" data-source={board.source ?? undefined}>
       {sea?.open.map((c) => <SeaChoiceCard key={c.id} c={c} />)}
       {away && <JobsAway report={away} sea={sea?.recent ?? []} />}
       <Bridge board={board} />
       {race && <RaceBridge race={race} />}
 
       <SheetSection heading={t('hq.moves')} trailing={<span className="text-t-caption tabular-nums text-ink-faint">{formatInt(shown.length)}</span>}>
-        <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label={t('hq.filter')} data-testid="hq-filters">
-          {(
-            [
-              'all',
-              ...(board.moves.some(raced) ? (['race'] as const) : []),
-              ...MOVE_KINDS.filter((k) => (k !== 'contract' && k !== 'role') || board.moves.some((m) => m.kind === k)),
-            ] as Filter[]
-          ).map((f) => (
-            <Chip key={f} on={filter === f} onClick={() => setFilter(f)} data-testid={`hq-filter-${f}`}>
-              <span className="inline-flex items-center gap-1">
-                {f !== 'all' && <Icon name={f === 'race' ? 'banner' : KIND_ICON[f]} size={16} aria-hidden />}
-                {t(FILTER_WORD[f])}
-              </span>
-            </Chip>
-          ))}
-        </div>
-        {list.length === 0 ? (
+        {/* dark: no card to filter, so no chips */}
+        {board.source !== 'off' && (
+          <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label={t('hq.filter')} data-testid="hq-filters">
+            {(
+              [
+                'all',
+                ...(board.moves.some(raced) ? (['race'] as const) : []),
+                ...MOVE_KINDS.filter((k) => (k !== 'contract' && k !== 'role') || board.moves.some((m) => m.kind === k)),
+              ] as Filter[]
+            ).map((f) => (
+              <Chip key={f} on={filter === f} onClick={() => setFilter(f)} data-testid={`hq-filter-${f}`}>
+                <span className="inline-flex items-center gap-1">
+                  {f !== 'all' && <Icon name={f === 'race' ? 'banner' : KIND_ICON[f]} size={16} aria-hidden />}
+                  {t(FILTER_WORD[f])}
+                </span>
+              </Chip>
+            ))}
+          </div>
+        )}
+        {board.source === 'off' ? (
+          <p className="text-t-label text-ink-muted" data-testid="hq-board-off">
+            {t('hq.boardOff')}
+          </p>
+        ) : list.length === 0 ? (
           <Empty icon="compass">{t('hq.none')}</Empty>
         ) : (
           <ol className="grid grid-cols-1 gap-2 lg:grid-cols-2" data-testid="hq-moves">
