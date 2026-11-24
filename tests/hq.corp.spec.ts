@@ -70,7 +70,8 @@ for (const size of SIZES)
         page.on('console', (m) => {
           if (m.type() === 'debug' && m.text().includes('world.actions(')) actionAsks++
         })
-        await serveWorldImage(page, await corpWorld())
+        // sea_courses lit: world.actions offers only runs the server would take, and with no course held a fresh company may be offered none
+        await serveWorldImage(page, await corpWorld({ courses: true }))
         await page.setViewportSize(size)
         await page.goto('city')
         await ready(page)

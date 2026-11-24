@@ -41,6 +41,7 @@ export function WorkerRow({ row, names, nowMs, onPress }: { row: Row; names: Act
       data-kind={row.kind}
       data-state={row.state}
       data-waiting={row.waiting}
+      data-wait={row.wait?.code}
       data-action={row.action.kind}
     >
       <span className="flex min-w-0 items-center gap-3 lg:w-[28rem] lg:shrink-0">
@@ -83,7 +84,8 @@ export function WorkerRow({ row, names, nowMs, onPress }: { row: Row; names: Act
           <Bar pct={fillOf(row.bar, nowMs)} tone={row.state === 'stopped' ? 'danger' : 'accent'} label={name} />
         </span>
         <span className="w-14 shrink-0 text-right text-t-caption tabular-nums text-ink-muted" data-testid="corp-worker-clock">
-          {row.bar && <Countdown untilMs={row.bar.toMs} nowMs={nowMs} />}
+          {/* under way: the clock to her arrival; waiting for a price (0497): the clock to the server's next ask, as served */}
+          {row.bar ? <Countdown untilMs={row.bar.toMs} nowMs={nowMs} /> : row.wait && row.wait.retryMs > nowMs ? <span data-testid="corp-worker-retry"><Countdown untilMs={row.wait.retryMs} nowMs={nowMs} /></span> : null}
         </span>
         <span
           className="flex shrink-0 items-center justify-end gap-3 text-t-caption tabular-nums text-ink lg:w-52"

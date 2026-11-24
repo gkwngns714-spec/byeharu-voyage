@@ -77,8 +77,8 @@ async function fullShot(page: Page, path: string, size: { width: number; height:
   await page.setViewportSize(size)
 }
 
-async function open(page: Page, size: { width: number; height: number }, home: boolean) {
-  await serveWorldImage(page, await corpWorld({ courses: true, home }))
+async function open(page: Page, size: { width: number; height: number }, home: boolean, near: { near?: boolean; nearLow?: boolean } = {}) {
+  await serveWorldImage(page, await corpWorld({ courses: true, home, ...near }))
   await page.setViewportSize(size)
   await page.goto('city')
   await ready(page)
@@ -291,3 +291,64 @@ test('Assign: every run the server offers is within her purse, in the order of t
   expect(actionAsks, 'the sheet asked world.actions more than once').toBe(1)
   await page.screenshot({ path: `${OUT}/assign-runs-${SIZES[0].width}.png` })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 0498 THE NEAR ROUND AND 0497 THE WAIT, where their switches are lit
+// ═══════════════════════════════════════════════════════════════════════════════
+//   * "Trade nearby" is Assign's FIRST choice and the one the sheet opens on; its words are the served base's ("Trade near Lisbon");
+//     no rate is drawn (the server serves none); one world.actions request; assigned, her row says it and she sails;
+//   * a job that waits for a price is NOT shown as stopped: her row says "Prices low" with the clock to the server's next ask.
+for (const size of SIZES) {
+  test(`Assign @${size.width}: Trade nearby is the first choice; assigned, she works a near round`, async ({ page, request, baseURL }) => {
+    test.setTimeout(900_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+    let actionAsks = 0
+    page.on('console', (m) => {
+      if (m.type() === 'debug' && m.text().includes('world.actions(')) actionAsks++
+    })
+    await open(page, size, false, { near: true })
+    await fleetRow(page).click()
+    const sheet = page.getByTestId('hq-sheet-assign')
+    const tabs = sheet.getByRole('tab')
+    await expect(tabs.first()).toHaveText('Trade nearby', { timeout: 180_000 })
+    await expect(tabs.first(), 'the sheet does not open on Trade nearby').toHaveAttribute('aria-selected', 'true')
+    const foot = sheet.getByTestId('corp-assign-near')
+    await expect(foot).toContainText('Trade near Lisbon')
+    await expect(foot).toHaveAttribute('data-basis', 'none')
+    await expect(sheet.getByTestId('corp-assign-rate'), 'a rate is drawn for the near round, which serves none').toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), 'Assign scrolls sideways').toBe(false)
+    await page.screenshot({ path: `${OUT}/assign-near-${size.width}.png` })
+    expect(await pressGo(sheet), 'the server refused the near round it offered').toBe(true)
+    expect(actionAsks, 'Assign asked world.actions more than once').toBe(1)
+    const row = fleetRow(page)
+    await expect(row).toHaveAttribute('data-action', 'near', { timeout: 120_000 })
+    await expect(row.getByTestId('corp-worker-action')).toHaveText('Trade near Lisbon')
+    await expect(row.getByTestId('corp-worker-bar'), 'she did not sail on her round').toHaveAttribute('data-on', 'true', { timeout: 180_000 })
+    await expect(row.locator('[data-testid="corp-worker-rate"]'), 'a rate is drawn where none is served').toHaveCount(0)
+    await page.getByTestId('corp-workers').scrollIntoViewIfNeeded()
+    await page.screenshot({ path: `${OUT}/near-working-${size.width}.png` })
+  })
+
+  test(`HQ @${size.width}: a job that waits for a price says "Prices low" with its retry clock, and is not stopped`, async ({ page, request, baseURL }) => {
+    test.setTimeout(900_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+    await open(page, size, false, { near: true, nearLow: true })
+    await fleetRow(page).click()
+    const sheet = page.getByTestId('hq-sheet-assign')
+    await expect(sheet.getByTestId('corp-assign-near')).toBeVisible({ timeout: 180_000 })
+    expect(await pressGo(sheet), 'the server refused the near round it offered').toBe(true)
+    const row = fleetRow(page)
+    await expect(row, 'her row does not say she waits for a price').toHaveAttribute('data-wait', 'low', { timeout: 180_000 })
+    await expect(row, 'a waiting job is drawn as stopped').toHaveAttribute('data-state', 'working')
+    await expect(row.getByTestId('corp-worker-state')).toHaveText('Prices low')
+    const retry = row.getByTestId('corp-worker-retry')
+    await expect(retry, 'no clock to the next ask').toBeVisible()
+    const c0 = await retry.innerText()
+    expect(c0, 'the retry clock is empty').toMatch(/\d/)
+    await expect.poll(async () => retry.innerText(), { timeout: 30_000, message: 'the retry clock does not move' }).not.toBe(c0)
+    await expect(row.getByTestId('corp-worker-bar')).toHaveAttribute('data-on', 'false')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), 'HQ scrolls sideways').toBe(false)
+    await page.getByTestId('corp-workers').scrollIntoViewIfNeeded()
+    await page.screenshot({ path: `${OUT}/prices-low-${size.width}.png` })
+  })
+}

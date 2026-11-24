@@ -21,12 +21,24 @@ const LIT = [
   'fleet_jobs_enabled',
 ]
 
-/** `courses`: 0482's switch lit too (sea_courses_enabled: the server holds a course between any two harbours, so a job's run needs no
+/** `near`: 0497's and 0498's switches lit too (jobs_wait_enabled, near_round_enabled: a job waits instead of losing, and the near
+ *  round is offered). `nearLow`: and every near round is given a round of ONE mile as it is set (a spec's own trigger on her job's
+ *  row), so nothing is within it and she waits for a price at her base at once: the wait state without hours of play.
+ *  `courses`: 0482's switch lit too (sea_courses_enabled: the server holds a course between any two harbours, so a job's run needs no
  *  voyage sailed before it, and a board card's run can be assigned as it stands).
  *  `home`: 0492's switch lit too (assign_home_enabled: Bring home and the run count). */
-export const corpWorld = ({ courses = false, home = false }: { courses?: boolean; home?: boolean } = {}) =>
-  patchedWorldImage(`hq-corp${courses ? '-courses' : ''}${home ? '-home' : ''}`, async (pg) => {
-    const keys = [...LIT, ...(courses ? ['sea_courses_enabled'] : []), ...(home ? ['assign_home_enabled'] : [])]
+export const corpWorld = ({ courses = false, home = false, near = false, nearLow = false }: { courses?: boolean; home?: boolean; near?: boolean; nearLow?: boolean } = {}) =>
+  patchedWorldImage(`hq-corp${courses ? '-courses' : ''}${home ? '-home' : ''}${near ? '-near' : ''}${nearLow ? '-low' : ''}`, async (pg) => {
+    const keys = [...LIT, ...(courses ? ['sea_courses_enabled'] : []), ...(home ? ['assign_home_enabled'] : []), ...(near ? ['jobs_wait_enabled', 'near_round_enabled'] : [])]
+    if (nearLow)
+      await pg.exec(`
+        create function public.spec_near_low() returns trigger language plpgsql as $f$
+        begin
+          if new.params ? 'within' then new.params := new.params || jsonb_build_object('within', 1); end if;
+          return new;
+        end $f$;
+        create trigger spec_near_low before insert or update of params on public.fleet_jobs
+          for each row execute function public.spec_near_low();`)
     await pg.exec(`update public.world_config set value = 'true'::jsonb where key in (${keys.map((k) => `'${k}'`).join(', ')})`)
     await pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite'`)
     await pg.exec(`

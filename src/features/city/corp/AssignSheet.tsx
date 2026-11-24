@@ -28,6 +28,8 @@ import { PARTY, actionWord, figureWord, rateWords, servedId, stateWord, useWorke
 //              one run's profit AND the hour's, and how many runs a day there are.
 //              0492, where the server offers it: BRING HOME in place of a sale (the served `store` options: stored in the home
 //              warehouse), and ONCE / REPEAT / a count of runs (`times`; the door's own switch, see `useHomeDoor`).
+//              TRADE NEARBY (0498, where the server offers it: `sea:near`) is the FIRST choice: the best paying sale near her each
+//              run, home when nothing pays. No rate is served for it, so none is drawn.
 //              Or Best run = the served `sea:best` (the run the server picks each time; no rate is served for it); or, where the Land
 //              is lit, Haul home = cmd.set_fleet_job(fleet, 'land') (world.actions serves no haul option: the door is as it was).
 //   the party  the jobs of the Land the server would take now (a job she has no level for is not offered), each with its served
@@ -143,7 +145,7 @@ function FleetRoles({ fleet }: { fleet: string }) {
  *  is never refused for one. BRING HOME needs no such guess: it is offered where world.actions serves it. */
 const useHomeDoor = create<{ shut: boolean; close: () => void }>()((set) => ({ shut: false, close: () => set({ shut: true }) }))
 
-type Mode = 'fixed' | 'best' | 'haul'
+type Mode = 'near' | 'fixed' | 'best' | 'haul'
 type End = 'sell' | 'store'
 type Runs = 'repeat' | 'once' | 'count'
 
@@ -175,13 +177,15 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
 
   // WHAT THE SERVER OFFERS HER NOW
   const best = view.options.find((o) => o.id === 'sea:best') ?? null
+  const near = view.options.find((o) => o.id === 'sea:near') ?? null
   const runs = useMemo(() => byPerHour(view.options.filter((o) => o.id.startsWith('sea:fixed:') && o.end !== 'store')), [view.options])
   const loads = useMemo(() => view.options.filter((o) => o.id.startsWith('sea:fixed:') && o.end === 'store'), [view.options])
 
-  const [mode, setMode] = useState<Mode>('fixed')
   const [endAsked, setEnd] = useState<End>('sell')
   // a board card (or a link) names its run: the sheet opens on it when the server offers that very run
   const asked = ask.good && ask.buy && ask.sell ? `sea:fixed:${ask.good}:${ask.buy}:${ask.sell}:sell` : null
+  // the sheet opens on Trade nearby where the server offers it, unless a card named a run
+  const [mode, setMode] = useState<Mode>(() => (near && !(asked && view.options.some((o) => o.id === asked)) ? 'near' : 'fixed'))
   const [picked, setPicked] = useState<string | null>(() => (asked && view.options.some((o) => o.id === asked) ? asked : null))
   const [runsAsked, setRuns] = useState<Runs>('repeat')
   const [count, setCount] = useState(2)
@@ -204,7 +208,8 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
   const refusal = !pending && tried === choice ? refused : null
   const send = async () => {
     let ok = false
-    if (mode === 'best' && best?.job) ok = await setFleetJob(fleet.id, best.job.kind, best.job.params as FleetJobParams, key)
+    if (mode === 'near' && near?.job) ok = await setFleetJob(fleet.id, near.job.kind, near.job.params as FleetJobParams, key)
+    else if (mode === 'best' && best?.job) ok = await setFleetJob(fleet.id, best.job.kind, best.job.params as FleetJobParams, key)
     else if (mode === 'haul') ok = await setFleetJob(fleet.id, 'land', {}, key)
     else if (option?.job) {
       // the served job as it stands; a count rides only when she chose one (0492), and a counted sale names its end
@@ -218,7 +223,8 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
       setTried(choiceOf(null))
     } else setTried(choice)
   }
-  const ready = view.closed === null && (mode === 'haul' || (mode === 'best' ? best !== null : option !== null))
+  const ready = view.closed === null && (mode === 'haul' || (mode === 'near' ? near !== null : mode === 'best' ? best !== null : option !== null))
+  const modes = (near ? 1 : 0) + 2 + (haul ? 1 : 0)
   const rate = option && many === 'repeat' && option.per_hour !== null ? option.per_hour : null
 
   return (
@@ -232,6 +238,7 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
           <Step word={t('corp.work')}>
             <Segmented<Mode>
               segments={[
+                ...(near ? [{ id: 'near' as const, label: t('corp.near') }] : []),
                 { id: 'fixed', label: t('corp.trade') },
                 { id: 'best', label: t('corp.bestRun') },
                 ...(haul ? [{ id: 'haul' as const, label: t('corp.haul') }] : []),
@@ -239,7 +246,7 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
               value={mode}
               onChange={setMode}
               label={t('corp.work')}
-              columns={haul ? 3 : 2}
+              columns={modes > 3 ? 2 : (modes as 2 | 3)}
             />
           </Step>
           {mode === 'fixed' && (
@@ -332,7 +339,11 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
       <Foot
         refusal={refusal}
         figures={
-          view.closed ? null : mode === 'best' ? (
+          view.closed ? null : mode === 'near' && near ? (
+            <div data-testid="corp-assign-near" data-id={near.id} data-basis={near.basis} data-within={near.within} data-base={near.base}>
+              <FootLine word={actionWord({ kind: 'near', base: near.base ?? null }, t, names)} figure={<span className="text-t-caption text-ink-muted">{t('corp.nearNote')}</span>} />
+            </div>
+          ) : mode === 'best' ? (
             <FootLine word={t('corp.bestRun')} figure={<span className="text-t-caption text-ink-muted">{t('corp.bestNote')}</span>} />
           ) : mode === 'haul' ? (
             <FootLine word={t('corp.haul')} figure={null} />

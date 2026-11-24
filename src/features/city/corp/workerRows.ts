@@ -35,6 +35,9 @@ export type WorkerAction =
   | { kind: 'none' }
   /** 0481 `best`: the server picks her best run each time. */
   | { kind: 'best' }
+  /** 0498 the near round (`best` with `within`): the best paying sale near her each run, home when nothing pays. `base`: the harbour
+   *  she comes back to (a CODE). */
+  | { kind: 'near'; base: string | null }
   /** 0481 `fixed`: one good, bought at one harbour and sold at another (port CODES); 0492 `end` 'store': brought home instead, into
    *  the home warehouse (`sell` is then her home harbour, as served). */
   | { kind: 'fixed'; good: string; buy: string; sell: string; end: 'sell' | 'store' }
@@ -85,6 +88,9 @@ export interface WorkerRow {
   captain: { code: string; name: string; grade: string } | null
   /** Why a stopped job stopped, in the server's words. */
   why: string | null
+  /** 0497: her job is NOT stopped but waits (its run would leave no profit now): the served code, its sentence, and when the server
+   *  asks it again. Null when she does not wait for a price. */
+  wait: { code: string; sentence: string; retryMs: number } | null
 }
 
 export type LitLand = Extract<LandView, { company: true }>
@@ -94,6 +100,7 @@ export type LitJobs = ReadonlyMap<string, FleetJobRow>
 function actionOf(a: ServedAction | null, w: ServedRow): WorkerAction {
   if (!a) return w.kind === 'fleet' && w.worker_state === 'sea' ? { kind: 'sail', to: w.progress?.to_port ?? null } : { kind: 'none' }
   if (a.id === 'sea:best') return { kind: 'best' }
+  if (a.id === 'sea:near') return { kind: 'near', base: a.base ?? null }
   if (a.id.startsWith('sea:fixed:') && a.good && a.buy && a.sell) return { kind: 'fixed', good: a.good, buy: a.buy, sell: a.sell, end: a.end === 'store' ? 'store' : 'sell' }
   if (a.id.startsWith('sea:haul:')) return { kind: 'haul', to: a.sell ?? null }
   if (a.id.startsWith('land:') && a.good) return { kind: 'land', good: a.good, region: a.home ? null : (a.region ?? null) }
@@ -153,6 +160,7 @@ function rowOf(w: ServedRow, fleet: FleetView | null, job: FleetJobRow | null, l
     hull: fleet?.ships[0]?.class_code ?? null,
     captain: seat ? { code: seat.code, name: seat.name, grade: seat.grade } : null,
     why: w.stop?.sentence ?? null,
+    wait: w.wait && instantMs(w.wait.retry_at) !== null ? { code: w.wait.code, sentence: w.wait.sentence, retryMs: instantMs(w.wait.retry_at)! } : null,
   }
 }
 
@@ -172,9 +180,9 @@ export function sortWorkers(rows: readonly WorkerRow[]): WorkerRow[] {
     .map((x) => x.r)
 }
 
-/** The state's word. */
-export function stateWord(r: Pick<WorkerRow, 'state' | 'waiting'>): TKey {
-  return r.state === 'idle' ? 'corp.idle' : r.state === 'stopped' ? 'corp.stopped' : r.waiting ? 'corp.waiting' : 'corp.working'
+/** The state's word. A job that waits for a price (0497's `low`) says so: "Prices low". */
+export function stateWord(r: Pick<WorkerRow, 'state' | 'waiting' | 'wait'>): TKey {
+  return r.state === 'idle' ? 'corp.idle' : r.state === 'stopped' ? 'corp.stopped' : r.wait?.code === 'low' ? 'corp.pricesLow' : r.waiting ? 'corp.waiting' : 'corp.working'
 }
 
 /** The names an action is said with: a good's, a harbour's and a land's, each the catalogue's. */
@@ -185,10 +193,12 @@ export interface ActionNames {
 }
 
 /** A worker's action in a few words: "Pepper · Lisbon → Setubal · Sell", "Iron · Iberia", "Best run". */
-export function actionWord(a: WorkerAction, t: (key: TKey) => string, n: ActionNames): string {
+export function actionWord(a: WorkerAction, t: (key: TKey, vars?: Record<string, string | number>) => string, n: ActionNames): string {
   switch (a.kind) {
     case 'best':
       return t('corp.bestRun')
+    case 'near':
+      return a.base ? t('corp.nearOf', { port: n.port(a.base) }) : t('corp.near')
     case 'fixed':
       return `${n.good(a.good)} · ${n.port(a.buy)} → ${n.port(a.sell)} · ${t(a.end === 'store' ? 'corp.store' : 'corp.sell')}`
     case 'haul':

@@ -16,6 +16,11 @@ export const corpDict = defineDict({
     waiting: 'Waiting',
     stopped: 'Stopped',
     bestRun: 'Best run',
+    // 0498 the near round; 0497 a job that waits for a price
+    near: 'Trade nearby',
+    nearOf: 'Trade near {port}',
+    nearNote: 'Home when nothing pays',
+    pricesLow: 'Prices low',
     trade: 'Sea trade',
     sell: 'Sell',
     store: 'Store',

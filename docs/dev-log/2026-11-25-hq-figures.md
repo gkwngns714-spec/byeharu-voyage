@@ -66,3 +66,13 @@ Level, Nothing to buy, Bought at home, No sale, Orders.
   drawing is the same code path as the party's XP an hour, which is checked against the served figure.
 - The specs read the served figures from the page's own attributes (the local backend has no wire to tap), so they prove the text
   equals the served number and that one request was made; they cannot compare against a second copy of the server's answer.
+
+## 2026-11-25, later: Trade nearby and Prices low (0498, 0497)
+
+`hq-figures` now also merges `near-round` (0497, 0498). `origin/hq-join` had not moved, so there was nothing to rebase onto.
+
+- **Assign:** where the server offers `sea:near`, "Trade nearby" is the first choice and the one the sheet opens on (a board card still opens on its own run). Its foot says the served base ("Trade near Lisbon") and "Home when nothing pays". No rate is drawn: the server serves none.
+- **Worker row:** a job that waits for a price (0497 `wait.code` low) says "Prices low" with the clock to the served `retry_at`. It is not drawn as stopped. Her action reads "Trade near Lisbon".
+- Words added: Trade nearby, Trade near {port}, Home when nothing pays, Prices low.
+- Specs: `hq.join` gains four (the first choice and a working round; the wait and its clock; 390 and 1440): 10 passed. `hq.corp`: 2 passed; it now holds courses (`sea_courses_enabled`), because `world.actions` offers only runs the server would take and a fresh company with no course held was offered none in one run of three.
+- `tests/corpWorld.fixture.ts`: `near` lights the two switches; `nearLow` gives every near round one mile as it is set (a trigger of the spec), so the wait is reached without hours of play.
