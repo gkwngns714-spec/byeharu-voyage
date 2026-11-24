@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { phoneLaws, playedWorld, readGlass } from './unfold.fixture'
 import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, settled as settledSheet, trayBox } from './design.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // HISTORY IS A PAGE — the owner's design order, measured on every face at five glasses, in English and Korean (2026-11-03)
@@ -112,7 +113,7 @@ const settled = (page: Page) => settledSheet(page, SHEET)
 /** A box's place and width (not its height): what a face press may not move. */
 const place = (b: [number, number, number, number] | null) => (b === null ? null : [b[0], b[1], b[2]])
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   test.describe(`History is a page — ${locale}`, () => {
     test.use({ locale })
 

@@ -64,6 +64,6 @@ ode_modules`), EXCEPT for a branch that changes the prefix cache or edits an app
   - **Migration PR:** put PROD CHECKS in the body. When green, run them, then `~/bin/bv-deploy.sh <n>` (it pushes to prod first, then merges and waits; never chain onto it with `;`).
   - **Docs-only change:** commit with ` [skip ci]` and the trailer, rebase on origin/main, `git push origin HEAD:main`.
   - Never re-run a red until it is green: diagnose it.
-- **Words:** every UI label is 1-2 plain words, EN and KO, through `src/lib/i18n/dict/*`. NO SPAGHETTI: one authority per concept.
+- **Words:** every UI label is 1-2 plain words, ENGLISH ONLY for now (owner 2026-11-24: Korean later, see `docs/KOREAN_LATER.md`), through `src/lib/i18n/dict/*`. Write no Korean entry and no Korean-specific test; leave existing Korean as it is. NO SPAGHETTI: one authority per concept.
 - **Bookkeeping:** each PR updates its own owner row in `docs/OWNER_REQUESTS.md` (state only; a closed row moves to `docs/OWNER_REQUESTS_DONE.md`) and adds one line to the top of `docs/WORK_QUEUE.md`.
   - **When several builders are open at once**, keep the `WORK_QUEUE.md`, `OWNER_REQUESTS.md` and harness `README.md` lines OUT of the PR branches (hand them to the lead in the report), or every merge conflicts the others: the lead adds them in one docs commit.

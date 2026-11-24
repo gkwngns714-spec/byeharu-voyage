@@ -48,6 +48,16 @@ export interface SaleEstimate {
   /** What today's open bargain took off THIS lot, in ducats — `world.quote`'s `haggle_saved`
    *  (0083), accumulated per step inside the same walk that priced it. 0 with no bargain. */
   haggle_saved: number | null
+  /** 0122: the profit tax this sale pays its city (0 when none). */
+  tax: number | null
+  /** 0128 / 0474: what this sale pays her crew (public.wages_due, the rule pay_wages pays by). */
+  wages: number | null
+  /** 0490: the dock fee her call left standing, taken by her first sale here (0 when none). */
+  dock_fee: number | null
+  /** 0490: THE ONE PROFIT (0474's `trip_net`): profit − tax − wages − dock fee, the figure the SOLD event, the arrival card and
+   *  Report tell after the sale. Served by `cmd.do_sell` itself; null where the hold does not know the cost (or a server before
+   *  0490). Never computed on this side of the wire. */
+  trip_net: number | null
 }
 
 /** Read a trade estimate — `cmd.do_sell`'s (or `cmd.do_buy`'s) own result, run and rolled back by
@@ -61,6 +71,10 @@ export function saleEstimate(estimate: Record<string, unknown> | undefined): Sal
     profit: num(estimate, 'profit'),
     avg_price: num(estimate, 'avg_price'),
     haggle_saved: num(estimate, 'haggle_saved'),
+    tax: num(estimate, 'tax'),
+    wages: num(estimate, 'wages'),
+    dock_fee: num(estimate, 'dock_fee'),
+    trip_net: num(estimate, 'trip_net'),
   }
 }
 

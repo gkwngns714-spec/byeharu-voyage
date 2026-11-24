@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DRIVE AUDIT, 2026-11-08 — THE MARKET, DRIVEN AS THE OWNER WOULD
@@ -110,7 +111,7 @@ test('Market: a capital lists 10 goods, every quay 4 to 10, and the Requests doo
 // make trade in HQ, or trade in trade tab. it routes to trade tab"*). Its ✕, Escape and the browser's back close it, and the Market
 // is as it was. In both languages: the sum is served beside the one button, and the button fits (row 76, O7).
 for (const size of [WIDE, PHONE])
-  for (const locale of ['en-US', 'ko-KR'] as const)
+  for (const locale of LOCALES)
     test.describe(`in ${locale}`, () => {
       test.use({ locale })
       test(`Market @${size.width}: no basket, and a Buy opens the trade sheet over HQ on that good, the URL unmoved (S1)`, async ({ page, request, baseURL }) => {

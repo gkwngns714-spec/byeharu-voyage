@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { readTray, trayViolations } from './trayLaw.fixture'
 import { serveCaptainWorld } from './captainSheet.fixture'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A CAPTAIN'S ROLE, AND THE ROSTER BY ROLE (owner rows 61 and 66)
@@ -39,7 +40,7 @@ async function inLocale(page: Page, locale: 'en' | 'ko') {
 
 const pageOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
 
-for (const locale of ['en', 'ko'] as const) {
+for (const locale of LANGS) {
   const w = WORDS[locale]
 
   test(`You lists the captains by role, a combat captain's card says her range, and nothing leaves the glass (${locale}, 390 and 320)`, async ({ page, request, baseURL }) => {

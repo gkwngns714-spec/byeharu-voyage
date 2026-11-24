@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { ready, reachable } from './appReady.fixture'
 import { EXTRA_PURSE, SECOND_SHIP, serveDarkTwoShips, serveLitOneShip, serveLitTwoShips } from './fleetsPage.fixture'
+import { LOCALES } from './korean.paused'
 
 // THE FLEETS PAGE A PLAYER CAN BUILD FLEETS WITH (F5, 2026-11-11; owner rows 180 and 316; docs/dev-log/2026-11-11-fleets-page.md).
 //
@@ -24,7 +25,6 @@ const GLASSES = [
   { width: 320, height: 640 },
   { width: 1280, height: 800 },
 ] as const
-const LOCALES = ['en-US', 'ko-KR'] as const
 
 const WORDS = {
   'en-US': { notOpen: 'Not open yet', trading: 'Trading level 3', you: /Fleets 2 \/ 3 · All ships 2 \/ 9/, youDark: /Fleets 1 \/ 2 · All ships 2 \/ / },

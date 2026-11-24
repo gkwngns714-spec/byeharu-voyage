@@ -1,49 +1,32 @@
-import { Card, FilterBar, Hint, Icon, ListPanel, Note, PageSplit, RankBars, SignedBars, Skeleton, StackedBar, StatCell, oneOf, useFilterChoice, type IconName, type RankRow } from '../../components/ui'
+import { FilterBar, PAGE_GAP, Hint, ListPanel, Note, RankBars, Skeleton, oneOf, useFilterChoice, type RankRow } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatRelative } from '../../lib/format'
 import { useT } from '../../lib/i18n'
-import { worldReport, worldStatsMe, type Report, type StatsMe } from '../../lib/rpc'
+import { worldStatsMe, type StatsMe } from '../../lib/rpc'
 import { useShellState } from '../../app/shellState'
 import { useLiveRead } from '../../live/liveRead'
 import { HistoryChart } from '../../live/HistoryChart'
 import { companyLines } from '../../live/historyLines'
-import { reportBars } from '../../live/reportBars'
 
-// ME — your own week beside the world's, ALL ON THE FACE (owner, 2026-11-01, row 260), in cards (2026-11-02, row 267). MAIN |
-// SIDE (screenLayout.ts "THE PAGE"): the best sales are ONE list card in main, with their sort in its header, and the week —
-// today, the day average, sold and bought, a bar a day — is the card in the tray's column. On a phone the week comes first.
+// ME — what only you have: your money record and your best sales (owner, 2026-11-01, row 260; 2026-11-02, row 267).
 //
-// THE CAPTAINS' BOARD LIVES ON RANK, AND ONLY THERE (owner, 2026-10-31: *"no info duplicate info
-// needed"*). This face used to repeat the whole board — the same ranks, the same names, a second
-// country filter — one tab away from the screen whose subject it is. Its read (world.stats_me's
-// leaderboard) still arrives; nothing here prints it.
-//
-// WHAT YOU MADE is world.report('week') — the same read the Office's Report face prints (one authority
-// for "what did I earn"). Its day axis arrives zero-filled, and the bars are its days that are OVER (reportBars): today is a figure
-// (Today, above them), not a bar that stands short at the right edge (owner, 2026-11-07).
-// EVERY SECOND (0232, owner row 213): both reads are computed from the record at the moment they are
-// asked, and are asked again every second while the face is open.
+// THE PROFIT IS REPORT'S, AND ONLY THERE (2026-11-24, docs/design/simplify-2026-11-24.md S8). This face used to print a "My week" card
+// (Today, the day average, sold and bought, a bar a day) from world.report('week'), and its "Today" counted a buy as a loss
+// (-16,641 after one buy where HQ > Report said 0): a second, wrong profit. It is gone; the one profit is the Report's.
+// THE CAPTAINS' BOARD LIVES ON RANK, AND ONLY THERE (owner, 2026-10-31: "no info duplicate info needed").
+// EVERY SECOND (0232, owner row 213): the read is computed from the record at the moment it is asked, and asked again every second.
 
 const SALE_SORTS = ['profit', 'newest', 'total'] as const
-
-/** A line's mark (2026-11-23, slice 8): the one glyph of its meaning before its word — money the coin, trades the scales. */
-const mark = (name: IconName) => <Icon name={name} size={18} className="shrink-0 text-ink-muted" aria-hidden="true" />
 
 export function MeFace() {
   const t = useT()
   const me = useLiveRead<StatsMe>('stats:me', () => worldStatsMe())
-  const books = useLiveRead<Report>('stats:report', () => worldReport('week'))
   const { nowMs } = useShellState()
   const [choice, choose] = useFilterChoice('stats.me', { sales: 'profit' })
   const v = me.view
-  const b = books.view
 
-  if ((me.loading && !v) || (books.loading && !b)) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
+  if (me.loading && !v) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
   if (!v) return <Note tone="danger">{t('stats.meFailed')}</Note>
 
-  const perDay = b ? Math.round(b.total / Math.max(1, b.days.length)) : null
-  // oldest → newest across the bar row: the report's day axis arrives zero-filled; its days that are over are the row, and today is the figure
-  const today = b?.days.find((d) => d.day === b.day)?.net ?? 0
-  const bars = reportBars(b?.days ?? [])
   const saleSort = oneOf(choice.sales, SALE_SORTS, 'profit')
   const sorted = [...v.best_trades].sort((a, b) =>
     saleSort === 'newest' ? Date.parse(b.at) - Date.parse(a.at) : saleSort === 'total' ? b.total - a.total : b.profit - a.profit,
@@ -57,85 +40,35 @@ export function MeFace() {
   }))
 
   return (
-    <PageSplit
-      data-testid="stats-me"
-      sideFirst
-      main={
-        <>
-        <HistoryChart what="me" title={t('stats.yourHistory')} lines={companyLines(t)} data-testid="history-me" />
-        <ListPanel
-          look="card"
-          columns="fit"
-          title={t('stats.bestSales')}
-          count={formatInt(sales.length)}
-          trailing={
-            v.best_trades.length > 1 ? (
-              <FilterBar
-                compact
-                data-testid="stats-sales-filters"
-                sort={{
-                  id: 'sales',
-                  label: t('stats.sortLabel'),
-                  options: SALE_SORTS.map((id) => ({ id, label: t(id === 'profit' ? 'stats.bestProfit' : id === 'newest' ? 'stats.newest' : 'stats.biggestSale') })),
-                  value: saleSort,
-                  onChange: (id) => choose({ sales: id }),
-                }}
-              />
-            ) : undefined
-          }
-          data-testid="stats-best-trades"
-        >
-          {/* THE WINDOW IS A FACT, SAID ONCE (the audit, 2026-10-31): it left the title when the title became
-              two plain words, and it must not be lost from the reading. */}
-          <Hint className="px-2 pb-1 pt-1 md:col-span-full">{t('stats.wWeek')}</Hint>
-          <RankBars rows={sales} format={formatDucatsDelta} empty={t('stats.noSales')} className="contents" />
-        </ListPanel>
-        </>
-      }
-      side={
-        <Card title={t('stats.yourWeek')} data-testid="stats-me-week">
-          <StatCell
-            look="stacked"
-            label={t('stats.todayLabel')}
-            value={today}
-            format={formatDucatsDelta}
-            text={b === null ? '—' : undefined}
-            tone={today >= 0 ? 'success' : 'danger'}
-          />
-          <div className="mt-3">
-            <StatCell
-              look="line"
-              mark={mark('coin')}
-              label={t('stats.dayAverage')}
-              value={perDay ?? 0}
-              format={formatDucatsDelta}
-              text={perDay === null ? '—' : undefined}
-              tone={(perDay ?? 0) >= 0 ? 'success' : 'danger'}
+    <div className={`flex min-w-0 flex-col ${PAGE_GAP}`} data-testid="stats-me">
+      <HistoryChart what="me" title={t('stats.yourHistory')} lines={companyLines(t)} data-testid="history-me" />
+      <ListPanel
+        look="card"
+        columns="fit"
+        title={t('stats.bestSales')}
+        count={formatInt(sales.length)}
+        trailing={
+          v.best_trades.length > 1 ? (
+            <FilterBar
+              compact
+              data-testid="stats-sales-filters"
+              sort={{
+                id: 'sales',
+                label: t('stats.sortLabel'),
+                options: SALE_SORTS.map((id) => ({ id, label: t(id === 'profit' ? 'stats.bestProfit' : id === 'newest' ? 'stats.newest' : 'stats.biggestSale') })),
+                value: saleSort,
+                onChange: (id) => choose({ sales: id }),
+              }}
             />
-            <StatCell look="line" mark={mark('scales')} label={t('stats.trades')} value={v.trades_7d} format={formatInt} />
-          </div>
-          {/* SOLD AND BOUGHT, the week's two sides as one bar (2026-11-23, slice 8: a figure is a mark, a figure and a bar); the bar draws
-              itself once there is a trade to split, and before that the two lines say 0 */}
-          {v.sold_7d + v.bought_7d > 0 ? (
-            <StackedBar
-              parts={[
-                { id: 'sold', label: t('stats.sold7'), value: v.sold_7d, tone: 'accent' },
-                { id: 'bought', label: t('stats.bought7'), value: v.bought_7d, tone: 'info' },
-              ]}
-              format={formatDucats}
-              label={t('stats.wWeek')}
-              className="mt-5"
-              data-testid="stats-me-sides"
-            />
-          ) : (
-            <div>
-              <StatCell look="line" label={t('stats.sold7')} value={v.sold_7d} format={formatDucats} />
-              <StatCell look="line" label={t('stats.bought7')} value={v.bought_7d} format={formatDucats} />
-            </div>
-          )}
-          <SignedBars bars={bars} label={t('stats.earnedEach', { n: formatInt(bars.length) })} height="h-24" className="mt-5" data-testid="stats-me-bars" />
-        </Card>
-      }
-    />
+          ) : undefined
+        }
+        data-testid="stats-best-trades"
+      >
+        {/* THE WINDOW IS A FACT, SAID ONCE (the audit, 2026-10-31): it left the title when the title became
+            two plain words, and it must not be lost from the reading. */}
+        <Hint className="px-2 pb-1 pt-1 md:col-span-full">{t('stats.wWeek')}</Hint>
+        <RankBars rows={sales} format={formatDucatsDelta} empty={t('stats.noSales')} className="contents" />
+      </ListPanel>
+    </div>
   )
 }

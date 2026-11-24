@@ -6,6 +6,7 @@ import { KO_HULLS } from '../src/lib/i18n/names/realms'
 import { HULL_JOBS, HULL_JOB_CODES } from '../src/live/hullJobs.generated'
 import { JOB_WORD } from '../src/live/hullJobWord'
 import { translate } from '../src/lib/i18n'
+import { LOCALES, koreanTest } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // MORE SHIPS (migration 0366, owner row 322: "i need more trade ships, cargo, and especially combat related ships")
@@ -83,7 +84,7 @@ test('the migration loads the generator\'s rows, figure for figure', () => {
 
 // 2026-11-22 second play-test: about 90 older hulls were English on a Korean screen. Every hull the generator serves, and the three
 // starting hulls, has a Korean name now, whole and its own.
-test('every hull served has a Korean name, whole and its own', () => {
+koreanTest('every hull served has a Korean name, whole and its own', () => {
   const served = [...ALL.map((h) => h.name), 'Barca', 'Caravela latina', 'Nau / Carrack']
   expect(served.filter((n) => !KO_HULLS[n]), 'no Korean name').toEqual([])
   const names = served.map((n) => KO_HULLS[n])
@@ -91,7 +92,7 @@ test('every hull served has a Korean name, whole and its own', () => {
   expect(new Set(names).size, 'two hulls share a Korean name').toBe(names.length)
 })
 
-test('every new hull has a Korean name, whole, and its job word in both languages', () => {
+koreanTest('every new hull has a Korean name, whole, and its job word in both languages', () => {
   const missing = NEW.filter((h) => !KO_HULLS[h.name]).map((h) => h.name)
   expect(missing, 'no Korean name').toEqual([])
   const names = NEW.map((h) => KO_HULLS[h.name])
@@ -139,7 +140,7 @@ const NAMES = (selector: string) => {
   return { names, faults }
 }
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   const ko = locale === 'ko-KR'
   const lang = ko ? 'ko' : 'en'
   const shown = (name: string) => (ko ? KO_HULLS[name] : name)

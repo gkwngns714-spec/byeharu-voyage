@@ -8,7 +8,7 @@ import type { LevelsView } from '../../lib/rpc'
 import { LevelTiles, LevelTray, Mark } from '../../live/LevelTiles'
 import { levelFill, levelName } from '../../live/levelWords'
 import { tabWord } from '../../app/navTabs'
-import { useLevels } from './useLevels'
+import { useLevels } from '../../live/useLevels'
 
 // THE COMPANY'S LEVELS — ONE PAGE (roadmap 2026-11-23, slice 10: "One Skills page, with loud level-ups"; RS3's skills page).
 //

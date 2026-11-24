@@ -14,6 +14,7 @@ import path from 'node:path'
 import { properName } from '../src/lib/i18n'
 import { newsHeadline, newsMove } from '../src/live/newsWords'
 import type { NewsItem, NewsWord } from '../src/lib/rpc'
+import { LANGS } from './korean.paused'
 
 const MIG = path.resolve('supabase', 'migrations', '20260818000362_the_news_tells_of_trades_prices_pirates_and_gifts.sql')
 const PROOF = path.resolve('scripts', 'db', 'proofs', '64_news_kinds.sql')
@@ -72,7 +73,7 @@ test('each headline reads right in English and in Korean, with every word filled
   expect(newsHeadline(item('PIRATES'), 'ko')).toBe('해적이 Casa Nova에서 52,000 약탈')
   expect(newsHeadline(item('CAPITAL_GIFT'), 'en')).toBe('Lisbon gave Casa Nova 40,000')
   expect(newsHeadline(item('CAPITAL_GIFT'), 'ko')).toBe(`${lis}, Casa Nova에 40,000 지원`)
-  for (const kind of Object.keys(kinds)) for (const locale of ['en', 'ko'] as const) expect(newsHeadline(item(kind), locale), `${kind} ${locale}`).not.toMatch(/[{}]/)
+  for (const kind of Object.keys(kinds)) for (const locale of LANGS) expect(newsHeadline(item(kind), locale), `${kind} ${locale}`).not.toMatch(/[{}]/)
 })
 
 test('a spike says before → after on its card; a trade says none', () => {

@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { arrivalCard, LANDING_TEST_TIMEOUT_MS } from './arrivalWait.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // THE LEVELS, AS TILES (migration 0411, docs/LEVELS.md). The owner, 2026-11-14: "like rs3, i want diverse skills related to
@@ -113,7 +114,7 @@ async function openLevels(page: Page, lang: 'en' | 'ko') {
 }
 
 for (const size of SIZES) {
-  for (const lang of ['en', 'ko'] as const) {
+  for (const lang of LANGS) {
     test.describe(`Levels at ${size.width}×${size.height}, ${lang}`, () => {
       test.use({ viewport: size })
 

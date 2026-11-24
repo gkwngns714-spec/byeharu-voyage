@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 import { barcaWithParts, putBarcaPartsBack } from './barcaParts.fixture'
+import { koreanDescribe } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // S1 — THE YARD PLANS THE BUILD (docs/SECOND_SHIP.md; world.yard_sources re-cut by 0358; owner rows 180, 305, 316)
@@ -220,7 +221,7 @@ for (const glass of GLASSES) {
   })
 }
 
-test.describe('the plan in Korean', () => {
+koreanDescribe('the plan in Korean', () => {
   // 320: the narrowest phone, where a Korean line is the first to break
   test.use({ viewport: { width: 320, height: 844 }, deviceScaleFactor: 2, locale: 'ko-KR' })
 

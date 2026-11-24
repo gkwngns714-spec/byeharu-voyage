@@ -8,6 +8,7 @@ import { LABEL_PRIORITY, planLabels, type LabelRequest } from '../src/chart/labe
 import type { MapFleet, MapPort, MapTraffic } from '../src/chart/mapTypes'
 import { shipMarks, stableSlot, THIN_DENSITY, THIN_MOD } from '../src/chart/shipMarks'
 import { CHART_HEIGHT, type ViewBox } from '../src/lib/geo'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MAP AS ONE PICTURE (2026-11-14; docs/dev-log/2026-11-14-map-look.md)
@@ -338,7 +339,7 @@ for (const glass of [
   })
 }
 
-for (const lang of ['en', 'ko'] as const) {
+for (const lang of LANGS) {
   for (const glass of [
     { tag: '390', width: 390, height: 844 },
     { tag: '320', width: 320, height: 640 },

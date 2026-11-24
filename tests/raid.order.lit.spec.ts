@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable, WORLD_BOOT_MS } from './appReady.fixture'
+import { LANGS } from './korean.paused'
 
 // THE STANDING ORDER'S PICKER, LIT, AS SHIPPED (0353 built it; 0371 lit `raid_orders_enabled`, owner rows 315 and 324). No patch: this is the world a player gets.
 // src/live/RaidOrder.tsx has two mounts: the fleet's page and the map's Send tray, under the picked fleet. Each is driven here on a phone (390 px) and on the narrow
@@ -33,7 +34,7 @@ async function shot(page: Page, name: string) {
 }
 
 for (const glass of GLASSES) {
-  for (const lang of ['en', 'ko'] as const) {
+  for (const lang of LANGS) {
     test.describe(`the order picker as shipped, ${glass.width}px ${lang}`, () => {
       test.use({ viewport: glass, locale: lang === 'ko' ? 'ko-KR' : 'en-US' })
 

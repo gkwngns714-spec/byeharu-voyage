@@ -1,7 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { openCityFace } from './desk.fixture'
-import { openCityPanel } from './openCity.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // "REQUESTS" MEANT TWO THINGS (remaster S7, 2026-11-11; owner rows 279, 293)
@@ -56,7 +55,7 @@ const same = (a: Job[], b: Job[], what: string) => {
 }
 
 for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
-  test(`at ${size.width}: HQ Requests and the Map tray show the same city jobs as Trade, and New request keeps its own heading`, async ({ page, request, baseURL }) => {
+  test(`at ${size.width}: HQ Requests show the same city jobs as Trade, and New request keeps its own heading`, async ({ page, request, baseURL }) => {
     test.setTimeout(900_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await page.setViewportSize(size)
@@ -90,14 +89,5 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
     expect(await y(page.locator(ROW).last())).toBeLessThan(await y(ownHead))
     expect(await y(ownHead)).toBeLessThan(await y(newReq))
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'sideways scroll').toBe(true)
-
-    // Map port tray
-    await page.goto('map')
-    await ready(page)
-    await page.waitForSelector('[data-testid="map-ports"] > g', { timeout: 300_000 })
-    await openCityPanel(page, 'LIS', 'Lisbon')
-    await page.getByTestId('map-city-tabs').getByRole('tab', { name: /^Market$/ }).click()
-    await page.getByTestId('map-city-market').getByRole('tab', { name: /^Requests$/ }).click()
-    same(trade, await jobs(page), 'Map')
   })
 }

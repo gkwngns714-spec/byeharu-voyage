@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
+import { koreanDescribe } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // S2 + S3 — A SECOND SHIP WITHIN REACH (docs/SECOND_SHIP.md; migration 0363; owner rows 180, 305, 316)
@@ -227,7 +228,7 @@ test.describe('the played flow at 1280×800', () => {
 })
 
 for (const glass of PHONES) {
-  test.describe(`a second ship in Korean at ${glass.width}×${glass.height}`, () => {
+  koreanDescribe(`a second ship in Korean at ${glass.width}×${glass.height}`, () => {
     test.use({ viewport: glass, deviceScaleFactor: 2, locale: 'ko-KR' })
 
     test('the card, the sheet and the trip read in Korean', async ({ page, request, baseURL }, info) => {

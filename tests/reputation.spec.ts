@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { arrivalCard, LANDING_TEST_TIMEOUT_MS } from './arrivalWait.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // REPUTATION ON THE GLASS (migration 0352, slice R1 of docs/REPUTATION.md; owner row 317).
@@ -56,7 +57,7 @@ const WORDS = {
 const giftsTo = (level: number) => 10 * ((level * (level + 1)) / 2 - 1)
 
 for (const size of SIZES) {
-  for (const lang of ['en', 'ko'] as const) {
+  for (const lang of LANGS) {
     test.describe(`Reputation at ${size.width}×${size.height}, ${lang}`, () => {
       test.use({ viewport: size })
 

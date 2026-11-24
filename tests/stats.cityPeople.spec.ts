@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
+import { LOCALES } from './korean.paused'
 
 // STATS · CITY · PEOPLE (0305) — owner, 2026-11-04: "add population info on stats - city."
 // A city's Stats page shows its people: the population at 24 px, how it stands against the real-world figure, the last step's arrow and why
@@ -7,7 +8,7 @@ import { reachable, ready } from './appReady.fixture'
 
 test.use({ deviceScaleFactor: 2 })
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   test.describe(`a city's people on Stats — ${locale}`, () => {
     test.use({ locale })
     for (const glass of [{ width: 1280, height: 800 }, { width: 320, height: 640 }]) {

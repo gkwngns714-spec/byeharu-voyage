@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
+import { koreanDescribe } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A PLAYER BUILDS THE CROWN'S SHIPS: the cargo ship and the navy ship, named where a hull is chosen (migration 0332)
@@ -120,7 +121,7 @@ for (const glass of GLASSES) {
   })
 }
 
-test.describe('the words, in Korean', () => {
+koreanDescribe('the words, in Korean', () => {
   test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: 'ko-KR' })
 
   test('the yard and the Codex at 390', async ({ page, request, baseURL }, info) => {

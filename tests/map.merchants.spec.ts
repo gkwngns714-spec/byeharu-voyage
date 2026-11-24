@@ -890,10 +890,10 @@ async function openHarbour(
     // A CITY, NOT A POINT OF WATER (2026-10-16). Open sea wears the same tray and the same `Send
     // fleet` press, so those two alone took a tap that fell on WATER beside a long name (CI run
     // 38776868688: "28.1°N 13.9°W · Open sea" off the Canaries) for a city — which then never
-    // answered with a harbour list. Only a city has the City tabs; anything else took the tap.
+    // answered with a harbour list. Only a city has `HQ here`; anything else took the tap.
     const city = await send.waitFor({ state: 'visible', timeout: 2_000 }).then(() => true, () => false)
-    const tabs = tray.getByRole('tablist', { name: 'City' })
-    if (city && (await tray.isVisible()) && (await tabs.isVisible())) {
+    const hqHere = tray.getByTestId('map-hq-here')
+    if (city && (await tray.isVisible()) && (await hqHere.isVisible())) {
       await send.click()
       await expect(tray).toHaveAttribute('data-tray-detent', 'half')
       // THE HARBOUR'S READ IS WAITED FOR UNTIL IT ANSWERS, not for a fixed 8 s (2026-10-16). Until

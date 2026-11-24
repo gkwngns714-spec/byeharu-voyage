@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { reachable, ready, WORLD_BOOT_MS } from './appReady.fixture'
 import { MAP_LAYER_KEY, readMapLayer, REGIONS_FILTER_KEY, zoneAnchors, zoneOutline } from '../src/chart'
 import type { ZoneCells } from '../src/domain/seas'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MAP'S FILTER: OFF, REGIONS, SEAS (owner, 2026-11-15: "also in map, make filter, like regions, no in regions,
@@ -99,12 +100,12 @@ const zonesOnGlass = (page: Page) =>
 type Box = { x: number; y: number; width: number; height: number }
 const hits = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
 
-for (const glass of [
+for (const glass of ([
   { tag: '390-en', width: 390, height: 844, lang: 'en' },
   { tag: '320-ko', width: 320, height: 640, lang: 'ko' },
   { tag: '320-en', width: 320, height: 640, lang: 'en' },
   { tag: '1440-en', width: 1440, height: 900, lang: 'en' },
-] as const) {
+] as const).filter((g) => LANGS.includes(g.lang))) {
   test.describe(`the map's filter at ${glass.tag}`, () => {
     test.use({ viewport: { width: glass.width, height: glass.height }, locale: glass.lang === 'ko' ? 'ko-KR' : 'en-US' })
     test.beforeAll(() => mkdirSync(SHOTS, { recursive: true }))

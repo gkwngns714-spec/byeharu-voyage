@@ -5,9 +5,10 @@
 //     ko: { title: '회사 설립', fleets: { one: '선단 {n}개', other: '선단 {n}개' } },
 //   })
 //
-// The `ko` half is typed FROM the `en` half: a missing key, an extra key, or a plural written as a
-// plain string fails `tsc` (mapped type + the excess-property check on a fresh literal). So the two
-// languages cannot drift apart quietly; tests/i18n.keys.spec.ts checks the same thing at run time.
+// The `ko` half is typed FROM the `en` half: an extra key, or a plural written as a plain string,
+// fails `tsc` (mapped type + the excess-property check on a fresh literal); tests/i18n.keys.spec.ts
+// checks the same at run time. A Korean entry is OPTIONAL per key (owner 2026-11-24: Korean wording
+// comes later, docs/KOREAN_LATER.md): a key with no Korean entry reads its English one (translate.ts).
 
 /** A plural: `one` when n === 1, else `other`. Korean usually writes both the same. */
 export interface Plural {
@@ -17,7 +18,7 @@ export interface Plural {
 
 export type Msg = string | Plural
 
-export type Mirror<E> = { readonly [K in keyof E]: E[K] extends string ? string : Plural }
+export type Mirror<E> = { readonly [K in keyof E]?: E[K] extends string ? string : Plural }
 
 export interface Dict<E extends Record<string, Msg>> {
   readonly en: E

@@ -42,6 +42,7 @@
 -- @pass GRANT_LOCKDOWN_NO_CALLER_GAPS      caller_evaluated_functions() is empty, with a control proving it sees a real gap
 -- @pass GRANT_LOCKDOWN_CLIENT_READS_OWN    authenticated: a plain SELECT succeeds on every RLS-protected private table
 -- @pass GRANT_LOCKDOWN_RLS_ISOLATES        two houses partition every one of those tables: neither sees the other's rows
+-- @pass GRANT_LOCKDOWN_DEFERRED_AS_OWNER  no deferrable trigger runs an invoker-rights function (0489), with a control proving the scan sees one
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- AND THE OTHER HALF OF THE LOCKDOWN, ADDED 2026-08-22 WITH MIGRATION 0018
@@ -374,6 +375,32 @@ begin
          from public.caller_evaluated_functions());
   end if;
   raise notice 'PASS: GRANT_LOCKDOWN_NO_CALLER_GAPS — 0 policy bodies, CHECK constraints, column defaults, generated columns or index expressions call a function the evaluating client role may not execute; the positive control (a CHECK built on purpose to be unreachable) WAS reported, so the zero is a finding and not a blind spot';
+
+  -- ── (h2) A DEFERRED CHECK RUNS AS ITS OWNER (0489) ───────────────────────────────────────────────
+  -- A DEFERRABLE trigger fires at COMMIT. PostgreSQL 17 (prod, and the disposable stack) runs it as the role current THEN: for a
+  -- player that is `authenticated`, not the SECURITY DEFINER door that queued it. An invoker-rights function there reads as the client
+  -- (0352's public.reputation_reconciles() failed every player's Reputation write with 42501 until 0489). PGlite is 18 and runs it as
+  -- the queuing role, so only this rule catches it before production: every deferrable trigger's function is SECURITY DEFINER.
+  create function public.p03_deferred_ctl() returns trigger language plpgsql as $c$ begin return null; end $c$;
+  create table public.p03_deferred_ctl (x int);
+  create constraint trigger p03_deferred_ctl after insert on public.p03_deferred_ctl
+    deferrable initially deferred for each row execute function public.p03_deferred_ctl();
+  if not exists (select 1 from pg_trigger t join pg_class c on c.oid = t.tgrelid join pg_namespace n on n.oid = c.relnamespace join pg_proc f on f.oid = t.tgfoid
+                  where not t.tgisinternal and t.tgdeferrable and not f.prosecdef and n.nspname in ('public', 'world', 'cmd', 'voyage')
+                    and t.tgname = 'p03_deferred_ctl') then
+    raise exception 'PROOF 3 FAILED: the deferred-trigger scan did not see its own control (an invoker-rights deferrable trigger)';
+  end if;
+  drop table public.p03_deferred_ctl;
+  drop function public.p03_deferred_ctl();
+  select string_agg(distinct t.tgrelid::regclass::text || ' ' || t.tgname || ' -> ' || t.tgfoid::regprocedure::text, ', ') into v_bad
+    from pg_trigger t join pg_class c on c.oid = t.tgrelid join pg_namespace n on n.oid = c.relnamespace join pg_proc f on f.oid = t.tgfoid
+   where not t.tgisinternal and t.tgdeferrable and not f.prosecdef and n.nspname in ('public', 'world', 'cmd', 'voyage');
+  if v_bad is not null then
+    raise exception 'PROOF 3 FAILED: a deferrable trigger runs an invoker-rights function; on PostgreSQL 17 it runs as the committing client role. Make it SECURITY DEFINER: %', v_bad;
+  end if;
+  raise notice 'PASS: GRANT_LOCKDOWN_DEFERRED_AS_OWNER — % deferrable trigger(s) in public, world, cmd and voyage, every one on a SECURITY DEFINER function; the control (an invoker-rights deferrable trigger built on purpose) WAS seen',
+    (select count(*) from pg_trigger t join pg_class c on c.oid = t.tgrelid join pg_namespace n on n.oid = c.relnamespace
+      where not t.tgisinternal and t.tgdeferrable and n.nspname in ('public', 'world', 'cmd', 'voyage'));
 
   -- ── (ii) TWO HOUSES, AND A REAL READ AS A REAL ROLE ──────────────────────────────────────────
   v_a := public.new_house(c_a, 'Casa Alfa P3', 'PRT');

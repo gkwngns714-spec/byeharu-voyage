@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { passageLines, passageOf, shutByReach, type PlanLeg } from '../src/domain/passage'
 import type { RouteLeg } from '../src/lib/rpc'
 import { ready, reachable, WORLD_BOOT_MS } from './appReady.fixture'
+import { koreanDescribe } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A FAR CITY IS SENT IN ONE PRESS — the owner, 2026-11-13:
@@ -242,7 +243,7 @@ test.describe('a far city, driven on a phone (390 px, English)', () => {
   })
 })
 
-test.describe('a far city and a city past every chain (320 px, Korean)', () => {
+koreanDescribe('a far city and a city past every chain (320 px, Korean)', () => {
   test.use({ viewport: { width: 320, height: 640 }, locale: 'ko-KR' })
   test.setTimeout(900_000)
 
