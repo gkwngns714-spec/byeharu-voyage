@@ -78,7 +78,7 @@ export const hqDict = defineDict({
     raceRival: 'Rival leads',
     raceOpen: 'Nobody yet',
     racePlace: '{n} of {of}',
-    // S1 (2026-11-24): the sheets over HQ (features/city/HqSheet.tsx)
+    // S1 (2026-11-24): the sheets over HQ (app/HqSheet.tsx)
     noFleet: 'No fleet',
     cargo: 'Cargo',
     orders: 'Orders',

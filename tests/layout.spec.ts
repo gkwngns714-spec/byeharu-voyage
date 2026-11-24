@@ -1257,7 +1257,7 @@ test(`HQ › Production: a cell opens the one tray with a stepper, moves nothing
     return row ? (row.innerText || '').split('\n')[0].trim() : ''
   })
   expect(bought, 'no live buy cell to press').not.toBe('')
-  // S1 (2026-11-24, src/features/city/HqSheet.tsx): the price opens THE trade sheet over the City; the lot is bought there, and Back closes it
+  // S1 (2026-11-24, src/app/HqSheet.tsx): the price opens THE trade sheet over the City; the lot is bought there, and Back closes it
   await tradeOnDesk(page, 5)
   await page.goBack()
   await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })

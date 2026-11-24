@@ -14,8 +14,8 @@ import { PortPrices } from '../../../live/PortPrices'
 import { PortShipyard } from '../../../live/PortShipyard'
 import { PortTown } from '../../../live/PortTown'
 import { PortTrade } from '../../../live/PortTrade'
-import { HqSheet } from '../../city/HqSheet'
-import { openHq } from '../../city/hqPlace'
+import { HqSheet } from '../../../app/HqSheet'
+import { openHq } from '../../../app/hqPlace'
 import { PortWorkstation } from '../../../live/PortWorkstation'
 import { PortYard } from '../../../live/PortYard'
 import { TowNote } from '../../../live/TowNote'
@@ -180,7 +180,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
               goods={quay.market.goods}
               fleet={fleet}
               port={port}
-              // 2026-11-24 (simplify S1): a price pressed opens THE trade sheet over this page (features/city/HqSheet.tsx), never another tab
+              // 2026-11-24 (simplify S1): a price pressed opens THE trade sheet over this page (app/HqSheet.tsx), never another tab
               onTrade={(good, side) => openHq({ sheet: 'trade', port: port.code, fleet: fleet.id, good: good.code, side })}
             />
           ) : (

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { BestSale } from '../../lib/rpc'
+import type { BestSale } from '../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE ONE WAY TO OPEN AN HQ SHEET (2026-11-24, docs/design/simplify-2026-11-24.md S1)

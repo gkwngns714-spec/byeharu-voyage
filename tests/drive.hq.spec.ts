@@ -409,7 +409,7 @@ test('HQ: with the purses lit, a purchase at the Market shows on the hall\'s Gol
   const row = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]').first()
   const good = (await row.getByTestId('trade-good-name').innerText()).split('\n')[0].trim()
   await row.getByRole('button', { name: /^buy/i }).first().click()
-  // S1 (2026-11-24, src/features/city/HqSheet.tsx): the Buy opens THE trade sheet over HQ on that good; the buy runs there, and the
+  // S1 (2026-11-24, src/app/HqSheet.tsx): the Buy opens THE trade sheet over HQ on that good; the buy runs there, and the
   // browser's back closes it — HQ is under it, as it was
   console.log(`buying: ${good} in the trade sheet over HQ`)
   await tradeOnDesk(page)

@@ -40,7 +40,7 @@ export async function openCityFace(page: Page): Promise<void> {
   await expect(city, "the quay's fair read has not landed").toHaveAttribute('data-fair-loaded', '', { timeout: WORLD_BOOT_MS })
 }
 
-/** THE TRADE SHEET, IN PLACE (2026-11-24, simplify S1; src/features/city/HqSheet.tsx): a Buy or Sell pressed on the HQ Market or on
+/** THE TRADE SHEET, IN PLACE (2026-11-24, simplify S1; src/app/HqSheet.tsx): a Buy or Sell pressed on the HQ Market or on
  *  Office > City > Market opens THE trade sheet over the page it was pressed on, on that city, that good and that side — the URL does
  *  not move. This waits for the sheet and runs the trade there (`n` units), the press a player makes: the count, the one big button,
  *  the toast. The sheet stays open after a trade where she lies; the browser's back (or its ✕, or Escape) closes it.
@@ -53,6 +53,9 @@ export async function tradeOnDesk(page: Page, n = 1): Promise<void> {
   await figure.fill(String(n))
   await figure.press('Enter')
   await expect(page.getByTestId('trade-act')).toBeEnabled({ timeout: 60_000 })
+  // the toast stands 3.2 s: it is watched from BEFORE the press, in the page, so a busy tab (the world read back after the trade) cannot
+  // show and drop it between two polls from here (seen once at 390 with two workers)
+  const toast = page.getByTestId('trade-toast').waitFor({ state: 'visible', timeout: 60_000 })
   await page.getByTestId('trade-act').click()
-  await expect(page.getByTestId('trade-toast')).toBeVisible({ timeout: 60_000 })
+  await toast
 }

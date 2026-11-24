@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useCommandDraft } from '../../../domain/order'
 import { useWorld } from '../../../live/worldStore'
-import { openHq } from '../hqPlace'
+import { openHq } from '../../../app/hqPlace'
 import { pressServed } from './servedPress'
 import type { MoveData } from './useBoard'
 

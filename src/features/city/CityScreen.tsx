@@ -27,8 +27,8 @@ import { CityFacePanel, type CityBuilding } from './CityFace'
 import { CityHallPanel } from './CityHallPanel'
 import { CityScene } from './CityScene'
 import { HqBoard } from './board/HqBoard'
-import { HqSheet } from './HqSheet'
-import { openHq } from './hqPlace'
+import { HqSheet } from '../../app/HqSheet'
+import { openHq } from '../../app/hqPlace'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PAGE — a city, full screen (owner's "Game screen development", 2026-10-30)

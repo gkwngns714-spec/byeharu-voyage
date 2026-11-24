@@ -104,7 +104,7 @@ test('Market: a capital lists 10 goods, every quay 4 to 10, and the Requests doo
   await shot(page, 'market-porto-1280@2x')
 })
 
-// ── ROW 257 + S1 (2026-11-24, simplify; src/features/city/HqSheet.tsx): ONE TRADE SHEET, IN PLACE ──────────────────────────────
+// ── ROW 257 + S1 (2026-11-24, simplify; src/app/HqSheet.tsx): ONE TRADE SHEET, IN PLACE ──────────────────────────────
 // The Market keeps its reading (the goods, the chart) and stands no basket of its own. A Buy pressed on a good moves the chart to it
 // and opens THE trade sheet over HQ on this city and that good, docked, on Buy — the URL stays HQ's (the owner, 2026-11-24: *"i can
 // make trade in HQ, or trade in trade tab. it routes to trade tab"*). Its ✕, Escape and the browser's back close it, and the Market
