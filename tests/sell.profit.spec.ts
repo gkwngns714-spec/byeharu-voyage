@@ -42,6 +42,13 @@ async function reportToday(page: Page, lang: 'en' | 'ko'): Promise<number> {
   return signed(await total.innerText())
 }
 
+/** The units on the sheet's stepper (after its clamp). */
+async function unitsOn(page: Page): Promise<number> {
+  const n = Number((await page.getByTestId('good-detail').getByTestId('stepper-figure').inputValue()).replace(/\D/g, ''))
+  expect(n, 'no units on the stepper').toBeGreaterThan(0)
+  return n
+}
+
 async function purse(page: Page): Promise<number> {
   const p = page.getByTestId('purse')
   await expect(p).toContainText(/\d/, { timeout: 120_000 })
@@ -74,16 +81,17 @@ for (const { locale, lang } of LANGS) {
         await expect(panel.getByTestId('stepper-figure')).toBeVisible({ timeout: 60_000 })
         await panel.getByTestId('stepper-figure').fill(String(UNITS))
         await panel.getByTestId('stepper-figure').press('Enter')
-        await expect(panel.getByTestId('stepper-figure')).toHaveValue(UNITS.toLocaleString('en-US'))
+        // 204 asked; the stepper clamps to what her hold and purse take (the served bound), and that is what she buys
         await expect(act).toBeEnabled({ timeout: 60_000 })
+        const units = await unitsOn(page)
         await act.click()
         await expect(panel).toHaveCount(0, { timeout: 60_000 })
-        await expect(card.getByTestId('trade-good-aboard')).toContainText(String(UNITS), { timeout: 60_000 })
+        await expect(card.getByTestId('trade-good-aboard')).toContainText(units.toLocaleString('en-US'), { timeout: 60_000 })
 
         // THE SELL FACE, BEFORE THE PRESS
         await card.getByTestId('trade-sell').click()
         await expect(panel).toHaveAttribute('data-side', 'sell')
-        await expect(panel.getByTestId('stepper-figure')).toHaveValue(UNITS.toLocaleString('en-US'))
+        await expect(panel.getByTestId('stepper-figure')).toHaveValue(units.toLocaleString('en-US'))
         const lines = panel.getByTestId('sale-lines')
         await expect(lines).toHaveAttribute('data-profit', /^-?\d+$/, { timeout: 120_000 })
         await expect(act).toBeEnabled({ timeout: 60_000 })
@@ -104,7 +112,7 @@ for (const { locale, lang } of LANGS) {
         // SELL
         await act.click()
         await expect(panel).toHaveCount(0, { timeout: 60_000 })
-        await expect(card.getByTestId('trade-good-aboard')).not.toContainText(String(UNITS), { timeout: 60_000 })
+        await expect(card.getByTestId('trade-good-aboard')).not.toContainText(units.toLocaleString('en-US'), { timeout: 60_000 })
 
         // THE FIGURE SHOWN IS THE ONE SETTLED: her purse moved it over the buy and the sale, and Report's Today profit too
         await expect.poll(() => purse(page), { timeout: 60_000 }).toBe(p0 + shown)
@@ -130,9 +138,10 @@ test.describe('Your cargo prints Bought and Here\'s served profit', () => {
     await panel.getByTestId('stepper-figure').fill(String(UNITS))
     await panel.getByTestId('stepper-figure').press('Enter')
     await expect(act).toBeEnabled({ timeout: 60_000 })
+    const units = await unitsOn(page)
     await act.click()
     await expect(panel).toHaveCount(0, { timeout: 60_000 })
-    await expect(card.getByTestId('trade-good-aboard')).toContainText(String(UNITS), { timeout: 60_000 })
+    await expect(card.getByTestId('trade-good-aboard')).toContainText(units.toLocaleString('en-US'), { timeout: 60_000 })
 
     await card.getByTestId('trade-sell').click()
     const lines = panel.getByTestId('sale-lines')

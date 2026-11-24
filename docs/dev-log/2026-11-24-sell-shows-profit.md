@@ -25,10 +25,12 @@ preview, result and event tell one `trip_net`.
 
 - `domain/order/estimate.ts`: `SaleEstimate` reads `tax`, `wages`, `dock_fee`, `trip_net` (nullable; a server before 0490 serves none).
 - `live/useTrade.ts`: the dry run is `useTradeDryRun` (one reading), used by the sheet and by Your cargo's Here.
-- `TradePanel.tsx`: `SaleLines` under the units (before the chart, seen on a half-raised sheet): Bought (each · total), Sells for
-  (each · total), Tax / Wages / Dock fee (only when not 0), Profit (`trip_net`, green/red, % of cost). The pinned line by the button
-  carries the same profit on a docked sale. Sail & sell / Buy & sell show the same lines from the served sell row (supplies stay on
-  their own row).
+- `TradePanel.tsx`: `SaleLines`: Bought (each · total), Sells for (each · total), Tax / Wages / Dock fee (only when not 0), Profit
+  (`trip_net`, green/red, % of cost). On a sale it stands ABOVE the units (decided by default): under them, the half-raised sheet at
+  390 x 844 ended at the stepper (screenshot: the lines started below the fold). Even above, the half sheet shows only "Bought", so
+  the two unit prices (Bought · Sells for) are also pinned with the button, above Total and Profit (`sale-pair`): all four are seen
+  before the press at every sheet height. Sail & sell / Buy & sell show the same lines from the served sell row (supplies stay on
+  their own row; a buy-and-sell trip keeps its units first).
 - `CargoBest.tsx`: "Bought 81.6" beside each good; Here's profit is the dry run's `trip_net` (it was "—").
 - `OnBoard.tsx` not changed: its per-unit gap is the owner's own 2026-09-18 ask, and it lives on the basket path S3 deletes.
 - Words: `trade.bought` Bought / 산 값, `trade.sellsFor` Sells for / 판매가; Profit, Tax, Wages, Dock fee reuse `desk.*`.

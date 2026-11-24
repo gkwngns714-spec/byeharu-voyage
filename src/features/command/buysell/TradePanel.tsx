@@ -150,6 +150,7 @@ function Frame({
   onChoose,
   units,
   sale,
+  pair,
   total,
   extra,
   profit,
@@ -169,9 +170,12 @@ function Frame({
   sellAt?: string | null
   /** The units row: the stepper, or why there is none. */
   units: ReactNode
-  /** 0490: a sale's lines (Bought, Sells for, the costs, Profit), right under the units: before the chart, where a half-raised
-   *  sheet shows them before the press. */
+  /** 0490: a sale's lines (Bought, Sells for, the costs, Profit): above the units on a sale, under them on a buy-and-sell trip;
+   *  before the chart either way. */
   sale?: ReactNode
+  /** 0490: a sale's two unit prices, pinned with the button (what she paid a unit, what it sells for a unit): seen at every height
+   *  of the sheet, beside the money and the profit under them. Undefined: no sale. */
+  pair?: { bought: number | null; sells: number | null }
   /** The money the units come to, signed (−paid / +got), or null while unknown. */
   total: number | null
   /** Rows under the total (the trip's estimate). */
@@ -203,6 +207,24 @@ function Frame({
           {/* 2026-11-22 (P0): A TRIP THAT SELLS CARRIES ITS PROFIT ON THE SAME LINE ("Cost 36,244 · Profit +3,222"). It stood fifth
               in the estimate, under the chart: under the fold of a 390 × 844 sheet, so the number a trip is chosen by was never seen
               before the press. One line, not a row of its own, so the half-raised sheet still shows the units. */}
+          {/* 0490: A SALE'S TWO PRICES, pinned above it (the owner, 2026-11-24: "the price i bought, the price i will get"): the half-raised
+              sheet at 390 x 844 showed the sale's lines only to the fold (measured), so the two unit prices ride with the money */}
+          {pair && (
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 pt-1 text-t-caption" data-testid="sale-pair">
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="text-ink-muted">{t('trade.bought')}</span>
+                <span className="font-semibold tabular-nums text-ink" data-testid="sale-pair-bought">
+                  {pair.bought === null ? '—' : formatPriceFigure(pair.bought)}
+                </span>
+              </span>
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="text-ink-muted">{t('trade.sellsFor')}</span>
+                <span className="font-semibold tabular-nums text-ink" data-testid="sale-pair-sells">
+                  {pair.sells === null ? '—' : formatPriceFigure(pair.sells)}
+                </span>
+              </span>
+            </div>
+          )}
           <Row
             // the word whole (2026-11-22 second play-test: in the 1,280 desk's pane the figure and the profit left "Cost" 16 px, and it
             // stood as "Co / st"); whole, the line still fits that pane (measured 286 of 286 px, nothing past the row)
@@ -258,9 +280,13 @@ function Frame({
           {t('desk.noGainWarn')}
         </Note>
       )}
-      {/* the units first, where a half-raised sheet shows them; the chart they are read against under them */}
+      {/* the units first, where a half-raised sheet shows them; the chart they are read against under them. 0490 (the owner, 2026-11-24:
+          "when i sell, i want to see the price i bought, the price i will get, how much profit"): ON A SALE the sale's lines stand
+          ABOVE the units: under them, a half-raised sheet at 390 x 844 cut them off (measured: the stepper's row ended at the fold),
+          and a sale's units are all she carries by default. Decided by default. A buy-and-sell trip keeps its units first. */}
+      {side === 'sell' && sale}
       {units}
-      {sale}
+      {side !== 'sell' && sale}
       <Chart name={good.name} trend={trend} portId={portId} goodId={good.good_id} />
       {extra}
       <WhyThisPrice why={why.view ?? null} loading={why.loading} />
@@ -380,6 +406,7 @@ function DockedAct({
       warn={side === 'buy' && noGain}
       total={chosen > 0 ? total : null}
       profit={side === 'sell' ? (act.previewLoading ? null : (sale?.trip_net ?? null)) : undefined}
+      pair={side === 'sell' ? { bought: sale?.basis ?? null, sells: sale?.avg_price ?? null } : undefined}
       units={
         ceiling > 0 ? (
           <div className="py-3">
@@ -531,6 +558,7 @@ function SailAct({
       onChoose={onChoose}
       total={mine ? total : null}
       profit={sells ? profit : undefined}
+      pair={sells ? { bought: side === 'sell' ? paidPerTun(fleet, good.code) : (go.buyRow?.price_each ?? null), sells: go.sellRow?.price_each ?? null } : undefined}
       sale={
         sells && mine ? (
           // 0490: the trip's sale, as the served sell row counts it (supplies on their own row below, as before)
