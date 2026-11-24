@@ -1,18 +1,18 @@
 import { Figure, IconDisc, KEEP_WORDS_CLASS, NeedChip, Note, goodIcon, tileToneClass, type NeedTone } from '../../../components/ui'
 import type { Move } from '../../../domain/hq'
 import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../../../lib/format'
-import type { FleetJobParams, FleetJobRow, HqMove, HqRace, HqRisk, ShipRole, ShipRoleWhy } from '../../../lib/rpc'
+import type { HqMove, HqRace, HqRisk, ShipRole, ShipRoleWhy } from '../../../lib/rpc'
 import { properName, useT } from '../../../lib/i18n'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import { RepeatChip } from './JobControl'
 import { KIND_ICON, ROLE_ICON, ROLE_WORD } from './jobMarks'
-import { pressServed, useServedPress } from './servedPress'
+import { useServedPress } from './servedPress'
 import type { MoveData } from './useBoard'
 
 // ONE MOVE AS A CARD (docs/design/hq-command-2026-11-23.md): the activity's glyph on a disc, what it is (whole names, never cut), the
 // headline figure (coin, and coin per hour where the server serves one), and what it needs as marks: the fleet, the time, the cost, the
-// pirate risk. The whole card is the one press.
+// pirate risk. The whole card is the one press (useMovePress.ts: a trade she buys for opens Assign, filled in; any other card commits
+// its own act). There is no Repeat chip: Assign's Once / Repeat is that choice.
 // EVERY CARD IS A SERVED MOVE (0480; H2, docs/design/hq-corp-2026-11-24.md: the client-made cards are deleted). Its figures are the
 // server's; its RISK is a mark — a shield in the tone of the waters' danger, or the pirate in the danger tone when a bounty pirate's
 // home or sea is on the passage — and a refusal of its act stands under it in the server's own words (servedPress.ts), the card kept.
@@ -37,29 +37,20 @@ function gainOf(role: ShipRole, gain: number): { fig: string; key: 'hq.gainGuard
   return { fig: `+${formatInt(pct)}%`, key: role === 'fast' ? 'hq.gainFast' : 'hq.gainHold', n: pct }
 }
 
-/** 0481: a trade card's trip as a fixed route (her fleet; buy where she lies, sell there, the passage's stops), or null: not a trade, or
- *  she sells her own cargo (no harbour to buy at). */
-function repeatOf(m: HqMove): { fleet: string; params: Required<Pick<FleetJobParams, 'good' | 'buy' | 'sell'>> & FleetJobParams } | null {
-  const a = m.act
-  if (a.rpc !== 'cmd.issue_lines' || a.args.plan.buy_at === null) return null
-  return { fleet: a.args.fleet, params: { good: a.args.plan.good, buy: a.args.plan.buy_at, sell: a.args.plan.sell_at, stops: a.args.plan.stops } }
-}
-
 export function MoveCard({
   move,
   onPress,
   inline = false,
-  jobs = null,
 }: {
   move: Move<MoveData>
   onPress: (m: MoveData) => void
   inline?: boolean
-  /** 0481: her fleets' standing jobs, by fleet (lit); a trade card then offers Repeat. Null while dark. */
-  jobs?: ReadonlyMap<string, FleetJobRow> | null
 }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
+  // WHOSE MOVE IT IS needs saying only when she has more than one fleet (HQ names a thing once: with one fleet, her row says it)
+  const manyFleets = useWorld((s) => s.fleets.length > 1)
   const refusal = useServedPress((s) => s.refused[move.id] ?? null)
   const pending = useServedPress((s) => s.pending === move.id)
   const d = move.data
@@ -93,7 +84,7 @@ export function MoveCard({
   }
 
   const title = servedTitle(s)
-  const fleetName = s.fleet_name ?? null
+  const fleetName = manyFleets ? (s.fleet_name ?? null) : null
   const headline =
     s.kind === 'yard'
       ? formatDucats(s.needs.cost ?? 0)
@@ -117,8 +108,6 @@ export function MoveCard({
   // 0485: a role card's role, why it is the pick and what it gives; the yard's card, the role the next hull should fill
   const roleCard = s.kind === 'role' && s.needs.role ? { role: s.needs.role, why: s.needs.why ?? null, n: s.needs.n ?? 0, gain: gainOf(s.needs.role, s.needs.gain ?? 0) } : null
   const nextRole = s.kind === 'yard' ? (s.role ?? null) : null
-  const repeat = jobs ? repeatOf(s) : null
-  const held = repeat ? (jobs?.get(repeat.fleet) ?? null) : null
 
   return (
     <div className="flex min-w-0 flex-col gap-1">
@@ -135,6 +124,8 @@ export function MoveCard({
         data-per-hour={move.perHour === null ? '' : String(Math.round(move.perHour))}
         data-fleet={move.fleet ?? undefined}
         data-good={good}
+        data-units={s.kind === 'trade' ? (s.needs.units ?? undefined) : undefined}
+        data-profit={s.kind === 'trade' ? (s.profit ?? undefined) : undefined}
         data-port={flag ?? undefined}
         data-danger={s.risk ? String(s.risk.danger) : undefined}
         data-race={race ? race.lead : undefined}
@@ -223,18 +214,6 @@ export function MoveCard({
           )}
         </span>
       </button>
-      {repeat && (
-        <RepeatChip
-          id={move.id}
-          fleet={repeat.fleet}
-          params={repeat.params}
-          on={held?.kind === 'fixed' && held.params.good === repeat.params.good && held.params.buy === repeat.params.buy && held.params.sell === repeat.params.sell}
-          send={async () => {
-            await pressServed(s, d.fleet)
-            return !useServedPress.getState().refused[move.id]
-          }}
-        />
-      )}
       {refusal && (
         <Note tone="danger" code={refusal.code} figures={refusal.figures} sea={refusal.sea} data-testid="hq-move-refusal">
           {refusal.sentence}

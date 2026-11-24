@@ -5,6 +5,10 @@
 This block is the current state. The hand-off blocks further down (2026-11-13 and older) are history.
 
 
+**UPDATE 2026-11-24: THE REMASTER (row 382): docs/design/remaster-2026-11-24.md is the one order of work. Phase 1: #850, 0492 #854, 0493 `rate-why` (building), 0494 `job-by-harbours` (row 381).**
+
+**UPDATE 2026-11-24 (new PC): row 378 CIVILIZATION LAYER researched + designed (docs/design/civ-layer-2026-11-24.md). #850 merged with main (conflict in drive.market resolved), #854 updated; both in CI. H1 `hq-corp` and H2 `hq-bridge-rank` building on #850.** 
+
 **HAND-OFF 2026-11-24 ~08:20 UTC (owner: "wrap it up, git push all, so that i can continue on a different pc"). PROD HEAD 0491, nothing half-deployed, no builder left running. START HERE.**
 - **LIVE today (all verified on prod's head / the published site, none pressed as a player: prod has no test account):** #844 a hired captain's offer leaves; **0489** #845 "permission denied for table reputation_balance" (the deferred Reputation check ran as `authenticated` on PG 17; every signed-in Reputation write was failing); #847 S8 Stats/Rank one figure; #848 S7 one Fleets column; #849 S5 map harbour one face; **0490** #846 the sell face shows Bought / Sells for / tax / wages / dock fee / Profit before the press; **0491** #852 the board's miles are the sail's (haul refilled: 101,096 rows, max +12.36 %; `scripts/ops/harness/quote-on-her-course/rollback-0491.sql` ready, the owner was told the numbers and has not objected); #853 Korean paused behind `KOREAN_PAUSED` (`docs/KOREAN_LATER.md`; CLAUDE.md "Words" now says ENGLISH ONLY).
 - **Main's Acceptance: GREEN on 28c34798 (0490) and 44c27e45 (0491); the run on b13a8339 (#853) was in progress at hand-off: read it.**

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { reachable, ready, WORLD_BOOT_MS } from './appReady.fixture'
+import { corpWorld } from './corpWorld.fixture'
 import { serveHqLit } from './hqLit.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 
@@ -12,7 +13,8 @@ import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 // Browser (the shipped world with production's switches lit, the sea limits dark; a fresh company, one barca at Lisbon):
 //   - the Rank strip: her rank and its bar, what the next level opens, the net per hour as served; no purse figure on the board
 //   - the best moves: the served trade cards stand by coin per hour, the best first; one press queues the trip, HQ kept
-//   - an idle fleet glows and shows its best card inline
+//   - a fleet is one row of the one worker list; the board draws no Fleets section, no job chips and no Repeat chip
+//   - a trade card's press opens Assign filled in (the jobs lit) and commits nothing; Assign's press does
 //   - the board's switch dark: one line, "Board off", no card and no rate, and the strip keeps its height
 //   - no sideways scroll at 320, 390 and 1280
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -37,6 +39,12 @@ const stripBoxes = (page: Page) =>
     const h = (id: string) => Math.round(document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().height)
     return { strip: h('hq-bridge'), slot: h('hq-bridge-rate-slot') }
   })
+
+/** The per-hour slot's height: one 44 px line, with a figure in it or not (a server that serves no rate lines). */
+const SLOT = 44
+
+/** Her fleet's row of the one worker list. */
+const worker = (page: Page, fleet: string) => page.locator(`[data-testid="corp-worker"][data-worker="${fleet}"]`)
 
 test.describe('the Rank strip (H2)', () => {
   for (const glass of [
@@ -71,7 +79,7 @@ test.describe('the Rank strip (H2)', () => {
       expect(Number(digits), 'the figure drawn is not the served per-hour').toBe(Math.abs(Math.round(perHour)))
       await expect(rate).toHaveText(/\/ hour$/)
       const boxes = await stripBoxes(page)
-      expect(boxes.slot, "the per-hour slot is not the figure's own line").toBe(28)
+      expect(boxes.slot, "the per-hour slot is not the figure's own line").toBe(SLOT)
 
       // NO PURSE ON THE BOARD (the top bar's figure, said once), and none of the old bridge's tiles
       for (const id of ['hq-bridge-purse', 'hq-bridge-fleets', 'hq-bridge-next', 'hq-bridge-threat']) await expect(page.getByTestId(id)).toHaveCount(0)
@@ -86,15 +94,14 @@ test.describe('the Rank strip (H2)', () => {
       expect(box.x + box.width).toBeLessThanOrEqual(glass.width + 1)
       expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
 
-      // AN IDLE FLEET GLOWS AND OFFERS ITS BEST CARD INLINE (the same card as the board's best for her)
-      const trades = page.locator('[data-testid="hq-moves"] [data-testid="hq-move"][data-kind="trade"]')
-      await expect(trades.first()).toBeVisible({ timeout: 180_000 })
-      const idle = page.locator('[data-testid="hq-fleet"][data-job="idle"]').first()
-      await expect(idle).toBeVisible()
-      const inline = idle.getByTestId('hq-fleet-best').getByTestId('hq-move')
-      await expect(inline).toBeVisible()
-      await expect(inline).toHaveAttribute('data-kind', 'trade')
-      await expect(inline).toHaveAttribute('data-good', (await trades.first().getAttribute('data-good'))!)
+      // THE STRIP IS THE TOP OF HQ: over the workers, which stand over the best moves
+      const workers = (await page.getByTestId('corp-workers').boundingBox())!
+      expect(box.y, 'the Rank strip is not over the workers').toBeLessThan(workers.y)
+      expect(workers.y, 'the workers are not over the best moves').toBeLessThan(board.y)
+      // A FLEET IS ONE ROW OF THE WORKER LIST: no second Fleets section, no job chips, no Repeat chip
+      await expect(page.locator('[data-testid="hq-moves"] [data-testid="hq-move"][data-kind="trade"]').first()).toBeVisible({ timeout: 180_000 })
+      await expect(page.locator('[data-testid="corp-worker"][data-kind="fleet"]')).toHaveCount(1)
+      for (const id of ['hq-fleets', 'hq-fleet', 'hq-job-control', 'hq-move-repeat']) await expect(page.getByTestId(id)).toHaveCount(0)
       if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/rank-${glass.width}.png`, fullPage: true })
       if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/rank-top-${glass.width}.png` })
     })
@@ -111,17 +118,18 @@ test.describe('the Rank strip (H2)', () => {
       await expect(page.getByTestId('hq-rank-name')).toHaveText(/\S/, { timeout: 120_000 })
       // the per-hour line's room is held with no figure in it
       const boxes = await stripBoxes(page)
-      expect(boxes.slot, 'the empty per-hour slot gave its room up').toBe(28)
-      // her fleets stand under it as before
-      await expect(page.locator('[data-testid="hq-fleet"]').first()).toBeVisible()
+      expect(boxes.slot, 'the empty per-hour slot gave its room up').toBe(SLOT)
+      // her fleet stands in the worker list all the same
+      await expect(page.locator('[data-testid="corp-worker"][data-kind="fleet"]').first()).toBeVisible()
       expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
       if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/off-${glass.width}.png`, fullPage: true })
     })
   }
 })
 
-// 0480: THE BOARD FROM THE SERVER (hq_board_enabled lit): world.hq_board() ranks every move; each card names its own act and one press
-// commits it through the desk's own door (the trip: planLines and cmd.issue_lines), HQ kept; a trade card wears its risk as a mark.
+// 0480: THE BOARD FROM THE SERVER (hq_board_enabled lit): world.hq_board() ranks every move; each card names its own act; a trade card
+// wears its risk as a mark. The standing jobs are DARK in this world, so there is no Assign to open and the card keeps its own act:
+// one press commits it through the desk's own door (the trip: planLines and cmd.issue_lines), HQ kept.
 test.describe('the board from the server (0480, lit)', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 
@@ -146,45 +154,73 @@ test.describe('the board from the server (0480, lit)', () => {
     // ONE PRESS: the trip is queued for her fleet and HQ stays; no refusal stands under the card
     const fleet = (await top.getAttribute('data-fleet'))!
     await top.click()
-    await expect(page.locator(`[data-testid="hq-fleet"][data-fleet="${fleet}"]`)).not.toHaveAttribute('data-job', 'idle', { timeout: 120_000 })
+    await expect(worker(page, fleet)).not.toHaveAttribute('data-state', 'idle', { timeout: 120_000 })
     await expect(page).toHaveURL(/\/city/)
     await expect(page.getByTestId('hq-move-refusal')).toHaveCount(0)
   })
 })
 
-// 0481: STANDING FLEET JOBS (fleet_jobs_enabled lit, the board served): each fleet row carries her job's setter; Best gives her the best
-// run and her row then wears the job's mark; a served trade card's Repeat sends the trip and keeps it as her fixed route (working).
+// 0481: STANDING FLEET JOBS (fleet_jobs_enabled lit, the board served). THE CARD'S PRESS OPENS ASSIGN, FILLED IN (docs/design/
+// hq-corp-2026-11-24.md C3, H3): the sheet stands over HQ with the card's good, its buy harbour and its sale harbour chosen and the
+// server's quote under them, and NOTHING IS COMMITTED by that press (her fleet is still idle). Assign's own press gives her the run.
 test.describe('standing fleet jobs (0481, lit)', () => {
   for (const glass of [
     { width: 390, height: 844 },
     { width: 1280, height: 800 },
   ]) {
-    test(`a fleet row sets her job, a trade card repeats its trip, and nothing leaves the glass at ${glass.width}`, async ({ page, request, baseURL }) => {
+    test(`a trade card opens Assign filled in and commits nothing; Assign commits, at ${glass.width}`, async ({ page, request, baseURL }) => {
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
       test.setTimeout(600_000)
-      await openHq(page, glass.width, glass.height, true, true)
-      const control = page.getByTestId('hq-job-control').first()
-      await expect(control).toBeVisible({ timeout: 180_000 })
-      const fleet = (await control.getAttribute('data-fleet'))!
-      await control.getByTestId('hq-job-set-best').click()
-      const mark = page.locator(`[data-testid="hq-job-control"][data-fleet="${fleet}"] [data-testid="hq-job"]`)
-      await expect(mark).toHaveAttribute('data-kind', 'best', { timeout: 120_000 })
-      await expect(page.getByTestId('hq-job-refusal')).toHaveCount(0)
-      // a served trade card's Repeat: the trip goes now (the card's own act) and stays her job as a fixed route (its course her voyage)
-      const card = page.locator(`[data-testid="hq-moves"] li:has([data-testid="hq-move"][data-kind="trade"][data-served="true"][data-fleet="${fleet}"])`).first()
+      // the world production runs: the board, the jobs and the stored courses lit (a card's run can be assigned as it stands)
+      await page.setViewportSize(glass)
+      await serveWorldImage(page, await corpWorld({ courses: true }))
+      await page.goto('city')
+      await ready(page)
+      await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: WORLD_BOOT_MS })
+      const card = page.locator('[data-testid="hq-moves"] [data-testid="hq-move"][data-kind="trade"][data-act="cmd.issue_lines"]').first()
       await expect(card).toBeVisible({ timeout: 180_000 })
-      await card.getByTestId('hq-move-repeat').click()
-      await expect(mark).toHaveAttribute('data-kind', 'fixed', { timeout: 120_000 })
-      await expect(mark).toHaveAttribute('data-state', 'working')
-      await expect(page.getByTestId('hq-move-repeat-refusal')).toHaveCount(0)
+      const fleet = (await card.getAttribute('data-fleet'))!
+      const good = (await card.getAttribute('data-good'))!
+      const port = (await card.getAttribute('data-port'))!
+      const units = (await card.getAttribute('data-units'))!
+      const profit = (await card.getAttribute('data-profit'))!
+      await expect(worker(page, fleet)).toHaveAttribute('data-state', 'idle', { timeout: 120_000 })
+      const url = page.url()
+      await card.click()
+      const sheet = page.getByTestId('hq-sheet-assign')
+      await expect(sheet, 'the card did not open Assign').toBeVisible({ timeout: 60_000 })
+      expect(page.url(), 'the card left HQ').toBe(url)
+      await expect(sheet.getByTestId('corp-assign-sea')).toHaveAttribute('data-fleet', fleet)
+      // FILLED IN: the card's good is the one on, its harbour the sale chosen, and the server's quote stands before the press
+      await expect(sheet.locator(`[data-testid="corp-assign-good"]:has([data-good="${good}"])`)).toHaveAttribute('aria-pressed', 'true', { timeout: 120_000 })
+      await expect(sheet.locator(`[data-testid="corp-assign-sale"][data-port="${port}"]`)).toHaveAttribute('aria-pressed', 'true', { timeout: 120_000 })
+      const quote = sheet.getByTestId('corp-assign-quote')
+      await expect(quote).toBeVisible()
+      // ON THE CARD'S OWN FIGURES: the units the card named (what she can buy, never the bare hold) and the profit it named
+      await expect(quote, "Assign quotes other units than the card's").toHaveAttribute('data-units', units)
+      await expect(quote, "Assign quotes another profit than the card's").toHaveAttribute('data-profit', profit)
+      // THE SALE HARBOURS: the short runs that pay, then the long ones, then the losing ones; each band best served profit first
+      const rows = await sheet
+        .getByTestId('corp-assign-sale')
+        .evaluateAll((els) => els.map((e) => ({ band: e.getAttribute('data-losing') === 'true' ? 2 : e.getAttribute('data-long') === 'true' ? 1 : 0, p: Number(e.getAttribute('data-profit')) })))
+      expect(rows, 'the sale harbours are not in their order').toEqual([...rows].sort((a, b) => a.band - b.band || b.p - a.p))
+      expect(rows[0].band, 'the first sale harbour is a long voyage or a loss while a short one pays').toBe(Math.min(...rows.map((r) => r.band)))
+      // NOTHING COMMITTED YET: she is idle, and no refusal stands under the card
+      await expect(worker(page, fleet)).toHaveAttribute('data-state', 'idle')
       await expect(page.getByTestId('hq-move-refusal')).toHaveCount(0)
-      expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
+      expect(await sideScroll(page), 'Assign scrolls sideways').toBe(false)
       const small = await page.evaluate(() =>
-        [...document.querySelectorAll('[data-testid="hq-job-control"] button, [data-testid="hq-move-repeat"]')]
+        [...document.querySelectorAll('[data-testid="hq-sheet-assign"] button')]
           .map((b) => b.getBoundingClientRect())
           .filter((r) => r.width > 0 && (r.height < 43.5 || r.width < 43.5)).length,
       )
-      expect(small, 'job presses under 44 px').toBe(0)
+      expect(small, 'Assign presses under 44 px').toBe(0)
+      if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/card-assign-${glass.width}.png` })
+      // ASSIGN COMMITS: the plain run (Sell, Repeat) is today's call, never refused for 0492's names
+      await sheet.getByTestId('corp-assign-go').click()
+      await expect(sheet).toHaveCount(0, { timeout: 120_000 })
+      await expect(worker(page, fleet)).toHaveAttribute('data-action', 'fixed', { timeout: 120_000 })
+      expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
       if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/jobs-${glass.width}.png`, fullPage: true })
     })
   }
@@ -192,8 +228,8 @@ test.describe('standing fleet jobs (0481, lit)', () => {
 
 // A STOPPED JOB SAYS WHY IN PLAIN WORDS (owner row 381: the away card's chip read "E_LEG_TOO_FAR"). The world: the board and the jobs
 // lit, and every job written is stopped on E_LEG_TOO_FAR by a trigger of this spec's own (the image only; no such trigger ships). She
-// sets a job; While away then lists it stopped: the chip is the code's label ("Range"), its sentence stands under her name, and no
-// code is printed anywhere on the board.
+// sets a job (Assign, Best run); While away then lists it stopped: the chip is the code's label ("Range"), its sentence stands under
+// it, and no code is printed anywhere on HQ.
 const STOP_EVERY_JOB = `
   update public.world_config set value = 'true'::jsonb where key in ('hq_board_enabled', 'fleet_jobs_enabled', 'standing_routes_enabled', 'land_enabled', 'level_unlocks_enabled');
   update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite';
@@ -213,16 +249,22 @@ test.describe('a stopped job (owner row 381)', () => {
       await page.goto('city')
       await ready(page)
       await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: WORLD_BOOT_MS })
-      const control = page.getByTestId('hq-job-control').first()
-      await expect(control).toBeVisible({ timeout: 180_000 })
-      await control.getByTestId('hq-job-set-best').click()
+      // she gives her fleet the best run, in the one Assign sheet
+      const idle = page.locator('[data-testid="corp-worker"][data-kind="fleet"]').first()
+      await expect(idle).toBeVisible({ timeout: 180_000 })
+      await idle.click()
+      const sheet = page.getByTestId('hq-sheet-assign')
+      await expect(sheet).toBeVisible({ timeout: 60_000 })
+      await sheet.getByRole('tab', { name: 'Best run' }).click()
+      await sheet.getByTestId('corp-assign-go').click()
+      await expect(sheet).toHaveCount(0, { timeout: 120_000 })
       const row = page.locator('[data-testid="hq-away-job"][data-state="stopped"]')
       await expect(row).toBeVisible({ timeout: 120_000 })
       await expect(row, 'the world did not stop her job on the code under test').toHaveAttribute('data-code', 'E_LEG_TOO_FAR')
       await expect(row.getByTestId('hq-away-stopped')).toHaveText('Range')
       await expect(row.getByTestId('hq-away-why')).toHaveText('Leg too far.')
-      const text = await page.getByTestId('hq-board').innerText()
-      expect(text.match(/E_[A-Z_]+/g) ?? [], 'a code is printed on the HQ board').toEqual([])
+      const text = await page.getByTestId('hq-company').innerText()
+      expect(text.match(/E_[A-Z_]+/g) ?? [], 'a code is printed on HQ').toEqual([])
       expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
       if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/stopped-${glass.width}.png`, fullPage: true })
     })
@@ -255,7 +297,7 @@ test.describe('courier contracts (0483, lit)', () => {
       if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/contracts-${glass.width}.png`, fullPage: true })
       const fleet = (await card.getAttribute('data-fleet'))!
       await card.click()
-      await expect(page.locator(`[data-testid="hq-fleet"][data-fleet="${fleet}"]`)).not.toHaveAttribute('data-job', 'idle', { timeout: 120_000 })
+      await expect(worker(page, fleet)).not.toHaveAttribute('data-state', 'idle', { timeout: 120_000 })
       await expect(page).toHaveURL(/\/city/)
       await expect(page.getByTestId('hq-move-refusal')).toHaveCount(0)
     })
@@ -293,35 +335,35 @@ test.describe('the country race (0484, lit)', () => {
 })
 
 // 0485: A HULL'S ROLE (ship_roles_enabled lit, the board served; the first slot opens at her first hull in this world): the board's role card
-// names the best role for her barca (Guard: nothing she does yet asks another) and one press sets it; her fleet row's chips show it on, and
-// one press there changes it (Fast). Nothing leaves the glass, and every press is 44 px.
+// names the best role for her barca (Guard: nothing she does yet asks another) and one press sets it; her hull's chips, which stand
+// in her fleet's Assign sheet (the fleet rows they stood on are the worker list's now), show it on, and one press there changes it
+// (Fast). Nothing leaves the glass, and every press is 44 px.
 test.describe("a hull's role (0485, lit)", () => {
   for (const glass of [
     { width: 320, height: 640 },
     { width: 1280, height: 800 },
   ]) {
-    test(`the role card and the fleet row's chips at ${glass.width}`, async ({ page, request, baseURL }) => {
+    test(`the role card and her sheet's chips at ${glass.width}`, async ({ page, request, baseURL }) => {
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
       test.setTimeout(600_000)
-      await openHq(page, glass.width, glass.height, true, false, false, false, true)
+      await openHq(page, glass.width, glass.height, true, true, false, false, true)
       const card = page.locator('[data-testid="hq-move"][data-kind="role"]')
       await expect(card).toBeVisible({ timeout: 180_000 })
       await expect(card).toHaveAttribute('data-act', 'cmd.set_ship_role')
       await expect(page.locator('[data-testid="hq-move-role"]')).toHaveAttribute('data-role', 'guard')
-      const hull = page.getByTestId('hq-role-hull').first()
-      await expect(hull).toHaveAttribute('data-role', '')
-      await expect(hull.getByTestId('hq-role-set-guard')).toHaveAttribute('data-best', 'true')
       if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/roles-${glass.width}.png`, fullPage: true })
       await card.click()
+      await expect(card).toHaveCount(0, { timeout: 60_000 })
+      await page.locator('[data-testid="corp-worker"][data-kind="fleet"]').first().click()
+      const hull = page.getByTestId('hq-sheet-assign').getByTestId('hq-role-hull').first()
       await expect(hull).toHaveAttribute('data-role', 'guard', { timeout: 60_000 })
       await expect(hull.getByTestId('hq-role-set-guard')).toHaveAttribute('aria-pressed', 'true')
-      await expect(card).toHaveCount(0, { timeout: 60_000 })
       await hull.getByTestId('hq-role-set-fast').click()
       await expect(hull).toHaveAttribute('data-role', 'fast', { timeout: 60_000 })
       await expect(page.getByTestId('hq-role-refusal')).toHaveCount(0)
       expect(await sideScroll(page), 'the HQ scrolls sideways').toBe(false)
       const small = await page.evaluate(() =>
-        [...document.querySelectorAll('[data-testid="hq-board"] button')]
+        [...document.querySelectorAll('[data-testid="hq-sheet-assign"] button')]
           .map((b) => b.getBoundingClientRect())
           .filter((r) => r.width > 0 && (r.height < 43.5 || r.width < 43.5)).length,
       )
@@ -345,7 +387,7 @@ for (const glass of [
     // no card, chip or row stands past the glass, and no name is cut
     const out = await page.evaluate((w) => {
       const bad: string[] = []
-      for (const el of document.querySelectorAll('[data-testid="hq-board"] *')) {
+      for (const el of document.querySelectorAll('[data-testid="hq-company"] *')) {
         const r = el.getBoundingClientRect()
         if (r.width > 0 && (r.right > w + 1 || r.left < -1)) bad.push(`${el.getAttribute('data-testid') ?? el.tagName} ${Math.round(r.left)}..${Math.round(r.right)}`)
         if (el instanceof HTMLElement && getComputedStyle(el).textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth) bad.push(`cut: ${el.textContent}`)
@@ -355,7 +397,7 @@ for (const glass of [
     expect(out, 'past the glass or cut').toEqual([])
     // every press on the board is 44 px at least
     const small = await page.evaluate(() =>
-      [...document.querySelectorAll('[data-testid="hq-board"] button')]
+      [...document.querySelectorAll('[data-testid="hq-company"] button')]
         .map((b) => b.getBoundingClientRect())
         .filter((r) => r.width > 0 && (r.height < 43.5 || r.width < 43.5)).length,
     )

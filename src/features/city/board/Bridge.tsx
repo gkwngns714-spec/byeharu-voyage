@@ -1,9 +1,10 @@
-import { Bar, Figure, Icon, KEEP_WORDS_CLASS } from '../../../components/ui'
-import { formatDucatsDelta, formatInt } from '../../../lib/format'
+import { Bar, Icon, KEEP_WORDS_CLASS } from '../../../components/ui'
+import { formatInt } from '../../../lib/format'
 import { properName, useLocale, useT } from '../../../lib/i18n'
 import { worldLevels, type LevelsView } from '../../../lib/rpc'
 import { levelName, nextOpening } from '../../../live/levelWords'
 import { useServedRead } from '../../../live/useServedRead'
+import { RateWhy } from './RateWhy'
 import type { Board } from './useBoard'
 
 // THE RANK STRIP (docs/design/hq-corp-2026-11-24.md B5 and C1, slice H2): the top of HQ. Her Rank and a bar to the next one, what
@@ -14,7 +15,9 @@ import type { Board } from './useBoard'
 //               card's own share, GoalCard.tsx).
 //   NEXT        what her next level opens, from the served `level_perks` steps (levelWords.nextOpening over Trading's and Exploration's
 //               served benefits: the two levels the Rank is made of). With no step served, the next title's name.
-//   PER HOUR    `hq_board.rate.per_hour` exactly as served (her ledger's last 24 hours over 24). NEVER worked out here.
+//   PER HOUR    `hq_board.rate.per_hour` exactly as served, AND WHY (RateWhy.tsx, 0493's client: the figure, the lines that make it,
+//               and its sheet of every line). It is HQ's ONE per-hour figure: the Ledger under it draws the lines and repeats no net.
+//               A server that serves no lines: the plain figure. NEVER worked out here.
 //
 // NOT DRAWN: her place in her home city. No read serves a company's place in a city's Influence (world.town_hall serves the countries'
 // shares and her own points), and the client ranks nothing.
@@ -43,7 +46,6 @@ export function Bridge({ board }: { board: Board }) {
       : title
         ? t('command.lvTitleTop')
         : null
-  const rate = board.perHour
 
   return (
     <section
@@ -71,13 +73,14 @@ export function Bridge({ board }: { board: Board }) {
         </span>
       </div>
 
-      {/* THE NET PER HOUR'S SLOT: the figure's own line, held whether the rate is here yet or not (nothing under the strip moves) */}
-      <div className="flex h-7 min-w-0 items-center justify-center md:justify-end" data-testid="hq-bridge-rate-slot">
-        {rate !== null && (
-          <span className="inline-flex" title={t('hq.rateDay')} data-testid="hq-bridge-rate" data-span="24h" data-per-hour={rate}>
-            <Figure value={t('hq.perHour', { n: formatDucatsDelta(rate) })} size="figure" tone={rate < 0 ? 'danger' : rate > 0 ? 'success' : 'muted'} />
-          </span>
-        )}
+      {/* THE NET PER HOUR AND ITS CAUSES, in a slot of one height whether the rate is here yet or not (nothing under the strip moves).
+          THE FIGURE IS LARGE (C1): RateWhy.tsx draws it at caption size (it was made for the old bridge's half-width tile), so its size
+          is set from here, on the figure alone, until that file draws it large itself. */}
+      <div
+        className="flex min-h-11 min-w-0 flex-col items-start justify-center md:min-w-56 md:items-end [&>button[data-testid=hq-bridge-rate]>span:first-child]:text-t-figure [&>span[data-testid=hq-bridge-rate]]:text-t-figure"
+        data-testid="hq-bridge-rate-slot"
+      >
+        <RateWhy board={board} />
       </div>
     </section>
   )

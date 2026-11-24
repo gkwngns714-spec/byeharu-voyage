@@ -34,6 +34,7 @@ import { doneWords, type TradeDone } from '../features/command/buysell/tradeDone
 import { TradeToast } from '../features/command/buysell/TradeToast'
 import { useDeskPlan } from '../features/command/plans/planDraft'
 import { useTripBoard } from '../features/command/plans/useTripBoard'
+import { AssignSheet, WorkerSheet } from '../features/city/corp/AssignSheet'
 import { askOfParams, HQ_ASK_FIELDS, openHq, useHqPlace, type HqAsk } from './hqPlace'
 import { ShellCards } from './ShellCards'
 import { WelcomeCard } from './WelcomeCard'
@@ -55,6 +56,8 @@ import { WelcomeCard } from './WelcomeCard'
 //                     (Queue) and insured voyages, her map (TradeMap), her ship (ShipInfo);
 //   workstation       the city's workshop (PortWorkstation), for her fleet lying there;
 //   academy           the company's skill queue (PortAcademy).
+//   assign / worker   H1 (docs/design/hq-corp-2026-11-24.md C3): the one Assign sheet for a worker, and a worker's own sheet
+//                     (features/city/corp/AssignSheet.tsx).
 // H3 `desk-into-hq` (2026-11-24): the Trade desk and the Office are gone, and every face they had stands here or on an HQ plate
 // (tests/hq.desk.spec.ts walks each one).
 // Each is a layer (useBackLayer): its back arrow, Escape and the browser's back close it, and HQ under it is as it was.
@@ -72,7 +75,7 @@ const stack: DeskLayout = (p) => (
 
 /** A sheet's identity: a new ask is a new sheet, mounted afresh. */
 function askKey(a: HqAsk): string {
-  return [a.sheet, 'port' in a ? a.port : '', 'fleet' in a ? (a.fleet ?? '') : '', 'good' in a ? `${a.good}:${a.side}` : '', 'hull' in a ? (a.hull ?? '') : ''].join('|')
+  return [a.sheet, 'port' in a ? a.port : '', 'fleet' in a ? (a.fleet ?? '') : '', a.sheet === 'trade' ? `${a.good}:${a.side}` : '', 'hull' in a ? (a.hull ?? '') : '', 'worker' in a ? a.worker : ''].join('|')
 }
 
 /** The packed column a page's content stands in (CityFace's own measure). */
@@ -178,6 +181,10 @@ function AskSheet({ ask, onClose, onDone }: { ask: HqAsk; onClose: () => void; o
           </PageBody>
         </DetailPage>
       )
+    case 'assign':
+      return <AssignSheet ask={ask} onClose={onClose} />
+    case 'worker':
+      return <WorkerSheet worker={ask.worker} onClose={onClose} />
   }
 }
 
