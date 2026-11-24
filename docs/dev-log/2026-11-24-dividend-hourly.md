@@ -90,8 +90,31 @@ hour again 0-1 ms (204 -> 262 ms for the whole tick in the first run). Not measu
 ## Not verified
 
 - Nothing on production (no read was run): prod's `tick_city` / `city_coupons` digests, the number of pairs, the tick's real cost.
-- The SKIP LOCKED branch itself (a holder's row held by a SECOND session, and the lines that write her owed hour): the proof
-  harness is PGlite, one session, and this machine has no PostgreSQL or Docker. What reads and pays an owed hour is proved; what
-  writes it is read, not run. A two-session check on real PostgreSQL is still to do.
-- A second session running the same hour at the same time (it waits on the purse row, then finds the hour closed): same reason.
+- The two-session test below has NOT been run: this machine has no PostgreSQL, Docker or psql, and the branch has no PR, so CI
+  has not run it either. Its SQL ran on the local PGlite world (one session: scene, dues, the hour, the figures), and its bash ran
+  against a stand-in psql (green, skipped, and three red cases). Its first real run is the PR's `disposable-chain`.
+- `public.tick_city` itself under two sessions (the test calls `public.city_coupons`, the tick's own call for a harbour).
 - Real PostgreSQL: CI's disposable chain.
+
+## Two sessions, on real PostgreSQL (2026-11-25, branch `dividend-race`)
+
+`scripts/ci/dividend-race.sh`, run by `disposable-chain` (migrations-apply-proof.yml) with psql sessions, only when
+`public.city_coupon_hour` exists (else it prints SKIPPED). Three markers:
+
+- `DIVIDEND_RACE_SKIPPED_HOLDER_OWED`: a second session holds holder a's `players` row; the hour runs in under its 5 s lock limit
+  while the row is still held, pays b alone, and leaves `coupon_owed = {a: 1}`.
+- `DIVIDEND_RACE_OWED_HOUR_PAID_ONCE`: the next hour, a free, pays her two hours' coupon and clears the entry.
+- `DIVIDEND_RACE_SAME_HOUR_PAYS_ONCE`: a first caller runs the hour and keeps its transaction open; a second caller of the same hour
+  is seen blocked by it (`pg_blocking_pids`), then answers the closed hour (paid 0, no cap); purses, ledger rows and the city's purse
+  show one payment.
+
+Each step waits for `pg_stat_activity` to show the other session where it must be: no timed sleeps.
+It commits (a second session sees only committed rows), so it refuses any database not on 127.0.0.1 / localhost and runs AFTER the
+snapshot is kept, on the stack the next step throws away; where the keep step stopped the stack (main, a PR from zero) the volume
+is booted again first (a boot more on those runs, not measured). Nothing about the snapshots, the prefix cache or the from-zero rule
+changed (`select-specs`: "from zero allowed (cold): no").
+
+Read before writing the test, 0495 unchanged: (a) is right as written (the skip takes no lock of hers; the purse row is the run's own);
+(b) is right under READ COMMITTED (the second caller's `FOR UPDATE` re-reads the committed purse row). In the real tick two runs
+already queue on the purse rows in steps 1 and 3, and the harbour's advisory lock is waited for at most the tick's 2 s.
+
