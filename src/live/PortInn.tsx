@@ -345,8 +345,9 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
       setSigning(false)
       if (r.ok) {
         setOpen(null)
-        // Re-read the world, not the inn: hiring changes your books, and the room itself cannot
-        // change — which is the whole design.
+        // Re-read the world: hiring changes your books, and the world's read re-asks the room
+        // (useServedRead), which now serves her `signed` and so no longer offers her. Who is in the
+        // room cannot change — which is the whole design.
         await refresh()
       } else {
         setRefusal(r.refusal)
@@ -356,6 +357,11 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
 
   if (loading && !view) return <Note tone="neutral" className="mt-3">{t('inn.loading')}</Note>
   if (!view || !view.has_inn) return <Note tone="neutral" className="mt-3">{t('inn.noInn')}</Note>
+
+  // ONLY AN OFFER IS DRAWN (owner, 2026-11-24: *"if i hire a captain by pressing a tab, that tab should then disappear"*). The room
+  // serves everybody in it with the server's `signed` — "whether you already keep her, so the screen offers nothing it would refuse"
+  // (world.inn, 0073) — and a captain you keep is no offer: her tile leaves once the hire's re-read lands. She is on You → Captains.
+  const offers = view.present.filter((guest) => !guest.signed)
 
   return (
     <>
@@ -370,18 +376,18 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
         )}
       </div>
 
-      {view.present.length === 0 ? (
+      {offers.length === 0 ? (
         <Row label={t('inn.nobody')} tone="muted" hairline={false} data-testid="inn-empty" />
       ) : (
         <TileField>
-          {view.present.map((guest) => (
+          {offers.map((guest) => (
             // A GUEST IS A CARD (visual slice 6): her plate, her name and job, then two figures — what her job adds and her wage.
             <Tile
               key={guest.code}
               mark={<CaptainPortrait captain={guest} size={44} />}
               name={guest.name}
               meta={guestMeta(guest)}
-              state={guest.signed ? 'muted' : 'rest'}
+              state="rest"
               tap="whole"
               onClick={() => {
                 setRefusal(null)
@@ -404,18 +410,16 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
           mode={trayMode}
           data-testid="inn-tray"
           action={
-            open.signed ? undefined : (
-              <Button
-                variant="primary"
-                className="w-full"
-                busy={signing}
-                busyLabel={t('inn.hiring')}
-                onClick={() => sign(open)}
-                data-testid={`sign-${open.code}`}
-              >
-                {t('inn.hireFor', { name: open.name.split(' ')[0], wage: formatDucats(open.wage) })}
-              </Button>
-            )
+            <Button
+              variant="primary"
+              className="w-full"
+              busy={signing}
+              busyLabel={t('inn.hiring')}
+              onClick={() => sign(open)}
+              data-testid={`sign-${open.code}`}
+            >
+              {t('inn.hireFor', { name: open.name.split(' ')[0], wage: formatDucats(open.wage) })}
+            </Button>
           }
         >
           {open.grade && open.job_word ? (
@@ -436,12 +440,9 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
           ) : (
             <Row label={t('inn.job')} value={open.specialty.toLowerCase()} />
           )}
-          <Row pair label={t('inn.from')} value={whereFrom(open, ports)} hairline={!open.signed} />
+          <Row pair label={t('inn.from')} value={whereFrom(open, ports)} />
           {/* 0157: where she will sit — the fleet docked here, by the server's picker; else ashore */}
-          {!open.signed && (
-            <Row label={fleet ? t('inn.joins', { fleet: fleet.name }) : t('inn.ashore')} tone="muted" data-testid="inn-joins" />
-          )}
-          {open.signed && <Row label={t('inn.already')} tone="muted" hairline={false} />}
+          <Row label={fleet ? t('inn.joins', { fleet: fleet.name }) : t('inn.ashore')} tone="muted" data-testid="inn-joins" />
           {/* her bio is the server's English prose: on a Korean glass it is not printed (2026-11-23 play-test, half-English sheet) */}
           {locale === 'en' && <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>}
           {refusal && (
