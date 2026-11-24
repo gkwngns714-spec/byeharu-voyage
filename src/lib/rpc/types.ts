@@ -3659,10 +3659,16 @@ export interface WorkerAction {
   }
   /** Coin a completion, after every cost. */
   net: number | null
+  /** Coin an hour. One completion's net over its interval; a run that repeats (`day`): its day's coin over its day's seconds. Null: no
+   *  rate is served (not priced yet; the Best run, whose every run is another sale). */
   per_hour: number | null
   xp_per_hour: number | null
   items_per_hour: number | null
   basis: ActionBasis
+  /** A sea run set to repeat, over one game day by the server's own rules (`public.run_day`): the whole runs the day's allowance, the
+   *  quay's stock and the day's length take, the coin they leave (every run after the first priced into the press of the runs before
+   *  it), their seconds, and what stops her. `net` and `interval_s` stay ONE run's. */
+  day?: { runs: number; coin: number; seconds: number; stop: 'allowance' | 'time' }
   /** Sea: what `cmd.set_fleet_job(fleet, job.kind, job.params)` takes. */
   job?: { kind: FleetJobKind; params: Record<string, unknown> }
   /** Land: what `cmd.land_send(action)` takes. */

@@ -20,7 +20,8 @@ select json_build_object(
                 where c.key in ('fleet_jobs_enabled', 'land_enabled', 'assign_home_enabled', 'sea_courses_enabled', 'land_smith_enabled')),
   'new_fns', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                where (n.nspname, p.proname) in (('world', 'workers'), ('world', 'actions'), ('public', 'workers_for'), ('public', 'sea_actions_for'),
-                                                ('public', 'land_actions_for'), ('public', 'job_trip'), ('public', 'action_shape'), ('public', 'away_parties_for'))),
+                                                ('public', 'land_actions_for'), ('public', 'job_trip'), ('public', 'action_shape'), ('public', 'away_parties_for'),
+                                                ('public', 'run_day'), ('public', 'action_over_day'), ('public', 'fleet_job_tick_s'))),
   'away_report_for', (select md5(replace(pg_get_functiondef('public.away_report_for(uuid)'::regprocedure), E'\r', ''))),
   'registry', (select md5(replace(pg_get_functiondef('public.client_rpc_entry_points()'::regprocedure), E'\r', ''))),
   'away_hunk', (select (length(d.def) - length(replace(d.def, d.old, ''))) / length(d.old)
