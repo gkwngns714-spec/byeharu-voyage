@@ -1626,6 +1626,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // cmd.set_fleet_job(fleet, kind, params), cmd.clear_fleet_job(fleet), cmd.fleet_jobs_seen(); a fleet not hers refused; dark
       // E_NOT_IN_USE. Landed WITH the faces (HQ's away card, each fleet row's job and a trade card's Repeat).
       'worldAwayReport', 'cmdSetFleetJob', 'cmdClearFleetJob', 'cmdFleetJobsSeen',
+      // Pin moved deliberately 2026-11-24 with migration 0496 (the workers and their actions): world.workers() - no argument, no player
+      // id; her fleets and land party, each with her action in the one shape. world.actions(worker) - a row's id; only what the doors
+      // would take, priced by the server's own quotes. Both READS. The server lands first: the HQ worker list (H1) hooks them up after.
+      'worldWorkers', 'worldActions',
       // Pin moved deliberately 2026-11-23 with migration 0483 (courier contracts): world.courier_contracts() - no argument, no player id;
       // dark {on: false}; lit her posted and carried contracts. A read. And its five doors, none taking a player id: cmd.take_contract(fleet,
       // contract, version) (HQ's card, one press), cmd.deliver_contract(contract), cmd.fail_contract(contract), cmd.post_contract(from, to,

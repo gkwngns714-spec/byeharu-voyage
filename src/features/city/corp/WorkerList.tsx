@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { HeldRoom, SheetSection, Skeleton } from '../../../components/ui'
+import { SheetSection, Skeleton } from '../../../components/ui'
 import { openHq } from '../../../app/hqPlace'
 import { useShellState } from '../../../app/shellState'
 import { useCommandDraft } from '../../../domain/order'
@@ -22,8 +22,14 @@ export function WorkerList() {
   const t = useT()
   const { nowMs } = useShellState()
   const { rows, ready, names } = useWorkers()
-  // her fleets are known with the world: each is a worker, so the waiting list is as many rows as she has fleets
+  // HOW MANY ROWS THERE WILL BE IS KNOWN BEFORE THE READS ANSWER (2026-11-25, the owner's law: nothing on a page moves by itself): a row
+  // for each of her fleets (the world's own read), and one for her Land party when the world serves the Land's switch lit
+  // (`config.land_enabled`, in the snapshot) and she has a company. So the waiting list is exactly that many skeleton rows, each in
+  // the row's own fixed height, and the answer fills them in place. It was one skeleton row, then every row: on a first visit with
+  // the Land lit the list grew by the party's row (112 px) and pushed Best moves, the Storage and the plates down.
   const fleets = useWorld((s) => s.fleets.length)
+  const party = useWorld((s) => s.snapshot?.config.land_enabled === true && s.player !== null)
+  const expected = fleets + (party ? 1 : 0)
   const selectFleet = useCommandDraft((s) => s.selectFleet)
   const [order, setOrder] = useState<readonly string[]>([])
 
@@ -41,14 +47,11 @@ export function WorkerList() {
   }
 
   if (ready && rows.length === 0) return null
-  // A LAND PARTY OR AN ESTATE is a row only the Land's read knows of, so the list can be longer than her fleets: that room is held from
-  // the last time (HeldRoom.tsx; nothing fixed can know it).
   return (
-    <HeldRoom name="hq-workers" asking={!ready}>
     <SheetSection heading={t('corp.workers')} trailing={ready ? <span className="text-t-caption tabular-nums text-ink-faint">{formatInt(rows.length)}</span> : undefined} data-testid="corp-workers">
       {!ready ? (
-        <ul className="flex flex-col gap-2" aria-hidden="true">
-          {Array.from({ length: Math.max(1, fleets) }, (_, i) => (
+        <ul className="flex flex-col gap-2" aria-hidden="true" data-testid="corp-worker-wait">
+          {Array.from({ length: Math.max(1, expected) }, (_, i) => (
             <li key={i}>
               <Skeleton className="h-[104px] w-full lg:h-[72px]" />
             </li>
@@ -64,6 +67,5 @@ export function WorkerList() {
         </ul>
       )}
     </SheetSection>
-    </HeldRoom>
   )
 }

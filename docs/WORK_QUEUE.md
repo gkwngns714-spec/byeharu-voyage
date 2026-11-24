@@ -5,6 +5,8 @@
 This block is the current state. The hand-off blocks further down (2026-11-13 and older) are history.
 
 
+**UPDATE 2026-11-25 00:00 UTC: PROD HEAD IS 0496.** LIVE: #850, 0492 (lit), 0493 rate-why, #859, 0494 job-by-harbours, #860 THE NEW HQ, 0495 dividend-hourly (lit 21:52 UTC, players only; first coin after 00:37 UTC), #864 Repair / Hire crew press, 0496 workers-read. Main acceptance GREEN on 6c6f3183 and bc35eacb. OPEN in order: #865 0497 jobs-never-lose, #866 0498 near-round, 0499 fit-to-sail (branch), client `hq-figures-client`, #862 pages-stand-still-2, `desk-into-hq` (H3). Measured: a near Repeat barely earns (price, not daily_cap, binds), Trade nearby earns 2,700 to 19,700/h at 40,000 coin. A squash body carrying `[skip ci]` silently stopped main's Migrations run for 0492-0494: bv-deploy.sh now writes its own body. Owner's: relief for a company whose every ship is wrecked and purse is under the smallest repair.
+
 **UPDATE 2026-11-24: THE REMASTER (row 382): docs/design/remaster-2026-11-24.md is the one order of work. Phase 1: #850, 0492 #854, 0493 `rate-why` (building), 0494 `job-by-harbours` (row 381).**
 
 **UPDATE 2026-11-24 (new PC): row 378 CIVILIZATION LAYER researched + designed (docs/design/civ-layer-2026-11-24.md). #850 merged with main (conflict in drive.market resolved), #854 updated; both in CI. H1 `hq-corp` and H2 `hq-bridge-rank` building on #850.** 
