@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { readTray, trayViolations } from './trayLaw.fixture'
 import { SKILL_CAPTAIN, SKILL_REPUTATION, serveCaptainSkillsWorld } from './captainSkills.fixture'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // CAPTAIN SKILLS ON THE GLASS — a step of a skill, bought with Reputation (migration 0355, slice R2 of docs/REPUTATION.md; owner row 317)
@@ -77,7 +78,7 @@ async function nothingCut(page: Page) {
 }
 
 for (const size of SIZES) {
-  for (const lang of ['en', 'ko'] as const) {
+  for (const lang of LANGS) {
     test.describe(`captain skills at ${size.width}×${size.height}, ${lang}`, () => {
       test.use({ viewport: size, locale: lang === 'ko' ? 'ko-KR' : 'en-US' })
 

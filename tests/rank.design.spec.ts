@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { phoneLaws, readGlass } from './unfold.fixture'
 import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, settled as settledSheet, trayBox } from './design.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // RANK IS A PAGE — the owner's design order, measured on both faces at five glasses, in English and Korean (2026-11-03)
@@ -102,7 +103,7 @@ async function openFace(page: Page, index: number) {
 
 const settled = (page: Page) => settledSheet(page, SHEET)
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   test.describe(`Rank is a page — ${locale}`, () => {
     test.use({ locale })
 

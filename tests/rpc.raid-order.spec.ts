@@ -6,6 +6,7 @@ import { clearBackend, cmdRaidOrder, createLocalBackend, setBackend, worldFleets
 import { payloadFights } from '../src/features/ledger/headline'
 import { translateMaybe } from '../src/lib/i18n'
 import { fightRows } from '../src/live/fightLines'
+import { LANGS } from './korean.paused'
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════
 // A FLEET'S STANDING ORDER, THE SEAM (0353, docs/COMBAT_LOG.md 2.1, 6.2): the real doors, through the client's one RPC
@@ -50,7 +51,7 @@ test('dark (the world before 0371, and after its rollback): the read says off, t
     expect(r.ok).toBe(false)
     if (!r.ok) {
       expect(r.refusal.code).toBe('E_NOT_IN_USE')
-      for (const lang of ['en', 'ko'] as const) expect(translateMaybe(lang, 'codes', r.refusal.code), `no ${lang} label for ${r.refusal.code}`).toBeTruthy()
+      for (const lang of LANGS) expect(translateMaybe(lang, 'codes', r.refusal.code), `no ${lang} label for ${r.refusal.code}`).toBeTruthy()
     }
   }
   expect(await one<number>(`select count(*)::int from public.fleet_raid_orders`)).toBe(0)
@@ -77,7 +78,7 @@ test('lit: the door takes each order, and every word the read serves has a label
   expect(read.value.pay).toBe(0)
   expect(['poor', 'fair', 'good']).toContain(read.value.slip)
   expect(read.value.foes!.length).toBeGreaterThan(0)
-  for (const lang of ['en', 'ko'] as const) {
+  for (const lang of LANGS) {
     expect(translateMaybe(lang, 'fight', `oddsSlip_${read.value.slip}`), `no ${lang} word for slip ${read.value.slip}`).toBeTruthy()
     for (const f of read.value.foes!) {
       expect(f.danger).toBeGreaterThanOrEqual(1)
@@ -95,7 +96,7 @@ test('lit: the door takes each order, and every word the read serves has a label
   expect(bad.ok).toBe(false)
   if (!bad.ok) {
     expect(bad.refusal.code).toBe('E_BAD_ORDER')
-    for (const lang of ['en', 'ko'] as const) expect(translateMaybe(lang, 'codes', 'E_BAD_ORDER')).toBeTruthy()
+    for (const lang of LANGS) expect(translateMaybe(lang, 'codes', 'E_BAD_ORDER')).toBeTruthy()
   }
   const other = await one<string>(`select f.id from public.fleets f join public.players p on p.id = f.player_id where p.is_npc limit 1`)
   if (other) {
@@ -145,7 +146,7 @@ test('lit: a raided passage sailed under Flee comes back as a log the reader tak
       ran += 1
     }
     expect(['STOOD', 'SLIP', 'FLED', 'THREW', 'TERMS', 'TAKEN', 'GAVE']).toContain(f.log!.end)
-    for (const lang of ['en', 'ko'] as const) expect(translateMaybe(lang, 'fight', `end_${f.log!.end}`)).toBeTruthy()
+    for (const lang of LANGS) expect(translateMaybe(lang, 'fight', `end_${f.log!.end}`)).toBeTruthy()
   }
   expect(ran, 'no round was run in the whole passage').toBeGreaterThan(0)
 })

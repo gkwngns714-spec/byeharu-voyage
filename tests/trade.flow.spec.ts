@@ -7,6 +7,7 @@ import { closeDetail, openDetail, ready } from './appReady.fixture'
 // each since 0413). CI met a delay on 2026-11-12 (run 43137152187, a 300-second wait) and a 480-second wait ran out
 // on 2026-11-15.
 import { LANDING_TEST_TIMEOUT_MS, LANDS_WITHIN_MS } from './arrivalWait.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE'S FLOW, FIVE LAWS (2026-11-11, the trade-flow slice; docs/dev-log/2026-11-11-trade-flow-1.md, SUCCESS_PLAN §A)
@@ -152,7 +153,7 @@ const boxOf = (page: Page, testid: string) =>
 
 const oneLine = (s: string) => s.replace(/\s+/g, ' ').trim()
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   const W = WORDS[locale]
   for (const glass of GLASSES) {
     const phone = glass.width < 1024

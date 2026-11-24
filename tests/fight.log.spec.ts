@@ -7,6 +7,7 @@ import { translate } from '../src/lib/i18n'
 import type { FightEnd } from '../src/lib/rpc'
 import { BAR_EMPTY as O, BAR_FULL as X, barCells, fightHull, fightRows, parseFightLog, parseFightLoss } from '../src/live/fightLines'
 import { OLD_ROUNDS, RAID_LOG, RAID_ROUNDS } from './raidWorld.fixture'
+import { LANGS } from './korean.paused'
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════
 // A RAID'S LOG, READ AND DRAWN (0353, owner row 315; docs/COMBAT_LOG.md 1.1, 1.4, 1.5, 1.6). Pure Node: no browser.
@@ -138,7 +139,7 @@ const WORDS: Record<'en' | 'ko', Record<Exclude<FightEnd, `A_${string}` | 'OPEN'
   ko: { STOOD: '대치', SLIP: '따돌림', BROKE: '격퇴', THREW: '격퇴', TERMS: '몸값 지불', TAKEN: '약탈당함', GAVE: '항복', FLED: '도주 성공', PAID: '지불함' },
 }
 
-for (const lang of ['en', 'ko'] as const) {
+for (const lang of LANGS) {
   test(`the log drawn, ${lang}: every line of the fixed fight, in the dictionary's words`, () => {
     render.setLocale(lang)
     const text = html({ log: parseFightLog(RAID_LOG)!, loss: parseFightLoss({ crew_before: 8, crew: 0, cargo: {}, ransom: 0 }) })

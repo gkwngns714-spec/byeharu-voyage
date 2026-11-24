@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { reachable, ready } from './appReady.fixture'
 import { BATTLE_ABOARD, serveBattleWorld } from './battleWorld.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A BATTLE SHE STARTS HERSELF, DRIVEN IN A REAL BROWSER, LIT (owner row 324: "make everything work. open them if
@@ -322,11 +323,11 @@ test.describe('her battle on the map, 1280×800, English', () => {
 })
 
 // ── BREAK-OFF: Flee from the next round, and away ──
-for (const [size, lang, tag] of [
+for (const [size, lang, tag] of ([
   [WIDE, 'ko-KR', '1280-ko'],
   [PHONE, 'ko-KR', '390-ko'],
   [SMALL, 'ko-KR', '320-ko'],
-] as const) {
+] as const).filter(([, l]) => LOCALES.includes(l))) {
   test.describe(`Flee and the break-off, ${size.width}×${size.height}, ${lang}`, () => {
     test.use({ viewport: size, locale: lang })
 

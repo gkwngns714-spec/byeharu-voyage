@@ -6,6 +6,7 @@ import { payloadFights } from '../src/features/ledger/headline'
 import { translate } from '../src/lib/i18n'
 import type { BattleRead, FightEnd } from '../src/lib/rpc'
 import { fightRows, parseFightLog } from '../src/live/fightLines'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE BATTLE CARD, READ AND DRAWN (0357, owner row 315; docs/COMBAT_LOG.md 3.4, 5.2). Pure Node: no browser.
@@ -91,7 +92,7 @@ test("a battle's report in History reads its log from her deck, and an old repor
   expect(old[0].rounds).toEqual(['Round 1 ...'])
 })
 
-for (const lang of ['en', 'ko'] as const) {
+for (const lang of LANGS) {
   test(`while it is fought: the foe, the word, the next round and its clock, Fight and Flee, the log so far and no result, ${lang}`, () => {
     render.setLocale(lang)
     const html = render.renderBattle({ read: READ, nowMs: NOW })

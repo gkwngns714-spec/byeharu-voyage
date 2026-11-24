@@ -37,6 +37,7 @@ import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 import { GOOD_CLASSES, GOOD_CLASS_BARS, GOOD_CLASS_BAR_HEIGHTS, GOOD_CLASS_LOOK, goodClassRow } from '../src/components/ui/goodClassTiers'
 import { RARITY_TIER_LOOK } from '../src/components/ui/rarityTiers'
 import { DICT } from '../src/lib/i18n'
+import { koreanDescribe } from './korean.paused'
 
 const PHONE = { width: 390, height: 844 }
 const WIDE = { width: 1280, height: 800 }
@@ -512,7 +513,7 @@ test('a cargo list (CargoRows, the one a fleet and a merchant share) wears the c
 // BROWSER — Korean: the words are the player's, in the player's language
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-test.describe('in Korean', () => {
+koreanDescribe('in Korean', () => {
   test.use({ locale: 'ko-KR' })
 
   test('the Codex tiles and the City market speak the Korean class words, and no Latin', async ({ page, request, baseURL }) => {

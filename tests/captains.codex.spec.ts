@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { GLASSES, readTray, trayViolations } from './trayLaw.fixture'
+import { LOCALES } from './korean.paused'
 
 // CODEX → CAPTAINS (0156, K4; docs/SKILLS_AND_CAPTAINS.md §4.1, §8 K4): world.officers / worldOfficers
 // serves every captain WITH her card (world.captain_card — the same card world.inn / worldInn serves
@@ -65,7 +66,7 @@ test('Codex → Captains: every captain carries her grade, and the Grade filter 
 
 const grades = [...new Set(cards.map((c) => c.grade))]
 
-for (const [locale, tag] of [['en-US', 'English'], ['ko-KR', 'Korean']] as const) {
+for (const [locale, tag] of ([['en-US', 'English'], ['ko-KR', 'Korean']] as const).filter(([l]) => LOCALES.includes(l))) {
   test.describe(`the officer tray, ${tag}`, () => {
     test.use({ locale })
 

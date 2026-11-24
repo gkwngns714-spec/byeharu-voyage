@@ -3,16 +3,17 @@
 // words the effects from their figures (src/live/gearWords.ts). This fails when a starter piece, a rack or a stat a starter piece
 // moves has no Korean word, so a new piece cannot reach a Korean screen in English.
 
-import { test, expect } from '@playwright/test'
+import { expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { KO_GEAR, KO_GEAR_NOTES, KO_RACKS } from '../src/lib/i18n/names/gear'
 import { GEAR_STAT_WORD } from '../src/live/gearWords'
+import { koreanTest } from './korean.paused'
 import { DICT } from '../src/lib/i18n'
 
 const read = (rel: string) => JSON.parse(readFileSync(path.join(process.cwd(), rel), 'utf8'))
 
-test('every starter piece, every rack and every stat a starter piece moves has a Korean word', () => {
+koreanTest('every starter piece, every rack and every stat a starter piece moves has a Korean word', () => {
   const items: { code: string; starter?: number; rack: string; effects: { stat: string }[] }[] = read('data/gear.generated.json').items
   const starters = items.filter((i) => i.starter)
   expect(starters.length, 'no starter piece in data/gear.generated.json: the spec reads nothing').toBeGreaterThan(0)

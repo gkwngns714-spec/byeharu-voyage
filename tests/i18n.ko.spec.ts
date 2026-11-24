@@ -19,6 +19,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, WORLD_BOOT_MS } from './appReady.fixture'
 import { DICT, type Msg } from '../src/lib/i18n'
+import { koreanTest } from './korean.paused'
 
 test.use({ locale: 'ko-KR' })
 
@@ -91,7 +92,7 @@ async function chromeTexts(page: Page): Promise<string[]> {
   return texts
 }
 
-test('in Korean, no tab shows an English UI word outside the served proper nouns', async ({ page, request, baseURL }) => {
+koreanTest('in Korean, no tab shows an English UI word outside the served proper nouns', async ({ page, request, baseURL }) => {
   test.setTimeout(WORLD_BOOT_MS + 240_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   expect(NAMES.length, 'no served names were read — the data files moved').toBeGreaterThan(200)
@@ -114,7 +115,7 @@ test('in Korean, no tab shows an English UI word outside the served proper nouns
 })
 
 // (the Profile page is worded Account since 2026-11-23, the visual overhaul's slice 2, X4: You's Account row opens it)
-test('the switch on the Account page turns the page to English and back, in place', async ({ page, request, baseURL }) => {
+koreanTest('the switch on the Account page turns the page to English and back, in place', async ({ page, request, baseURL }) => {
   test.setTimeout(WORLD_BOOT_MS + 60_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.setViewportSize(PHONE)

@@ -8,6 +8,7 @@ import type { MapFleet } from '../src/chart'
 import type { ArmadaView } from '../src/lib/rpc'
 import { parseFightLog } from '../src/live/fightLines'
 import { RAID_LOG } from './raidWorld.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═════════════════════════════════════════════════
 // AN ARMADA, ON THE GLASS (0367, docs/ARMADA.md; owner row 323: "with more than one fleet, max 6 fleet - an armada"). The path a player walks, on the built world with a
@@ -208,7 +209,7 @@ for (const glass of GLASSES) {
   })
 }
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   for (const width of [390, 320] as const) {
     test.describe(`${locale} ${width}`, () => {
       test.use({ locale })

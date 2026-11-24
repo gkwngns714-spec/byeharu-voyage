@@ -9,6 +9,7 @@ import { headline } from '../src/features/ledger/headline'
 import { translateMaybe } from '../src/lib/i18n'
 import { sectorOf } from '../src/features/stats/moneySectors'
 import { AttackSection } from '../src/live/AttackSection'
+import { LANGS } from './korean.paused'
 
 // ═════════════════════════════════════════════════════════════════
 // A PLAYER ATTACKS, THE SEAM (0327, docs/WORLD_POWERS.md §4.2): the real doors, through the client's one RPC layer, on the built world.
@@ -83,7 +84,7 @@ test('lit: the card says so, the dry run reads in plain words, and the press ope
   expect(dry.ok, JSON.stringify(dry)).toBe(true)
   if (!dry.ok) return
   expect(dry.value.battle_id).toBeUndefined()
-  for (const locale of ['en', 'ko'] as const) {
+  for (const locale of LANGS) {
     expect(translateMaybe(locale, 'map', `attackWord_${dry.value.word}`)).toBeTruthy()
     expect(translateMaybe(locale, 'map', `attackFunds_${dry.value.funds}`)).toBeTruthy()
   }
@@ -113,7 +114,7 @@ test('a navy ship: lit, her card offers the attack, and every duty and the navy 
   expect(card.value.attack).toBe(true)
   // 0340: no fight yet, no key; her last fight with a pirate ship, served once there was one, reads back with its words
   expect('fought' in card.value).toBe(false)
-  for (const locale of ['en', 'ko'] as const) {
+  for (const locale of LANGS) {
     for (const key of ['mission_PATROL', 'mission_ESCORT', 'mission_REINFORCE', 'mission_HUNT', 'lastFight', 'fight_WON', 'fight_LOST', 'fight_DREW', 'fight_SUNK', 'attackNavy', 'attackNavyIn'])
       expect(translateMaybe(locale, 'map', key), `${locale} ${key}`).toBeTruthy()
     expect(translateMaybe(locale, 'domain', 'navyArrives')).toBeTruthy()
@@ -135,7 +136,7 @@ test('a navy ship: lit, her card offers the attack, and every duty and the navy 
 
 test('every refusal of the door has its words, English and Korean, and the figures their units', () => {
   const codes = ['E_NO_GUNS', 'E_HOLD_NOT_EMPTY', 'E_TARGET_DOCKED', 'E_OUT_OF_REACH', 'E_SHIP_FOUGHT_THIS_LAP', 'E_ATTACK_COOLDOWN', 'E_FLEET_BUSY', 'E_YOUR_OWN_COUNTRY', 'E_HUMAN_TARGET', 'E_NOT_A_TARGET', 'E_NOT_IN_USE', 'unit_miles', 'unit_minutes']
-  for (const locale of ['en', 'ko'] as const) for (const code of codes) expect(translateMaybe(locale, 'codes', code), `${locale} ${code}`).toBeTruthy()
+  for (const locale of LANGS) for (const code of codes) expect(translateMaybe(locale, 'codes', code), `${locale} ${code}`).toBeTruthy()
 })
 
 test('the report reads as gold when there was gold, and as it did when there was none', () => {

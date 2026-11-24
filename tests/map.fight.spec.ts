@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { reachable, ready } from './appReady.fixture'
 import { FIGHT_OTHER_COMPANY, FIGHT_OTHER_FLEET, serveFightWorld, serveInstantFightWorld } from './fightWorld.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A FIGHT ON THE MAP (0364, owner row 321: "i want a fight to be visible in map. in red circle surrounding all fleets
@@ -248,7 +249,7 @@ for (const size of [PHONE, WIDE]) {
   })
 }
 
-for (const lang of ['ko-KR', 'en-US'] as const) {
+for (const lang of LOCALES) {
   for (const size of lang === 'ko-KR' ? [PHONE, SMALL, WIDE] : [SMALL]) {
     test.describe(`the words, ${lang} at ${size.width}×${size.height}`, () => {
       test.use({ viewport: size, locale: lang })

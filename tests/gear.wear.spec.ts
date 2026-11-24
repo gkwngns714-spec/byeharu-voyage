@@ -5,6 +5,7 @@ import { ready, reachable } from './appReady.fixture'
 import { serveGearWearWorld, WORN_SHIP } from './gearWear.fixture'
 import { translate } from '../src/lib/i18n'
 import { wornFittings } from '../src/domain/fleet'
+import { LOCALES } from './korean.paused'
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════
 // GEAR WEAR ON THE GLASS (0158, the switch gear_wear_bite), lit and dark, at 390 and 320 wide, in English and Korean.
@@ -59,7 +60,7 @@ test('one count: wornFittings reads the served wear, and nothing when none is se
   expect(wornFittings({ ships: [{ racks: [rack([unit(0, 100), unit(62, 69)])] }, { racks: [rack([unit(20, 90)])] }] })).toEqual({ units: 2, worstWorks: 69 })
 })
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   const lang = locale === 'ko-KR' ? 'ko' : 'en'
   for (const width of [390, 320] as const) {
     test.describe(`gear wear lit, ${locale} at ${width}`, () => {

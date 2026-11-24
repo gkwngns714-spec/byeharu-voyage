@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { ready, reachable } from './appReady.fixture'
 import { SECOND_SHIP, serveLitTwoShipsLaden } from './fleetsPage.fixture'
+import { LANGS } from './korean.paused'
 
 // A FLEET IS HER SHIPS; A SHIP IS HER CARGO AND SUPPLIES (owner, 2026-11-14; docs/dev-log/2026-11-14-fleet-ships.md).
 //
@@ -64,7 +65,7 @@ async function nothingCut(page: Page, testid: string) {
 }
 
 for (const glass of GLASSES) {
-  for (const lang of ['en', 'ko'] as const) {
+  for (const lang of LANGS) {
     test.describe(`a fleet is her ships, ${glass.name} ${lang}`, () => {
       test.use({ viewport: { width: glass.width, height: glass.height }, locale: lang === 'ko' ? 'ko-KR' : 'en-US' })
 

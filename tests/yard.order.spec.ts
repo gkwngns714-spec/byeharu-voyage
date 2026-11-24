@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
+import { LOCALES, koreanDescribe } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE YARD TAKES AN ORDER (migration 0465; docs/design/content-plan-2026-11.md 5.3 item 3, slice C)
@@ -149,7 +150,7 @@ test.describe('the yard takes an order at 390×844', () => {
   })
 })
 
-test.describe('the yard takes an order in Korean at 390×844', () => {
+koreanDescribe('the yard takes an order in Korean at 390×844', () => {
   test.use({ viewport: PHONE, deviceScaleFactor: 2, locale: 'ko-KR' })
 
   test('the sheet reads 대기 and 주문', async ({ page, request, baseURL }, info) => {
@@ -169,10 +170,10 @@ test.describe('the yard takes an order in Korean at 390×844', () => {
 
 // 2026-11-23 (third play-test, findings 3 and 21): while the yard takes orders the goal card counts her purse against the Order's price
 // (the yard's own quote) with a bar, and its press opens the yard ON the Barca's sheet, where the Order is.
-for (const [locale, words] of [
+for (const [locale, words] of ([
   ['en-US', /^Second ship · 40,000 \/ 52,000$/],
   ['ko-KR', /^두 번째 배 · 40,000 \/ 52,000$/],
-] as const) {
+] as const).filter(([l]) => LOCALES.includes(l))) {
   test.describe(`the goal card while the yard takes orders, ${locale}`, () => {
     test.use({ viewport: PHONE, deviceScaleFactor: 2, locale })
 

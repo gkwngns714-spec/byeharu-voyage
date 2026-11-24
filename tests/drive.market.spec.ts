@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DRIVE AUDIT, 2026-11-08 — THE MARKET, DRIVEN AS THE OWNER WOULD
@@ -201,7 +202,7 @@ for (const size of [WIDE, PHONE]) {
 // and the phone's screenshot was the faster one. THE LAW: a phone's button carries the sum once it is served, and it FITS — never
 // cut, on the 44-px reach floor, inside its panel. In both languages.
 const FIX = 'docs/dev-log/2026-11-08-axis-map-load-words'
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   test.describe(`in ${locale}`, () => {
     test.use({ locale })
     if (!TRADE_ON_DESK) test('Market @390: the send button carries the sum once the price is served, and it fits (row 76, O7)', async ({ page, request, baseURL }) => {

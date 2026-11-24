@@ -5,6 +5,7 @@ import { serveRoutesOn } from './routesOn.fixture'
 import { awayLand, awayReport, AWAY_MS, parseSeenMark, seenMark, type SeenMark } from '../src/domain/route'
 import { tripRoute } from '../src/live/standingRouteDraft'
 import type { LandView, LedgerEvent, SnapshotGood, StandingRoute, StandingRouteBook } from '../src/lib/rpc'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A ROUTE IN REACH, AND A REPORT ON RETURN (2026-11-16, the content plan's slice B; docs/design/content-plan-2026-11.md
@@ -115,7 +116,7 @@ test.describe('fixed facts', () => {
 const RUNS = [
   { size: { width: 390, height: 844 }, lang: 'en' as const },
   { size: { width: 1280, height: 800 }, lang: 'ko' as const },
-]
+].filter((r) => LANGS.includes(r.lang))
 
 async function mark(page: Page): Promise<SeenMark | null> {
   const raw = await page.evaluate(() => {

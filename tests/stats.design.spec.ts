@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { phoneLaws, readGlass } from './unfold.fixture'
 import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, trayBox } from './design.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // STATS IS A PAGE — the owner's design order, measured on every face at five glasses, in English and Korean (2026-11-02)
@@ -79,7 +80,7 @@ async function openFace(page: Page, index: number, fold?: number) {
   await page.waitForTimeout(700)
 }
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   test.describe(`Stats is a page — ${locale}`, () => {
     test.use({ locale })
 

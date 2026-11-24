@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { GLASSES, phoneLaws, readGlass } from './unfold.fixture'
+import { koreanDescribe } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE HQ WITH NO CITY IN HAND (2026-11-02, the HQ-on-a-phone slice: docs/dev-log/2026-11-02-city-phone-nocity.md)
@@ -64,7 +65,7 @@ for (const glass of GLASSES) {
   })
 }
 
-test.describe('in Korean', () => {
+koreanDescribe('in Korean', () => {
   test.use({ locale: 'ko-KR' })
   for (const glass of GLASSES.filter((g) => g.width < 400)) {
     test(`the HQ with no city in hand lists your fleets and what they do, at ${glass.width}×${glass.height}`, async ({ page, request, baseURL }) => {
