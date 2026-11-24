@@ -3,7 +3,7 @@
 --
 --   Lit and dark, through public.hold_request_post, the wind job (public.tick_contract_wind, one pass in this transaction, at one harbour),
 --   world.contracts, cmd.fulfil and public.contracts_expire, rolled back with proof.mjs's transaction. A new company (the starter hull, 'barca')
---   at Lisbon, the city's purse lit.
+--   at Lisbon (or the first harbour whose two hold jobs post on today's game day, see THE HARBOUR), the city's purse lit.
 --
 -- @pass SR_DARK      dark (0466's knobs as shipped): the writer, the read and the wind job post no hold job
 -- @pass SR_PURSE     lit, a harbour whose surplus does not cover the bonus posts none
@@ -39,10 +39,32 @@ declare
   v_bid   numeric;
   v_bal   bigint;
   v_load  numeric;
+  v_c     record;
+  v_home  text;
 begin
   -- ── THE SCENE ──
   update public.world_config set value = 'false'::jsonb where key = 'economy_closed';   -- a founding is refused on a closed economy
-  v_hp := public.new_house(v_uid, 'Casa do Porão 169', 'PRT', 'LIS');
+  -- THE HARBOUR (2026-11-24, #845): a hold job is drawn from (harbour, game day, seq), and on some game days the drawn lot at Lisbon
+  -- falls under hold_request_units_min and the writer posts nothing (CI, game day 623238: the wind job's receipt {hold 0} on two runs;
+  -- the same dice 0466's frozen self-assert met, src/lib/db/frozenAsserts.ts). So the scene runs at the first harbour, LIS first, whose
+  -- two hold jobs post TODAY, lit as SR_SIZE lights it, tried in a rolled-back block; if none does, it stays at LIS and fails as written.
+  v_home := 'LIS';
+  for v_c in select p.id, p.code from public.ports p where p.kind = 'HARBOUR' order by (p.code = 'LIS') desc, p.code loop
+    begin
+      update public.world_config set value = 'true'::jsonb
+       where key in ('city_treasury_enabled', 'economy_closed', 'hold_requests_enabled') and value is distinct from 'true'::jsonb;
+      insert into public.port_treasury (port_id) values (v_c.id) on conflict (port_id) do nothing;
+      update public.port_treasury set reserve = 0 where port_id = v_c.id;
+      delete from public.trade_contracts where port_id = v_c.id;
+      perform pg_temp.surplus_169(v_c.id, 1000000000);
+      v_n := public.hold_request_post(v_c.id, now());
+      v_n := v_n + public.hold_request_post(v_c.id, now());
+      raise exception sqlstate 'BV169';
+    exception when sqlstate 'BV169' then null;
+    end;
+    if v_n = 2 then v_home := v_c.code; exit; end if;
+  end loop;
+  v_hp := public.new_house(v_uid, 'Casa do Porão 169', 'PRT', v_home);
   select f.id, f.port_id into v_f, v_port from public.fleets f where f.player_id = v_hp;
   update public.ships s set cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb where s.fleet_id = v_f;
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed') and value is distinct from 'true'::jsonb;
@@ -94,7 +116,7 @@ begin
       raise exception 'PROOF 169 FAIL: a hold job out of its bounds: %', to_jsonb(c);
     end if;
   end loop;
-  raise notice 'PASS: SR_SIZE — lit: the wind job posted 2 hold jobs beside the city''s own (%)',
+  raise notice 'PASS: SR_SIZE — lit: the wind job posted 2 hold jobs at % beside the city''s own (%)', v_home,
     (select string_agg(t.qty || ' ' || g.code || ' (' || round(t.qty * g.bulk) || ' t)', ', ') from public.trade_contracts t join public.goods g on g.id = t.good_id where t.port_id = v_port and t.size = 'hold');
 
   -- ── SR_ESCROW ──
