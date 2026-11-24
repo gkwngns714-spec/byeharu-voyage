@@ -148,7 +148,20 @@ async function expectFlags(scope: Locator, nation?: string): Promise<void> {
  *  the name, and the gap between them is a few pixels (FLAG_GAP_EM of the type size, ~3.5–4 px). */
 async function expectSnugFlags(page: Page): Promise<{ flagged: number }> {
   await expect.poll(() => page.locator('[data-testid="map-labels"] [data-label-flag]').count(), { timeout: 120_000 }).toBeGreaterThan(0)
-  await expect.poll(() => page.locator('[data-testid="map-flag-symbols"] symbol').count(), { timeout: 30_000 }).toBeGreaterThan(0)
+  // Each nation's symbol is fetched on its own (flagSymbolStore.ts `askFlag`), so "some symbol is there" is not "every drawn flag's is":
+  // wait for all of them, or the read below races the last fetch.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() =>
+          [...document.querySelectorAll('[data-testid="map-labels"] [data-label-flag] use')].every((u) => {
+            const s = document.getElementById((u.getAttribute('href') ?? '').slice(1))
+            return !!s && s.childElementCount > 0
+          }),
+        ),
+      { timeout: 30_000 },
+    )
+    .toBe(true)
   const rows = await page.evaluate(() =>
     [...document.querySelectorAll('[data-testid="map-labels"] [data-label-flag]')].map((g) => {
       const use = g.querySelector('use')!
@@ -209,13 +222,15 @@ for (const [glass, size] of [['1440', WIDE], ['390', PHONE]] as const) {
     await expect(page.getByTestId('city-flag').first()).toContainText('Portugal')
     await page.waitForTimeout(400)
     await page.screenshot({ path: path.join(SHOTS, `city-${glass}.png`) })
-    // …and its Town Hall's holder (and standings, when any) draw flags through the same Flag.
-    await page.getByTestId('map-send-fleet').click()
-    await page.getByTestId('map-city-tabs').getByText('Town Hall', { exact: true }).click()
-    await expectFlags(page.getByTestId('townhall-holder'), 'PRT')
-    await page.waitForTimeout(400)
-    await page.screenshot({ path: path.join(SHOTS, `city-townhall-${glass}.png`) })
-    await page.keyboard.press('Escape')
+    // S5 (docs/design/simplify-2026-11-24.md): the harbour panel is one face — Send fleet and HQ here, no tab strip — and HQ here
+    // opens HQ on THIS city.
+    await expect(page.getByTestId('map-send-fleet')).toBeVisible()
+    await expect(page.getByTestId('map-hq-here')).toBeVisible()
+    await expect(page.getByTestId('map-city-tabs')).toHaveCount(0)
+    await expect(page.getByRole('tablist')).toHaveCount(0)
+    await page.getByTestId('map-hq-here').click()
+    await expect(page).toHaveURL(/\/city\?port=LIS/)
+    await expect(page.getByTestId('city-page')).toContainText('Lisbon', { timeout: 60_000 })
 
     // A FLEET PRESSED: your fleet's tray carries your company's flag, and so does her ship's panel.
     await openMap(page)
