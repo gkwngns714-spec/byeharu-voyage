@@ -27,6 +27,8 @@ try {
   const f = await one(`select f.id, p.code as home from public.fleets f join public.ports p on p.id = f.port_id where f.player_id = $1`, [a])
   await db.query(`update public.players set ducats = $2 where id = $1`, [a, PURSE])
   await db.exec(`update public.world_config set value = 'true'::jsonb where key in ('fleet_jobs_enabled', 'sea_courses_enabled', 'land_enabled', 'assign_home_enabled')`)
+  // --lit: 0497's switch on (a run whose quote leaves no profit is not started: the job waits)
+  if (process.argv.includes('--lit')) await db.exec(`update public.world_config set value = 'true'::jsonb where key = 'jobs_wait_enabled'`)
   await db.query(`select cmd.assume_identity($1)`, [AUTH])
   const turn = Number((await one(`select world.trip_stop_seconds() as s`)).s)
   const day = Number((await one(`select public.wc_num('game_day_seconds') as s`)).s)
