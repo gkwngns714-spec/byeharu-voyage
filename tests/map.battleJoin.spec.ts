@@ -10,7 +10,7 @@ import { translate } from '../src/lib/i18n'
 import type { FightCard, FightSide } from '../src/lib/rpc'
 import { BATTLE_JOIN_REFUSALS } from '../src/lib/rpc/battleJoin'
 import { fleetsInFight, joinOffers, joinRefusalKey, joinSides, type JoinFleet } from '../src/live/battle/joinOffers'
-import { LANGS } from './korean.paused'
+import { KOREAN_PAUSED, LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TICK COMBAT ON THE MAP (docs/design/tick-combat.md 8, 9.4; the owner: "every ship currently in a fight is drawn red";
@@ -197,10 +197,10 @@ test('every refusal of cmd.battle_join has its own short word, in English and Ko
     }
   }
   expect(words.en.size).toBe(BATTLE_JOIN_REFUSALS.length)
-  expect(words.ko.size).toBe(BATTLE_JOIN_REFUSALS.length)
+  if (!KOREAN_PAUSED) expect(words.ko.size).toBe(BATTLE_JOIN_REFUSALS.length)
   expect(translate('en', 'join.E_HUMAN_TARGET')).toBe('No PvP')
   expect(translate('en', 'join.E_NOT_IN_REACH')).toBe('Too far')
-  expect(translate('ko', 'join.E_AT_PEACE')).toBe('휴전 중')
+  if (!KOREAN_PAUSED) expect(translate('ko', 'join.E_AT_PEACE')).toBe('휴전 중')
   // a code the contract does not name still says something short, never nothing
   expect(joinRefusalKey('E_SOMETHING_NEW')).toBe('join.E_OTHER')
   expect(translate('en', 'join.E_OTHER')).toBe('Refused')
