@@ -87,8 +87,11 @@ export function FromHere({
               aria-pressed={x.on}
               title={x.title}
               onClick={x.press}
-              // two columns on fixed lines, so every tile's profit starts where the others' do (tests/align.spec.ts COLUMN)
-              className={`grid min-h-11 w-full grid-cols-[minmax(0,1fr)_5.75rem] items-center gap-2 rounded-lg px-2 py-1 text-left text-t-caption transition ${tileToneClass(x.on)}`}
+              // two columns on fixed lines, so every tile's profit starts where the others' do (tests/align.spec.ts COLUMN).
+              // THE PROFIT STANDS ON THE NAME'S FIRST LINE (2026-11-25): a name that turns ("Sanlucar de Barrameda") is two lines, and centred
+              // against them the profit sat 8 px under the first, between the two (the align law's LINE; main's run 45444351462). The pair is
+              // centred in the tile as one block (`content-center`), and inside it both start on the top line (`items-start`).
+              className={`grid min-h-11 w-full grid-cols-[minmax(0,1fr)_5.75rem] content-center items-start gap-2 rounded-lg px-2 py-1 text-left text-t-caption transition ${tileToneClass(x.on)}`}
               {...x.data}
             >
               {x.city}
