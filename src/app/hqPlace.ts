@@ -30,8 +30,9 @@ export type HqAsk =
   /** A fleet's sheet: her cargo and where it sells, her route, her orders; `route` stands her route first. */
   | { sheet: 'fleet'; fleet: string; route?: boolean }
   /** THE ONE ASSIGN SHEET (features/city/corp/AssignSheet.tsx; docs/design/hq-corp-2026-11-24.md C3): work for one worker, a fleet's id
-   *  or 'party' (the land party). A caller that knows the trade fills it in: the good and its two harbours (port CODES). */
-  | { sheet: 'assign'; worker: string; good?: string; buy?: string; sell?: string }
+   *  or 'party' (the land party). A caller that knows the trade fills it in: the good and its two harbours (port CODES), and a board card
+   *  its own `units` (in memory only, like `best`: a link names no units), so the sheet opens on the card's figures. */
+  | { sheet: 'assign'; worker: string; good?: string; buy?: string; sell?: string; units?: number }
   /** A worker's sheet: her action, what it did, Change and Stop (the worker named as Assign names her). */
   | { sheet: 'worker'; worker: string }
 

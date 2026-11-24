@@ -51,7 +51,7 @@ export function useMovePress(): (m: MoveData) => void {
           const a = assignOpen ? assignOf(m.move) : null
           if (a) {
             selectFleet(a.fleet)
-            openHq({ sheet: 'assign', worker: a.fleet, good: a.good, buy: a.buy, sell: a.sell })
+            openHq({ sheet: 'assign', worker: a.fleet, good: a.good, buy: a.buy, sell: a.sell, units: a.units })
           } else void pressServed(m.move, m.fleet)
         }
       }

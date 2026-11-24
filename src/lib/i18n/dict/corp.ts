@@ -28,6 +28,8 @@ export const corpDict = defineDict({
     leftN: '{n} left',
     stored: 'Stored',
     atHome: 'Bought at home',
+    overPurse: 'Over purse',
+    noBuy: 'Nothing to buy',
     haul: 'Haul home',
     sailing: 'Sailing',
     orders: 'Orders',

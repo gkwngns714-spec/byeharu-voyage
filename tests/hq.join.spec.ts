@@ -227,3 +227,31 @@ test("Assign: 0492's switch dark: a count is refused in the server's words, leav
   await expect(sheet).toHaveCount(0, { timeout: 120_000 })
   await expect(fleetRow(page)).toHaveAttribute('data-action', 'fixed', { timeout: 120_000 })
 })
+
+test('Assign: where she lies, a run is quoted for what her purse can buy, never for the bare hold', async ({ page, request, baseURL }) => {
+  test.setTimeout(900_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+  await open(page, SIZES[0], false)
+  const purse = Number((await page.getByTestId('purse').innerText()).replace(/[^0-9]/g, ''))
+  expect(purse, 'no purse on the top bar').toBeGreaterThan(0)
+  // from her row (no card's units): the sheet asks the server what she can buy (world.buy_capacity) and quotes that
+  await fleetRow(page).click()
+  const sheet = page.getByTestId('hq-sheet-assign')
+  await expect(sheet.getByTestId('corp-assign-good').first()).toBeVisible({ timeout: 120_000 })
+  const goods = await sheet.getByTestId('corp-assign-good').count()
+  let quoted = 0
+  for (let g = 0; g < goods; g++) {
+    await sheet.getByTestId('corp-assign-good').nth(g).click()
+    await expect(sheet.getByTestId('corp-assign-sales').or(sheet.getByTestId('corp-assign-nosale')).or(sheet.getByTestId('corp-assign-nobuy'))).toBeVisible({ timeout: 120_000 })
+    if ((await sheet.getByTestId('corp-assign-sale').count()) === 0) continue
+    await sheet.getByTestId('corp-assign-sale').first().click()
+    const quote = sheet.getByTestId('corp-assign-quote')
+    await expect(quote).toBeVisible()
+    const cost = Number(await quote.getAttribute('data-cost'))
+    expect(Number(await quote.getAttribute('data-units')), `good ${g}: a quote for no units`).toBeGreaterThan(0)
+    expect(cost, `good ${g}: the run is quoted at ${cost}, more than her purse of ${purse}`).toBeLessThanOrEqual(purse)
+    await expect(quote).toHaveAttribute('data-over', 'false')
+    quoted++
+  }
+  expect(quoted, 'no good was quoted').toBeGreaterThan(0)
+})

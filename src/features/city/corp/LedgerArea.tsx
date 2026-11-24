@@ -14,7 +14,8 @@ import { useWorld } from '../../../live/worldStore'
 //                  made once is not an hourly line (the strip's sheet lists them).
 //   no lines       a server before 0493: `world.report('day')`, today by section (the Report's own sections and words), each a
 //                  served sum. No total: for a young company it is the figure While away has already said.
-// A lone line is not drawn (it is the net again); the Report's door stands all the same.
+// A lone line is not drawn (it is the net again): with no line to draw the band says "Nothing yet", on every glass; the Report's
+// door stands all the same.
 // One press: the Report's sheet (Today / Week / All, by line).
 // "Saved" arrives with 0495's `world.company_rate()`.
 
@@ -65,7 +66,7 @@ export function LedgerArea({ rate }: { rate: HqRate | null }) {
         className="flex min-h-11 w-full flex-col gap-2 rounded-tile bg-surface p-3 text-left transition hover:bg-surface-2"
         data-testid="corp-ledger-open"
       >
-        {lines.length === 0 && <span className="text-t-caption text-ink-faint">{t('corp.noLines')}</span>}
+        {drawn.length === 0 && <span className="text-t-caption text-ink-faint">{t('corp.noLines')}</span>}
         {drawn.map((l) => (
           <span key={l.id} className="flex items-center gap-3" data-testid="corp-ledger-line" data-line={l.id}>
             <span className="w-20 shrink-0 text-t-caption text-ink-muted">{l.word}</span>

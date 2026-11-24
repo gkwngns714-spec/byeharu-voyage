@@ -101,10 +101,10 @@ async function commit(move: HqMove, fleet: FleetView | null): Promise<Refusal | 
 /** THE ASSIGN A CARD STANDS FOR (docs/design/hq-corp-2026-11-24.md B3, C3): a trade she BUYS for is one good between two harbours,
  *  which is the one Assign sheet's Sea trade. Null for every other card: a trade that sells the cargo already aboard (no harbour to
  *  buy at) and every other kind have no Assign equivalent, and keep their own act. */
-export function assignOf(m: HqMove): { fleet: string; good: string; buy: string; sell: string } | null {
+export function assignOf(m: HqMove): { fleet: string; good: string; buy: string; sell: string; units?: number } | null {
   const a = m.act
   if (m.kind !== 'trade' || a.rpc !== 'cmd.issue_lines' || a.args.plan.buy_at === null) return null
-  return { fleet: a.args.fleet, good: a.args.plan.good, buy: a.args.plan.buy_at, sell: a.args.plan.sell_at }
+  return { fleet: a.args.fleet, good: a.args.plan.good, buy: a.args.plan.buy_at, sell: a.args.plan.sell_at, units: a.args.plan.units ?? undefined }
 }
 
 /** Press a served card: one act at a time; the refusal kept under the card, cleared by a press that commits. */

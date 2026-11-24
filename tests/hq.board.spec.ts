@@ -182,6 +182,8 @@ test.describe('standing fleet jobs (0481, lit)', () => {
       const fleet = (await card.getAttribute('data-fleet'))!
       const good = (await card.getAttribute('data-good'))!
       const port = (await card.getAttribute('data-port'))!
+      const units = (await card.getAttribute('data-units'))!
+      const profit = (await card.getAttribute('data-profit'))!
       await expect(worker(page, fleet)).toHaveAttribute('data-state', 'idle', { timeout: 120_000 })
       const url = page.url()
       await card.click()
@@ -192,10 +194,17 @@ test.describe('standing fleet jobs (0481, lit)', () => {
       // FILLED IN: the card's good is the one on, its harbour the sale chosen, and the server's quote stands before the press
       await expect(sheet.locator(`[data-testid="corp-assign-good"]:has([data-good="${good}"])`)).toHaveAttribute('aria-pressed', 'true', { timeout: 120_000 })
       await expect(sheet.locator(`[data-testid="corp-assign-sale"][data-port="${port}"]`)).toHaveAttribute('aria-pressed', 'true', { timeout: 120_000 })
-      await expect(sheet.getByTestId('corp-assign-quote')).toBeVisible()
-      // THE SALE HARBOURS STAND BEST PROFIT FIRST, the losing ones last
-      const profits = await sheet.getByTestId('corp-assign-sale').evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-profit'))))
-      expect(profits, 'the sale harbours are not in the order of their served profit').toEqual([...profits].sort((a, b) => b - a))
+      const quote = sheet.getByTestId('corp-assign-quote')
+      await expect(quote).toBeVisible()
+      // ON THE CARD'S OWN FIGURES: the units the card named (what she can buy, never the bare hold) and the profit it named
+      await expect(quote, "Assign quotes other units than the card's").toHaveAttribute('data-units', units)
+      await expect(quote, "Assign quotes another profit than the card's").toHaveAttribute('data-profit', profit)
+      // THE SALE HARBOURS: the short runs that pay, then the long ones, then the losing ones; each band best served profit first
+      const rows = await sheet
+        .getByTestId('corp-assign-sale')
+        .evaluateAll((els) => els.map((e) => ({ band: e.getAttribute('data-losing') === 'true' ? 2 : e.getAttribute('data-long') === 'true' ? 1 : 0, p: Number(e.getAttribute('data-profit')) })))
+      expect(rows, 'the sale harbours are not in their order').toEqual([...rows].sort((a, b) => a.band - b.band || b.p - a.p))
+      expect(rows[0].band, 'the first sale harbour is a long voyage or a loss while a short one pays').toBe(Math.min(...rows.map((r) => r.band)))
       // NOTHING COMMITTED YET: she is idle, and no refusal stands under the card
       await expect(worker(page, fleet)).toHaveAttribute('data-state', 'idle')
       await expect(page.getByTestId('hq-move-refusal')).toHaveCount(0)

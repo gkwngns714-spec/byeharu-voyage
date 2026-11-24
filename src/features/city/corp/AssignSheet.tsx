@@ -5,10 +5,11 @@ import { openHq, type HqAsk } from '../../../app/hqPlace'
 import { useShellState } from '../../../app/shellState'
 import { fleetPortCode } from '../../../domain/fleet'
 import { tradeRows } from '../../../domain/market'
-import { formatDaysReal, formatDucats, formatDucatsDelta, formatInt, formatRealShort, formatRelative, instantMs } from '../../../lib/format'
+import { formatDaysReal, formatDucats, formatDucatsDelta, formatInt, formatRealShort, formatRelative, instantMs, voyageDaysToRealMs } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { cmdLandHome, cmdLandSend, type FleetView, type LandJob, type Refusal } from '../../../lib/rpc'
 import { clearFleetJob, setFleetJob, useJobEdits } from '../../../live/useAwayReport'
+import { useBuyCapacity } from '../../../live/useBuyCapacity'
 import { useGoodBoard } from '../../../live/useDesk'
 import { litRoles, useShipRoles } from '../../../live/useShipRoles'
 import { usePortMarket } from '../../../live/usePortMarket'
@@ -23,7 +24,9 @@ import { PARTY, actionWord, figureWord, stateWord, useWorkers, type ActionNames,
 // Assign gives ONE worker her work, through the door that exists for her kind, and works nothing out:
 //   a fleet    Sea trade: a good, where it is bought and where it is sold = cmd.set_fleet_job(fleet, 'fixed', {good, buy, sell}),
 //              quoted before the press by `world.good_board` (the desk's own read: the run's profit, its units, its cost, its time).
-//              THE SALE HARBOURS STAND BEST PROFIT FIRST, by the served profit of the run; the losing ones last and muted.
+//              THE QUOTE IS FOR THE UNITS SHE CAN BUY (a card's own units; world.buy_capacity where she lies), never the bare hold.
+//              THE SALE HARBOURS STAND BEST PROFIT FIRST, by the served profit of the run: the short runs that pay, then the
+//              long ones (over two real hours), then the losing ones, muted.
 //              0492, where its door is open (`useHomeDoor`): BRING HOME in place of a sale ({good, buy, end: 'store'}: stored in the
 //              home warehouse; its quote is the board's own buy row, units and cost), and ONCE / REPEAT / a count of runs (`times`).
 //              Or Best run = cmd.set_fleet_job(fleet, 'best'), the run the server picks each time; or, where the Land is lit, Haul
@@ -128,6 +131,9 @@ type Mode = 'fixed' | 'best' | 'haul'
 type End = 'sell' | 'store'
 type Runs = 'repeat' | 'once' | 'count'
 
+/** A run longer than this (real time) stands under the shorter ones that pay. */
+const LONG_RUN_MS = 2 * 3_600_000
+
 /** The most runs the count's slider reaches (the server takes up to 999). */
 const MAX_RUNS = 99
 
@@ -158,16 +164,37 @@ function SeaAssign({ ask, fleet, names, home, haul }: { ask: AssignAsk; fleet: F
   const quay = usePortMarket(mode === 'fixed' ? (buyPort?.id ?? null) : null)
   const goods = useMemo(() => tradeRows(quay.market?.goods ?? [], {}, goodByCode).filter((r) => r.buy !== null && r.goodId), [quay.market, goodByCode])
   const goodId = good ? (goodByCode[good]?.id ?? null) : null
-  const board = useGoodBoard(mode === 'fixed' ? goodId : null, fleet.id, fleet.version, null, buyPort?.id ?? null)
-  const view = board.view && board.view.good === good && !board.stale ? board.view : null
-  // THE HARBOURS THAT BUY IT, BEST PROFIT FIRST (each row's profit is the server's, for the whole run): the ones that pay stand in
-  // the order of what they leave, and the ones that lose stand last. Nothing is worked out to rank them; no rate is made here.
+  // HOW MANY UNITS THE RUN IS QUOTED FOR. The job's BUY ALL buys what her purse, the stock and the day's allowance let her, never
+  // more: so the quote is asked for THOSE units, and the hold alone is never priced as if she could pay for it.
+  //   a board card   its own units (the server's: world.best_sales' answer), while the sheet still stands on the card's run: the
+  //                  sheet opens on the card's own figures;
+  //   where she lies `world.buy_capacity(fleet, good)` (public.fleet_buy_capacity, the authority the job's BUY ALL reads);
+  //   elsewhere      NO READ SERVES IT (buy_capacity answers only for the harbour she lies at): the board's own row there stands,
+  //                  marked when it costs more than her coin. 0496's `world.actions(worker).options[]` serves it (`units`,
+  //                  `inputs.coin`, `net`, `per_hour`, `over_cap`); this sheet reads those when that read is on main.
+  const here = buy !== null && buy === fleetPortCode(fleet)
+  const fromCard = ask.units !== undefined && good === ask.good && buy === ask.buy
+  const cap = useBuyCapacity(mode === 'fixed' && here && !fromCard ? fleet.id : null, good)
+  const capUnits = fromCard ? (ask.units ?? null) : here ? (cap.bound?.max ?? null) : null
+  // where she lies the board waits for the cap (one ask, for the right units); nothing can be bought: no quote is asked
+  const askable = mode === 'fixed' && (!here || (capUnits !== null && capUnits > 0))
+  const board = useGoodBoard(askable ? goodId : null, fleet.id, fleet.version, capUnits, buyPort?.id ?? null)
+  const view = askable && board.view && board.view.good === good && !board.stale ? board.view : null
+  const noBuy = mode === 'fixed' && here && !fromCard && cap.bound !== null && cap.bound.max < 1
+  const purse = useWorld((s) => s.player?.ducats ?? null)
+  // THE HARBOURS THAT BUY IT, BEST PROFIT FIRST (each row's profit is the server's, for the whole run). Three bands, each in the
+  // order of what it leaves: the runs that pay and are over within LONG_RUN_MS of real time; then the long ones that pay (so the
+  // first glass is not thirty-day voyages); then the ones that lose, muted. No rate is made here to rank them: profit an hour is
+  // 0496's served `per_hour`, and is the order once that read is on main.
   const sales = useMemo(
     () =>
       (view?.sell ?? [])
         .filter((r) => r.quoted && r.port !== buy && (r.profit ?? r.net) !== null)
-        .map((r) => ({ r, p: r.profit ?? r.net ?? 0 }))
-        .sort((a, b) => b.p - a.p),
+        .map((r) => {
+          const p = r.profit ?? r.net ?? 0
+          return { r, p, band: p < 0 ? 2 : r.days !== null && voyageDaysToRealMs(r.days) > LONG_RUN_MS ? 1 : 0 }
+        })
+        .sort((a, b) => a.band - b.band || b.p - a.p),
     [view, buy],
   )
   const buys = (view?.buy ?? []).slice(0, HARBOURS)
@@ -183,6 +210,9 @@ function SeaAssign({ ask, fleet, names, home, haul }: { ask: AssignAsk; fleet: F
   const load = (view?.buy ?? []).find((r) => r.port === buy) ?? null
   // the server refuses a run that buys at her home and brings it home (E_SAME_DEST): not offered
   const atHome = home !== null && buy === home
+
+  // a quote the server could not cap (a harbour she does not lie at) that costs more than her served coin: said, never hidden
+  const over = (cost: number | null) => !here && !fromCard && cost !== null && purse !== null && cost > purse
 
   const times = runs === 'repeat' ? null : runs === 'once' ? 1 : count
   const choiceOf = (e: End, n: number | null) => `${mode}:${good}:${buy}:${e === 'store' ? 'home' : sell}:${e}:${n}`
@@ -290,7 +320,11 @@ function SeaAssign({ ask, fleet, names, home, haul }: { ask: AssignAsk; fleet: F
           )}
           {good && end === 'sell' && (
             <Step word={t('corp.sellAt')}>
-              {!view ? (
+              {noBuy ? (
+                <Note tone="neutral" data-testid="corp-assign-nobuy">
+                  {`${t('corp.noBuy')} · ${cap.bound?.binding ?? ''}`}
+                </Note>
+              ) : !view ? (
                 <Skeleton className="h-11 w-full" />
               ) : sales.length === 0 ? (
                 <Note tone="neutral" data-testid="corp-assign-nosale">
@@ -298,7 +332,7 @@ function SeaAssign({ ask, fleet, names, home, haul }: { ask: AssignAsk; fleet: F
                 </Note>
               ) : (
                 <div className="flex flex-col gap-1" data-testid="corp-assign-sales">
-                  {sales.map(({ r, p }) => (
+                  {sales.map(({ r, p, band }) => (
                     <button
                       key={r.port}
                       ref={r.port === ask.sell && r.port === sell ? showFilled : undefined}
@@ -310,6 +344,7 @@ function SeaAssign({ ask, fleet, names, home, haul }: { ask: AssignAsk; fleet: F
                       data-port={r.port}
                       data-profit={p}
                       data-losing={p < 0}
+                      data-long={band === 1}
                     >
                       <span className={`min-w-0 break-words text-t-body ${p < 0 ? 'text-ink-faint' : 'text-ink'}`}>{names.port(r.port)}</span>
                       <span className="flex shrink-0 items-center gap-3 text-t-caption tabular-nums">
@@ -354,7 +389,7 @@ function SeaAssign({ ask, fleet, names, home, haul }: { ask: AssignAsk; fleet: F
           ) : mode === 'haul' ? (
             <FootLine word={t('corp.haul')} figure={null} />
           ) : end === 'store' && good && buy && load && !atHome ? (
-            <div data-testid="corp-assign-quote" data-end="store" data-units={load.units}>
+            <div data-testid="corp-assign-quote" data-end="store" data-units={load.units} data-cost={load.cost} data-over={over(load.cost)}>
               <FootLine
                 word={`${names.good(good)} · ${names.port(buy)} → ${home ? names.port(home) : t('corp.home')} · ${t('corp.store')}`}
                 figure={
@@ -365,11 +400,11 @@ function SeaAssign({ ask, fleet, names, home, haul }: { ask: AssignAsk; fleet: F
               />
               <FootLine
                 word={<span className="text-t-caption tabular-nums text-ink-faint">{`${t('corp.cost')} ${formatDucats(load.cost)}`}</span>}
-                figure={<span className="text-t-caption tabular-nums text-ink-muted">{t('corp.units')}</span>}
+                figure={<span className={`text-t-caption tabular-nums ${over(load.cost) ? 'text-warning' : 'text-ink-muted'}`}>{over(load.cost) ? t('corp.overPurse') : t('corp.units')}</span>}
               />
             </div>
           ) : end === 'sell' && sale ? (
-            <div data-testid="corp-assign-quote" data-end="sell" data-profit={sale.p}>
+            <div data-testid="corp-assign-quote" data-end="sell" data-profit={sale.p} data-units={sale.r.units ?? undefined} data-cost={sale.r.cost ?? undefined} data-over={over(sale.r.cost)}>
               <FootLine
                 word={actionWord({ kind: 'fixed', good: good!, buy: buy!, sell: sale.r.port, end: 'sell' }, t, names)}
                 figure={
@@ -386,6 +421,7 @@ function SeaAssign({ ask, fleet, names, home, haul }: { ask: AssignAsk; fleet: F
                 }
                 figure={
                   <span className="text-t-caption tabular-nums text-ink-muted" data-testid="corp-assign-time" title={t('corp.time')}>
+                    {over(sale.r.cost) ? <span className="text-warning">{`${t('corp.overPurse')} · `}</span> : null}
                     {sale.r.days !== null ? formatDaysReal(sale.r.days) : ''}
                   </span>
                 }

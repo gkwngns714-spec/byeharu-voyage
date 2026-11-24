@@ -124,6 +124,8 @@ export function MoveCard({
         data-per-hour={move.perHour === null ? '' : String(Math.round(move.perHour))}
         data-fleet={move.fleet ?? undefined}
         data-good={good}
+        data-units={s.kind === 'trade' ? (s.needs.units ?? undefined) : undefined}
+        data-profit={s.kind === 'trade' ? (s.profit ?? undefined) : undefined}
         data-port={flag ?? undefined}
         data-danger={s.risk ? String(s.risk.danger) : undefined}
         data-race={race ? race.lead : undefined}
