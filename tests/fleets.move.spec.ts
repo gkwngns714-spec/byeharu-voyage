@@ -54,7 +54,7 @@ test('lit: the only ship moves to a new fleet, and the empty fleet stands', asyn
   // HQ offers the fleet with a ship (H3, 2026-11-24: the desk's fleet picker is gone; her HQ row is the press)
   await page.goto('city')
   await ready(page)
-  await expect(page.getByTestId('hq-fleets')).toContainText('Nova Armada', { timeout: 60_000 })
+  await expect(page.getByTestId('corp-worker-list')).toContainText('Nova Armada', { timeout: 60_000 })
 
   // the map stands
   await page.goto('map')

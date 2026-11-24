@@ -171,6 +171,7 @@ for (const size of SIZES) {
       // the strip re-orders as a city is pressed (the city in hand leads), so its codes are read once, nearest first
       const codes = await page.getByTestId('city-chip').evaluateAll((els) => els.map((e) => e.getAttribute('data-port') ?? ''))
       for (const code of codes.filter((c) => c !== home).reverse()) {
+        console.log(`hunt @${size.width} ${await read.getAttribute('data-city')} purse ${(await page.getByTestId('purse').first().innerText()).replace(/\s+/g, ' ')} date ${(await page.getByTestId('game-date').first().innerText()).replace(/\s+/g, ' ')}: ${(await board.locator('[data-testid="trade-good"]').evaluateAll((els) => els.map((e) => { const b = e.querySelector('[data-testid="best-sale"]'); return `${e.getAttribute('data-good')}:${b?.getAttribute('data-state')}/${b?.getAttribute('data-pays')}/${b?.getAttribute('data-short') ?? ''}/${e.querySelector('[data-testid="trade-good-aboard"]')?.textContent}` }))).join(' ')}`)
         if ((await loss.count()) > 0) break
         await page.locator(`[data-testid="city-chip"][data-port="${code}"]`).click()
         await expect(read).toHaveAttribute('data-city', code)

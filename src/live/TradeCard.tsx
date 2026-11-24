@@ -242,7 +242,12 @@ function SaleBlock({
   // a size container (`@container`), so each price's mark stands only where the line has room for it (`PRICE_MARK`)
   const top = '@container flex h-[1.375rem] w-full items-baseline justify-between gap-1'
   // the line holds two lines' height where a sale can land (the Trade board); one where none ever does (the HQ Market)
-  const line = `flex ${canLand ? 'min-h-9' : 'min-h-[1.125rem]'} w-full min-w-0 flex-wrap content-between items-center gap-x-1 text-t-caption tabular-nums`
+  // THREE LINES HELD (H3, 2026-11-25): the list is HQ's Market plate now, whose cards are narrower than the desk's were (two in a
+  // 390-px glass, two in the wide glass's side panel). A long city ("Sanlucar de Barrameda") took a line for its flag, one or two
+  // for its name and one for the profit, past the two lines held, and the whole row of cards grew when the sale landed (measured:
+  // 166 to 182 px at 1280, to 200 at 390). The flag now stands IN the name's first line, so a name is at most two lines, and the
+  // block holds three.
+  const line = `flex ${canLand ? 'min-h-[3.375rem]' : 'min-h-[1.125rem]'} w-full min-w-0 flex-wrap content-between items-center gap-x-1 text-t-caption tabular-nums`
   // the profit, the time (0351) and the day line stay together, at the right of whichever line they stand on, and WHAT DOES NOT
   // FIT GIVES WAY WHOLE, LAST FIRST: the tail is ONE line high and wraps out of sight (the row gap puts a wrapped part a full
   // line below the cut), so in a 140-px card the day line goes first, then — only where a five-figure profit and an hours-long
@@ -327,7 +332,7 @@ function SaleBlock({
         )}
         {/* the flag and the name stand together; in a card too narrow for both (산타크루스데테네리페 is 130 px, a 158-px card
             has 142 inside) the name takes the next line whole rather than being cut */}
-        <span className={`flex flex-wrap items-center gap-x-1 ${KEEP_WORDS_CLASS}`} data-testid="best-sale-city">
+        <span className={`max-w-full leading-[1.125rem] [&>*:first-child]:mr-1 [&>*:first-child]:inline-flex [&>*:first-child]:align-middle ${KEEP_WORDS_CLASS}`} data-testid="best-sale-city">
           <PortFlag code={sale.port} /> <span data-testid="best-sale-city-name">{city}</span>
         </span>
         <span className={tail}>

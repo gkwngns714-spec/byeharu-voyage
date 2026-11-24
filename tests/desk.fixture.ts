@@ -23,9 +23,15 @@ export async function openMarket(page: Page): Promise<Locator> {
 
 /** A fleet's sheet over HQ (her row's press): where she is, her cargo, her route, her orders, her map, her ship. */
 export async function openFleetSheet(page: Page, fleet?: string): Promise<Locator> {
-  const row = fleet ? page.locator(`[data-testid="hq-fleet"][data-fleet="${fleet}"]`) : page.getByTestId('hq-fleet').first()
-  await row.getByTestId('hq-fleet-press').click()
+  // her worker row (H1): where the world serves no fleet jobs its press is her sheet; where it does, an idle fleet's press is Assign
+  // and a working one's her worker sheet, and each has the Ship door to her sheet
+  const row = fleet ? page.locator(`[data-testid="corp-worker"][data-worker="${fleet}"]`) : page.locator('[data-testid="corp-worker"][data-kind="fleet"]').first()
+  await expect(row).toBeVisible({ timeout: 120_000 })
+  await row.click()
   const sheet = page.getByTestId('hq-sheet-fleet')
+  const door = page.locator('[data-testid="corp-assign-ship"], [data-testid="corp-sheet-ship"]')
+  await expect(sheet.or(door).first()).toBeVisible({ timeout: 60_000 })
+  if ((await sheet.count()) === 0) await door.first().click()
   await expect(sheet).toBeVisible({ timeout: 60_000 })
   return sheet
 }

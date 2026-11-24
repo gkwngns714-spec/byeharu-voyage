@@ -4,9 +4,9 @@ import { Card, Icon, KEEP_WORDS_CLASS, LoadMeter, Note, PageSplit, Row, ScrollPa
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { ShellFrame } from '../../app/ShellFrame'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
-import { useCommandDraft } from '../../domain/order'
+import { boundFor, useCommandDraft } from '../../domain/order'
 import { MarketLeft } from '../../live/MarketLeft'
-import { PORT_PLACE, PRODUCTION_PLACE } from '../../live/cityFaces'
+import { PRODUCTION_PLACE } from '../../live/cityFaces'
 import { PortProduction } from '../../live/PortProduction'
 import { useCityKinds } from '../../live/useCityKind'
 import { useTownHall } from '../../live/useTownHall'
@@ -198,7 +198,14 @@ export function CityScreen() {
   // or where she is bound), else the house's — `housePortCode` is domain/fleet's one answer.
   const explicit = params.get('port')
   const draftPort = fleets.find((f) => f.id === draftFleetId)
-  const code = explicit ?? (draftPort ? fleetPortCode(draftPort) : null) ?? housePortCode(fleets)
+  // UNDER WAY IT IS HER DESTINATION, never a stop on the way (H3, 2026-11-24; tests/trade.flow.spec.ts T3): the last harbour of the
+  // SAILs that follow her leg (domain/order `boundFor`), as the Trade desk read it. `fleetPortCode` alone is the end of the leg she is on.
+  // (`boundFor` is null for a fleet not under way.) With no fleet in hand it is the house's answer (`housePortCode`: a fleet
+  // alongside first), and a fleet under way stands in by her destination too.
+  const destOf = (f: FleetView) => boundFor(f, (c) => portByCode[c] !== undefined) ?? fleetPortCode(f)
+  const alongside = fleets.some((f) => whereabouts(f).kind === 'docked')
+  const house = alongside ? housePortCode(fleets) : (fleets.map(destOf).find((c) => c !== null) ?? null)
+  const code = explicit ?? (draftPort ? destOf(draftPort) : null) ?? house
   const port = code ? (portByCode[code] ?? null) : null
 
   const gate = (body: ReactNode) => (
@@ -320,7 +327,7 @@ function CityBody({
 
   // WHICH PLACE IS OPEN — the Town Hall until a tile is pressed.
   // `?place=production` is the door the desk's Production tab and every old Storage link goes through.
-  const [selected, setSelected] = useState<CitySelection>(params.get('place') === PRODUCTION_PLACE ? PRODUCTION_PLACE : params.get('place') === PORT_PLACE ? PORT_PLACE : 'hall')
+  const [selected, setSelected] = useState<CitySelection>(() => CITY_TILES.find((b) => b.id === params.get('place'))?.id ?? 'hall')
 
   return (
     <CityFrame

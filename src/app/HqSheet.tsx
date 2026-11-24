@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { DetailPage, Note, SummaryRow, useBackLayer } from '../components/ui'
+import { Button, DetailPage, Note, SummaryRow, useBackLayer } from '../components/ui'
 import { alongsideAt, fleetCargoByCode, fleetPortCode } from '../domain/fleet'
 import { useCommandDraft } from '../domain/order'
 import { buildingTier, hasBuilding } from '../domain/port'
@@ -18,6 +18,7 @@ import { portNameOf, useWorld } from '../live/worldStore'
 import type { FleetView, SnapshotPort } from '../lib/rpc'
 import { useT } from '../lib/i18n'
 import { useYardAsk } from '../live/yardAsk'
+import { clearFleetJob, litAway, useAwayReport, useJobEdits } from '../live/useAwayReport'
 import type { DeskLayout } from '../features/command/deskLayout'
 import { Invest } from '../features/command/invest/Invest'
 import { Report } from '../features/command/report/Report'
@@ -226,6 +227,16 @@ function FleetSheet({ fleet, route, onClose }: { fleet: FleetView; route: boolea
   const clearQueue = useWorld((s) => s.clear)
   const [pick, setPick] = useState<OrderPick | null>(null)
   const [map, setMap] = useState(false)
+  // HER ASSIGNMENT (H3, with H1's Assign): Change opens the one Assign sheet for her, Stop clears her standing job. Drawn only
+  // while the world serves fleet jobs (a dark world assigns nothing).
+  const away = litAway(useAwayReport().view)
+  const job = away?.jobs.find((j) => j.fleet === fleet.id) ?? null
+  const jobKey = `sheet:${fleet.id}`
+  const jobPending = useJobEdits((s) => s.pending !== null)
+  // THE TRIP IN HAND ON HER MAP: the trip last opened in the trade sheet (plans/planDraft.ts, the one draft) is drawn on her map
+  // until an order is pressed, as the desk's map drew it. Read only while her map is open.
+  const draft = useDeskPlan((s) => s.plan)
+  const trip = useTripBoard(fleet, map ? draft : null)
   // a harbour pressed on her map is ringed, and the map glides to it (the press count: a second press on it glides again)
   const [ringed, setRinged] = useState<{ code: string; n: number } | null>(null)
   const routeRow = (
@@ -237,6 +248,16 @@ function FleetSheet({ fleet, route, onClose }: { fleet: FleetView; route: boolea
     <DetailPage title={fleet.name} onClose={onClose} data-testid="hq-sheet-fleet">
       <PageBody>
         <TradeStatus fleet={fleet} />
+        {away && (
+          <div className="mb-4 grid grid-cols-2 gap-2" data-testid="hq-sheet-fleet-job" data-job={job?.kind ?? ''}>
+            <Button variant="primary" onClick={() => openHq({ sheet: 'assign', worker: fleet.id })} data-testid="hq-sheet-fleet-change">
+              {job ? t('corp.change') : t('corp.assign')}
+            </Button>
+            <Button variant="secondary" busy={jobPending} disabled={jobPending || !job} onClick={() => void clearFleetJob(fleet.id, jobKey)} data-testid="hq-sheet-fleet-stop">
+              {t('corp.stop')}
+            </Button>
+          </div>
+        )}
         {route && routeRow}
         <h2 className="pb-1 text-t-caption text-ink-faint">{t('hq.cargo')}</h2>
         <CargoBest fleet={fleet} city={null} picked={null} onPress={(city, good) => openHq({ sheet: 'trade', port: city, fleet: fleet.id, good, side: 'sell' })} />
@@ -254,7 +275,7 @@ function FleetSheet({ fleet, route, onClose }: { fleet: FleetView; route: boolea
         <ShipInfo fleet={fleet} />
         {map && (
           <DetailPage title={t('shell.tab_Map')} word={fleet.name} onClose={() => setMap(false)} data-testid="hq-sheet-fleet-map-page">
-            <TradeMap fleet={fleet} plan={null} pick={pick} onClose={() => setPick(null)} scrollOnPick={false} city={ringed?.code ?? fleetPortCode(fleet)} onCity={(code) => setRinged((r) => ({ code, n: (r?.n ?? 0) + 1 }))} goTo={ringed} />
+            <TradeMap fleet={fleet} plan={trip.drawing} pick={pick} onClose={() => setPick(null)} scrollOnPick={false} city={ringed?.code ?? fleetPortCode(fleet)} onCity={(code) => setRinged((r) => ({ code, n: (r?.n ?? 0) + 1 }))} goTo={ringed} />
           </DetailPage>
         )}
       </PageBody>

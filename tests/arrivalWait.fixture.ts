@@ -45,9 +45,9 @@ export const LANDING_TEST_TIMEOUT_MS = LANDS_WITHIN_MS + 300_000
 
 const oneLine = (s: string) => s.replace(/\s+/g, ' ').trim()
 
-/** The places a page says where a fleet is: the Trade status line (PR #600), a fleet's row (Fleets), her HQ row's
- *  job line, the queue's passage line. */
-const VOYAGE_WORDS = ['trade-status', 'fleet-row', 'hq-fleet-job', 'queue-passage'] as const
+/** The places a page says where a fleet is: the Trade status line (PR #600), a fleet's row (Fleets), her HQ worker row's
+ *  action line, the queue's passage line. */
+const VOYAGE_WORDS = ['trade-status', 'fleet-row', 'corp-worker-action', 'queue-passage'] as const
 
 /** What THIS page says about the voyage, as it stands now: every line that names where she is, or that it has none. */
 export async function voyageWords(page: Page): Promise<string> {

@@ -98,7 +98,15 @@ export function AssignSheet({ ask, onClose }: { ask: AssignAsk; onClose: () => v
           <Skeleton className="h-28 w-full" />
         )
       ) : fleet && jobs ? (
-        <SeaAssign ask={ask} fleet={fleet} names={names} home={land?.home.port ?? null} haul={land !== null} />
+        <>
+          <SeaAssign ask={ask} fleet={fleet} names={names} home={land?.home.port ?? null} haul={land !== null} />
+          {/* H3: an idle fleet's row opens this sheet, so her own sheet (cargo and where it sells, route, orders, map, ship) has its door here */}
+          <div className="mx-auto mt-4 w-full max-w-2xl">
+            <Button variant="quiet" onClick={() => openHq({ sheet: 'fleet', fleet: fleet.id })} data-testid="corp-assign-ship">
+              {t('corp.ship')}
+            </Button>
+          </div>
+        </>
       ) : (
         <Skeleton className="h-28 w-full" />
       )}

@@ -189,12 +189,14 @@ async function snapshot(page: Page): Promise<Snapshot> {
 }
 
 /** Every law that applies to any screen or page, as a list of failures (all of them, not the first). */
-function violations(s: Snapshot, where: string, opts: { dashes?: boolean } = {}): string[] {
+function violations(s: Snapshot, where: string, opts: { dashes?: boolean; over?: boolean } = {}): string[] {
   const out: string[] = []
   if (s.doc.sw > s.doc.cw + 1) out.push(`${where}: the document scrolls sideways ${s.doc.sw}/${s.doc.cw}`)
   if (s.doc.sh > s.doc.ch + 1) out.push(`${where}: the document scrolls down ${s.doc.sh}/${s.doc.ch}`)
   if (s.sheet !== null) {
-    if (s.sheet.top > 0) out.push(`${where}: the Sheet is already scrolled on arrival`)
+    // (`over`: a page opened OVER the screen by a press on it. The screen under it stands where the press left it, by S1's law
+    // (tests/hq.inplace.spec.ts): its scroll is the player's, not an arrival's. The page's own scroll is `pageRoot`'s law below.)
+    if (s.sheet.top > 0 && !opts.over) out.push(`${where}: the Sheet is already scrolled on arrival`)
     if (s.sheet.sh > s.sheet.ch + 1 && !s.sheet.page) out.push(`${where}: the Sheet scrolls ${s.sheet.sh}/${s.sheet.ch}`)
   }
   if (s.pageRoot !== null) {
@@ -439,7 +441,7 @@ for (const size of SIZES) {
           await page.getByTestId(`city-office-${face}`).click()
           await expect(page.getByTestId(`hq-sheet-${face}`)).toBeVisible({ timeout: 60_000 })
           await page.waitForTimeout(400)
-          failures.push(...violations(await snapshot(page), `${size.width} hq/${face}`))
+          failures.push(...violations(await snapshot(page), `${size.width} hq/${face}`, { over: true }))
           await closeTop(page)
           await expect(page.getByTestId(`hq-sheet-${face}`)).toHaveCount(0)
         }

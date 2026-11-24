@@ -11,6 +11,8 @@ import { useBoard } from '../board/useBoard'
 import { LedgerArea } from './LedgerArea'
 import { WarehouseArea } from './WarehouseArea'
 import { WorkerList } from './WorkerList'
+import { FirstVoyageLine } from '../../../live/FirstVoyageLine'
+import { GoalCard } from '../../../live/GoalCard'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE COMPANY ON HQ, IN ONE ORDER (docs/design/hq-corp-2026-11-24.md C1; the join of H1 and H2, 2026-11-24)
@@ -41,6 +43,12 @@ export function HqCompany({ port }: { port: SnapshotPort | null }) {
   return (
     <div className="flex flex-col gap-6" data-testid="hq-company">
       <Bridge board={board} />
+      {/* H3 (simplify S3): the goal card (the second ship, the ladder's step and its one press) and the starter chain's step stood over
+          the Trade desk, which is gone; they stand under the Rank strip */}
+      <div className="flex flex-col gap-2" data-testid="hq-goal">
+        <GoalCard />
+        <FirstVoyageLine />
+      </div>
       {sea?.open.map((c) => <SeaChoiceCard key={c.id} c={c} />)}
       {away && <JobsAway report={away} sea={sea?.recent ?? []} />}
       <WorkerList />

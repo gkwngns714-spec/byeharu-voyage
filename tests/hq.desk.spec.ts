@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { ready, reachable } from './appReady.fixture'
 import { toPlaces } from './hqPlaces.fixture'
+import { openFleetSheet } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // H3 `desk-into-hq` (2026-11-24; docs/design/hq-corp-2026-11-24.md H3, simplify-2026-11-24.md S3)
@@ -15,7 +16,7 @@ import { toPlaces } from './hqPlaces.fixture'
 //
 //   THE TRADE DESK (/command)                          NOW
 //   goal card, the starter chain's step                HQ, under the bridge (`hq-goal`)
-//   the fleet in hand, where she is (strip, status)    HQ's fleet row > her sheet (`trade-status`)
+//   the fleet in hand, where she is (strip, status)    HQ's worker row > her sheet (`trade-status`)
 //   the goods board: Buy / Sell, the best sale         HQ > Market plate (`trade-good`, `best-sale`)
 //   the city chips (read another city)                 HQ > Market plate (`city-chips`); the chart beside it follows
 //   From here                                          HQ > Market plate (`from-here`, while she lies there)
@@ -24,7 +25,7 @@ import { toPlaces } from './hqPlaces.fixture'
 //   Your cargo (the sell face, with profit)            her sheet (`cargo-best`)
 //   the route                                          her sheet (`route-row`)
 //   Orders, insured voyages, her ship                  her sheet (`queue`, `buy-ship`)
-//   the Map of her orders                              her sheet > Map (`trade-map`)
+//   the Map of her orders, and of the trip in hand     her sheet > Map (`trade-map`; tests/trade.map.spec.ts)
 //
 //   THE OFFICE (/office)                               NOW
 //   City > Market (trade, or prices when away)         HQ > Market plate
@@ -90,7 +91,7 @@ for (const size of SIZES)
       reached.push('desk: goal card')
 
       // her sheet: where she is, her cargo, her route, her orders, her ship, her map
-      await page.getByTestId('hq-fleet-press').first().click()
+      await openFleetSheet(page)
       await seen('desk: the fleet in hand, her status', 'trade-status')
       await expect(page.getByTestId('hq-sheet-fleet').locator('[data-testid^="cargo-best"]').first(), 'Your cargo').toBeVisible()
       reached.push('desk: Your cargo')

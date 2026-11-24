@@ -22,7 +22,7 @@ for (const size of [PHONE, { width: 1280, height: 800 }]) {
     // (2026-11-23, the visual overhaul's slice 2: the Office's faces are HQ's doors, X2; the Account is You's foot, X4)
     expect(labels).toEqual(onRail ? ['HQ', 'Fleets', 'Map', 'You', 'Stats', 'Menu'] : ['HQ', 'Fleets', 'Map', 'Menu'])
     await expect(page.getByTestId('city-screen'), 'the landing screen is not HQ').toBeVisible({ timeout: 120_000 })
-    await expect(page.getByTestId('hq-fleet').first(), 'no fleet row on the landing screen').toBeVisible({ timeout: 120_000 })
+    await expect(page.getByTestId('corp-worker').first(), 'no fleet row on the landing screen').toBeVisible({ timeout: 120_000 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'sideways scroll').toBe(true)
 
     // ONE PLACE PER DESTINATION: the rail's own cells are not in its Menu; the phone's Menu holds all five (Stats, History, Rank,
