@@ -1,14 +1,15 @@
 import { Bar, Countdown, Icon, KEEP_WORDS_CLASS, Portrait } from '../../../components/ui'
 import { useT } from '../../../lib/i18n'
 import { ShipPicture } from '../../../live/ShipPicture'
-import { actionWord, figureWord, stateWord, type ActionNames, type WorkerRow as Row } from './workerRows'
+import { actionWord, figureWord, rateWords, stateWord, type ActionNames, type WorkerRow as Row } from './workerRows'
 
 // ONE WORKER, ONE ROW, ONE FIXED HEIGHT (docs/design/hq-corp-2026-11-24.md C1, C2; slice H1): her picture (her ship with her
 // captain's face, or the party's pick), her name, her action in a few words, a progress bar to the next completion with its clock,
-// the served figures there are today (the party's terms; a counted job's runs left), and her state. Her job's tally since she was
-// away is While away's, said once there. The whole row is ONE press: an idle worker's opens Assign (the gold edge, "you
-// may act"); any other opens her sheet. The row is the same height idle, working and stopped, so a press never re-flows the list.
-// NO PER-HOUR FIGURE: coin an hour and XP an hour arrive with 0495's `world.workers()`.
+// COIN AN HOUR AND XP AN HOUR AS world.workers() SERVES THEM (0496), a counted job's runs left, and her state. A rate the server does
+// not serve is not drawn (`basis` none: a fixed run before two whole runs of hers; the Best run), and none is worked out here. Her
+// job's tally since she was away is While away's, said once there; the party's terms are her sheet's. The whole row is ONE press: an
+// idle worker's opens Assign (the gold edge, "you may act"); any other opens her sheet. The row is the same height idle, working and
+// stopped, so a press never re-flows the list.
 
 /** The row's height, on a phone and from `lg`: every state's. */
 const HEIGHT = 'h-[104px] lg:h-[72px]'
@@ -28,6 +29,8 @@ export function WorkerRow({ row, names, nowMs, onPress }: { row: Row; names: Act
   const act = idle && row.assignable
   const name = row.name ?? t('corp.party')
   const state = t(stateWord(row))
+  const rate = rateWords(row.rates, t)
+  const left = row.figures.find((f) => f.key === 'left') ?? null
   return (
     <button
       type="button"
@@ -37,6 +40,7 @@ export function WorkerRow({ row, names, nowMs, onPress }: { row: Row; names: Act
       data-worker={row.id}
       data-kind={row.kind}
       data-state={row.state}
+      data-waiting={row.waiting}
       data-action={row.action.kind}
     >
       <span className="flex min-w-0 items-center gap-3 lg:w-[28rem] lg:shrink-0">
@@ -81,15 +85,28 @@ export function WorkerRow({ row, names, nowMs, onPress }: { row: Row; names: Act
         <span className="w-14 shrink-0 text-right text-t-caption tabular-nums text-ink-muted" data-testid="corp-worker-clock">
           {row.bar && <Countdown untilMs={row.bar.toMs} nowMs={nowMs} />}
         </span>
-        <span className="flex shrink-0 items-center justify-end gap-3 text-t-caption tabular-nums text-ink lg:w-44" data-testid="corp-worker-figures">
-          {row.figures.map((f) => {
-            const w = figureWord(f)
-            return (
-              <span key={f.key} title={t(w.word)} aria-label={`${t(w.word)} ${w.text}`} data-figure={f.key} className={f.key === 'earned' ? (f.value < 0 ? 'text-danger' : 'text-success') : ''}>
-                {f.key === 'xp' ? `${w.text} ${t('corp.xp')}` : f.key === 'left' ? t('corp.leftN', { n: w.text }) : w.text}
-              </span>
-            )
-          })}
+        <span
+          className="flex shrink-0 items-center justify-end gap-3 text-t-caption tabular-nums text-ink lg:w-52"
+          data-testid="corp-worker-figures"
+          data-basis={row.rates?.basis}
+          data-per-hour={row.rates?.perHour ?? undefined}
+          data-xp-hour={row.rates?.xpPerHour ?? undefined}
+        >
+          {left && (
+            <span title={t(figureWord(left).word)} data-figure="left">
+              {t('corp.leftN', { n: figureWord(left).text })}
+            </span>
+          )}
+          {rate.coin !== null && (
+            <span className={(row.rates?.perHour ?? 0) < 0 ? 'text-danger' : 'text-success'} data-testid="corp-worker-rate">
+              {rate.coin}
+            </span>
+          )}
+          {rate.xp !== null && (
+            <span className="text-ink-muted" data-testid="corp-worker-xp">
+              {rate.xp}
+            </span>
+          )}
         </span>
       </span>
     </button>

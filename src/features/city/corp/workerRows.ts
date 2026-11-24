@@ -1,30 +1,32 @@
 import { useMemo } from 'react'
-import { fleetSignal } from '../../../domain/fleet'
 import { formatDucatsDelta, formatInt, formatRealShort, instantMs } from '../../../lib/format'
-import { properName, translateMaybe, type TKey } from '../../../lib/i18n'
-import { worldLand, type FleetJobRow, type FleetView, type LandView } from '../../../lib/rpc'
+import { properName, type TKey } from '../../../lib/i18n'
+import { worldLand, type ActionBasis, type FleetJobRow, type FleetView, type LandView, type WorkerAction as ServedAction, type WorkerRow as ServedRow } from '../../../lib/rpc'
 import { litAway, useAwayReport } from '../../../live/useAwayReport'
 import { useServedRead } from '../../../live/useServedRead'
+import { litWorkers, useWorkersRead } from '../../../live/useWorkers'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE ONE ADAPTER FROM SERVED READS TO WORKER ROWS (docs/design/hq-corp-2026-11-24.md A2, C1; slice H1)
+// THE ONE ADAPTER FROM THE SERVED WORKER LIST TO HQ'S ROWS (docs/design/hq-corp-2026-11-24.md A2, C1; 0496)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // A WORKER is one "character slot": a fleet (with her captain, if one is seated) or the land party. Each is on ONE action, and HQ lists
-// them all on one screen. Every row is made HERE, from three reads that exist today, and nothing is worked out:
-//   world.fleets        her fleets: where each is (domain/fleet's one where-rule), the voyage under way and its two served stamps;
-//   world.away_report   0481, lit: each fleet's standing job, its state, the runs it started and the coin her fleet made since she last
-//                       read the report (dark: null, and no job is drawn);
-//   world.land          0455, lit: the party's job, its frozen terms (units a trip, the trip, XP a turn) and when it is home next
-//                       (dark: null, and no party row is drawn).
-// A JOB'S TALLY (its runs, her fleet's coin since she last read the report) is carried for her SHEET; on HQ's page it stands once, in
-// While away, and her row does not repeat it.
-// NO RATE IS COMPUTED HERE: coin an hour and XP an hour arrive with 0495's `world.workers()`, and until then a row shows the served
-// figures above and no per-hour figure. A progress bar's two ends are served stamps; the row draws between them.
+// them all on one screen. EVERY ROW IS world.workers()' ROW (0496: live/useWorkers.ts): who she is, her state, her action in the one
+// shape, the two served stamps of her bar, why she stopped, and COIN AN HOUR AND EXPERIENCE AN HOUR AS SERVED. Nothing is worked out
+// here: a rate the server did not serve (`basis` none: a fixed run before two whole runs of hers; the Best run, whose every run is
+// another sale) is not drawn, and none is made up from other figures.
+// THE CLIENT SHIPS AFTER 0496, so the rows are no longer put together from world.away_report and world.land: that adapter is deleted.
+// Three older reads stay, each for what world.workers does not serve:
+//   world.fleets        her picture: the flagship's class and the captain seated in her ships;
+//   world.away_report   While away's own read (0481): a job's tally and its last run for HER SHEET, and whether standing jobs are lit;
+//   world.land          the Land's names (a land's name: the action carries its code).
 
 /** The land party's id as a worker (a fleet's is her own id). */
 export const PARTY = 'party'
+
+/** The id world.actions takes for a worker of HQ (`fleet:<uuid>` | `party:<n>`). */
+export const servedId = (worker: string): string => (worker === PARTY ? 'party:1' : `fleet:${worker}`)
 
 export type WorkerState = 'idle' | 'stopped' | 'working'
 
@@ -38,9 +40,8 @@ export type WorkerAction =
   | { kind: 'fixed'; good: string; buy: string; sell: string; end: 'sell' | 'store' }
   /** 0481 `land`: she carries the Land's goods to a yard. */
   | { kind: 'haul'; to: string | null }
-  /** No standing job: a voyage sent by hand, or orders queued in port. */
+  /** No standing job: a voyage sent by hand. */
   | { kind: 'sail'; to: string | null }
-  | { kind: 'orders' }
   /** The party's job: the good, and the land it is worked on (null: at home). */
   | { kind: 'land'; good: string; region: string | null }
 
@@ -48,6 +49,14 @@ export type WorkerAction =
 export interface WorkerFigure {
   key: 'runs' | 'earned' | 'left' | 'units' | 'trip' | 'xp'
   value: number
+}
+
+/** The served rates of her action (0496): each null when the server serves none. */
+export interface WorkerRates {
+  perHour: number | null
+  xpPerHour: number | null
+  /** Where they come from: her own runs, a quote, a land job's terms, or nothing yet. */
+  basis: ActionBasis
 }
 
 export interface WorkerRow {
@@ -61,6 +70,9 @@ export interface WorkerRow {
   action: WorkerAction
   /** The two served stamps the progress bar is drawn between, or null (nothing under way). */
   bar: { fromMs: number; toMs: number } | null
+  /** Her action's rates as served; null while she has no action. */
+  rates: WorkerRates | null
+  /** The served figures HER SHEET lists (the party's units a trip, its trip and its experience; a counted job's runs left). */
   figures: WorkerFigure[]
   /** WHAT HER STANDING JOB DID since she last read While away (its runs, her fleet's coin). Her SHEET's figures: on HQ's page these
    *  stand once, in While away (board/JobsAway.tsx), so her row does not print them. */
@@ -78,88 +90,76 @@ export interface WorkerRow {
 export type LitLand = Extract<LandView, { company: true }>
 export type LitJobs = ReadonlyMap<string, FleetJobRow>
 
-function fleetRow(f: FleetView, jobs: LitJobs | null): WorkerRow {
-  const job = jobs?.get(f.id) ?? null
-  const v = f.voyage
-  const from = v ? instantMs(v.departed_at) : null
-  const to = v ? instantMs(v.eta) : null
-  const bar = from !== null && to !== null && to > from ? { fromMs: from, toMs: to } : null
-  const seat = f.ships.flatMap((s) => s.seats?.list ?? []).find((s) => s.captain !== null)?.captain ?? null
-  const base = {
-    id: f.id,
-    kind: 'fleet' as const,
-    name: f.name,
-    bar,
-    assignable: jobs !== null,
-    hull: f.ships[0]?.class_code ?? null,
-    captain: seat ? { code: seat.code, name: seat.name, grade: seat.grade } : null,
-  }
-  if (job) {
-    const p = job.params
-    const action: WorkerAction =
-      job.kind === 'best'
-        ? { kind: 'best' }
-        : job.kind === 'fixed' && p.good && p.buy && p.sell
-          ? { kind: 'fixed', good: p.good, buy: p.buy, sell: p.sell, end: p.end === 'store' ? 'store' : 'sell' }
-          : job.kind === 'land'
-            ? { kind: 'haul', to: p.to ?? null }
-            : { kind: 'none' }
-    return {
-      ...base,
-      state: job.state === 'stopped' ? 'stopped' : 'working',
-      waiting: job.state === 'waiting',
-      action,
-      // 0492: a job of a set number of runs says how many are still to start (served)
-      figures: typeof p.left === 'number' ? [{ key: 'left', value: p.left }] : [],
-      tally: [
-        { key: 'runs', value: job.runs },
-        { key: 'earned', value: job.earned },
-      ],
-      // the server's sentence, else its code's plain words (dict/codes.ts); never the code itself
-      why: job.state === 'stopped' ? (job.last?.sentence ?? (job.paused ? translateMaybe('en', 'codes', job.paused) : null)) : null,
-    }
-  }
-  // no standing job: where she is, by the one where-rule (domain/fleet `fleetSignal`)
-  const signal = fleetSignal(f)
-  const state: WorkerState = signal === 'stuck' ? 'stopped' : signal === 'sailing' || f.queue.length > 0 ? 'working' : 'idle'
-  const action: WorkerAction = signal === 'sailing' ? { kind: 'sail', to: v?.to ?? null } : state === 'working' ? { kind: 'orders' } : { kind: 'none' }
-  return { ...base, state, waiting: false, action, figures: [], tally: [], why: null }
+/** Her action as the row says it, from the served shape. */
+function actionOf(a: ServedAction | null, w: ServedRow): WorkerAction {
+  if (!a) return w.kind === 'fleet' && w.worker_state === 'sea' ? { kind: 'sail', to: w.progress?.to_port ?? null } : { kind: 'none' }
+  if (a.id === 'sea:best') return { kind: 'best' }
+  if (a.id.startsWith('sea:fixed:') && a.good && a.buy && a.sell) return { kind: 'fixed', good: a.good, buy: a.buy, sell: a.sell, end: a.end === 'store' ? 'store' : 'sell' }
+  if (a.id.startsWith('sea:haul:')) return { kind: 'haul', to: a.sell ?? null }
+  if (a.id.startsWith('land:') && a.good) return { kind: 'land', good: a.good, region: a.home ? null : (a.region ?? null) }
+  return { kind: 'none' }
 }
 
-function partyRow(land: LitLand): WorkerRow {
-  const p = land.party
-  const pr = p.progress
-  const terms = p.terms
-  const out = p.action !== null && terms !== null
-  // the trip under way ends at the served `next_home_at` and lasts the frozen terms' `trip`; called home, it is home at `home_at`
-  const homeAt = out ? instantMs(pr.state === 'returning' ? pr.home_at : pr.next_home_at) : null
-  const fromMs = homeAt === null || !terms ? null : pr.state === 'returning' ? instantMs(land.now) : homeAt - terms.trip * 1000
+/** The served figures of her action that are not rates. */
+function figuresOf(a: ServedAction | null): WorkerFigure[] {
+  if (!a) return []
+  const out: WorkerFigure[] = []
+  if (typeof a.left === 'number') out.push({ key: 'left', value: a.left })
+  if (a.id.startsWith('land:')) {
+    const units = a.outputs.items[0]?.units
+    if (typeof units === 'number') out.push({ key: 'units', value: units })
+    if (a.interval_s !== null) out.push({ key: 'trip', value: a.interval_s })
+    const xp = a.xp[0]?.xp
+    if (typeof xp === 'number') out.push({ key: 'xp', value: xp })
+  }
+  return out
+}
+
+/** One row of HQ from one row of world.workers(). `fleet`: her fleet as world.fleets serves it (her picture); `job`: her standing job
+ *  as While away reads it (her sheet's tally); `lit`: standing jobs are lit on this server. */
+function rowOf(w: ServedRow, fleet: FleetView | null, job: FleetJobRow | null, lit: boolean): WorkerRow {
+  const a = w.action
+  const from = w.progress?.from ? instantMs(w.progress.from) : null
+  const to = w.progress?.to ? instantMs(w.progress.to) : null
+  const seat = fleet?.ships.flatMap((s) => s.seats?.list ?? []).find((s) => s.captain !== null)?.captain ?? null
+  // no action: she is idle unless her ONE state (public.fleet_state, served) says she sails or cannot act
+  const state: WorkerState =
+    w.state === 'stopped'
+      ? 'stopped'
+      : w.state !== 'idle'
+        ? 'working'
+        : w.kind === 'fleet' && w.worker_state === 'sea'
+          ? 'working'
+          : w.kind === 'fleet' && w.worker_state !== 'port'
+            ? 'stopped'
+            : 'idle'
   return {
-    id: PARTY,
-    kind: 'party',
-    name: null,
-    state: !out ? 'idle' : pr.stopped ? 'stopped' : 'working',
-    waiting: false,
-    action: out && p.good ? { kind: 'land', good: p.good, region: terms.home ? null : p.region } : { kind: 'none' },
-    bar: homeAt !== null && fromMs !== null && homeAt > fromMs ? { fromMs, toMs: homeAt } : null,
-    figures: out
+    id: w.kind === 'fleet' ? (w.fleet ?? w.id.replace(/^fleet:/, '')) : PARTY,
+    kind: w.kind,
+    name: w.kind === 'fleet' ? w.name : null,
+    state,
+    waiting: w.state === 'waiting',
+    action: actionOf(a, w),
+    bar: from !== null && to !== null && to > from ? { fromMs: from, toMs: to } : null,
+    rates: a ? { perHour: a.per_hour, xpPerHour: a.xp_per_hour, basis: a.basis } : null,
+    figures: figuresOf(a),
+    tally: job
       ? [
-          { key: 'units', value: terms.p },
-          { key: 'trip', value: terms.trip },
-          { key: 'xp', value: terms.xp },
+          { key: 'runs', value: job.runs },
+          { key: 'earned', value: job.earned },
         ]
       : [],
-    tally: [],
-    assignable: true,
-    hull: null,
-    captain: null,
-    why: null,
+    assignable: w.kind === 'party' || lit,
+    hull: fleet?.ships[0]?.class_code ?? null,
+    captain: seat ? { code: seat.code, name: seat.name, grade: seat.grade } : null,
+    why: w.stop?.sentence ?? null,
   }
 }
 
 /** Every worker of hers, in the served order (her fleets by their founding, then the party). */
-export function workerRows(fleets: readonly FleetView[], jobs: LitJobs | null, land: LitLand | null): WorkerRow[] {
-  return [...fleets.map((f) => fleetRow(f, jobs)), ...(land ? [partyRow(land)] : [])]
+export function workerRows(served: readonly ServedRow[], fleets: readonly FleetView[], jobs: LitJobs | null): WorkerRow[] {
+  const byId = new Map(fleets.map((f) => [f.id, f]))
+  return served.map((w) => rowOf(w, w.fleet ? (byId.get(w.fleet) ?? null) : null, w.fleet ? (jobs?.get(w.fleet) ?? null) : null, jobs !== null))
 }
 
 const ORDER: Record<WorkerState, number> = { idle: 0, stopped: 1, working: 2 }
@@ -195,8 +195,6 @@ export function actionWord(a: WorkerAction, t: (key: TKey) => string, n: ActionN
       return a.to ? `${t('corp.haul')} · ${n.port(a.to)}` : t('corp.haul')
     case 'sail':
       return a.to ? `${t('corp.sailing')} · ${n.port(a.to)}` : t('corp.sailing')
-    case 'orders':
-      return t('corp.orders')
     case 'land':
       return `${n.good(a.good)} · ${n.region(a.region)}`
     case 'none':
@@ -222,23 +220,36 @@ export function figureWord(f: WorkerFigure): { word: TKey; text: string } {
   }
 }
 
-/** The Land's one read for HQ (world.land of Mining, the read the Land tab keeps): lit for her company, else null. */
+/** Served rates as the row and the sheets draw them, each null where the server serves none (`basis` none; a null figure; and the
+ *  nought of coin of work that moves no coin, the Land's `terms`). The figures are the server's: only their words are made here. */
+export function rateWords(r: WorkerRates | null, t: (key: TKey, vars?: Record<string, string | number>) => string): { coin: string | null; xp: string | null } {
+  if (!r || r.basis === 'none') return { coin: null, xp: null }
+  return {
+    coin: r.perHour !== null && !(r.basis === 'terms' && r.perHour === 0) ? t('corp.perHour', { n: formatDucatsDelta(r.perHour) }) : null,
+    xp: r.xpPerHour !== null ? t('corp.xpHour', { n: formatInt(r.xpPerHour) }) : null,
+  }
+}
+
+/** The Land's names for HQ (world.land of Mining, the read the Land tab keeps): lit for her company, else null. world.workers and
+ *  world.actions serve a land's CODE; its name is this catalogue's. */
 export function useCorpLand(): { land: LitLand | null; loading: boolean } {
   const read = useServedRead<LandView>('land:mining', () => worldLand('mining'), { name: 'worldLand' })
   const v = read.view
   return { land: v && v.enabled && v.company ? v : null, loading: read.loading }
 }
 
-/** Her workers, from the three reads; `ready` once each has answered (so the list is ordered once, on what is true). */
+/** Her workers, from world.workers(); `ready` once it has answered (so the list is ordered once, on what is true). */
 export function useWorkers(): { rows: WorkerRow[]; jobs: LitJobs | null; land: LitLand | null; ready: boolean; names: ActionNames } {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
+  const read = useWorkersRead()
+  const served = litWorkers(read.view)
   const awayRead = useAwayReport()
   const away = litAway(awayRead.view)
   const jobs = useMemo<LitJobs | null>(() => (away ? new Map(away.jobs.map((j) => [j.fleet, j])) : null), [away])
-  const { land, loading } = useCorpLand()
-  const rows = useMemo(() => workerRows(fleets, jobs, land), [fleets, jobs, land])
+  const { land } = useCorpLand()
+  const rows = useMemo(() => workerRows(served?.workers ?? [], fleets, jobs), [served, fleets, jobs])
   const names = useMemo<ActionNames>(
     () => ({
       good: (code) => properName('good', code, goodByCode[code]?.name ?? code),
@@ -247,5 +258,5 @@ export function useWorkers(): { rows: WorkerRow[]; jobs: LitJobs | null; land: L
     }),
     [goodByCode, portByCode, land],
   )
-  return { rows, jobs, land, ready: !awayRead.loading && !loading, names }
+  return { rows, jobs, land, ready: !read.loading && !awayRead.loading, names }
 }
