@@ -1,23 +1,23 @@
 -- 0495 DIVIDENDS ARE PAID EVERY HOUR, AFTER; ALSO THE 30-MINUTE LIT CHECK. A PROD CHECK: read-only, ONE statement. The gate first.
 --   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/dividend-hourly/after-0495.sql
 -- Expect, AS DEPLOYED (dark): head 20260818000495; switch false; new_fns 3, client_reach false (none callable by public, anon,
---   authenticated or service_role); new_columns 3; bodies = the chain's world at 0495: tick_city 6c53de13b5b7a60006a34943a14ba01d,
---   city_coupons 6498d838a4f6211157a5124edb8cce7b, city_coupon_hour 69922196a5258f4130b46bb3001f29ca,
---   dividend_hourly_on 0de43cb4426162829bce8db689e2a032, real_hour d146b7f9014a5e849fe0aa2383b7ec17;
---   hourly_state: stamped 0, rings 0, owed_houses 0 (dark writes none of the columns); dividend_2h: ledger rows as before (arrivals that collect).
--- LIT (read after the first :37 run that follows the owner lighting dividend_hourly_enabled, and again 30 minutes later):
---   hourly_state.stamped = harbours and newest_hour = `hour` (every harbour's hour closed); rings = harbours;
---   owed_houses small and not growing (a holder skipped mid-trade, paid at the next run), owed_hours_max under 23;
---   dividend_2h: ledger rows about load.pairs of before-0495.sql an hour at most, each <= round(paid x works_coupon_day x 1.5 / 24);
---   flows_waiting: DIVIDEND flows not yet rolled (the last hour's) = -(the ledger's hourly pays of that hour); purses_under_reserve
---   no higher than before the switch; city_job: the last runs of the cron job byeharu-voyage:city, all succeeded, seconds as before
---   plus the hour's pays.
--- ROLLBACK if client_reach true, a city_job run failed or ran over 20 s, purses_under_reserve rose, dividend_2h.max_row is over the
---   bound above, or the gate goes red: dividend_hourly_enabled false (owner). The next tick then pays the daily way again, into
---   `accrued`; what was paid stays paid. Full reversal: rollback-0495.sql (a draft).
--- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, world_config by key, the catalog, port_treasury (one row a harbour),
---   ledger of kind DIVIDEND in the last 2 hours, treasury_flows (the hour's unrolled rows), cron.job_run_details (the last 6 runs of
---   one job). No function that writes is called (public.city_surplus is STABLE). ROLLBACK: nothing (read only; ends with rollback).
+--   authenticated or service_role); new_columns 3; bodies = the chain's world at 0495: tick_city 38ac4e83a8d409c312610175ffe45efc,
+--   city_coupons 5183c250b3e834440ce1d414bd0e9ee5, city_coupon_hour a823439b6062545fccd45a5ba8f226c1,
+--   dividend_hourly_on 0de43cb4426162829bce8db689e2a032, real_hour 7e8d066d91d62fe1d266788575ef303c;
+--   payout: rows_marked 0, merchants_marked 0 (dark marks nothing); dividend_2h: ledger rows as before (arrivals that collect).
+-- LIT (the owner lights dividend_hourly_enabled; nothing is paid out before the next day's coupon, the 00:37 UTC run. Read after
+--   that run and again 30 minutes later, and after the 01:37 run):
+--   payout.merchants_marked 0 ALWAYS (a merchant is never paid hourly); rows_marked = the player pairs whose city paid a coupon
+--   (at most load.pairs_players of before-0495.sql); newest_hour = `hour` after a :37 run; left_sum falls every hour by about
+--   hour_sum; over_accrued 0 or falling (a row whose holder collected at an arrival is cleared by its next hour);
+--   dividend_2h: about one ledger row a paid player an hour, each <= her hour_sum; city_job: the last runs of the cron job
+--   byeharu-voyage:city all succeeded, seconds as before.
+-- ROLLBACK if client_reach true, merchants_marked above 0, a city_job run failed or ran over 20 s, dividend_2h.rows_last_hour is
+--   above payout.players + the arrivals of that hour, or the gate goes red: dividend_hourly_enabled false (owner). Nothing more is
+--   paid out then; what is left waits in `accrued` for an arrival, as before. Full reversal: rollback-0495.sql (a draft).
+-- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, world_config by key, the catalog, city_shares (one pass) with
+--   players by id, ledger of kind DIVIDEND in the last 2 hours, cron.job_run_details (the last 6 runs of one job). No function that
+--   writes is called. ROLLBACK: nothing (read only; ends with rollback).
 begin transaction read only;
 select json_build_object(
   'at', now(),
@@ -35,25 +35,22 @@ select json_build_object(
                      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                     where n.nspname = 'public' and p.proname in ('dividend_hourly_on', 'real_hour', 'city_coupon_hour')),
   'new_columns', (select count(*) from information_schema.columns c
-                   where c.table_schema = 'public' and c.table_name = 'port_treasury' and c.column_name in ('profit_hours', 'coupon_hour', 'coupon_owed')),
+                   where c.table_schema = 'public' and c.table_name = 'city_shares' and c.column_name in ('drip_left', 'drip_hour', 'drip_at')),
   'bodies', (select json_object_agg(p.proname, md5(replace(pg_get_functiondef(p.oid), E'\r', '')))
                from pg_proc p join pg_namespace n on n.oid = p.pronamespace
               where n.nspname = 'public' and p.proname in ('tick_city', 'city_coupons', 'city_coupon_hour', 'dividend_hourly_on', 'real_hour')),
-  'harbours', (select count(*) from public.port_treasury),
-  'hourly_state', (select json_build_object('stamped', count(*) filter (where t.coupon_hour <> 0), 'newest_hour', max(t.coupon_hour),
-                                            'oldest_hour', min(t.coupon_hour) filter (where t.coupon_hour <> 0),
-                                            'rings', count(*) filter (where cardinality(t.profit_hours) = 24),
-                                            'owed_houses', coalesce(sum((select count(*) from jsonb_object_keys(t.coupon_owed))), 0),
-                                            'owed_hours_max', max((select max(e.value::int) from jsonb_each_text(t.coupon_owed) e)),
-                                            'cities_in_profit_24h', count(*) filter (where (select coalesce(sum(v), 0) from unnest(t.profit_hours) v) >= 24),
-                                            'cities_at_a_loss_24h', count(*) filter (where (select coalesce(sum(v), 0) from unnest(t.profit_hours) v) < 0))
-                     from public.port_treasury t),
-  'purses_under_reserve', (select count(*) from public.port_treasury t where public.city_surplus(t.port_id) < 0),
+  'payout', (select json_build_object(
+               'rows_marked', count(*) filter (where s.drip_left > 0),
+               'merchants_marked', count(*) filter (where pl.is_npc and (s.drip_left <> 0 or s.drip_hour <> 0 or s.drip_at <> 0)),
+               'players', count(distinct s.player_id) filter (where s.drip_left > 0),
+               'left_sum', coalesce(sum(s.drip_left), 0),
+               'hour_sum', coalesce(sum(least(s.drip_hour, s.drip_left, s.accrued)) filter (where s.drip_left > 0), 0),
+               'over_accrued', count(*) filter (where s.drip_left > s.accrued),
+               'newest_hour', max(s.drip_at), 'oldest_hour', min(s.drip_at) filter (where s.drip_left > 0))
+               from public.city_shares s join public.players pl on pl.id = s.player_id),
   'dividend_2h', (select json_build_object('rows', count(*), 'rows_last_hour', count(*) filter (where l.created_at > now() - interval '1 hour'),
                                            'sum', coalesce(sum(l.ducats_delta), 0), 'max_row', max(l.ducats_delta), 'houses', count(distinct l.player_id))
                     from public.ledger l where l.kind = 'DIVIDEND' and l.created_at > now() - interval '2 hours'),
-  'flows_waiting', (select json_build_object('rows', count(*), 'sum', coalesce(sum(f.ducats), 0))
-                      from public.treasury_flows f where f.kind = 'DIVIDEND'),
   'city_job', (select coalesce(json_agg(json_build_object('at', d.start_time, 'status', d.status,
                                                           'seconds', round(extract(epoch from d.end_time - d.start_time)::numeric, 2)) order by d.start_time desc), '[]'::json)
                  from (select r.start_time, r.end_time, r.status from cron.job_run_details r
