@@ -100,11 +100,14 @@ test.describe('the board, driven', () => {
     const top = trades.first()
     await expect(inline).toHaveAttribute('data-good', (await top.getAttribute('data-good'))!)
 
-    // THE PRESS: the desk's own best-sale trip — that good, on Buy, at her city, sold where the card said
+    // THE PRESS: the best-sale trip in THE trade sheet over HQ (S1, src/app/HqSheet.tsx) — that good, on Buy, at her city, sold where the
+    // card said; the URL stays HQ's
     const good = (await top.getAttribute('data-good'))!
     const port = (await top.getAttribute('data-port'))!
+    const url = page.url()
     await top.click()
-    await expect(page).toHaveURL(/\/command/)
+    await expect(page.getByTestId('hq-sheet-trade')).toBeAttached({ timeout: 60_000 })
+    expect(page.url(), 'the trade card left HQ').toBe(url)
     const panel = page.getByTestId('good-detail')
     await expect(panel).toBeVisible({ timeout: 120_000 })
     await expect(panel).toHaveAttribute('data-good', good)

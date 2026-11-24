@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { Icon, useBackLayer } from '../../../components/ui'
+import { useCallback, useState } from 'react'
+import { DetailPage, Icon } from '../../../components/ui'
 import { formatDucatsDelta, formatInt } from '../../../lib/format'
 import { useT, type TKey } from '../../../lib/i18n'
 import type { HqRate, HqRateLine } from '../../../lib/rpc'
@@ -112,70 +111,29 @@ export function RateWhy({ board }: { board: Board }) {
   )
 }
 
-/** THE WAYS OUT: ✕, Escape, the backdrop and the browser's back. Opening puts one step on the history; back takes it and closes; every
- *  other close takes that same step, so the history is left as it was (live/battle/BattleScreen.tsx's rule). Escape is the top layer's
- *  alone (useBackLayer). */
-function useCloseWays(onClose: () => void): () => void {
-  const closeRef = useRef(onClose)
-  useEffect(() => {
-    closeRef.current = onClose
-  })
-  useEffect(() => {
-    const state = window.history.state as { bvRateWhy?: boolean } | null
-    if (!state?.bvRateWhy) window.history.pushState({ ...(state ?? {}), bvRateWhy: true }, '')
-    const onPop = () => closeRef.current()
-    window.addEventListener('popstate', onPop)
-    return () => window.removeEventListener('popstate', onPop)
-  }, [])
-  const leave = useCallback(() => {
-    if ((window.history.state as { bvRateWhy?: boolean } | null)?.bvRateWhy) window.history.back()
-    else closeRef.current()
-  }, [])
-  useBackLayer(leave)
-  return leave
-}
-
+/** THE SHEET: the game's one pop-up page (components/ui DetailPage), over HQ. Its back arrow and Escape close it; the page behind is
+ *  not re-flowed. The browser's back is DetailPage's own (useBackLayer), for every page at once. */
 function RateSheet({ rate, lines, onClose }: { rate: HqRate; lines: HqRateLine[]; onClose: () => void }) {
   const t = useT()
-  const leave = useCloseWays(onClose)
   const running = lines.filter((l) => !l.one_time)
   const once = lines.filter((l) => l.one_time)
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center" data-testid="hq-rate-sheet-layer">
-      <button type="button" tabIndex={-1} aria-hidden="true" onClick={leave} className="absolute inset-0 bg-black/50" data-testid="hq-rate-backdrop" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('hq.rateWhy')}
-        data-testid="hq-rate-sheet"
-        className="relative flex max-h-[85dvh] w-full min-w-0 flex-col overflow-hidden rounded-t-tile bg-surface text-ink md:w-[30rem] md:rounded-tile"
-      >
-        <header className="flex shrink-0 items-center gap-2 border-b border-edge py-1 pl-4 pr-1">
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className={`text-t-title tabular-nums ${toneOf(rate.per_hour)}`} data-testid="hq-rate-sheet-figure" data-per-hour={rate.per_hour}>
-              {t('hq.perHour', { n: formatDucatsDelta(rate.per_hour) })}
-            </span>
-            <span className="text-t-caption text-ink-muted">{t('hq.rateLast')}</span>
-          </span>
-          <button
-            type="button"
-            onClick={leave}
-            aria-label={t('common.close')}
-            data-testid="hq-rate-close"
-            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-control text-ink-muted transition hover:text-ink"
-          >
-            <Icon name="close" size={20} aria-hidden />
-          </button>
-        </header>
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-2">
-          <Group testid="hq-rate-running" heading={t('hq.rateRunning')} total={rate.net_24h} perHour={rate.per_hour} lines={running} />
-          {once.length > 0 && rate.one_time_24h !== undefined && (
-            <Group testid="hq-rate-onetime" heading={t('hq.rateOnce')} total={rate.one_time_24h} perHour={null} lines={once} />
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body,
+  return (
+    <DetailPage
+      title={t('hq.rateWhy')}
+      figure={
+        <span className={toneOf(rate.per_hour)} data-testid="hq-rate-sheet-figure" data-per-hour={rate.per_hour}>
+          {formatDucatsDelta(rate.per_hour)}
+        </span>
+      }
+      word={t('hq.rateLast')}
+      onClose={onClose}
+      data-testid="hq-rate-sheet"
+    >
+      <Group testid="hq-rate-running" heading={t('hq.rateRunning')} total={rate.net_24h} perHour={rate.per_hour} lines={running} />
+      {once.length > 0 && rate.one_time_24h !== undefined && (
+        <Group testid="hq-rate-onetime" heading={t('hq.rateOnce')} total={rate.one_time_24h} perHour={null} lines={once} />
+      )}
+    </DetailPage>
   )
 }
 

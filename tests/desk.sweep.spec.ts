@@ -63,12 +63,15 @@ for (const size of SIZES) {
       await page.goBack()
       await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })
 
-      // Trade · Sell — the good now on board: its Sell opens the desk on Sell
+      // Trade · Sell — the good now on board: its Sell opens THE trade sheet on Sell over the Office, the URL unmoved (S1, src/app/HqSheet.tsx);
+      // the browser's back closes it
       await page.getByRole('tablist', { name: 'Trade faces' }).getByRole('tab', { name: 'Sell', exact: true }).click()
       await page.locator('[data-testid="trade-row"] button:enabled').last().click()
-      await expect(page).toHaveURL(/\/command$/, { timeout: 30_000 })
+      await expect(page.getByTestId('good-detail')).toHaveAttribute('data-side', 'sell', { timeout: 30_000 })
+      await expect(page).toHaveURL(/\/office$/)
       await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'sell', { timeout: 30_000 })
       await page.goBack()
+      await expect(page.getByTestId('good-detail')).toHaveCount(0)
       await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })
 
       // Trade · Requests

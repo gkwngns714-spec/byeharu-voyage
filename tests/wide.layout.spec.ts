@@ -95,15 +95,15 @@ test.describe('wide glass', () => {
       ROW_MAX_REM * remPx + 1,
     )
 
-    // X1 (src/live/tradeOnDesk.ts): a price pressed opens the Trade desk on that good, in the desk's own right pane; the quay's tray
-    // laws below return with the switch off
+    // S1 (2026-11-24, src/app/HqSheet.tsx): a price pressed opens THE trade sheet on that good over the Office, in the desk's own right
+    // pane, and the URL does not move; the quay's tray laws below return with the switch off
     if (TRADE_ON_DESK) {
       await page.evaluate(() => {
         const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) => /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()))
         ;(cell as HTMLButtonElement | undefined)?.click()
       })
-      await expect(page).toHaveURL(/\/command$/, { timeout: 30_000 })
       await expect(page.getByTestId('desk-pane-ticket').getByTestId('good-detail')).toBeVisible({ timeout: 60_000 })
+      await expect(page).toHaveURL(/\/office$/)
       return
     }
 
