@@ -148,12 +148,14 @@ test.describe('Your cargo prints Bought and Here\'s served profit', () => {
     await expect(lines).toHaveAttribute('data-profit', /^-?\d+$/, { timeout: 120_000 })
     const shown = Number(await lines.getAttribute('data-profit'))
     const each = await lines.getByTestId('sale-bought').getAttribute('data-each')
-    await page.keyboard.press('Escape')
+    await panel.getByTestId('tray-close').click()
     await expect(panel).toHaveCount(0, { timeout: 30_000 })
 
     await page.getByTestId('cargo-open').click()
     const block = page.getByTestId('cargo-best').locator(`[data-testid="cargo-good"][data-good="${GOOD}"]`)
-    await expect(block.getByTestId('cargo-good-bought')).toHaveAttribute('data-each', each!, { timeout: 120_000 })
+    // the same served basis: the dry run's at full precision, FleetView.cargo_basis to the hundredth
+    await expect(block.getByTestId('cargo-good-bought')).toHaveAttribute('data-each', /\d/, { timeout: 120_000 })
+    expect(Number(await block.getByTestId('cargo-good-bought').getAttribute('data-each'))).toBeCloseTo(Number(each), 2)
     const home = (await board.getAttribute('data-city'))!
     await expect(block.locator(`[data-testid="cargo-place"][data-port="${home}"]`).getByTestId('cargo-place-profit')).toHaveText(formatPriceDelta(shown), {
       timeout: 120_000,
