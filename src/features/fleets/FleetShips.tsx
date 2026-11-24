@@ -6,6 +6,7 @@ import { companyRoom, lockedSteps, roomStepWord, useBuyRoom, useHouseRoom, type 
 import { HullGauge } from './HullGauge'
 import { ShipPicture } from '../../live/ShipPicture'
 import { properName, useT } from '../../lib/i18n'
+import { useLevels } from '../you/useLevels'
 
 // HER SHIPS, ONE ROW EACH — the owner, 2026-11-14: *"in fleets, when pressed a fleet, show only ships, then when i press the ship, show
 // cargo and supplies."*
@@ -20,6 +21,15 @@ import { properName, useT } from '../../lib/i18n'
 // locked places: the fleet's More page (`FleetPlaces` below), with the rest of what belongs to the fleet as a whole.
 export function FleetShips({ fleet, openShipId, onOpenShip }: { fleet: FleetView; /** Her page is up: the row reads `accent`. */ openShipId: string | null; onOpenShip: (shipId: string) => void }) {
   const t = useT()
+  // HER LEVEL ON HER ROW (moved here 2026-11-24 from You's ship list, which is gone: a hull is listed once, on Fleets). The served level
+  // (`world.levels().ships`, 0325), and the level it acts as while that is lower (levels not yet in force).
+  const served = useLevels().view
+  const levelOf = new Map(served?.company ? served.ships.map((s) => [s.id, s] as const) : [])
+  const levelWord = (id: string): string | null => {
+    const l = levelOf.get(id)
+    if (!l) return null
+    return l.in_force < l.level ? `${t('command.lvLevel', { n: l.level })} (${t('command.lvActsAs', { n: l.in_force })})` : t('command.lvLevel', { n: l.level })
+  }
   return (
     <div data-testid="fleet-ship-rows">
       {fleet.ships.map((ship, i) => (
@@ -31,7 +41,7 @@ export function FleetShips({ fleet, openShipId, onOpenShip }: { fleet: FleetView
           label={
             <span className="flex flex-wrap items-baseline justify-between gap-x-3">
               <Clip className="max-w-full text-t-body font-semibold" data-testid="fleet-ship-name">{ship.name}</Clip>
-              <span className="min-w-0 max-w-full text-t-label text-ink-muted">{properName('hull', ship.class, ship.class)}</span>
+              <span className="min-w-0 max-w-full text-t-label text-ink-muted">{[properName('hull', ship.class, ship.class), levelWord(ship.id)].filter(Boolean).join(' · ')}</span>
             </span>
           }
           chevron

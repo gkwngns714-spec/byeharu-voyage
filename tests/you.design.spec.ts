@@ -18,13 +18,13 @@ import { serveVeteranWorld, VETERAN_CAPTAINS, VETERAN_HULLS } from './manyFleets
 // A captain's tray slides over the side column and moves nothing behind it (tests/fleets.you.grow.spec.ts keeps the tray and cut-name tests).
 //
 // THE LAWS: (a) the width used (centred from 1,024; 80 % from 1,280) · (b) the defect rules · (c) the level figures (a tile's level, the title voice) at least 20 px
-// over labels of at least 13, every ship and captain row at least 52 px and at most 36 rem · (e) the levels stand in the side column from
-// 1,024, the ships and captains in the main · (f) no box scrolls inside itself · (g) the ships come first on a phone · U3 every old id stays.
+// over labels of at least 13, every captain row at least 52 px and at most 36 rem · (e) the levels stand in the side column from
+// 1,024, the captains in the main · (f) no box scrolls inside itself · (g) the captains come first on a phone · U3 every old id stays.
 
 const SHEET = '[data-testid="you"]'
 // roadmap slice 10: the levels have their own page; You's levels card is its door, every level a ring over its figure
 const FIGURES = ['you-level-trading', 'you-level-exploration'] as const
-const ROWS = ['you-ship', 'your-captain'] as const
+const ROWS = ['your-captain'] as const
 
 /** Where a block stands: inside the side column (`[data-page-side]`) or not. Self-contained, shipped into the page. */
 const IN_SIDE = ({ ids }: { ids: readonly string[] }) => {
@@ -42,9 +42,10 @@ async function open(page: Page, glass: { width: number; height: number }) {
   await page.goto('you')
   await ready(page)
   await expect(page.getByTestId('you')).toBeVisible()
-  await expect(page.getByTestId('you-ship')).toHaveCount(VETERAN_HULLS, {
-    timeout: 120_000,
-  })
+  // the ships are the Fleets tab's one list (S7, 2026-11-24): You draws one room figure with the door to it, and no ship list
+  await expect(page.getByTestId('you-room')).toBeVisible({ timeout: 120_000 })
+  await expect(page.getByTestId('you-ship')).toHaveCount(0)
+  await expect(page.getByTestId('you-ships')).toHaveCount(0)
   await expect(page.getByTestId('your-captain')).toHaveCount(VETERAN_CAPTAINS, {
     timeout: 120_000,
   })
@@ -56,7 +57,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
     test.use({ locale })
 
     for (const glass of DESIGN_GLASSES) {
-      test(`${VETERAN_HULLS} hulls and ${VETERAN_CAPTAINS} captains, at ${glass.width}×${glass.height}: the glass used, the side used, the hierarchy, no overlap, no trap`, async ({
+      test(`${VETERAN_HULLS} hulls (on Fleets) and ${VETERAN_CAPTAINS} captains, at ${glass.width}×${glass.height}: the glass used, the levels in the side, the hierarchy, no overlap, no trap`, async ({
         page,
         request,
         baseURL,
@@ -71,7 +72,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
           figureIds: FIGURES,
           rowIds: ROWS,
         })
-        const flat = await readGlass(page, 'you-ships', 'you-ship', SHEET)
+        const flat = await readGlass(page, 'your-captains', 'your-captain', SHEET)
         console.log(
           `DESIGN ${where}: block ${d.block ? `${Math.round(d.block.left)}..${Math.round(d.block.right)}` : '-'} · figures ${d.figures.map((f) => f.font).join('/')} · rows ${d.rows.length}x${d.rows.length ? Math.round(Math.min(...d.rows.map((r) => r.h))) : '-'}..${d.rows.length ? Math.round(Math.max(...d.rows.map((r) => r.w))) : '-'}w · scrollers ${d.scrollers.length}`,
         )
@@ -99,8 +100,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
           if (f.font < 20) failures.push(`${where}: (c) the level figure is ${f.font} px — the law is 20`)
           if (f.label !== null && f.label < 13) failures.push(`${where}: (c) the level label is ${f.label} px — the law is 13`)
         }
-        if (d.rows.length < VETERAN_HULLS + VETERAN_CAPTAINS)
-          failures.push(`${where}: (c) ${d.rows.length} of ${VETERAN_HULLS + VETERAN_CAPTAINS} rows are visible`)
+        if (d.rows.length < VETERAN_CAPTAINS) failures.push(`${where}: (c) ${d.rows.length} of ${VETERAN_CAPTAINS} rows are visible`)
         const short = d.rows.filter((r) => r.h < 52 - 0.5)
         const wide = d.rows.filter((r) => r.w > ROW_MAX_REM * 16 + 1)
         if (short.length > 0)
@@ -113,7 +113,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         // (e) THE SIDE IS USED: the levels stand in it; the ships and the captains stand in the main
         if (glass.width >= 1024 && d.side === null) failures.push(`${where}: (e) the page has no side column`)
         for (const b of await page.evaluate(IN_SIDE, {
-          ids: ['levels', 'you-ships', 'your-captains'],
+          ids: ['levels', 'your-captains'],
         })) {
           if (!b.found) failures.push(`${where}: (e) the screen has no ${b.id} block`)
           else if (glass.width >= 1024 && b.id === 'levels' && !b.inSide) failures.push(`${where}: (e) the levels do not stand in the side column`)
@@ -125,13 +125,13 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
 
         // (g) THE SHIPS FIRST ON A PHONE: the first row begins on the first glass
         if (glass.width < 1024) {
-          const top = await page.evaluate(() => document.querySelector('[data-testid="you-ship"]')?.getBoundingClientRect().top ?? null)
+          const top = await page.evaluate(() => document.querySelector('[data-testid="your-captain"]')?.getBoundingClientRect().top ?? null)
           if (top === null || top + 52 > glass.height)
-            failures.push(`${where}: (g) the first ship begins at ${top === null ? '-' : Math.round(top)} px of a ${glass.height}-px glass`)
+            failures.push(`${where}: (g) the first captain begins at ${top === null ? '-' : Math.round(top)} px of a ${glass.height}-px glass`)
         }
 
         // U3 — NOTHING WAS REMOVED
-        for (const id of ['you', 'levels', 'you-ships', 'you-ships-count', 'your-captains', 'your-captains-count']) {
+        for (const id of ['you', 'levels', 'you-room', 'your-captains', 'your-captains-count']) {
           if ((await page.getByTestId(id).count()) === 0) failures.push(`${where}: U3 ${id} is gone`)
         }
 

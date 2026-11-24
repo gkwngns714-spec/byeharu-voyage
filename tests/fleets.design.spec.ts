@@ -24,9 +24,10 @@ import { serveVeteranWorld, VETERAN_HULLS } from './manyFleets.fixture'
 //       every control at least 44 × 44, the document flat.
 //   (c) THE HIERARCHY: the company's two key figures at least 24 px over labels of at least 13; a fleet's row at least 52 px, none
 //       wider than 36 rem.
-//   (e) THE SIDE IS USED: the Room card stands in the side column from 1,024; the fleets stand in the main. (2026-11-23, the visual overhaul's
-//       slice 5: the company's figures fold into the page title's line, so they stand in the sheet's header at every width, and the side
-//       carries the Room.)
+//   (e) ONE COLUMN: there is no side column at any glass; the Room's two bars stand in the page's one column, after the fleets. (2026-11-23, the
+//       visual overhaul's slice 5: the company's figures fold into the page title's line, so they stand in the sheet's header at every width.
+//       2026-11-24, docs/design/simplify-2026-11-24.md S7: the Room left the side column, which arrived late and stood empty; the law that
+//       asked for a side column is REVERSED by that plan.)
 //   (f) NO SCROLL TRAP: nothing but the sheet scrolls — the list never scrolls inside itself, however many fleets.
 //   (g) THE FLEETS COME FIRST ON A PHONE: below the split the first fleet's row begins on the first glass.
 //   (h) A PRESS ON A FLEET opens her page and moves nothing behind it; Back leaves the page as it was.
@@ -39,11 +40,8 @@ const SHEET = '[data-testid="fleets"]'
 const FIGURES = ['fleets-total', 'fleets-hulls'] as const
 const ROWS = ['fleet-row'] as const
 
-/** Where a block stands: inside the side column (`[data-page-side]`) or not. Self-contained, shipped into the page. */
-const IN_SIDE = ({ ids }: { ids: readonly string[] }) => {
-  const side = document.querySelector('[data-page-side]')
-  return ids.map((id) => ({ id, found: !!document.querySelector(`[data-testid="${id}"]`), inSide: !!side?.querySelector(`[data-testid="${id}"]`) }))
-}
+/** Which of the named blocks are on the page. Self-contained, shipped into the page. */
+const FOUND = ({ ids }: { ids: readonly string[] }) => ids.map((id) => ({ id, found: !!document.querySelector(`[data-testid="${id}"]`) }))
 
 async function open(page: Page, glass: { width: number; height: number }) {
   await page.setViewportSize(glass)
@@ -52,6 +50,8 @@ async function open(page: Page, glass: { width: number; height: number }) {
   await ready(page)
   await expect(page.getByTestId('fleets')).toBeVisible()
   await expect(page.getByTestId('fleet-row')).toHaveCount(VETERAN_HULLS, { timeout: 120_000 })
+  // the Room is a read of its own and lands after the rows: the laws below read the page with it standing
+  await expect(page.getByTestId('fleet-room')).toBeVisible({ timeout: 120_000 })
   await page.waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, undefined, { timeout: 120_000 }).catch(() => {})
 }
 
@@ -60,7 +60,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
     test.use({ locale })
 
     for (const glass of DESIGN_GLASSES) {
-      test(`${VETERAN_HULLS} fleets, at ${glass.width}×${glass.height}: the glass used, the side used, the hierarchy, no overlap, no trap`, async ({ page, request, baseURL }) => {
+      test(`${VETERAN_HULLS} fleets, at ${glass.width}×${glass.height}: the glass used, one column, the hierarchy, no overlap, no trap`, async ({ page, request, baseURL }) => {
         test.setTimeout(600_000)
         test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
         await open(page, glass)
@@ -98,15 +98,18 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         if (short.length > 0) failures.push(`${where}: (c) ${short.length} fleet rows are under 52 px — the shortest is ${Math.round(Math.min(...short.map((r) => r.h)))}`)
         if (wide.length > 0) failures.push(`${where}: (c) ${wide.length} rows are wider than ${ROW_MAX_REM} rem — the widest is ${Math.round(Math.max(...wide.map((r) => r.w)))} px`)
 
-        // (e) THE SIDE IS USED
-        if (glass.width >= 1024 && d.side === null) failures.push(`${where}: (e) the page has no side column`)
-        for (const b of await page.evaluate(IN_SIDE, { ids: ['fleets-company', 'fleet-room', 'fleets-list'] })) {
+        // (e) ONE COLUMN: no side column; the company's figures on the title's line, the Room after the fleets
+        if (d.side !== null) failures.push(`${where}: (e) the page has a side column`)
+        for (const b of await page.evaluate(FOUND, { ids: ['fleets-company', 'fleet-room', 'fleets-list'] })) {
           if (!b.found) failures.push(`${where}: (e) the screen has no ${b.id} block`)
-          else if (glass.width >= 1024 && b.id === 'fleet-room' && !b.inSide) failures.push(`${where}: (e) ${b.id} does not stand in the side column`)
           else if (b.id === 'fleets-company' && !(await page.evaluate(() => !!document.querySelector('[data-testid="sheet-header"] [data-testid="fleets-company"]'))))
             failures.push(`${where}: (e) the company's figures do not stand on the title's line`)
-          else if (glass.width >= 1024 && b.id === 'fleets-list' && b.inSide) failures.push(`${where}: (e) the fleets stand in the side column`)
         }
+        const order = await page.evaluate(() => {
+          const top = (id: string) => document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect().top ?? null
+          return { list: top('fleets-list'), room: top('fleet-room') }
+        })
+        if (order.list !== null && order.room !== null && order.room <= order.list) failures.push(`${where}: (e) the Room does not stand after the fleets`)
 
         // (f) NO SCROLL TRAP — only the sheet scrolls
         for (const s of d.scrollers) failures.push(`${where}: (f) a box scrolls inside itself — ${s}`)
