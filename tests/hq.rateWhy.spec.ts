@@ -74,7 +74,7 @@ for (const glass of [
     await expect(causes).toContainText('Tow −6,932')
     await expect(causes).toContainText('Wages −480')
     await expect(causes).not.toContainText('Invested')
-    expect((await causes.boundingBox())!.height, 'the causes line has a fixed height').toBe(glass.width >= 768 ? 18 : 36)
+    expect((await causes.boundingBox())!.height, 'the causes line has a fixed height').toBe(18)
     const once = page.getByTestId('hq-rate-once')
     await expect(once).toHaveText(/Invested 461,384\s*· one time/)
     expect(await once.evaluate((el) => getComputedStyle(el).color === getComputedStyle(document.querySelector('[data-testid="hq-rate-causes"]')!).color), 'a purchase is neutral, not red').toBe(true)

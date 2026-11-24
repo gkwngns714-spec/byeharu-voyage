@@ -29,6 +29,12 @@ export type HqAsk =
   | { sheet: 'trade'; port: string; fleet: string; good: string; side: 'buy' | 'sell'; best?: BestSale }
   /** A fleet's sheet: her cargo and where it sells, her route, her orders; `route` stands her route first. */
   | { sheet: 'fleet'; fleet: string; route?: boolean }
+  /** THE ONE ASSIGN SHEET (features/city/corp/AssignSheet.tsx; docs/design/hq-corp-2026-11-24.md C3): work for one worker, a fleet's id
+   *  or 'party' (the land party). A caller that knows the trade fills it in: the good and its two harbours (port CODES), and a board card
+   *  its own `units` (in memory only, like `best`: a link names no units), so the sheet opens on the card's figures. */
+  | { sheet: 'assign'; worker: string; good?: string; buy?: string; sell?: string; units?: number }
+  /** A worker's sheet: her action, what it did, Change and Stop (the worker named as Assign names her). */
+  | { sheet: 'worker'; worker: string }
 
 interface HqPlaceState {
   /** The sheet standing over HQ, or none. */
@@ -57,8 +63,8 @@ export function openHq(ask: HqAsk): void {
 
 /** The URL fields a link carries, by the ask's own field (`best` is not one: a link names the good and the side). The sheet's city
  *  rides as `at`, since `port` is HQ's own city. */
-const FIELDS = { sheet: 'sheet', port: 'at', fleet: 'fleet', good: 'good', side: 'side', hull: 'hull', route: 'route' } as const
-const SHEETS: readonly HqAsk['sheet'][] = ['invest', 'report', 'yard', 'inn', 'requests', 'trade', 'fleet']
+const FIELDS = { sheet: 'sheet', port: 'at', fleet: 'fleet', good: 'good', side: 'side', hull: 'hull', route: 'route', worker: 'worker', buy: 'buy', sell: 'sell' } as const
+const SHEETS: readonly HqAsk['sheet'][] = ['invest', 'report', 'yard', 'inn', 'requests', 'trade', 'fleet', 'assign', 'worker']
 
 /** A link to HQ from another screen: on `port` (else the city in hand), the `place` plate open, and `ask`'s sheet over it. */
 export function hqHref({ port, place, ask }: { port?: string; place?: string; ask?: HqAsk } = {}): string {
@@ -97,6 +103,14 @@ export function askOfParams(p: URLSearchParams): HqAsk | null {
     }
     case 'fleet':
       return fleet ? { sheet, fleet, route: p.get('route') === 'true' } : null
+    case 'assign': {
+      const worker = p.get('worker')
+      return worker ? { sheet, worker, good: p.get('good') ?? undefined, buy: p.get('buy') ?? undefined, sell: p.get('sell') ?? undefined } : null
+    }
+    case 'worker': {
+      const worker = p.get('worker')
+      return worker ? { sheet, worker } : null
+    }
   }
 }
 
