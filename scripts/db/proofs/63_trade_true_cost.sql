@@ -11,6 +11,9 @@
 --   leg into one more day. The proof reads each voyage's own delay and settled days and her casks at each arrival, and holds a figure only where
 --   the sea left it alone; each marker says which it was. The dock fees and the port time are held always. Laden, a leg can run into one more day
 --   than in port: since 0454 the board's walk reads her speed at each departure as the SAIL does, so that day is in the row (proof 157).
+--   0491: each leg sails THE STORED COURSE (public.sea_course: the course an HQ press and a standing job carry), the proofs' own proposal
+--   (proof.course) only where none is stored; the board measures the leg on the sailed-distance table, which 0491 made that course's own
+--   length (proof 194). Each leg's line says the nm she sailed and the board's leg nm and days, so a red names the leg that differs.
 --
 -- @pass TRADE_ROW_IS_THE_MAPS_TRIP  the board's row is world.trip_cost's answer for the same harbours: days, port time, supplies, wages, dock fees
 -- @pass TRADE_SUPPLIES              the purse fell at the departures by the row's supplies, and every leg settled the days the walk counted (where the sea took nothing from her casks or her crew)
@@ -92,7 +95,8 @@ begin
        and not exists (select 1
                          from (select lag(s.c, 1, 'LIS') over (order by s.i) as a, s.c as b
                                  from (select t.c, t.i from jsonb_array_elements_text(e->'stops') with ordinality t(c, i) union all select e->>'port', 1000) s) x
-                        where proof.course(x.a, x.b) is null
+                        where coalesce(public.sea_course((select p.id from public.ports p where p.code = x.a and p.kind = 'HARBOUR'),
+                                                         (select p.id from public.ports p where p.code = x.b and p.kind = 'HARBOUR')), proof.course(x.a, x.b)) is null
                            or not exists (select 1 from public.port_treasury pt join public.ports p on p.id = pt.port_id where p.code = x.b))
      order by (e->>'miles')::numeric, e->>'port' limit 1;
     exit when v_row is not null;
@@ -106,7 +110,9 @@ begin
   v_codes := array(select jsonb_array_elements_text(v_row->'stops')) || (v_row->>'port');
   v_n := cardinality(v_codes);
   for k in 1 .. v_n loop
-    v_path := proof.course(case when k = 1 then 'LIS' else v_codes[k - 1] end, v_codes[k]);
+    v_path := coalesce(public.sea_course((select p.id from public.ports p where p.code = case when k = 1 then 'LIS' else v_codes[k - 1] end and p.kind = 'HARBOUR'),
+                                         (select p.id from public.ports p where p.code = v_codes[k] and p.kind = 'HARBOUR')),
+                       proof.course(case when k = 1 then 'LIS' else v_codes[k - 1] end, v_codes[k]));
     v_legs := v_legs || jsonb_build_array(jsonb_build_object('from', case when k = 1 then 'LIS' else v_codes[k - 1] end, 'to', v_codes[k], 'course', v_path));
     v_ask := v_ask || jsonb_build_array(jsonb_build_object('from', case when k = 1 then 'LIS' else v_codes[k - 1] end, 'to', v_codes[k]));
     v_lines := v_lines || jsonb_build_array(jsonb_build_object('text', 'SAIL ' || v_codes[k], 'path', v_path));
@@ -202,8 +208,9 @@ begin
     v_clean := v_clean and coalesce(v_voy.delay_hours, 0) = 0 and abs(v_w_now - (v_hulls->0->>'water')::numeric) < 0.002
                and (select s.crew from public.ships s where s.id = v_sh) = (v_hulls->0->>'crew')::numeric;   -- and no hand lost: the day's wage is by her crew
     v_days_ok := v_days_ok and voyage.total_days(v_voy.id) = v_days;
-    v_legs_t := v_legs_t || format('%sleg %s: stores %s, walked %s; settled %s d, walked %s d; crew %s, walked %s; speed %s, in port %s', case when k > 1 then '; ' end, k, v_paid, v_walk,
-      voyage.total_days(v_voy.id), v_days, (select s.crew from public.ships s where s.id = v_sh), v_hulls->0->>'crew', (select round((v.speed_profile ->> 0)::numeric, 3) from public.voyages v where v.id = v_voy.id), round(v_speed, 3));
+    v_legs_t := v_legs_t || format('%sleg %s: stores %s, walked %s; settled %s d, walked %s d; crew %s, walked %s; speed %s, in port %s; sailed %s nm, the board''s leg %s nm %s d', case when k > 1 then '; ' end, k, v_paid, v_walk,
+      voyage.total_days(v_voy.id), v_days, (select s.crew from public.ships s where s.id = v_sh), v_hulls->0->>'crew', (select round((v.speed_profile ->> 0)::numeric, 3) from public.voyages v where v.id = v_voy.id), round(v_speed, 3),
+      round(v_nm, 1), v_trip->'legs'->(k - 1)->>'nm', v_trip->'legs'->(k - 1)->>'days');
 
     if k < v_n then
       -- HER PORT TIME: still there a second before it is up, then the next SAIL leaves

@@ -81,7 +81,7 @@ begin
   v_t := t0;
   perform public.land_send_for(v_pl, 'coal', v_t);
   select lp.id into v_party from public.land_parties lp where lp.player_id = v_pl;
-  if v_r ->> 'via' <> 'PLY' or v_r ->> 'region' <> 'BRI' or (v_r ->> 'nm')::numeric <> 760.2 or (v_r ->> 'seconds')::int <> 950
+  if v_r ->> 'via' <> 'PLY' or v_r ->> 'region' <> 'BRI' or round((v_r ->> 'nm')::numeric, 1) <> 760.2 or (v_r ->> 'seconds')::int <> 950
      or (select (lp.terms ->> 'trip')::int from public.land_parties lp where lp.id = v_party) <> 2170
      or (public.land_progress(v_party, v_t + interval '949 seconds') ->> 'phase') <> 'out'
      or (public.land_progress(v_party, v_t + interval '966 seconds') ->> 'phase') <> 'digging'
