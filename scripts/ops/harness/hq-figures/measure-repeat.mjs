@@ -1,11 +1,13 @@
 // HOW HONEST IS A REPEATING SEA JOB'S SERVED COIN AN HOUR? (local PGlite only, never prod; everything is rolled back)
-//   node scripts/ops/harness/hq-figures/measure-repeat.mjs [--purse 5000000] [--runs 10] [--nation PRT] [--pick 0 | --id quicksilver:LIS:SET]
+//   node scripts/ops/harness/hq-figures/measure-repeat.mjs [--purse 5000000] [--runs 10] [--nation PRT] [--pick 0 | --id quicksilver:LIS:SET | --best] [--ledger]
 // A fresh company asks world.actions for her fleet, takes the fixed run the server ranks first (or --pick n), sets it through
 // cmd.set_fleet_job and lets the REAL job tick (public.tick_fleet_jobs) run it back to back: each voyage's stamps are moved into the
 // past and world.fleets() settles the arrival (proof 184's way; a transaction has one instant, so nothing recovers between runs: the
 // runs lie inside one game day, as ten runs of a few minutes do). Each run's coin is her ledger's; its time is the voyages' own
 // seconds, the dock turns (world.trip_stop_seconds) and the two waits for the 2-minute job tick (60 s each on average).
 // Printed: each run, then the measured coin an hour against the served `per_hour`.
+// Use it on runs shorter than a game day: with one instant the day never turns, so a far run is not measured honestly here.
+// --best: the Best run (one way, a new sale each run). --ledger: her ledger rows and the quay quotes beside each run.
 import { world } from './q.mjs'
 
 const arg = (k, d) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : d)
