@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { fleetSignal } from '../../../domain/fleet'
+import { fixOf, fleetSignal, type WorkerFix } from '../../../domain/fleet'
 import { formatDucatsDelta, formatInt, formatRealShort, instantMs } from '../../../lib/format'
 import { properName, translateMaybe, type TKey } from '../../../lib/i18n'
 import { worldLand, type FleetJobRow, type FleetView, type LandView } from '../../../lib/rpc'
@@ -27,15 +27,6 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 export const PARTY = 'party'
 
 export type WorkerState = 'idle' | 'stopped' | 'working'
-
-/** WHAT MENDS A JOB THAT STOPPED OR WAITS ON A CODE, AS ONE PRESS (0499): the yard's repair (her flagship cannot sail), the Inn's
- *  hire of the hands she lacks (short of crew), a new assignment (a leg beyond her reach), Storage (the home shed is full). A code with no such press has none; the code itself is
- *  never printed. THE ONE TABLE: her row, her sheet and While away read it. */
-export type WorkerFix = 'repair' | 'hire' | 'assign' | 'storage'
-
-export function fixOf(code: string | null | undefined): WorkerFix | null {
-  return code === 'E_FLAGSHIP_DISABLED' ? 'repair' : code === 'E_CREW_SHORT' ? 'hire' : code === 'E_LEG_TOO_FAR' ? 'assign' : code === 'E_SHED_FULL' ? 'storage' : null
-}
 
 /** The code a job stopped on, or waits on (0499: `last.wait` carries the server's code while she waits for her repair or her crew). */
 export function jobCode(job: Pick<FleetJobRow, 'state' | 'paused' | 'last'>): string | null {
@@ -89,7 +80,7 @@ export interface WorkerRow {
   captain: { code: string; name: string; grade: string } | null
   /** Why a stopped job stopped (0499: or waits on a code), in the server's words. */
   why: string | null
-  /** The one press that mends it (`fixOf`), or null. A repair or a hire is offered only while she lies docked (the yard and the Inn
+  /** The one press that mends it (domain/fleet `fixOf`), or null. A repair or a hire is offered only while she lies docked (the yard and the Inn
    *  take her there). */
   fix: WorkerFix | null
 }

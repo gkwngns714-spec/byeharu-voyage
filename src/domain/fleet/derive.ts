@@ -80,10 +80,43 @@ export function fleetRefusedOrder(f: Pick<FleetView, 'queue'>): QueuedOrder | nu
 }
 
 /**
+ * HAS THE CAUSE OF THIS CODE BEEN MENDED SINCE, by what her fleet is served as now? Only the two codes her own hulls answer:
+ * E_FLAGSHIP_DISABLED and her flagship has a hull; E_CREW_SHORT and no ship lacks hands (`fleetCrew`, the served crew against the
+ * served complement). A reading of the served ships, as everything in this section is: whether she may sail stays the server's.
+ */
+export function causeMended(fleet: Pick<FleetView, 'ships'>, code: string | null): boolean {
+  if (code === 'E_FLAGSHIP_DISABLED') return fleet.ships.some((s) => s.is_flagship && s.durability > 0)
+  if (code === 'E_CREW_SHORT') return fleet.ships.length > 0 && fleetCrew(fleet).short === 0
+  return false
+}
+
+/**
+ * IS THIS REFUSED ORDER STILL NEWS? (0499; the owner, 2026-11-24, about 23:43 UTC: "Order 200 was refused: the flagship is not fit to
+ * sail. Anything that depended on it was cancelled; Gaivota is free." Order 200 had failed at 17:40 and she had been repaired at
+ * 23:36: the record, kept in her queue until dismissed (0186), was announced as news every time her sheet opened.)
+ * Not news when its cause is mended (`causeMended`), or when it ran before her standing job was set (`sinceMs`; the order's `at` is
+ * served by 0499's cmd.queue: absent on an older server, and then this half is not asked).
+ */
+export function refusalIsNews(fleet: Pick<FleetView, 'ships'>, order: QueuedOrder, sinceMs: number | null = null): boolean {
+  if (order.status !== 'failed') return false
+  if (causeMended(fleet, order.error_code)) return false
+  const at = order.at ? Date.parse(order.at) : NaN
+  return !(sinceMs !== null && Number.isFinite(at) && at < sinceMs)
+}
+
+/**
+ * THE REFUSED ORDER THAT IS STILL NEWS, or null. A refused row that is not news stays a row of her queue, with its time, until she
+ * dismisses it; the queue's note does not announce it and the picker's dot does not call her stuck for it.
+ */
+export function fleetNewRefusal(f: Pick<FleetView, 'queue' | 'ships'>, sinceMs: number | null = null): QueuedOrder | null {
+  return f.queue.find((o) => refusalIsNews(f, o, sinceMs)) ?? null
+}
+
+/**
  * THE ONE-WORD SIGNAL a fleet shows at a glance (the owner, 2026-10-20, the fleet picker: "green =
  * sailing, grey = docked waiting for orders, red = stuck (an order refused or blocked)").
  *
- *   stuck    a refused order stands in her queue (`fleetRefusedOrder`), or the server's status is
+ *   stuck    a refused order that is still news stands in her queue (`fleetNewRefusal`), or the server's status is
  *            one `fleetStatusTone` already calls danger (ADRIFT, UNABLE_TO_SAIL — she cannot move
  *            on by herself; the same reading 0093 gives a route's `blocked`)
  *   sailing  `whereabouts` says a SAILING voyage row moves her
@@ -95,7 +128,7 @@ export function fleetRefusedOrder(f: Pick<FleetView, 'queue'>): QueuedOrder | nu
 export type FleetSignal = 'sailing' | 'waiting' | 'stuck'
 
 export function fleetSignal(f: FleetView): FleetSignal {
-  if (fleetRefusedOrder(f) !== null || fleetStatusTone(f.status) === 'danger') return 'stuck'
+  if (fleetNewRefusal(f) !== null || fleetStatusTone(f.status) === 'danger') return 'stuck'
   return whereabouts(f).kind === 'sailing' ? 'sailing' : 'waiting'
 }
 

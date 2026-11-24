@@ -15,7 +15,7 @@ import { litRoles, useShipRoles } from '../../../live/useShipRoles'
 import { usePortMarket } from '../../../live/usePortMarket'
 import { useWorld } from '../../../live/worldStore'
 import { RoleControl } from '../board/RoleControl'
-import { WorkerFixButton } from './WorkerFix'
+import { WorkerFixButton } from '../../../live/FixButton'
 import { PARTY, actionWord, figureWord, stateWord, useWorkers, type ActionNames, type LitLand, type WorkerRow } from './workerRows'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
