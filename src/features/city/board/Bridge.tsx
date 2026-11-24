@@ -74,10 +74,9 @@ export function Bridge({ board }: { board: Board }) {
       </div>
 
       {/* THE NET PER HOUR AND ITS CAUSES, in a slot of one height whether the rate is here yet or not (nothing under the strip moves).
-          THE FIGURE IS LARGE (C1): RateWhy.tsx draws it at caption size (it was made for the old bridge's half-width tile), so its size
-          is set from here, on the figure alone, until that file draws it large itself. */}
+          The room is the figure's 44 px and RateWhy's two held lines (18 px each). */}
       <div
-        className="flex min-h-11 min-w-0 flex-col items-start justify-center md:min-w-56 md:items-end [&>button[data-testid=hq-bridge-rate]>span:first-child]:text-t-figure [&>span[data-testid=hq-bridge-rate]]:text-t-figure"
+        className="flex min-h-20 min-w-0 flex-col items-start md:min-w-56 md:items-end"
         data-testid="hq-bridge-rate-slot"
       >
         <RateWhy board={board} />
