@@ -237,7 +237,8 @@ function FleetSheet({ fleet, route, onClose }: { fleet: FleetView; route: boolea
   const [pick, setPick] = useState<OrderPick | null>(null)
   const [map, setMap] = useState(false)
   // HER ASSIGNMENT (H3, with H1's Assign): Change opens the one Assign sheet for her, Stop clears her standing job. Drawn only
-  // while the world serves fleet jobs (a dark world assigns nothing).
+  // while she HAS a standing job. A fleet with none has ONE Assign press, her worker row's (and the press that mends a stopped job
+  // is WorkerFix's, on her row and her worker sheet: 0499): this sheet repeats neither.
   const away = litAway(useAwayReport().view)
   const job = away?.jobs.find((j) => j.fleet === fleet.id) ?? null
   const jobKey = `sheet:${fleet.id}`
@@ -257,12 +258,12 @@ function FleetSheet({ fleet, route, onClose }: { fleet: FleetView; route: boolea
     <DetailPage title={fleet.name} onClose={onClose} data-testid="hq-sheet-fleet">
       <PageBody>
         <TradeStatus fleet={fleet} />
-        {away && (
-          <div className="mb-4 grid grid-cols-2 gap-2" data-testid="hq-sheet-fleet-job" data-job={job?.kind ?? ''}>
+        {job && (
+          <div className="mb-4 grid grid-cols-2 gap-2" data-testid="hq-sheet-fleet-job" data-job={job.kind}>
             <Button variant="primary" onClick={() => openHq({ sheet: 'assign', worker: fleet.id })} data-testid="hq-sheet-fleet-change">
-              {job ? t('corp.change') : t('corp.assign')}
+              {t('corp.change')}
             </Button>
-            <Button variant="secondary" busy={jobPending} disabled={jobPending || !job} onClick={() => void clearFleetJob(fleet.id, jobKey)} data-testid="hq-sheet-fleet-stop">
+            <Button variant="secondary" busy={jobPending} disabled={jobPending} onClick={() => void clearFleetJob(fleet.id, jobKey)} data-testid="hq-sheet-fleet-stop">
               {t('corp.stop')}
             </Button>
           </div>

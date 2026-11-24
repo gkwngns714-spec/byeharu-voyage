@@ -47,6 +47,11 @@ interface HqPlaceState {
   ask: HqAsk | null
   /** The sheet a trade sheet was opened from: closing the trade goes back to it. */
   back: HqAsk | null
+  /** HOW MANY TIMES HQ WAS ASKED TO OPEN ITS STORAGE (the home city's Production page, live/PortProduction.tsx): a count, so a
+   *  second ask opens it again. features/city/CityScreen.tsx follows it. */
+  storageAsks: number
+  /** Close whatever stands over HQ and open its Storage (a job that stopped on a full shed). */
+  openStorage: () => void
   open: (ask: HqAsk) => void
   close: () => void
   /** HQ left (its screen unmounted): nothing stands over it when it comes back. */
@@ -56,6 +61,8 @@ interface HqPlaceState {
 export const useHqPlace = create<HqPlaceState>()((set) => ({
   ask: null,
   back: null,
+  storageAsks: 0,
+  openStorage: () => set((s) => ({ ask: null, back: null, storageAsks: s.storageAsks + 1 })),
   // A trade pressed inside a sheet (a fleet's cargo, the Requests' market) stands in its place, and its close returns to it.
   open: (ask) => set((s) => ({ ask, back: ask.sheet === 'trade' && s.ask && s.ask.sheet !== 'trade' ? s.ask : null })),
   close: () => set((s) => ({ ask: s.back, back: null })),

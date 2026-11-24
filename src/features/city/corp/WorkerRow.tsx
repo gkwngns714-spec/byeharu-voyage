@@ -8,6 +8,8 @@ import { actionWord, figureWord, stateWord, type ActionNames, type WorkerRow as 
 // the served figures there are today (the party's terms; a counted job's runs left), and her state. Her job's tally since she was
 // away is While away's, said once there. The whole row is ONE press: an idle worker's opens Assign (the gold edge, "you
 // may act"); any other opens her sheet. The row is the same height idle, working and stopped, so a press never re-flows the list.
+// 0499: A JOB WHOSE CODE HAS A FIX wears that press's word where an idle row wears Assign ("Repair 736", "Assign", "Storage"), and
+// the row's one press does it (WorkerFix.tsx hands both in: `pill`, `onPress`). The row keeps its height.
 // NO PER-HOUR FIGURE: coin an hour and XP an hour arrive with 0495's `world.workers()`.
 
 /** The row's height, on a phone and from `lg`: every state's. */
@@ -22,7 +24,7 @@ function fillOf(bar: Row['bar'], nowMs: number): number {
   return Math.max(0, Math.min(100, ((nowMs - bar.fromMs) / (bar.toMs - bar.fromMs)) * 100))
 }
 
-export function WorkerRow({ row, names, nowMs, onPress }: { row: Row; names: ActionNames; nowMs: number; onPress: (row: Row) => void }) {
+export function WorkerRow({ row, names, nowMs, onPress, pill, fixCost }: { row: Row; names: ActionNames; nowMs: number; onPress: (row: Row) => void; pill?: string; fixCost?: number | null }) {
   const t = useT()
   const idle = row.state === 'idle'
   const act = idle && row.assignable
@@ -38,6 +40,8 @@ export function WorkerRow({ row, names, nowMs, onPress }: { row: Row; names: Act
       data-kind={row.kind}
       data-state={row.state}
       data-action={row.action.kind}
+      data-fix={pill ? (row.fix ?? undefined) : undefined}
+      data-fix-cost={pill && fixCost != null ? fixCost : undefined}
     >
       <span className="flex min-w-0 items-center gap-3 lg:w-[28rem] lg:shrink-0">
         <span className="relative flex shrink-0">
@@ -62,7 +66,11 @@ export function WorkerRow({ row, names, nowMs, onPress }: { row: Row; names: Act
             {actionWord(row.action, t, names)}
           </span>
         </span>
-        {act ? (
+        {pill ? (
+          <span className="flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-control bg-accent px-4 text-t-body font-medium tabular-nums text-bg" data-testid="corp-worker-fix">
+            {pill}
+          </span>
+        ) : act ? (
           <span className="flex min-h-11 shrink-0 items-center rounded-control bg-accent px-4 text-t-body font-medium text-bg" data-testid="corp-worker-assign">
             {t('corp.assign')}
           </span>

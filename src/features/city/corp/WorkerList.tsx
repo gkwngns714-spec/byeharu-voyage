@@ -6,7 +6,7 @@ import { useCommandDraft } from '../../../domain/order'
 import { formatInt } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { useWorld } from '../../../live/worldStore'
-import { WorkerRow } from './WorkerRow'
+import { FixableRow } from './WorkerFix'
 import { sortWorkers, useWorkers, type WorkerRow as Row } from './workerRows'
 
 // THE ONE WORKER LIST (docs/design/hq-corp-2026-11-24.md A2, C1; slice H1; the owner, 2026-11-24: *"it is like madevor's rs3 jagex game
@@ -14,6 +14,7 @@ import { sortWorkers, useWorkers, type WorkerRow as Row } from './workerRows'
 // on one action with its bar; the idle ones first, with Assign.
 // THE ORDER IS SET WHEN THE PAGE OPENS (idle, then stopped, then working) and never under the pointer: a worker who changes state
 // keeps her place, and a new one joins at the foot. The list waits for its reads, so it is ordered once, on what is true.
+// 0499: a worker whose job stopped or waits on a code that one press mends wears that press (WorkerFix.tsx): Repair, Assign, Storage.
 // A press: an idle worker's opens the one Assign sheet; any other opens her sheet (her action, Change, Stop). While her kind of work
 // is dark on this server, a fleet's press opens her own sheet (cargo, route, orders), which works today.
 
@@ -57,7 +58,7 @@ export function WorkerList() {
         <ul className="flex flex-col gap-2" data-testid="corp-worker-list">
           {list.map((r) => (
             <li key={r.id}>
-              <WorkerRow row={r} names={names} nowMs={nowMs} onPress={press} />
+              <FixableRow row={r} names={names} nowMs={nowMs} onPress={press} />
             </li>
           ))}
         </ul>

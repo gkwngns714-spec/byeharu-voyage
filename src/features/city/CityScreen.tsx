@@ -28,7 +28,7 @@ import { CityHallPanel } from './CityHallPanel'
 import { CityScene } from './CityScene'
 import { HqCompany } from './corp/HqCompany'
 import { HqSheet } from '../../app/HqSheet'
-import { openHq } from '../../app/hqPlace'
+import { openHq, useHqPlace } from '../../app/hqPlace'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PAGE — a city, full screen (owner's "Game screen development", 2026-10-30)
@@ -328,6 +328,19 @@ function CityBody({
   // WHICH PLACE IS OPEN — the Town Hall until a tile is pressed.
   // `?place=production` is the door the desk's Production tab and every old Storage link goes through.
   const [selected, setSelected] = useState<CitySelection>(() => CITY_TILES.find((b) => b.id === params.get('place'))?.id ?? 'hall')
+  // 0499: HQ ASKED FOR ITS STORAGE (app/hqPlace.ts `openStorage`: a job that stopped on a full shed): the Production page opens, in
+  // place, and is brought into view. A count, followed here, so a second ask opens it again.
+  const storageAsks = useHqPlace((s) => s.storageAsks)
+  const [seenAsks, setSeenAsks] = useState(storageAsks)
+  if (storageAsks !== seenAsks) {
+    setSeenAsks(storageAsks)
+    setSelected(PRODUCTION_PLACE)
+  }
+  useEffect(() => {
+    if (storageAsks === 0) return
+    const frame = requestAnimationFrame(() => document.querySelector('[data-testid="city-open-panel"]')?.scrollIntoView({ block: 'start' }))
+    return () => cancelAnimationFrame(frame)
+  }, [storageAsks])
 
   return (
     <CityFrame
