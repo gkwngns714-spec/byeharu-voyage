@@ -6,7 +6,7 @@ import { companyRoom, lockedSteps, roomStepWord, useBuyRoom, useHouseRoom, type 
 import { HullGauge } from './HullGauge'
 import { ShipPicture } from '../../live/ShipPicture'
 import { properName, useT } from '../../lib/i18n'
-import { useLevels } from '../you/useLevels'
+import { useLevels } from '../../live/useLevels'
 
 // HER SHIPS, ONE ROW EACH — the owner, 2026-11-14: *"in fleets, when pressed a fleet, show only ships, then when i press the ship, show
 // cargo and supplies."*

@@ -13,7 +13,7 @@ import type { ReactNode } from 'react'
 import { companyRoom, useHouseRoom } from '../../live/houseRoom'
 import { YouLevelsDoor } from './Levels'
 import { LogbookDoor } from './Logbook'
-import { useLevels } from './useLevels'
+import { useLevels } from '../../live/useLevels'
 import { HullCountry } from '../../live/HullCountry'
 import { seasOpened } from '../../live/levelWords'
 

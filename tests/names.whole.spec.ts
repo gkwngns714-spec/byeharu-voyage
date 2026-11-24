@@ -428,9 +428,9 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         await expect(page.getByTestId('fleet-page')).toBeVisible()
         await look('Fleets › a fleet', '[data-testid="fleet-page"]', 2)
 
-        // YOU: the ships and six captains, one with a 47-character name
+        // YOU: the captains (one with a 47-character name) and the house's plate; the ships are Fleets' one list (S7, 2026-11-24)
         await open('you')
-        await look('You', null, 6)
+        await look('You', null, 2)
 
         // STATS (cities, markets, merchant houses), RANK, ROUTES, THE COMPENDIUM
         await open('stats')
