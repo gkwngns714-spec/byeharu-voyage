@@ -1,5 +1,4 @@
-import { FilterBar, Hint, ListPanel, Note, RankBars, Skeleton, oneOf, useFilterChoice, type RankRow } from '../../components/ui'
-import { PAGE_GAP } from '../../components/ui/screenLayout'
+import { FilterBar, PAGE_GAP, Hint, ListPanel, Note, RankBars, Skeleton, oneOf, useFilterChoice, type RankRow } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatRelative } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsMe, type StatsMe } from '../../lib/rpc'
