@@ -231,6 +231,9 @@ export interface SnapshotConfig {
   /** 0455: THE LAND'S SWITCH (world_config land_enabled). False: the Land tab is not on the bar and every land door refuses.
    *  Absent before 0455. */
   land_enabled?: boolean
+  /** 0492's switch (world_config assign_home_enabled), for the day a snapshot serves it: NO READ SERVES IT TODAY, so it is absent,
+   *  and the Assign sheet then learns the switch from the door itself (corp/AssignSheet.tsx `useHomeDoor`). */
+  assign_home_enabled?: boolean
 }
 
 export interface VerbArg {
@@ -3438,6 +3441,32 @@ export type NationRaceView =
       rates: { sale_per: number; job_mult: number; gift_mult: number }
     }
 
+/** One plain line of the company's rate (0493, `public.company_rate_line`): its ledger kinds' sum over the last 24 hours. */
+export interface HqRateLine {
+  /** The line's code: trade, wages, tow, invest, ... (`other` for a kind the server does not name). */
+  line: string
+  total_24h: number
+  per_hour: number
+  count: number
+  /** A purchase made once (investing, a hull, hiring): left out of the per-hour figure. */
+  one_time: boolean
+}
+
+/** `world.hq_board().rate` (0480; 0493 `public.company_rate_for`, the one rate authority). `per_hour` and `net_24h` are her running
+ *  lines only; the keys after `since` are absent from a server before 0493. */
+export interface HqRate {
+  per_hour: number
+  net_24h: number
+  since: string
+  one_time_24h?: number
+  /** Every line's sum: 0480's old figure. */
+  all_24h?: number
+  /** The lines the headline names: up to two running lines, her largest losses under zero, else her largest gains. */
+  top?: string[]
+  /** Running lines first, then one time; in each the largest loss first. */
+  lines?: HqRateLine[]
+}
+
 /** `world.hq_board()` (0480). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her board, ranked by the server. */
 export type HqBoardView =
   | { on: false }
@@ -3446,8 +3475,8 @@ export type HqBoardView =
       on: true
       company: true
       moves: HqMove[]
-      /** Her ledger's last 24 hours, and over 24. */
-      rate: { per_hour: number; net_24h: number; since: string } | null
+      /** Her ledger's last 24 hours, and over 24. 0493: the figure is her RUNNING income and costs; one-time purchases stand beside it. */
+      rate: HqRate | null
       next: { what: 'arrives' | 'ship' | 'training' | 'lap'; at: string; name: string | null } | null
       /** Her voyages under way in dangerous waters or with a bounty pirate on them. */
       threats: number
@@ -3521,6 +3550,13 @@ export interface FleetJobParams {
   sell?: string
   stops?: string[]
   to?: string
+  /** 0492 (assign_home_enabled): how a fixed run ends: 'sell' at `sell` (the default), or 'store' into the home warehouse (the server
+   *  then sets `sell` to her home harbour). Absent on a job set without it. */
+  end?: 'sell' | 'store'
+  /** 0492: how many loaded runs (1-999); absent or null: until stopped. */
+  times?: number | null
+  /** 0492: the runs still to start, as served (counted down from `times`). */
+  left?: number | null
 }
 
 /** 0481: what a job did last: a run it started (its note), a wait for nothing to do, or the code it stopped on. */

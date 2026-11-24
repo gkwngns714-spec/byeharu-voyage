@@ -1,7 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { LOCALES } from './korean.paused'
-import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
+import { corpWorld } from './corpWorld.fixture'
+import { serveWorldImage } from './worldImage.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // HQ CORP: THE ONE WORKER LIST AND THE ONE ASSIGN SHEET (2026-11-24, docs/design/hq-corp-2026-11-24.md A2, B3, C; slice H1)
@@ -20,45 +21,14 @@ import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 //   * every row keeps its height whatever its state, and its place; nothing scrolls sideways; every press is 44 px;
 //   * no row prints a per-hour figure (they arrive with 0495's world.workers()).
 //
-// THE WORLD: the shipped image with the switches production runs lit, the served board, the standing jobs and the Land lit.
-// THE JOBS TICK: on a server pg_cron calls public.tick_fleet_jobs every 2 minutes; a tab has no cron. So this world runs the same
-// procedure (one pass, in the caller's transaction, as the migration's own self-assert does) right after a job is set.
+// THE WORLD: tests/corpWorld.fixture.ts (the switches production runs lit, the served board, the standing jobs and the Land lit; the
+// jobs tick run right after a job is set).
 
 const SIZES = [
   { width: 390, height: 844 },
   { width: 1440, height: 900 },
 ] as const
 const OUT = 'test-results/hq-corp'
-
-const LIT = [
-  'raid_companies_enabled',
-  'yard_order_enabled',
-  'hold_requests_enabled',
-  'houses_board_enabled',
-  'level_unlocks_enabled',
-  'world_events_enabled',
-  'pirate_bounties_enabled',
-  'first_hour_enabled',
-  'regard_enabled',
-  'levels_bite',
-  'land_enabled',
-  'hq_board_enabled',
-  'fleet_jobs_enabled',
-]
-
-const corpWorld = () =>
-  patchedWorldImage('hq-corp', async (pg) => {
-    await pg.exec(`update public.world_config set value = 'true'::jsonb where key in (${LIT.map((k) => `'${k}'`).join(', ')})`)
-    await pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite'`)
-    await pg.exec(`
-      create function public.spec_tick_fleet_jobs() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
-      begin
-        if pg_trigger_depth() = 1 then call public.tick_fleet_jobs(false); end if;
-        return null;
-      end $f$;
-      create trigger spec_tick_fleet_jobs after insert or update of since on public.fleet_jobs
-        for each statement execute function public.spec_tick_fleet_jobs();`)
-  })
 
 const sideways = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
 
@@ -163,7 +133,9 @@ for (const size of SIZES)
         await expect
           .poll(async () => Number(await bar.getAttribute('data-fill')), { timeout: 120_000, message: 'the bar does not move' })
           .toBeGreaterThan(f0)
-        await expect(hers.locator('[data-figure="runs"]')).toBeVisible()
+        // her job's tally is While away's, said once there: her row does not repeat it
+        await expect(hers.locator('[data-figure="runs"], [data-figure="earned"]')).toHaveCount(0)
+        await expect(page.getByTestId('hq-away-job')).toHaveCount(1, { timeout: 120_000 })
         await expect(page.getByTestId('corp-worker-list')).not.toContainText('/ h')
 
         // ASSIGN, LAND: the party's sheet; a job of the home land; its served terms; one press
@@ -193,7 +165,7 @@ for (const size of SIZES)
         await page.screenshot({ path: `${OUT}/list-working-${size.width}.png` })
         await page.screenshot({ path: `${OUT}/hq-full-${size.width}.png`, fullPage: true })
 
-        // THE LEDGER: the served rate when the board serves one (never one made here), and its press is the Report, in place
+        // THE LEDGER: the money by line (no net of its own: the Rank strip's is HQ's one per-hour figure), and its press is the Report, in place
         const ledger = page.getByTestId('corp-ledger')
         await expect(ledger).toBeVisible({ timeout: 120_000 })
         await ledger.scrollIntoViewIfNeeded()

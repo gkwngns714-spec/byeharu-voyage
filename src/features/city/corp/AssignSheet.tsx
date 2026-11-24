@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { Bar, Button, Chip, Countdown, DetailPage, Figure, GroupHeading, Icon, Note, Row, Segmented, Skeleton, Tile, TileField, goodIcon } from '../../../components/ui'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { create } from 'zustand'
+import { Bar, Button, Chip, Countdown, DetailPage, Figure, GroupHeading, Icon, Note, Row, Segmented, Skeleton, Stepper, Tile, TileField, goodIcon } from '../../../components/ui'
 import { openHq, type HqAsk } from '../../../app/hqPlace'
 import { useShellState } from '../../../app/shellState'
 import { fleetPortCode } from '../../../domain/fleet'
@@ -9,8 +10,10 @@ import { useT } from '../../../lib/i18n'
 import { cmdLandHome, cmdLandSend, type FleetView, type LandJob, type Refusal } from '../../../lib/rpc'
 import { clearFleetJob, setFleetJob, useJobEdits } from '../../../live/useAwayReport'
 import { useGoodBoard } from '../../../live/useDesk'
+import { litRoles, useShipRoles } from '../../../live/useShipRoles'
 import { usePortMarket } from '../../../live/usePortMarket'
 import { useWorld } from '../../../live/worldStore'
+import { RoleControl } from '../board/RoleControl'
 import { PARTY, actionWord, figureWord, stateWord, useWorkers, type ActionNames, type LitLand, type WorkerRow } from './workerRows'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -19,15 +22,20 @@ import { PARTY, actionWord, figureWord, stateWord, useWorkers, type ActionNames,
 //
 // Assign gives ONE worker her work, through the door that exists for her kind, and works nothing out:
 //   a fleet    Sea trade: a good, where it is bought and where it is sold = cmd.set_fleet_job(fleet, 'fixed', {good, buy, sell}),
-//              quoted before the press by `world.good_board` (the desk's own read: the run's profit, its units, its cost, its time);
-//              or Best run = cmd.set_fleet_job(fleet, 'best'), the run the server picks each time.
+//              quoted before the press by `world.good_board` (the desk's own read: the run's profit, its units, its cost, its time).
+//              THE SALE HARBOURS STAND BEST PROFIT FIRST, by the served profit of the run; the losing ones last and muted.
+//              0492, where its door is open (`useHomeDoor`): BRING HOME in place of a sale ({good, buy, end: 'store'}: stored in the
+//              home warehouse; its quote is the board's own buy row, units and cost), and ONCE / REPEAT / a count of runs (`times`).
+//              Or Best run = cmd.set_fleet_job(fleet, 'best'), the run the server picks each time; or, where the Land is lit, Haul
+//              home = cmd.set_fleet_job(fleet, 'land'). These three were chips on a fleet row and a card; they are set here only.
 //   the party  a job of the Land = cmd.land_send(action), with the terms `world.land` serves for it (units a trip, the trip, XP).
 // The figures and the press stand in a foot that is always there, so choosing never moves the press; while the quote is on its way
 // the press waits. A refusal is the server's own words, in a place that is always there. Assigned, the sheet closes and her row
 // shows the new action.
 // A worker's sheet says her action, its bar, what it did (the served runs and coin; the party's terms), and Change (this sheet) and
 // Stop (cmd.clear_fleet_job / cmd.land_home).
-// NOT DRAWN, because it does not work yet: Bring home (0492), Estates (0499), coin an hour (0495).
+// Both of a fleet's sheets carry her hulls' role chips (0485, `FleetRoles`), which stood on the deleted fleet rows.
+// NOT DRAWN, because it does not work yet: Estates (0499), coin an hour (0495), a bring-home run's time (no read serves it whole).
 
 type AssignAsk = Extract<HqAsk, { sheet: 'assign' }>
 
@@ -87,7 +95,7 @@ export function AssignSheet({ ask, onClose }: { ask: AssignAsk; onClose: () => v
           <Skeleton className="h-28 w-full" />
         )
       ) : fleet && jobs ? (
-        <SeaAssign ask={ask} fleet={fleet} names={names} />
+        <SeaAssign ask={ask} fleet={fleet} names={names} home={land?.home.port ?? null} haul={land !== null} />
       ) : (
         <Skeleton className="h-28 w-full" />
       )}
@@ -95,23 +103,56 @@ export function AssignSheet({ ask, onClose }: { ask: AssignAsk; onClose: () => v
   )
 }
 
+/** 0485: HER HULLS' ROLES (board/RoleControl.tsx: a hull's three roles as chips, one press each), on both of a fleet's sheets. They
+ *  stood on the fleet rows the worker list replaced. Dark (world.ship_roles): nothing is drawn. */
+function FleetRoles({ fleet }: { fleet: string }) {
+  const roles = litRoles(useShipRoles().view)
+  if (!roles) return null
+  return (
+    <div className="mb-4">
+      <RoleControl fleet={fleet} roles={roles} />
+    </div>
+  )
+}
+
 /** How many harbours the Buy at list offers (the board's first, in its own order). */
 const HARBOURS = 8
 
-function SeaAssign({ ask, fleet, names }: { ask: AssignAsk; fleet: FleetView; names: ActionNames }) {
+/** 0492'S DOOR, AS THE CLIENT KNOWS IT. Bring home and a run count are the server's switch (`assign_home_enabled`), and no read
+ *  serves that switch today. So they are offered until the door itself says they are not open (`E_NOT_IN_USE`); from then on, for
+ *  this visit, they are not drawn. A snapshot that one day serves the switch settles it without a press. The plain choice (Sell,
+ *  Repeat) sends neither name, so it is never refused for them. */
+const useHomeDoor = create<{ shut: boolean; close: () => void }>()((set) => ({ shut: false, close: () => set({ shut: true }) }))
+
+type Mode = 'fixed' | 'best' | 'haul'
+type End = 'sell' | 'store'
+type Runs = 'repeat' | 'once' | 'count'
+
+/** The most runs the count's slider reaches (the server takes up to 999). */
+const MAX_RUNS = 99
+
+function SeaAssign({ ask, fleet, names, home, haul }: { ask: AssignAsk; fleet: FleetView; names: ActionNames; home: string | null; haul: boolean }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
+  const served = useWorld((s) => s.snapshot?.config.assign_home_enabled)
+  const shut = useHomeDoor((s) => s.shut)
+  const homeOpen = served ?? !shut
   const key = `assign:${fleet.id}`
   const pending = useJobEdits((s) => s.pending !== null)
   const refused = useJobEdits((s) => s.refused[key] ?? null)
   // the choice the last press sent: its refusal stands only while that choice does
   const [tried, setTried] = useState<string | null>(null)
 
-  const [mode, setMode] = useState<'fixed' | 'best'>('fixed')
+  const [mode, setMode] = useState<Mode>('fixed')
   const [buy, setBuy] = useState<string | null>(ask.buy ?? fleetPortCode(fleet))
   const [good, setGood] = useState<string | null>(ask.good ?? null)
   const [sell, setSell] = useState<string | null>(ask.sell ?? null)
+  const [endAsked, setEnd] = useState<End>('sell')
+  const [runsAsked, setRuns] = useState<Runs>('repeat')
+  const [count, setCount] = useState(2)
+  const end: End = homeOpen ? endAsked : 'sell'
+  const runs: Runs = homeOpen ? runsAsked : 'repeat'
 
   const buyPort = buy ? (portByCode[buy] ?? null) : null
   const quay = usePortMarket(mode === 'fixed' ? (buyPort?.id ?? null) : null)
@@ -119,39 +160,65 @@ function SeaAssign({ ask, fleet, names }: { ask: AssignAsk; fleet: FleetView; na
   const goodId = good ? (goodByCode[good]?.id ?? null) : null
   const board = useGoodBoard(mode === 'fixed' ? goodId : null, fleet.id, fleet.version, null, buyPort?.id ?? null)
   const view = board.view && board.view.good === good && !board.stale ? board.view : null
-  // the harbours that buy it, each priced by the server; the nearest first (the served days), since no rate is made here to rank by
+  // THE HARBOURS THAT BUY IT, BEST PROFIT FIRST (each row's profit is the server's, for the whole run): the ones that pay stand in
+  // the order of what they leave, and the ones that lose stand last. Nothing is worked out to rank them; no rate is made here.
   const sales = useMemo(
     () =>
       (view?.sell ?? [])
         .filter((r) => r.quoted && r.port !== buy && (r.profit ?? r.net) !== null)
-        .sort((a, b) => (a.days ?? Infinity) - (b.days ?? Infinity)),
+        .map((r) => ({ r, p: r.profit ?? r.net ?? 0 }))
+        .sort((a, b) => b.p - a.p),
     [view, buy],
   )
   const buys = (view?.buy ?? []).slice(0, HARBOURS)
-  const sale = sales.find((r) => r.port === sell) ?? null
-  const profit = sale ? (sale.profit ?? sale.net) : null
+  // the sale a card filled in may stand far down a list ordered by profit: it is brought into view once, when the list first stands
+  const shown = useRef(false)
+  const showFilled = useCallback((el: HTMLButtonElement | null) => {
+    if (!el || shown.current) return
+    shown.current = true
+    el.scrollIntoView({ block: 'center' })
+  }, [])
+  const sale = sales.find((x) => x.r.port === sell) ?? null
+  // bring home: what the run buys at A and what it costs (the board's own `buy` row); it earns nothing until the goods are sold
+  const load = (view?.buy ?? []).find((r) => r.port === buy) ?? null
+  // the server refuses a run that buys at her home and brings it home (E_SAME_DEST): not offered
+  const atHome = home !== null && buy === home
 
-  const choice = `${mode}:${good}:${buy}:${sell}`
+  const times = runs === 'repeat' ? null : runs === 'once' ? 1 : count
+  const choiceOf = (e: End, n: number | null) => `${mode}:${good}:${buy}:${e === 'store' ? 'home' : sell}:${e}:${n}`
+  const choice = choiceOf(end, times)
   const refusal = !pending && tried === choice ? refused : null
   const send = async () => {
-    const ok = mode === 'best' ? await setFleetJob(fleet.id, 'best', {}, key) : good && buy && sell ? await setFleetJob(fleet.id, 'fixed', { good, buy, sell }, key) : false
-    if (ok) stepBack()
-    else setTried(choice)
+    let ok = false
+    if (mode === 'best') ok = await setFleetJob(fleet.id, 'best', {}, key)
+    else if (mode === 'haul') ok = await setFleetJob(fleet.id, 'land', {}, key)
+    else if (good && buy && (end === 'store' || sell)) {
+      // the plain run sends today's three names and nothing else; `end` and `times` ride only when she chose them (0492)
+      const counted = times === null ? {} : { times }
+      ok = await setFleetJob(fleet.id, 'fixed', end === 'store' ? { good, buy, end, ...counted } : { good, buy, sell: sell!, ...(times === null ? {} : { end }), ...counted }, key)
+    }
+    if (ok) return stepBack()
+    // the door says bring home and counts are not open: they leave the sheet, and its sentence stands over the plain choice
+    if (useJobEdits.getState().refused[key]?.code === 'E_NOT_IN_USE' && (end === 'store' || times !== null)) {
+      useHomeDoor.getState().close()
+      setTried(choiceOf('sell', null))
+    } else setTried(choice)
   }
-  const ready = mode === 'best' || (sale !== null && profit !== null)
+  const ready = mode !== 'fixed' || (end === 'store' ? load !== null && load.units > 0 && !atHome : sale !== null)
 
   return (
-    <div data-testid="corp-assign-sea" data-fleet={fleet.id}>
+    <div data-testid="corp-assign-sea" data-fleet={fleet.id} data-home-open={homeOpen}>
       <Step word={t('corp.work')}>
-        <Segmented<'fixed' | 'best'>
+        <Segmented<Mode>
           segments={[
             { id: 'fixed', label: t('corp.trade') },
             { id: 'best', label: t('corp.bestRun') },
+            ...(haul ? [{ id: 'haul' as const, label: t('corp.haul') }] : []),
           ]}
           value={mode}
           onChange={setMode}
           label={t('corp.work')}
-          columns={2}
+          columns={haul ? 3 : 2}
         />
       </Step>
       {mode === 'fixed' && (
@@ -207,7 +274,21 @@ function SeaAssign({ ask, fleet, names }: { ask: AssignAsk; fleet: FleetView; na
               </div>
             )}
           </Step>
-          {good && (
+          {good && homeOpen && (
+            <Step word={t('corp.end')}>
+              <Segmented<End>
+                segments={[
+                  { id: 'sell', label: t('corp.sell') },
+                  { id: 'store', label: t('corp.home') },
+                ]}
+                value={end}
+                onChange={setEnd}
+                label={t('corp.end')}
+                columns={2}
+              />
+            </Step>
+          )}
+          {good && end === 'sell' && (
             <Step word={t('corp.sellAt')}>
               {!view ? (
                 <Skeleton className="h-11 w-full" />
@@ -217,56 +298,95 @@ function SeaAssign({ ask, fleet, names }: { ask: AssignAsk; fleet: FleetView; na
                 </Note>
               ) : (
                 <div className="flex flex-col gap-1" data-testid="corp-assign-sales">
-                  {sales.map((r) => {
-                    const p = r.profit ?? r.net ?? 0
-                    return (
-                      <button
-                        key={r.port}
-                        type="button"
-                        aria-pressed={r.port === sell}
-                        onClick={() => setSell(r.port)}
-                        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-control px-3 text-left transition ${r.port === sell ? 'bg-accent-soft ring-1 ring-inset ring-accent' : 'bg-surface hover:bg-surface-2'}`}
-                        data-testid="corp-assign-sale"
-                        data-port={r.port}
-                      >
-                        <span className="min-w-0 break-words text-t-body text-ink">{names.port(r.port)}</span>
-                        <span className="flex shrink-0 items-center gap-3 text-t-caption tabular-nums">
-                          <span className="text-ink-muted">{r.days !== null ? formatDaysReal(r.days) : ''}</span>
-                          <span className={p < 0 ? 'text-danger' : 'text-success'}>{formatDucatsDelta(p)}</span>
-                        </span>
-                      </button>
-                    )
-                  })}
+                  {sales.map(({ r, p }) => (
+                    <button
+                      key={r.port}
+                      ref={r.port === ask.sell && r.port === sell ? showFilled : undefined}
+                      type="button"
+                      aria-pressed={r.port === sell}
+                      onClick={() => setSell(r.port)}
+                      className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-control px-3 text-left transition ${r.port === sell ? 'bg-accent-soft ring-1 ring-inset ring-accent' : 'bg-surface hover:bg-surface-2'}`}
+                      data-testid="corp-assign-sale"
+                      data-port={r.port}
+                      data-profit={p}
+                      data-losing={p < 0}
+                    >
+                      <span className={`min-w-0 break-words text-t-body ${p < 0 ? 'text-ink-faint' : 'text-ink'}`}>{names.port(r.port)}</span>
+                      <span className="flex shrink-0 items-center gap-3 text-t-caption tabular-nums">
+                        <span className={p < 0 ? 'text-ink-faint' : 'text-ink-muted'}>{r.days !== null ? formatDaysReal(r.days) : ''}</span>
+                        <span className={p < 0 ? 'text-ink-faint' : 'text-success'}>{formatDucatsDelta(p)}</span>
+                      </span>
+                    </button>
+                  ))}
                 </div>
               )}
             </Step>
           )}
+          {good && end === 'store' && atHome && (
+            <Note tone="neutral" data-testid="corp-assign-athome">
+              {t('corp.atHome')}
+            </Note>
+          )}
+          {good && homeOpen && (
+            <Step word={t('corp.count')}>
+              <Segmented<Runs>
+                segments={[
+                  { id: 'repeat', label: t('corp.repeat') },
+                  { id: 'once', label: t('corp.once') },
+                  { id: 'count', label: t('corp.count') },
+                ]}
+                value={runs}
+                onChange={setRuns}
+                label={t('corp.count')}
+                columns={3}
+              />
+              {runs === 'count' && <Stepper className="mt-2" value={count} onChange={setCount} min={2} max={MAX_RUNS} label={t('corp.count')} data-testid="corp-assign-count" />}
+            </Step>
+          )}
         </>
       )}
+      <FleetRoles fleet={fleet.id} />
       <Foot
         refusal={refusal}
         figures={
           mode === 'best' ? (
             <FootLine word={t('corp.bestRun')} figure={<span className="text-t-caption text-ink-muted">{t('corp.bestNote')}</span>} />
-          ) : sale && profit !== null ? (
-            <div data-testid="corp-assign-quote" data-profit={profit}>
+          ) : mode === 'haul' ? (
+            <FootLine word={t('corp.haul')} figure={null} />
+          ) : end === 'store' && good && buy && load && !atHome ? (
+            <div data-testid="corp-assign-quote" data-end="store" data-units={load.units}>
               <FootLine
-                word={actionWord({ kind: 'fixed', good: good!, buy: buy!, sell: sale.port }, t, names)}
+                word={`${names.good(good)} · ${names.port(buy)} → ${home ? names.port(home) : t('corp.home')} · ${t('corp.store')}`}
+                figure={
+                  <span data-testid="corp-assign-stored" title={t('corp.stored')}>
+                    <Figure size="figure" tone="ink" value={formatInt(load.units)} />
+                  </span>
+                }
+              />
+              <FootLine
+                word={<span className="text-t-caption tabular-nums text-ink-faint">{`${t('corp.cost')} ${formatDucats(load.cost)}`}</span>}
+                figure={<span className="text-t-caption tabular-nums text-ink-muted">{t('corp.units')}</span>}
+              />
+            </div>
+          ) : end === 'sell' && sale ? (
+            <div data-testid="corp-assign-quote" data-end="sell" data-profit={sale.p}>
+              <FootLine
+                word={actionWord({ kind: 'fixed', good: good!, buy: buy!, sell: sale.r.port, end: 'sell' }, t, names)}
                 figure={
                   <span data-testid="corp-assign-profit" title={t('corp.profit')}>
-                    <Figure size="figure" tone={profit < 0 ? 'danger' : 'success'} value={formatDucatsDelta(profit)} />
+                    <Figure size="figure" tone={sale.p < 0 ? 'danger' : 'success'} value={formatDucatsDelta(sale.p)} />
                   </span>
                 }
               />
               <FootLine
                 word={
                   <span className="text-t-caption tabular-nums text-ink-faint">
-                    {[sale.units !== null ? `${t('corp.units')} ${formatInt(sale.units)}` : null, sale.cost !== null ? `${t('corp.cost')} ${formatDucats(sale.cost)}` : null].filter(Boolean).join(' · ')}
+                    {[sale.r.units !== null ? `${t('corp.units')} ${formatInt(sale.r.units)}` : null, sale.r.cost !== null ? `${t('corp.cost')} ${formatDucats(sale.r.cost)}` : null].filter(Boolean).join(' · ')}
                   </span>
                 }
                 figure={
                   <span className="text-t-caption tabular-nums text-ink-muted" data-testid="corp-assign-time" title={t('corp.time')}>
-                    {sale.days !== null ? formatDaysReal(sale.days) : ''}
+                    {sale.r.days !== null ? formatDaysReal(sale.r.days) : ''}
                   </span>
                 }
               />
@@ -274,7 +394,7 @@ function SeaAssign({ ask, fleet, names }: { ask: AssignAsk; fleet: FleetView; na
           ) : null
         }
         press={
-          <Button variant="primary" className="w-full" busy={pending} disabled={pending || !ready} onClick={() => void send()} data-testid="corp-assign-go">
+          <Button variant="primary" className="w-full" busy={pending} disabled={pending || !ready} onClick={() => void send()} data-testid="corp-assign-go" data-end={mode === 'fixed' ? end : undefined} data-times={times ?? undefined}>
             {t('corp.assign')}
           </Button>
         }
@@ -413,7 +533,7 @@ export function WorkerSheet({ worker, onClose }: { worker: string; onClose: () =
             <Bar pct={fill} tone={row.state === 'stopped' ? 'danger' : 'accent'} label={t('corp.trip')} className="mt-1" figure={row.bar ? <Countdown untilMs={row.bar.toMs} nowMs={nowMs} className="text-t-caption tabular-nums text-ink-muted" /> : undefined} />
           </Row>
           {row.captain && <Row mark={<Icon name="captain" size={20} className="text-accent" />} label={row.captain.name} value={<span className="text-t-caption text-ink-muted">{row.captain.grade}</span>} />}
-          {row.figures.map((f) => {
+          {[...row.tally, ...row.figures].map((f) => {
             const w = figureWord(f)
             return <Row key={f.key} label={t(w.word)} value={<span className="tabular-nums">{w.text}</span>} />
           })}
@@ -428,6 +548,7 @@ export function WorkerSheet({ worker, onClose }: { worker: string; onClose: () =
               </span>
             </Row>
           )}
+          {row.kind === 'fleet' && <FleetRoles fleet={worker} />}
           {row.why && (
             <Note tone="danger" data-testid="corp-sheet-why">
               {row.why}

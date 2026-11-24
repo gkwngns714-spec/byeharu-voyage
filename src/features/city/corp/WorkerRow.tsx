@@ -5,7 +5,8 @@ import { actionWord, figureWord, stateWord, type ActionNames, type WorkerRow as 
 
 // ONE WORKER, ONE ROW, ONE FIXED HEIGHT (docs/design/hq-corp-2026-11-24.md C1, C2; slice H1): her picture (her ship with her
 // captain's face, or the party's pick), her name, her action in a few words, a progress bar to the next completion with its clock,
-// the served figures there are today, and her state. The whole row is ONE press: an idle worker's opens Assign (the gold edge, "you
+// the served figures there are today (the party's terms; a counted job's runs left), and her state. Her job's tally since she was
+// away is While away's, said once there. The whole row is ONE press: an idle worker's opens Assign (the gold edge, "you
 // may act"); any other opens her sheet. The row is the same height idle, working and stopped, so a press never re-flows the list.
 // NO PER-HOUR FIGURE: coin an hour and XP an hour arrive with 0495's `world.workers()`.
 
@@ -85,7 +86,7 @@ export function WorkerRow({ row, names, nowMs, onPress }: { row: Row; names: Act
             const w = figureWord(f)
             return (
               <span key={f.key} title={t(w.word)} aria-label={`${t(w.word)} ${w.text}`} data-figure={f.key} className={f.key === 'earned' ? (f.value < 0 ? 'text-danger' : 'text-success') : ''}>
-                {f.key === 'xp' ? `${w.text} ${t('corp.xp')}` : w.text}
+                {f.key === 'xp' ? `${w.text} ${t('corp.xp')}` : f.key === 'left' ? t('corp.leftN', { n: w.text }) : w.text}
               </span>
             )
           })}

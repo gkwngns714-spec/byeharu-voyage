@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { fleetSignal } from '../../../domain/fleet'
 import { formatDucatsDelta, formatInt, formatRealShort, instantMs } from '../../../lib/format'
-import { properName, type TKey } from '../../../lib/i18n'
+import { properName, translateMaybe, type TKey } from '../../../lib/i18n'
 import { worldLand, type FleetJobRow, type FleetView, type LandView } from '../../../lib/rpc'
 import { litAway, useAwayReport } from '../../../live/useAwayReport'
 import { useServedRead } from '../../../live/useServedRead'
@@ -18,6 +18,8 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 //                       read the report (dark: null, and no job is drawn);
 //   world.land          0455, lit: the party's job, its frozen terms (units a trip, the trip, XP a turn) and when it is home next
 //                       (dark: null, and no party row is drawn).
+// A JOB'S TALLY (its runs, her fleet's coin since she last read the report) is carried for her SHEET; on HQ's page it stands once, in
+// While away, and her row does not repeat it.
 // NO RATE IS COMPUTED HERE: coin an hour and XP an hour arrive with 0495's `world.workers()`, and until then a row shows the served
 // figures above and no per-hour figure. A progress bar's two ends are served stamps; the row draws between them.
 
@@ -31,8 +33,9 @@ export type WorkerAction =
   | { kind: 'none' }
   /** 0481 `best`: the server picks her best run each time. */
   | { kind: 'best' }
-  /** 0481 `fixed`: one good, bought at one harbour and sold at another (port CODES). */
-  | { kind: 'fixed'; good: string; buy: string; sell: string }
+  /** 0481 `fixed`: one good, bought at one harbour and sold at another (port CODES); 0492 `end` 'store': brought home instead, into
+   *  the home warehouse (`sell` is then her home harbour, as served). */
+  | { kind: 'fixed'; good: string; buy: string; sell: string; end: 'sell' | 'store' }
   /** 0481 `land`: she carries the Land's goods to a yard. */
   | { kind: 'haul'; to: string | null }
   /** No standing job: a voyage sent by hand, or orders queued in port. */
@@ -43,7 +46,7 @@ export type WorkerAction =
 
 /** One served figure of a row (never a rate). */
 export interface WorkerFigure {
-  key: 'runs' | 'earned' | 'units' | 'trip' | 'xp'
+  key: 'runs' | 'earned' | 'left' | 'units' | 'trip' | 'xp'
   value: number
 }
 
@@ -59,6 +62,9 @@ export interface WorkerRow {
   /** The two served stamps the progress bar is drawn between, or null (nothing under way). */
   bar: { fromMs: number; toMs: number } | null
   figures: WorkerFigure[]
+  /** WHAT HER STANDING JOB DID since she last read While away (its runs, her fleet's coin). Her SHEET's figures: on HQ's page these
+   *  stand once, in While away (board/JobsAway.tsx), so her row does not print them. */
+  tally: WorkerFigure[]
   /** Her Assign door works (her kind of work is lit on this server). */
   assignable: boolean
   /** A fleet's flagship class code, for her picture. */
@@ -94,7 +100,7 @@ function fleetRow(f: FleetView, jobs: LitJobs | null): WorkerRow {
       job.kind === 'best'
         ? { kind: 'best' }
         : job.kind === 'fixed' && p.good && p.buy && p.sell
-          ? { kind: 'fixed', good: p.good, buy: p.buy, sell: p.sell }
+          ? { kind: 'fixed', good: p.good, buy: p.buy, sell: p.sell, end: p.end === 'store' ? 'store' : 'sell' }
           : job.kind === 'land'
             ? { kind: 'haul', to: p.to ?? null }
             : { kind: 'none' }
@@ -103,18 +109,21 @@ function fleetRow(f: FleetView, jobs: LitJobs | null): WorkerRow {
       state: job.state === 'stopped' ? 'stopped' : 'working',
       waiting: job.state === 'waiting',
       action,
-      figures: [
+      // 0492: a job of a set number of runs says how many are still to start (served)
+      figures: typeof p.left === 'number' ? [{ key: 'left', value: p.left }] : [],
+      tally: [
         { key: 'runs', value: job.runs },
         { key: 'earned', value: job.earned },
       ],
-      why: job.state === 'stopped' ? (job.last?.sentence ?? job.paused) : null,
+      // the server's sentence, else its code's plain words (dict/codes.ts); never the code itself
+      why: job.state === 'stopped' ? (job.last?.sentence ?? (job.paused ? translateMaybe('en', 'codes', job.paused) : null)) : null,
     }
   }
   // no standing job: where she is, by the one where-rule (domain/fleet `fleetSignal`)
   const signal = fleetSignal(f)
   const state: WorkerState = signal === 'stuck' ? 'stopped' : signal === 'sailing' || f.queue.length > 0 ? 'working' : 'idle'
   const action: WorkerAction = signal === 'sailing' ? { kind: 'sail', to: v?.to ?? null } : state === 'working' ? { kind: 'orders' } : { kind: 'none' }
-  return { ...base, state, waiting: false, action, figures: [], why: null }
+  return { ...base, state, waiting: false, action, figures: [], tally: [], why: null }
 }
 
 function partyRow(land: LitLand): WorkerRow {
@@ -140,6 +149,7 @@ function partyRow(land: LitLand): WorkerRow {
           { key: 'xp', value: terms.xp },
         ]
       : [],
+    tally: [],
     assignable: true,
     hull: null,
     captain: null,
@@ -180,7 +190,7 @@ export function actionWord(a: WorkerAction, t: (key: TKey) => string, n: ActionN
     case 'best':
       return t('corp.bestRun')
     case 'fixed':
-      return `${n.good(a.good)} · ${n.port(a.buy)} → ${n.port(a.sell)} · ${t('corp.sell')}`
+      return `${n.good(a.good)} · ${n.port(a.buy)} → ${n.port(a.sell)} · ${t(a.end === 'store' ? 'corp.store' : 'corp.sell')}`
     case 'haul':
       return a.to ? `${t('corp.haul')} · ${n.port(a.to)}` : t('corp.haul')
     case 'sail':
@@ -201,6 +211,8 @@ export function figureWord(f: WorkerFigure): { word: TKey; text: string } {
       return { word: 'corp.runs', text: `×${formatInt(f.value)}` }
     case 'earned':
       return { word: 'corp.earned', text: formatDucatsDelta(f.value) }
+    case 'left':
+      return { word: 'corp.left', text: formatInt(f.value) }
     case 'units':
       return { word: 'corp.units', text: formatInt(f.value) }
     case 'trip':

@@ -97,8 +97,8 @@ for (const size of SIZES)
         await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 120_000 })
         await expect(page.getByTestId('city-office-city'), 'HQ still draws the City door').toHaveCount(0)
 
-        // FROM THE BOARD: a fleet row. A served card commits its move at the press and opens nothing (hire.offerLeaves, hq.board); a dark board has no cards.
-        await inPlace(page, 'fleet-row', page.getByTestId('hq-fleet-press').first(), page.getByTestId('hq-sheet-fleet'), size)
+        // FROM THE WORKER LIST: a fleet's row (the standing jobs dark in this world, so her press is her own sheet). A served card commits its move at the press and opens nothing (hire.offerLeaves, hq.board); a dark board has no cards.
+        await inPlace(page, 'fleet-row', page.locator('[data-testid="corp-worker"][data-kind="fleet"]').first(), page.getByTestId('hq-sheet-fleet'), size)
 
         // THE DOORS: Invest and Report
         await inPlace(page, 'invest', page.getByTestId('city-office-invest'), page.getByTestId('hq-sheet-invest'), size)
@@ -120,7 +120,7 @@ for (const size of SIZES)
         }
         // with a plate open (the inn), a fleet row's sheet leaves it open
         await expect(page.getByTestId('city-building-inn')).toHaveAttribute('aria-pressed', 'true')
-        await inPlace(page, 'fleet-row-on-inn', page.getByTestId('hq-fleet-press').first(), page.getByTestId('hq-sheet-fleet'), size)
+        await inPlace(page, 'fleet-row-on-inn', page.locator('[data-testid="corp-worker"][data-kind="fleet"]').first(), page.getByTestId('hq-sheet-fleet'), size)
         await expect(page.getByTestId('city-building-inn')).toHaveAttribute('aria-pressed', 'true')
 
         // A NAVIGATION OVER A SHEET lands where it was pressed and stays there: the sheet takes no step back on its way out, and its

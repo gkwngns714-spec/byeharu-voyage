@@ -1,8 +1,5 @@
-import { useMemo } from 'react'
-import { whereabouts } from '../../../domain/fleet'
 import type { Move } from '../../../domain/hq'
-import { routeOfFleet } from '../../../domain/route'
-import type { BestSale, FleetView, HqBoardView, HqMove, TradeRequest } from '../../../lib/rpc'
+import type { BestSale, FleetView, HqBoardView, HqMove, HqRate, TradeRequest } from '../../../lib/rpc'
 import { useLevelGate } from '../../../live/levelGate'
 import { useHqBoard } from '../../../live/useHqBoard'
 import { useRoleEdits } from '../../../live/useShipRoles'
@@ -10,25 +7,13 @@ import { useWorld } from '../../../live/worldStore'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE BOARD'S READ (docs/design/hq-corp-2026-11-24.md, H2): ONE READ, world.hq_board() (0480, live/useHqBoard.ts). It serves every
-// move ranked and the rate (her ledger's last 24 hours over 24); the board draws them as served. Her fleets are the store's own
-// (world.fleets and world.standing_routes, on the beat).
+// move ranked and the rate (her ledger's last 24 hours over 24); the board draws them as served. Her fleets are not the board's:
+// each is a row of the one worker list (corp/workerRows.ts).
 //
 // NOTHING IS WORKED OUT HERE. The client's own board (v1: the desk's best sales priced and ranked here, and today's Report divided
 // by the hours since midnight for a rate) is deleted: a second ranking and a second rate beside the server's. While the switch
 // (hq_board_enabled, the owner's) is dark, the board says so in one line and draws no card and no rate.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-
-export type FleetJob = 'route' | 'trip' | 'idle' | 'stuck' | 'busy'
-
-export interface BoardFleet {
-  fleet: FleetView
-  job: FleetJob
-  /** Docked port code, or null. */
-  port: string | null
-  /** The route's last 24 hours, when she runs one. */
-  day: number | null
-  route: ReturnType<typeof routeOfFleet>
-}
 
 /** What a card carries to draw and press it. A card is built only from a served move (`served`).
  *  THE OTHER SHAPES ARE BUILT NOWHERE: they were v1's client-made cards. They stay in the type only because useMovePress.ts (H3's
@@ -43,29 +28,20 @@ export type MoveData =
   | { kind: 'served'; move: HqMove; fleet: FleetView | null }
 
 export interface Board {
-  fleets: BoardFleet[]
   /** The served moves, in the server's order; none while the board is dark or unread. */
   moves: Move<MoveData>[]
   /** Net coin per hour: `hq_board.rate.per_hour` as served (her ledger's last 24 hours over 24). Null until served; never worked out here. */
   perHour: number | null
   /** `served`: world.hq_board answered for her company. `off`: the server said the board is dark. Null: unread, refused, or no company. */
   source: 'served' | 'off' | null
-}
-
-/** A fleet's job, from what is served: a route that is working, a trip under way, or nothing (idle). One reading of where she is
- *  (domain/fleet's `whereabouts`); her laid-up and wrecked states stay the server's (`fleet_state_of`), read here as `stuck`. */
-function jobOf(f: FleetView, route: BoardFleet['route']): FleetJob {
-  if (route && (route.state === 'sailing' || route.state === 'in_port' || route.state === 'waiting')) return 'route'
-  const w = whereabouts(f)
-  if (f.status === 'UNABLE_TO_SAIL' || f.status === 'ADRIFT' || f.status === 'IN_BATTLE') return 'stuck'
-  if (w.kind === 'sailing') return 'trip'
-  if (f.queue.length > 0) return 'busy'
-  return w.kind === 'docked' ? 'idle' : 'busy'
+  /** 0493: the served rate with its lines (why the figure is what it is); null before it is read. A server before 0493 serves no `lines`. */
+  rate: HqRate | null
+  /** The figures are the server's (`source === 'served'`), in the word RateWhy.tsx reads. */
+  served: boolean
 }
 
 export function useBoard(): Board {
   const all = useWorld((s) => s.fleets)
-  const book = useWorld((s) => s.routes)
   const gate = useLevelGate()
   const company = useWorld((s) => s.player?.id ?? null)
 
@@ -81,17 +57,7 @@ export function useBoard(): Board {
   const hq = useHqBoard(company, `${all.map((f) => (f.status === 'DOCKED' ? `${f.id}.${f.version}` : f.id)).join(',')}:${roleEdits}:${kept}`)
   const lit = litBoard(hq.view)
 
-  const fleets = useMemo<BoardFleet[]>(
-    () =>
-      all.map((f) => {
-        const route = routeOfFleet(book, f.id)
-        const w = whereabouts(f)
-        return { fleet: f, route, job: jobOf(f, route), port: w.kind === 'docked' ? w.port : null, day: route?.earnings?.day ?? null }
-      }),
-    [all, book],
-  )
-
-  if (!lit) return { fleets, moves: [], perHour: null, source: hq.view && !hq.view.on ? 'off' : null }
+  if (!lit) return { moves: [], perHour: null, source: hq.view && !hq.view.on ? 'off' : null, rate: null, served: false }
 
   // the server's moves in the server's order (an invest card only where the one level gate opens Invest)
   const byId = new Map(all.map((f) => [f.id, f]))
@@ -106,7 +72,7 @@ export function useBoard(): Board {
       fleet: m.fleet,
       data: { kind: 'served', move: m, fleet: m.fleet ? (byId.get(m.fleet) ?? null) : null },
     }))
-  return { fleets, moves, perHour: lit.rate?.per_hour ?? null, source: 'served' }
+  return { moves, perHour: lit.rate?.per_hour ?? null, source: 'served', rate: lit.rate, served: true }
 }
 
 /** The served board, when it is lit for her company; else null (dark, signed out, a merchant, unread). */

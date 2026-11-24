@@ -2,7 +2,8 @@ import { useCallback } from 'react'
 import { useCommandDraft } from '../../../domain/order'
 import { useWorld } from '../../../live/worldStore'
 import { openHq } from '../../../app/hqPlace'
-import { pressServed } from './servedPress'
+import { litAway, useAwayReport } from '../../../live/useAwayReport'
+import { assignOf, pressServed } from './servedPress'
 import type { MoveData } from './useBoard'
 
 // ONE PRESS, THE BUILDING'S OWN ACTION, IN PLACE (docs/design/hq-command-2026-11-23.md; 2026-11-24, simplify S1): a card never trades,
@@ -16,6 +17,8 @@ import type { MoveData } from './useBoard'
 
 export function useMovePress(): (m: MoveData) => void {
   const selectFleet = useCommandDraft((s) => s.selectFleet)
+  // the one Assign sheet works where the standing jobs are lit (0481)
+  const assignOpen = litAway(useAwayReport().view) !== null
   return useCallback(
     (m: MoveData) => {
       switch (m.kind) {
@@ -43,11 +46,17 @@ export function useMovePress(): (m: MoveData) => void {
           openHq({ sheet: 'invest' })
           return
         // 0480 (lit): the served card commits its own act, through the building's own door (servedPress.ts); HQ stays
-        case 'served':
-          void pressServed(m.move, m.fleet)
+        // A TRADE SHE BUYS FOR OPENS ASSIGN, FILLED IN (docs/design/hq-corp-2026-11-24.md C3): one press never commits it
+        case 'served': {
+          const a = assignOpen ? assignOf(m.move) : null
+          if (a) {
+            selectFleet(a.fleet)
+            openHq({ sheet: 'assign', worker: a.fleet, good: a.good, buy: a.buy, sell: a.sell })
+          } else void pressServed(m.move, m.fleet)
+        }
       }
     },
-    [selectFleet],
+    [selectFleet, assignOpen],
   )
 }
 

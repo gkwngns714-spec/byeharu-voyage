@@ -1,21 +1,22 @@
-import { Bar, Figure, SheetSection } from '../../../components/ui'
+import { Bar, SheetSection } from '../../../components/ui'
 import { openHq } from '../../../app/hqPlace'
 import { formatDucatsDelta } from '../../../lib/format'
-import { useT, type TKey } from '../../../lib/i18n'
-import { worldReport, type Report, type ReportSection } from '../../../lib/rpc'
-import { useHqBoard } from '../../../live/useHqBoard'
+import { translateMaybe, useLocale, useT, type TKey } from '../../../lib/i18n'
+import { worldReport, type HqRate, type Report, type ReportSection } from '../../../lib/rpc'
 import { useServedRead } from '../../../live/useServedRead'
-import { useRoleEdits } from '../../../live/useShipRoles'
 import { useWorld } from '../../../live/worldStore'
 
-// THE LEDGER (docs/design/hq-corp-2026-11-24.md B4, C1; slice H1): the company's net an hour and today's money by line. Two reads that
-// exist, and NO CLIENT DIVISION:
-//   the rate    `world.hq_board().rate.per_hour` (0480: her ledger's last 24 hours over 24, worked out by the server). Dark, or not
-//               answered: no rate is drawn, never one made here.
-//   the lines   `world.report('day')`: today by section (the Report's own sections and words), each a served sum, as a bar against
-//               the largest of them, plus lines green and minus lines red; the day's served total heads them.
+// THE LEDGER (docs/design/hq-corp-2026-11-24.md B4, C1; slice H1; the join, 2026-11-24): the company's money by line, as bars. NO
+// CLIENT DIVISION, and NO NET HERE: HQ's one per-hour figure is the Rank strip's (board/Bridge.tsx), and this area draws what it is
+// made of.
+//   lines served   0493 (`world.hq_board().rate.lines`, the board's one read, handed in by HqCompany.tsx): her RUNNING lines, each
+//                  its served coin an hour, as a bar against the largest of them, plus lines green and minus lines red. A purchase
+//                  made once is not an hourly line (the strip's sheet lists them).
+//   no lines       a server before 0493: `world.report('day')`, today by section (the Report's own sections and words), each a
+//                  served sum. No total: for a young company it is the figure While away has already said.
+// A lone line is not drawn (it is the net again); the Report's door stands all the same.
 // One press: the Report's sheet (Today / Week / All, by line).
-// The lines by kind an hour (Trade, Land, Wages, Tax, ...) and "Saved" arrive with 0495's `world.company_rate()`.
+// "Saved" arrives with 0495's `world.company_rate()`.
 
 const SECTION_WORD: Record<ReportSection['id'], TKey> = {
   trade: 'desk.secTrade',
@@ -28,32 +29,35 @@ const SECTION_WORD: Record<ReportSection['id'], TKey> = {
   other: 'desk.secOther',
 }
 
-const tone = (n: number) => (n < 0 ? 'danger' : n > 0 ? 'success' : 'muted')
+interface Line {
+  id: string
+  word: string
+  amount: number
+}
 
-export function LedgerArea() {
+export function LedgerArea({ rate }: { rate: HqRate | null }) {
   const t = useT()
+  const locale = useLocale()
+  // a rate line's word is the dictionary's own entry for its code (`hq.rate<Code>`, the entries RateWhy.tsx reads); a line the server
+  // names later reads as Other until it has one
+  const lineWord = (code: string) => translateMaybe(locale, 'hq', `rate${code.charAt(0).toUpperCase()}${code.slice(1)}`) ?? t('hq.rateOther')
   const company = useWorld((s) => s.player?.id ?? null)
-  const fleets = useWorld((s) => s.fleets)
-  // THE BOARD'S OWN QUESTION (board/useBoard.ts), so this is the read the board already asked, never a second one
-  const roleEdits = useRoleEdits((s) => s.edits)
-  const kept = useWorld((s) => (s.officers ? s.officers.officers.filter((o) => o.hired).length : -1))
-  const hq = useHqBoard(company, `${fleets.map((f) => (f.status === 'DOCKED' ? `${f.id}.${f.version}` : f.id)).join(',')}:${roleEdits}:${kept}`).view
-  const rate = hq && hq.on && hq.company ? hq.rate : null
-  const report = useServedRead<Report>(company ? 'report:day' : null, () => worldReport('day')).view
-  if (!rate && !report) return null
-  const lines = (report?.sections ?? []).filter((s) => s.ducats !== 0)
-  const top = Math.max(1, ...lines.map((s) => Math.abs(s.ducats)))
+  const hourly = rate?.lines ?? null
+  // today's Report only while the server serves no lines (a second window beside the strip's would say the same money twice)
+  const report = useServedRead<Report>(company && rate && !hourly ? 'report:day' : null, () => worldReport('day')).view
+  if (!hourly && !report) return null
+  const lines: Line[] = hourly
+    ? hourly.filter((l) => !l.one_time && l.per_hour !== 0).map((l) => ({ id: l.line, word: lineWord(l.line), amount: l.per_hour }))
+    : (report?.sections ?? []).filter((s) => s.ducats !== 0).map((s) => ({ id: s.id, word: t(SECTION_WORD[s.id]), amount: s.ducats }))
+  // ONE LINE IS THE NET AGAIN (the strip's figure, or While away's for a company of one fleet): the lines are drawn from two up
+  const drawn = lines.length > 1 ? lines : []
+  const top = Math.max(1, ...lines.map((l) => Math.abs(l.amount)))
   return (
     <SheetSection
       heading={t('corp.ledger')}
-      trailing={
-        rate ? (
-          <span data-testid="corp-ledger-rate" data-per-hour={rate.per_hour}>
-            <Figure size="figure" tone={tone(rate.per_hour)} value={t('corp.perHour', { n: formatDucatsDelta(rate.per_hour) })} />
-          </span>
-        ) : undefined
-      }
+      trailing={<span className="text-t-caption text-ink-muted">{t(hourly ? 'corp.hourly' : 'corp.today')}</span>}
       data-testid="corp-ledger"
+      data-span={hourly ? 'hour' : 'today'}
     >
       <button
         type="button"
@@ -61,23 +65,14 @@ export function LedgerArea() {
         className="flex min-h-11 w-full flex-col gap-2 rounded-tile bg-surface p-3 text-left transition hover:bg-surface-2"
         data-testid="corp-ledger-open"
       >
-        {report && (
-          <>
-            <span className="flex items-baseline justify-between gap-3">
-              <span className="text-t-caption text-ink-muted">{t('corp.today')}</span>
-              <span data-testid="corp-ledger-today">
-                <Figure tone={tone(report.total)} value={formatDucatsDelta(report.total)} />
-              </span>
-            </span>
-            {lines.map((s) => (
-              <span key={s.id} className="flex items-center gap-3" data-testid="corp-ledger-line" data-section={s.id}>
-                <span className="w-20 shrink-0 text-t-caption text-ink-muted">{t(SECTION_WORD[s.id])}</span>
-                <Bar className="min-w-0 flex-1" pct={(Math.abs(s.ducats) / top) * 100} tone={s.ducats < 0 ? 'danger' : 'success'} label={t(SECTION_WORD[s.id])} />
-                <span className="w-24 shrink-0 text-right text-t-caption tabular-nums text-ink">{formatDucatsDelta(s.ducats)}</span>
-              </span>
-            ))}
-          </>
-        )}
+        {lines.length === 0 && <span className="text-t-caption text-ink-faint">{t('corp.noLines')}</span>}
+        {drawn.map((l) => (
+          <span key={l.id} className="flex items-center gap-3" data-testid="corp-ledger-line" data-line={l.id}>
+            <span className="w-20 shrink-0 text-t-caption text-ink-muted">{l.word}</span>
+            <Bar className="min-w-0 flex-1" pct={(Math.abs(l.amount) / top) * 100} tone={l.amount < 0 ? 'danger' : 'success'} label={l.word} />
+            <span className="w-24 shrink-0 text-right text-t-caption tabular-nums text-ink">{formatDucatsDelta(l.amount)}</span>
+          </span>
+        ))}
         <span className="self-end text-t-label text-accent">{t('corp.report')}</span>
       </button>
     </SheetSection>
