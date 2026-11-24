@@ -77,6 +77,8 @@ export function SeaChoiceCard({ c }: { c: SeaChoice }) {
   const t = useT()
   const { nowMs } = useShellState()
   const portByCode = useWorld((s) => s.portByCode)
+  // her ship is named only when she has more than one fleet (with one, her worker row has named her)
+  const manyFleets = useWorld((s) => s.fleets.length > 1)
   const busy = useSeaPicks((s) => s.pending !== null)
   const refusal = useSeaPicks((s) => s.refused[c.id] ?? null)
   const trip = c.from && c.to ? `${portNameOf(portByCode, c.from)} → ${portNameOf(portByCode, c.to)}` : null
@@ -96,7 +98,7 @@ export function SeaChoiceCard({ c }: { c: SeaChoice }) {
       <div className="mb-3 flex items-center gap-3">
         <IconDisc name={SEA_KIND_ICON[c.kind]} tone={c.kind === 'storm' ? 'warning' : c.kind === 'sail' ? 'danger' : 'info'} label={t(SEA_KIND_WORD[c.kind])} />
         <span className="flex min-w-0 flex-col">
-          <span className={`${KEEP_WORDS_CLASS} text-t-label text-ink`}>{c.fleet_name}</span>
+          {manyFleets && <span className={`${KEEP_WORDS_CLASS} text-t-label text-ink`}>{c.fleet_name}</span>}
           {trip && <span className={`${KEEP_WORDS_CLASS} text-t-caption text-ink-muted`}>{trip}</span>}
         </span>
       </div>

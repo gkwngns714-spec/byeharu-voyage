@@ -77,6 +77,7 @@ declare
   v_fled  boolean;
   v_got   int;
   v_note  text := '';
+  v_skip  int := 0;
   r       record;
 begin
   -- ── THE SCENE: lit as prod is ──
@@ -196,12 +197,37 @@ begin
   end if;
   -- (2) a company that attacks and then runs earns nothing: her ATTACK on the merchant, her Run pressed through cmd.battle_act
   v_got := (select count(*) from public.level_book b where b.player_id = v_pl);
-  update public.fleets f set status = 'ANCHORED', port_id = null, lat = 36.6, lon = -12.0, busy_until = null, ready_at = null where f.id in (v_me, v_m);
-  update public.ships s set crew = (select c.crew_required from public.ship_classes c where c.id = s.class_id), durability = (select b.durability from public.ship_base(s.id) b) where s.fleet_id in (v_me, v_m);
-  v_bat := public.battle_open('ATTACK', v_me, v_m, t0 + interval '4 hours');
-  select b.* into v_b from public.battles b where b.id = v_bat;
-  if v_b.ticks is null then
-    raise exception 'PROOF 156 FAIL: her attack was not fought tick by tick';
+  -- Every world numbers its merchants and rolls its dice anew (a fleet's id and a battle's id are random, and the battle's id is the fight's seed):
+  -- a merchant with the better lookout may slip away at the open (n 0), or the fight may end before a Run pressed now could be rolled, and the
+  -- door would then rightly refuse her (E_PAST_TICK, E_BATTLE_OVER). That is the fight, not the grant under proof (main's from-zero run,
+  -- 2026-11-24: the merchant that world numbered first slipped at once). So she attacks merchants in turn, v_m first, each attack that ends too
+  -- soon undone whole (the block's savepoint), until one is fought long enough for her Run to be rolled; no such fight in twenty-five is a red.
+  v_bat := null;
+  for r in select nf.fleet_id
+             from public.npc_fleets nf join public.fleets f on f.id = nf.fleet_id join public.players pl on pl.id = f.player_id
+            where pl.is_npc and pl.nation_id is distinct from public.pirate_nation() and public.fleet_kind(nf.fleet_id) = 'MERCHANT'
+              and exists (select 1 from public.ships s where s.fleet_id = nf.fleet_id and s.durability > 0)
+            order by (nf.fleet_id = v_m) desc, nf.fleet_id limit 25 loop
+    begin
+      update public.voyages v set status = 'ABORTED' where v.fleet_id = r.fleet_id and v.status = 'SAILING';
+      update public.fleets f set status = 'ANCHORED', port_id = null, lat = 36.6, lon = -12.0, busy_until = null, ready_at = null where f.id in (v_me, r.fleet_id);
+      update public.ships s set crew = (select c.crew_required from public.ship_classes c where c.id = s.class_id), durability = (select b.durability from public.ship_base(s.id) b) where s.fleet_id in (v_me, r.fleet_id);
+      v_bat := public.battle_open('ATTACK', v_me, r.fleet_id, t0 + interval '4 hours');
+      select b.* into v_b from public.battles b where b.id = v_bat;
+      if v_b.ticks is null then
+        raise exception 'PROOF 156 FAIL: her attack was not fought tick by tick';
+      end if;
+      if (v_b.ticks ->> 'n')::int < 26 then
+        raise exception 'the fight ended at tick %', v_b.ticks ->> 'n' using errcode = 'PR156';
+      end if;
+      exit;
+    exception when sqlstate 'PR156' then
+      v_bat := null;
+      v_skip := v_skip + 1;
+    end;
+  end loop;
+  if v_bat is null then
+    raise exception 'PROOF 156 FAIL: her attack on % merchant(s) in turn never lasted the 26 ticks a Run needs', v_skip;
   end if;
   v_n := least(10, (v_b.ticks ->> 'n')::int - 25);
   perform pg_temp.at_tick_156(v_bat, v_n);
@@ -216,8 +242,8 @@ begin
   if (select count(*) from public.level_book b where b.player_id = v_pl) <> v_got then
     raise exception 'PROOF 156 FAIL: a company that attacked and ran was granted Evasion';
   end if;
-  raise notice 'PASS: EV_NO_FARM — a merchant set upon: no level row; her own attack, Run pressed at tick % (% roll(s)): nothing; a second close: nothing (EV_XP)',
-    v_n + 1, (select count(*) from jsonb_array_elements(v_r #> '{ticks,e}') e where e ->> 2 = 'X');
+  raise notice 'PASS: EV_NO_FARM — a merchant set upon: no level row; her own attack (% merchant(s) before this one ended the fight too soon for a Run), Run pressed at tick % (% roll(s)): nothing; a second close: nothing (EV_XP)',
+    v_skip, v_n + 1, (select count(*) from jsonb_array_elements(v_r #> '{ticks,e}') e where e ->> 2 = 'X');
 
   -- ── THE ENGINE ON FIXED SHEETS: two hulls so large nobody is hurt by tick 0, speed 18, handling 80, no Evasion benefit ──
   v_ha := jsonb_build_array(jsonb_build_object('id', '00000000-0453-4000-8000-000000015601', 'name', 'Lebre', 'tier', 2, 'hull', 100000, 'maxd', 100000, 'crew', 40, 'crew_need', 40,

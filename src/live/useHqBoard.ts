@@ -10,7 +10,8 @@ import { useServedRead, type ServedRead } from './useServedRead'
 // server, each naming the command that commits it. ONE READ, asked when HQ opens, when one of her fleets acts (a new version is a new
 // question) and at the MARKET'S EDGE (the served clock, as the desk's best_sales), never on the beat: it prices her idle fleets with
 // world.best_sales, the desk's own costly read.
-// Dark (hq_board_enabled false) it answers {on: false} after one knob read, kept a minute, and the board ranks v1's own.
+// Dark (hq_board_enabled false) it answers {on: false} after one knob read, kept a minute, and the board says "Board off" (H2: the
+// client ranks and rates nothing of its own).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 /** How long a dark answer is kept: the switch is the owner's, thrown rarely. */

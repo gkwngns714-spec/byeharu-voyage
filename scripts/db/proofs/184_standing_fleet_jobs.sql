@@ -8,12 +8,16 @@
 --   NO TIME-BUDGETED READ IS COMPARED WITH ANOTHER: a best run is checked for its own shape (its lines, her voyage to the harbour its
 --   note names), never against a second world.best_sales answer. THE DAY: proof.mjs runs this file in ONE transaction (now() is one
 --   instant); the report's window starts at 00:00 UTC of the day it runs, so no scene straddles a UTC midnight. A voyage is brought home
---   by moving its clock back (proof 4's way), and the read that follows settles her.
+--   by moving its clock back (proof 4's way), and the read that follows settles her. THE SEA IS CALMED for this transaction (hazard_p_max 0,
+--   as proofs 04, 11 and 157): a voyage's days are rolled on its own id, new every run, and a raid on a leg buries a hand, after which her
+--   next SAIL is rightly refused (E_CREW_SHORT). Main's from-zero run of 2026-11-24 drew that day on the fixed route's leg home: the job
+--   stopped on E_CREW_SHORT, as it should, before this proof's probe; what is proved here is the jobs, not the weather.
 --
 -- @pass FJ_DARK      dark: the tick writes nothing and the read is {"on": false}, a job's row standing
 -- @pass FJ_BEST      lit: a best job sends BUY / SAIL (each with the world's course) / SELL ALL for a paying sale, and she sails for it
 -- @pass FJ_LAP       she arrives and sells; her report counts the run and her fleet's coin as her ledger has it; the next run acts again
--- @pass FJ_FIXED     a fixed route: out (BUY ALL, SAIL, SELL ALL), home (SAIL back), out again: three runs
+-- @pass FJ_FIXED     a fixed route: out (BUY ALL, SAIL, SELL ALL), home (SAIL back), out again: three runs, each sailed to its end with no
+--                    order failed (the third too: she lies at the sale's harbour)
 -- @pass FJ_STOP      a plan that failed when it ran stops the job on that order's code; it is not due; set again, it is
 -- @pass FJ_BUDGET    fleet_jobs_budget_ms 0: a run starts the first due job only and names the rest left
 -- @pass FJ_COST      one run with one best job, timed: the plan (world.best_sales and the courses) and the open (cmd.issue_lines)
@@ -48,6 +52,11 @@ begin
   select f.id into v_fa from public.fleets f where f.player_id = v_a;
   select f.id into v_fb from public.fleets f where f.player_id = v_b;
   update public.players p set ducats = 60000 where p.id in (v_a, v_b);
+  -- the sea is calmed (the header): no storm, calm or raider moves a day of these voyages
+  update public.world_config set value = to_jsonb(0) where key = 'hazard_p_max';
+  if public.wc_num('hazard_p_max') <> 0 then
+    raise exception 'PROOF 184: the sea was not calmed (hazard_p_max %)', public.wc_num('hazard_p_max');
+  end if;
 
   -- FJ_DARK: a job row standing (written past the dark door), the switch off: nothing moves
   insert into public.fleet_jobs (fleet_id, player_id, kind, params, since, seen_at) values (v_fa, v_a, 'best', '{}'::jsonb, v_day, v_day);
@@ -135,13 +144,14 @@ begin
        where fleet_id = v_fb and status = 'SAILING';
       perform world.fleets();
     end loop;
-    exit when k = 3;
-    if (select p.code from public.fleets f join public.ports p on p.id = f.port_id where f.id = v_fb) is distinct from (case when k = 1 then v_sell else 'LIS' end)
+    -- every run sailed to its end, the third too: a third departure that was refused is a red here, not a job found stopped in FJ_STOP
+    if (select p.code from public.fleets f join public.ports p on p.id = f.port_id where f.id = v_fb) is distinct from (case when k = 2 then 'LIS' else v_sell end)
        or exists (select 1 from public.orders o where o.fleet_id = v_fb and o.status in ('pending', 'active', 'failed')) then
       raise exception 'FJ_FIXED: after run % she lies at % with %', k,
         (select p.code from public.fleets f join public.ports p on p.id = f.port_id where f.id = v_fb),
         (select jsonb_agg(jsonb_build_object('t', o.raw_text, 's', o.status, 'e', o.error_code) order by o.seq) from public.orders o where o.fleet_id = v_fb);
     end if;
+    exit when k = 3;
   end loop;
   raise notice 'PASS: FJ_FIXED — % from LIS to %: out, home, out again: % runs, she lies at %', v_g, v_sell, v_j.runs,
     (select p.code from public.fleets f join public.ports p on p.id = f.port_id where f.id = v_fb);

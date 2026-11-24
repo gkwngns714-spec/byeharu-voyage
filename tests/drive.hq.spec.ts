@@ -409,10 +409,12 @@ test('HQ: with the purses lit, a purchase at the Market shows on the hall\'s Gol
   const row = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]').first()
   const good = (await row.getByTestId('trade-good-name').innerText()).split('\n')[0].trim()
   await row.getByRole('button', { name: /^buy/i }).first().click()
-  // X1 (src/live/tradeOnDesk.ts): the Buy opens the Trade desk on that good; the buy runs there, and Back is the way to the HQ again
-  console.log(`buying: ${good} on the Trade desk`)
+  // S1 (2026-11-24, src/app/HqSheet.tsx): the Buy opens THE trade sheet over HQ on that good; the buy runs there, and the
+  // browser's back closes it — HQ is under it, as it was
+  console.log(`buying: ${good} in the trade sheet over HQ`)
   await tradeOnDesk(page)
   await page.goBack()
+  await expect(page.getByTestId('good-detail')).toHaveCount(0)
   await expect(page.getByTestId('city-building-hall')).toBeVisible({ timeout: 60_000 })
 
   // back to the hall: the city's Gold must have moved on its own

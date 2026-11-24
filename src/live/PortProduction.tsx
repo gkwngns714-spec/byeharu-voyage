@@ -110,7 +110,9 @@ export function PortProduction({
   const heldLine = heldStored ?? heldAboard
 
   return (
-    <div className="flex flex-col gap-3" data-testid="port-production">
+    // Below lg one column stands at a time and HQ is taller than the glass: the face holds a glass of height, or a shorter column would
+    // shrink the page under its own scroll and slide the control being pressed (city.production.spec).
+    <div className="flex min-h-dvh flex-col gap-3 lg:min-h-0" data-testid="port-production">
       <Segmented<Column>
         fill
         className="lg:hidden"
