@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // HQ IN PLACE (2026-11-24, docs/design/simplify-2026-11-24.md S1)
@@ -79,7 +80,7 @@ async function inPlace(page: Page, what: string, opener: Locator, sheet: Locator
 }
 
 for (const size of SIZES)
-  for (const locale of ['en-US', 'ko-KR'] as const)
+  for (const locale of LOCALES)
     test.describe(`${locale}`, () => {
       test.use({ locale })
       test(`HQ @${size.width} ${locale}: every press opens in place, and back, Escape and its arrow each close it with HQ as it was (S1)`, async ({
