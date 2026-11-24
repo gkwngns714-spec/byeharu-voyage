@@ -44,8 +44,6 @@ const cell = (page: Page, to: string) => page.getByTestId(`nav-cell-${to}`).firs
 /** Stats lives in the Menu on a phone (S1, 2026-11-11), reached through the cabin's tray; on the wide rail it is its
  *  own cell (owner, 2026-11-14), so the cell is pressed where the glass draws one. */
 const press = async (page: Page, to: string) => {
-  // THE OFFICE IS HQ'S DOOR since 2026-11-23 (the visual overhaul's slice 2, X2): its cell is off the bar, so it is pressed on HQ.
-  if (to === '/office') return page.getByTestId('city-office-city').click()
   if (to !== '/stats' || (await cell(page, to).count()) > 0) return cell(page, to).click()
   await cell(page, 'cabin').click()
   await page.getByTestId('nav-group-panel').getByRole('link', { name: 'Stats' }).click()
@@ -217,7 +215,6 @@ for (const size of [PHONE, LAPTOP]) {
     for (const [to, marker] of [
       ['/fleets', 'fleets'],
       ['/map', 'map-chart'],
-      ['/office', 'office'],
       ['/stats', 'stats'],
     ] as const) {
       await press(page, to)

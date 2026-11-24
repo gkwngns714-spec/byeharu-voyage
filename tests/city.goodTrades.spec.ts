@@ -3,9 +3,9 @@
 // Bought or Sold, units, price each, when. Here, in the in-tab (PGlite) canary world: buy a good, press the
 // same good again, and the list carries the buy as yours — on a phone and on a wide glass, with no sideways scroll.
 //
-// SINCE X1 (2026-11-23, src/live/tradeOnDesk.ts; the visual overhaul's slice 3) the trade runs on the Trade desk: a price pressed on
-// Office > City > Market opens the desk on that good, so the list is read where the trade is, in the desk's panel (TradePanel.tsx
-// draws the same CityGoodTrades the quay's tray drew).
+// SINCE S1 (2026-11-24, docs/design/simplify-2026-11-24.md; src/app/HqSheet.tsx) a price pressed on Office > City > Market opens THE
+// trade sheet over the page it was pressed on — the URL does not move — so the list is read where the trade is, in the sheet's panel
+// (TradePanel.tsx draws the same CityGoodTrades the quay's tray drew). The sheet stays open after a trade where she lies.
 //
 // The build under test must be served: `npm run build && npx vite preview --port <n>`, then
 // PLAYWRIGHT_BASE_URL=http://localhost:<n>/byeharu-voyage/ (localhost, not 127.0.0.1).
@@ -16,24 +16,29 @@ import { openCityFace, tradeOnDesk } from './desk.fixture'
 
 test.use({ viewport: PHONE })
 
-/** Press the live `buy` cell of the Market face's first live row; it opens the Trade desk on that good (X1). Returns the good's code. */
-async function pressBuy(page: Page): Promise<string> {
-  const got = await page.evaluate(() => {
+/** Press the live `buy` cell of the Market face's first live row; it opens THE trade sheet over the Office on that good, the URL
+ *  unmoved (S1). Returns the good's code and the row's name. */
+async function pressBuy(page: Page): Promise<{ code: string; name: string }> {
+  const url = page.url()
+  const name = await page.evaluate(() => {
     const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) =>
       /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()),
     ) as HTMLButtonElement | undefined
+    const row = cell?.closest('[data-testid="trade-row"]') as HTMLElement | null
     cell?.click()
-    return cell !== undefined
+    return row ? (row.innerText || '').split('\n')[0].trim() : ''
   })
-  expect(got, 'no live buy cell to press').toBe(true)
-  await expect(page).toHaveURL(/\/command$/, { timeout: 30_000 })
-  const card = page.locator('[data-testid="trade-good"].ring-1')
-  await expect(card, 'the desk did not open on the good pressed').toHaveCount(1, { timeout: 60_000 })
-  return (await card.getAttribute('data-good')) ?? ''
+  expect(name, 'no live buy cell to press').not.toBe('')
+  const sheet = page.getByTestId('good-detail')
+  await expect(sheet, 'the trade sheet did not open on the good pressed').toBeVisible({ timeout: 60_000 })
+  expect(page.url(), 'the Buy left the page it was pressed on').toBe(url)
+  await expect(sheet).toHaveAttribute('data-side', 'buy')
+  return { code: (await sheet.getAttribute('data-good')) ?? '', name }
 }
 
-/** The desk's card of `code`: its Buy opens the good's panel. */
-const deskBuy = (page: Page, code: string) => page.locator(`[data-testid="trade-good"][data-good="${code}"]`).getByTestId('trade-buy')
+/** The Market face's row of the good named: its Buy opens the good's sheet. */
+const rowBuy = (page: Page, name: string) =>
+  page.locator('[data-testid="trade-row"]').filter({ hasText: name }).first().getByRole('button', { name: /^buy/i }).first()
 
 const noSideways = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
@@ -46,13 +51,13 @@ test('City › a good pressed lists who bought it: my buy shows as mine, Bought,
   await openCityFace(page)
   expect(await page.locator('[data-testid="trade-row"]').count(), 'no ledger rows — is a fleet docked?').toBeGreaterThan(1)
 
-  // BUY ONE LOT, on the desk the Market face's price opens
+  // BUY ONE LOT, in the sheet the Market face's price opens
   const good = await pressBuy(page)
-  expect(good, 'the open card has no good').not.toBe('')
+  expect(good.code, 'the open sheet has no good').not.toBe('')
   await tradeOnDesk(page)
 
-  // PRESS THE SAME GOOD: its panel's list carries the buy, as mine
-  await deskBuy(page, good).click()
+  // THE SAME GOOD'S SHEET, STILL OPEN: its list carries the buy, as mine
+  await expect(page.getByTestId('good-detail')).toHaveAttribute('data-good', good.code)
   const list = page.getByTestId('city-good-trades')
   await expect(list).toBeVisible({ timeout: 30_000 })
   const first = list.locator('[data-testid="city-good-trade"]').first()
@@ -70,11 +75,12 @@ test('City › a good pressed lists who bought it: my buy shows as mine, Bought,
   await list.scrollIntoViewIfNeeded()
   await page.screenshot({ path: testInfo.outputPath('trades-phone.png') })
 
-  // WIDE GLASS: the desk re-lays out as the terminal; the same press opens the same list in the panel's pane, with no sideways scroll
+  // WIDE GLASS: the Office re-lays out as the terminal; the same press opens the same list in the sheet, in its right pane, with no
+  // sideways scroll
   await page.setViewportSize({ width: 1280, height: 900 })
-  await expect(page.locator('[data-testid="command"][data-desk="terminal"]'), 'the desk did not re-lay out for the wide glass').toBeVisible({ timeout: 60_000 })
+  await expect(page.getByTestId('desk-pane-ticket'), 'the Office did not re-lay out for the wide glass').toBeVisible({ timeout: 60_000 })
   await expect(async () => {
-    if ((await list.count()) === 0) await deskBuy(page, good).click({ timeout: 2_000 })
+    if ((await list.count()) === 0) await rowBuy(page, good.name).click({ timeout: 2_000 })
     await expect(first).toBeVisible({ timeout: 2_000 })
   }).toPass({ timeout: 60_000 })
   await expect(first).toContainText(/you/i)
