@@ -27,7 +27,7 @@ export const hqDict = defineDict({
     rateWages: 'Wages',
     rateTax: 'Tax',
     rateDock: 'Dock fees',
-    rateStores: 'Stores',
+    rateStores: 'Supplies',
     rateRepairs: 'Repairs',
     rateTow: 'Tow',
     rateInsurance: 'Insurance',
