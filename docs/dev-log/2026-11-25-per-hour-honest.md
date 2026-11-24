@@ -90,3 +90,21 @@ at the sixth for crew) and 1,850 /h. One card over its seconds is not a rate, so
   one run's, as before, with the two waits.
 - The dock turn was 0 s locally (the local economy is open).
 - `world.actions` on real Postgres 17 was not timed.
+
+## 2026-11-25, later: nothing is cut by the clock
+
+CI (#863): proof 199 WR_DOOR failed because `world.actions` hit its 1.2 s cut (1,506 ms) and Bring home was left out at Porto. A
+cut by wall clock makes a player's choices come and go with the server's speed, so it is gone.
+
+- The Best run, every Bring home the door would take and every land job are built first and never left out.
+- Only the single runs are bounded, by COUNT: the first 8 paying cards in the plan's own order. `cut` true says cards past them were left out.
+- Past 5 s of its own time the read answers `closed` E_SLOW ("ask again") and no option: never a shorter list.
+- Proof 199 WR_COST prints the times and judges none.
+
+| `world.actions(fleet)`, local PGlite | before | after |
+|---|---|---|
+| Lisbon | 721 ms, 8 runs | 596 ms, 8 runs (the loop stops at the eighth) |
+| Porto | 904 ms, 6 runs, 6 bring home | 703 ms, the same options |
+| Nagasaki | 1,204 ms, 8 runs, **2** bring home (cut by the clock, locally too) | 1,194 ms, 8 runs, **10** bring home |
+
+One `world.best_sales` read a call, as before (it is most of the time); each harbour's trip back is asked once.

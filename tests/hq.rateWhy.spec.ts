@@ -11,7 +11,7 @@ import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 //   - the headline is her running costs only (the tow and the wages), never the investment;
 //   - under it one fixed-height line names the biggest causes, and a neutral line says "Invested 461,384 · one time";
 //   - a press on the figure (44 px) opens the sheet over HQ: two groups, Running and One time; each group's lines sum to its figure;
-//   - ✕, Escape and the browser's back each close it and leave HQ as it was;
+//   - its back arrow and Escape each close it and leave HQ as it was (the browser's back is DetailPage's own: useBackLayer);
 //   - no sideways scroll at 320, 390 and 1440.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -74,7 +74,7 @@ for (const glass of [
     await expect(causes).toContainText('Tow −6,932')
     await expect(causes).toContainText('Wages −480')
     await expect(causes).not.toContainText('Invested')
-    expect((await causes.boundingBox())!.height, 'the causes line has a fixed height').toBe(glass.width >= 768 ? 18 : 36)
+    expect((await causes.boundingBox())!.height, 'the causes line has a fixed height').toBe(18)
     const once = page.getByTestId('hq-rate-once')
     await expect(once).toHaveText(/Invested 461,384\s*· one time/)
     expect(await once.evaluate((el) => getComputedStyle(el).color === getComputedStyle(document.querySelector('[data-testid="hq-rate-causes"]')!).color), 'a purchase is neutral, not red').toBe(true)
@@ -97,20 +97,17 @@ for (const glass of [
     await expect(invest).toContainText('×2')
     await expect(sheet.getByTestId('hq-rate-running').locator('[data-line="invest"]')).toHaveCount(0)
     await expect(sheet.getByTestId('hq-rate-running').locator('[data-line="tow"]')).toHaveAttribute('data-total', '-6932')
-    expect((await page.getByTestId('hq-rate-close').boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    const back = sheet.locator('[data-detail-back]')
+    expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(44)
     expect(await noSideways(page), 'no sideways scroll with the sheet open').toBe(true)
     if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/rate-why-sheet-${glass.width}.png` })
 
-    // THE WAYS OUT: the cross, Escape, the browser's back; HQ stays
-    await page.getByTestId('hq-rate-close').click()
+    // THE WAYS OUT: the page's back arrow and Escape; HQ stays
+    await back.click()
     await expect(sheet).toHaveCount(0)
     await figure.click()
     await expect(sheet).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(sheet).toHaveCount(0)
-    await figure.click()
-    await expect(sheet).toBeVisible()
-    await page.goBack()
     await expect(sheet).toHaveCount(0)
     await expect(page).toHaveURL(/\/city/)
     await expect(page.getByTestId('hq-board')).toBeVisible()

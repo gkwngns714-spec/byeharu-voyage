@@ -124,8 +124,8 @@ export function DetailPage({
   children: ReactNode
 } & { 'data-testid'?: string }) {
   const t = useT()
-  // Escape is the keyboard's back press; the visible back control is the thumb's.
-  useBackLayer(onClose)
+  // Escape is the keyboard's back press; the visible back control is the thumb's; both are the browser's back (useBackLayer.ts)
+  const back = useBackLayer(onClose)
   return (
     <div
       role="dialog"
@@ -144,7 +144,7 @@ export function DetailPage({
         <div className={`${detailColumnClass()} flex min-h-14 items-center gap-2 py-1`}>
           <button
             type="button"
-            onClick={onClose}
+            onClick={back}
             aria-label={t('common.back')}
             data-detail-back=""
             className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-control text-ink-muted transition hover:text-ink"

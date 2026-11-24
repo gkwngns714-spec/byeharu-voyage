@@ -231,6 +231,9 @@ export interface SnapshotConfig {
   /** 0455: THE LAND'S SWITCH (world_config land_enabled). False: the Land tab is not on the bar and every land door refuses.
    *  Absent before 0455. */
   land_enabled?: boolean
+  /** 0492's switch (world_config assign_home_enabled), for the day a snapshot serves it: NO READ SERVES IT TODAY, so it is absent,
+   *  and the Assign sheet then learns the switch from the door itself (corp/AssignSheet.tsx `useHomeDoor`). */
+  assign_home_enabled?: boolean
 }
 
 export interface VerbArg {
@@ -3547,6 +3550,13 @@ export interface FleetJobParams {
   sell?: string
   stops?: string[]
   to?: string
+  /** 0492 (assign_home_enabled): how a fixed run ends: 'sell' at `sell` (the default), or 'store' into the home warehouse (the server
+   *  then sets `sell` to her home harbour). Absent on a job set without it. */
+  end?: 'sell' | 'store'
+  /** 0492: how many loaded runs (1-999); absent or null: until stopped. */
+  times?: number | null
+  /** 0492: the runs still to start, as served (counted down from `times`). */
+  left?: number | null
 }
 
 /** 0481: what a job did last: a run it started (its note), a wait for nothing to do, or the code it stopped on. */
@@ -3745,7 +3755,8 @@ export type WorkerActionsView =
       options: WorkerAction[]
       /** Her door is shut for every option (dark, a route, the party out, a haul waiting): no option is served. */
       closed: { code: string; sentence: string } | null
-      /** The read's budget ran out before every option was priced. */
+      /** Single runs past the first eight were left out (by count, in a stable order; never by the clock). The Best run, Bring home,
+       *  Trade nearby and land jobs are never left out. A read that took too long answers `closed` E_SLOW instead. */
       cut: boolean
       at?: string | null
       ms: number

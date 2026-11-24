@@ -1,44 +1,30 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Chip, Empty, Icon, SheetSection } from '../../../components/ui'
 import { MOVE_KINDS, type MoveKind } from '../../../domain/hq'
 import { formatInt } from '../../../lib/format'
 import { useT, type TKey } from '../../../lib/i18n'
-import type { FleetJobRow, SnapshotPort } from '../../../lib/rpc'
-import { litAway, useAwayReport } from '../../../live/useAwayReport'
-import { litRace, useNationRace } from '../../../live/useNationRace'
-import { litRoles, useShipRoles } from '../../../live/useShipRoles'
-import { litSea, useSeaChoices } from '../../../live/useSeaChoices'
-import { JobsAway } from './JobsAway'
-import { Bridge } from './Bridge'
-import { FleetRows } from './FleetRows'
 import { KIND_ICON } from './jobMarks'
 import { MoveCard } from './MoveCard'
-import { RaceBridge } from './RaceBridge'
-import { SeaChoiceCard } from './SeaChoiceCard'
-import { useBoard } from './useBoard'
+import type { Board } from './useBoard'
 import { useMovePress } from './useMovePress'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// HQ'S COMMAND BOARD, v1 (owner, 2026-11-23: *"i want this game to be strategical game, where all the work (activities) are done in
-// HQ - words with graphics. choosing best options available, finding best options."* — docs/design/hq-command-2026-11-23.md)
+// HQ'S BEST MOVES (owner, 2026-11-23: *"i want this game to be strategical game, where all the work (activities) are done in
+// HQ - words with graphics. choosing best options available, finding best options."* — docs/design/hq-command-2026-11-23.md;
+// docs/design/hq-corp-2026-11-24.md C1)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-//   THE BRIDGE   coin and coin per hour · each fleet a ship in her job's tone · what finishes next · pirates near
-//   BEST MOVES   every move open now as a card, ranked by domain/hq's one rule; the top few, More for the rest; icon chips to filter
-//   FLEETS       one row a fleet: picture, job, today's route money, Route / Plan; an idle fleet glows and offers her best card
-//   0486         lit (sea_choices_enabled): A CHOICE AT SEA first of all (a storm, a wreck or a strange sail her long trip met: the options,
-//                their odds as bars, the best by expected coin, the safe default, the clock to her arrival; one press), and While away
-//                says each choice's end since she last pressed OK
-//   0485         lit (ship_roles_enabled): each fleet row's role chips (guard, fast, big cargo) for each of her hulls; the board's role card
-//                (the best role for her new hull, one press) and the yard's card naming the role the next hull should fill
-//   0484         lit (nation_race_enabled): THE COUNTRY RACE under the bridge (her country's place, the countries' cities led as bars, her
-//                influence, the week's clock, the home perk, her title), and a trade or request card in a contested city marks what it adds
-//                for her country (an Influence chip, in the tone of who leads there); the Influence filter shows only those cards
-//   0483         lit (contracts_enabled): courier contracts are served cards (take one, deliver one); their chip shows when one is served
-//   0481         lit (fleet_jobs_enabled): WHILE AWAY at the top (what each standing job did), each fleet row's job mark and setter, and a
-//                trade card's Repeat (that trip as her fixed route)
+// Every move open now as a card, in the server's order (world.hq_board, 0480): the top few, More for the rest; icon chips to filter.
+// While the board's switch is dark: one line, "Board off" (the client ranks nothing of its own).
+//   0483 lit (contracts_enabled): courier contracts are served cards; their chip shows when one is served
+//   0484 lit (nation_race_enabled): a trade or request card in a contested city marks what it adds for her country; the Influence
+//        filter shows only those cards
+//   0485 lit (ship_roles_enabled): the role card (the best role for her new hull) and the yard's card naming the next hull's role
 //
-// It stands at the top of HQ, over the city's buildings, so it is the first thing seen; every building stays one press below it.
+// THIS IS ONE AREA OF HQ, NOT THE PAGE (the join, 2026-11-24): the page's order is corp/HqCompany.tsx's, which reads the board ONCE
+// (useBoard) and hands it here. The Rank strip, While away, the sea choices and the country race are its other areas. The Fleets
+// section this file drew is deleted: every fleet is a row of the one worker list (corp/WorkerList.tsx), and her standing job is set
+// in the one Assign sheet, not by chips on a second row.
 
 /** How many moves stand before More. */
 export const TOP_MOVES = 5
@@ -58,56 +44,55 @@ const FILTER_WORD: Record<Filter, TKey> = {
   invest: 'hq.invest',
 }
 
-export function HqBoard({ port }: { port: SnapshotPort | null }) {
+export function HqBoard({ board }: { board: Board }) {
   const t = useT()
-  const board = useBoard(port)
   const press = useMovePress()
   const [filter, setFilter] = useState<Filter>('all')
   const [more, setMore] = useState(false)
-  // 0481: her fleets' standing jobs (world.away_report; dark: null, and nothing of them is drawn)
-  const away = litAway(useAwayReport().view)
-  const jobs = useMemo(() => (away ? new Map<string, FleetJobRow>(away.jobs.map((j) => [j.fleet, j])) : null), [away])
-  // 0484: the country race (world.nation_race; dark: null, and nothing of it is drawn)
-  const race = litRace(useNationRace().view)
-  // 0485: her hulls' roles (world.ship_roles; dark: null, and nothing of them is drawn)
-  const roles = litRoles(useShipRoles().view)
-  // 0486: her choices at sea (world.sea_choices; dark: null, and nothing of them is drawn)
-  const sea = litSea(useSeaChoices().view)
   const raced = (m: (typeof board.moves)[number]) => m.data.kind === 'served' && (m.data.move.race?.points ?? 0) > 0
   const shown = board.moves.filter((m) => filter === 'all' || (filter === 'race' ? raced(m) : m.kind === filter))
   const list = more ? shown : shown.slice(0, TOP_MOVES)
 
   return (
-    <div className="flex flex-col gap-6" data-testid="hq-board" data-source={board.served ? 'served' : 'client'}>
-      {sea?.open.map((c) => <SeaChoiceCard key={c.id} c={c} />)}
-      {away && <JobsAway report={away} sea={sea?.recent ?? []} />}
-      <Bridge board={board} />
-      {race && <RaceBridge race={race} />}
-
+    <div data-testid="hq-board" data-source={board.source ?? undefined}>
       <SheetSection heading={t('hq.moves')} trailing={<span className="text-t-caption tabular-nums text-ink-faint">{formatInt(shown.length)}</span>}>
-        <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label={t('hq.filter')} data-testid="hq-filters">
-          {(
-            [
-              'all',
-              ...(board.moves.some(raced) ? (['race'] as const) : []),
-              ...MOVE_KINDS.filter((k) => (k !== 'contract' && k !== 'role') || board.moves.some((m) => m.kind === k)),
-            ] as Filter[]
-          ).map((f) => (
-            <Chip key={f} on={filter === f} onClick={() => setFilter(f)} data-testid={`hq-filter-${f}`}>
-              <span className="inline-flex items-center gap-1">
-                {f !== 'all' && <Icon name={f === 'race' ? 'banner' : KIND_ICON[f]} size={16} aria-hidden />}
-                {t(FILTER_WORD[f])}
-              </span>
-            </Chip>
-          ))}
-        </div>
-        {list.length === 0 ? (
+        {/* dark: no card to filter, so no chips */}
+        {board.source !== 'off' && !board.asking && (
+          <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label={t('hq.filter')} data-testid="hq-filters">
+            {(
+              [
+                'all',
+                ...(board.moves.some(raced) ? (['race'] as const) : []),
+                ...MOVE_KINDS.filter((k) => (k !== 'contract' && k !== 'role') || board.moves.some((m) => m.kind === k)),
+              ] as Filter[]
+            ).map((f) => (
+              <Chip key={f} on={filter === f} onClick={() => setFilter(f)} data-testid={`hq-filter-${f}`}>
+                <span className="inline-flex items-center gap-1">
+                  {f !== 'all' && <Icon name={f === 'race' ? 'banner' : KIND_ICON[f]} size={16} aria-hidden />}
+                  {t(FILTER_WORD[f])}
+                </span>
+              </Chip>
+            ))}
+          </div>
+        )}
+        {/* WHILE THE BOARD IS ASKED, ONE HELD LINE (2026-11-25, "nothing on a page moves by itself"). Unread, this drew the filter chips and
+            "none" (250 px at 390) before the server had said anything; a dark board then answered "off" (60 px) and the Storage, the Ledger
+            and every plate under it went up 190 px by themselves. The held line is the off line's own room, and it says nothing it does not know. */}
+        {board.asking ? (
+          <p className="text-t-label text-ink-muted" aria-busy="true" data-testid="hq-board-wait">
+            &nbsp;
+          </p>
+        ) : board.source === 'off' ? (
+          <p className="text-t-label text-ink-muted" data-testid="hq-board-off">
+            {t('hq.boardOff')}
+          </p>
+        ) : list.length === 0 ? (
           <Empty icon="compass">{t('hq.none')}</Empty>
         ) : (
           <ol className="grid grid-cols-1 gap-2 lg:grid-cols-2" data-testid="hq-moves">
             {list.map((m) => (
               <li key={m.id} className="min-w-0">
-                <MoveCard move={m} onPress={press} jobs={jobs} />
+                <MoveCard move={m} onPress={press} />
               </li>
             ))}
           </ol>
@@ -117,10 +102,6 @@ export function HqBoard({ port }: { port: SnapshotPort | null }) {
             {more ? t('hq.less') : t('hq.more')}
           </button>
         )}
-      </SheetSection>
-
-      <SheetSection heading={t('hq.fleets')}>
-        <FleetRows fleets={board.fleets} moves={board.moves} jobs={jobs} roles={roles} />
       </SheetSection>
     </div>
   )
