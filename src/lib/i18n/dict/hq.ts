@@ -109,6 +109,10 @@ export const hqDict = defineDict({
     raceRival: 'Rival leads',
     raceOpen: 'Nobody yet',
     racePlace: '{n} of {of}',
+    // S1 (2026-11-24): the sheets over HQ (app/HqSheet.tsx)
+    noFleet: 'No fleet',
+    cargo: 'Cargo',
+    orders: 'Orders',
     raceCities: '{n} cities',
     racePoints: 'Your influence {n}',
     raceEnds: 'Week ends',
@@ -272,5 +276,8 @@ export const hqDict = defineDict({
     seaExpected: '기대 {n}',
     seaGood: '좋은 결과 {n}',
     seaBad: '나쁜 결과 {n}',
+    noFleet: '선단 없음',
+    cargo: '화물',
+    orders: '명령',
   },
 })
