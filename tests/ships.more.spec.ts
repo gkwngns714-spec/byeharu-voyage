@@ -7,6 +7,7 @@ import { HULL_JOBS, HULL_JOB_CODES } from '../src/live/hullJobs.generated'
 import { JOB_WORD } from '../src/live/hullJobWord'
 import { translate } from '../src/lib/i18n'
 import { LOCALES, koreanTest } from './korean.paused'
+import { openYard } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // MORE SHIPS (migration 0366, owner row 322: "i need more trade ships, cargo, and especially combat related ships")
@@ -197,10 +198,10 @@ for (const locale of LOCALES) {
         test.setTimeout(480_000)
         test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
         const shot = (name: string) => page.screenshot({ path: SHOTS ? path.join(SHOTS, `${name}-${width}-${lang}.png`) : info.outputPath(`${name}.png`) })
-        await page.goto('port')
+        // HQ's Port plate > Build (H3, 2026-11-24: the yard was a tab of the Office's City face)
+        await page.goto('city')
         await ready(page)
-        await page.getByRole('tablist', { name: translate(lang, 'desk.cityBuildings') }).getByRole('tab', { name: translate(lang, 'town.f_building_yard'), exact: true }).click()
-        await expect(page.getByTestId('port-yard')).toBeVisible({ timeout: 60_000 })
+        await openYard(page, translate(lang, 'town.f_building_yard'))
         const more = page.getByTestId('yard-more')
         if ((await more.count()) > 0 && (await more.getAttribute('aria-expanded')) !== 'true') await more.click()
         // a fresh company is Portuguese, at Lisbon: the five Portuguese hulls of 0366 are hulls of this yard's country

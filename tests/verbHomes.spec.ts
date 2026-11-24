@@ -21,7 +21,7 @@
 // and fails on the commit that reintroduces the grid rather than on the playtest that finds it.
 
 import { test, expect } from '@playwright/test'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 const SRC = path.resolve(process.cwd(), 'src')
@@ -86,7 +86,7 @@ test('COMMAND composes no verb — it keeps whose orders, and her queue', () => 
   expect(
     offenders,
     `COMMAND is composing a verb again. Its doorway belongs where the act happens — a PORT face for ` +
-      `a building's act, the chart for SAIL. See src/features/command/CommandScreen.tsx.\n` +
+      `a building's act, the chart for SAIL. See tests/hq.desk.spec.ts.\n` +
       offenders.join('\n'),
   ).toEqual([])
 })
@@ -116,7 +116,8 @@ test('the stepped question has one home — the three building faces', () => {
   // than the folder it replaced: a fourth face composing a verb fails here wherever it is put.
   // 2026-10-18 (docs/COMMAND_DESK.md D5): the Shipyard and the quay moved to src/live with every building face,
   // so PORT (until D8) and the desk's City face compose ONE copy of each.
-  const HOMES = ['live/PortInn.tsx', 'live/PortShipyard.tsx', 'live/PortTrade.tsx']
+  // H3 (2026-11-24): the quay's own resupply row went with the Office's market (PortTrade); the Inn's is the one.
+  const HOMES = ['live/PortInn.tsx', 'live/PortShipyard.tsx']
   const importers: string[] = []
   for (const f of [...files(path.join(SRC, 'features')), ...files(path.join(SRC, 'live'))]) {
     const text = readFileSync(f, 'utf8')
@@ -137,23 +138,30 @@ test('the stepped question has one home — the three building faces', () => {
   ).toEqual([])
 })
 
-// 2026-10-18 — EVERY VERB PORT CARRIED HAS A HOME ON COMMAND (docs/COMMAND_DESK.md §2.2, D5; the gate D8 deletes
-// PORT behind). The owner: *"delete port tab, and focus on command tab"*. Each building face is ONE component in
-// src/live, and the desk's City face composes every one of them, so PORT's folder holds no face of its own:
-//   Trade (buy · sell · bargain · basket · requests · resupply) PortTrade · Town PortTown · Town Hall (invest,
-//   donate, the purse) CityTownHall · Craft PortWorkstation · Inn (hire, dismiss, resupply,
-//   captains) PortInn · Build PortYard · Repair PortShipyard · Skills PortAcademy · the fair QuayFair · a tow TowNote.
-test("every building face is one component in src/live, and the Office's City face composes each one", () => {
-  const FACES = ['PortTrade', 'PortTown', 'CityTownHall', 'PortWorkstation', 'PortInn', 'PortYard',
-    'PortShipyard', 'PortAcademy', 'QuayFair', 'TowNote']
-  // the City face is the Office tab's since 2026-11-16 (it was the desk's)
-  const city = readFileSync(path.join(SRC, 'features', 'command', 'city', 'City.tsx'), 'utf8')
-  const missing = FACES.filter((name) => !city.includes(`import { ${name} } from '../../../live/`))
-  expect(missing, `the Office's City face does not compose: ${missing.join(', ')}`).toEqual([])
-  // STORE, TAKE and the forge are the HQ's Production page (owner, 2026-11-06): the desk's tab and Town row are its door.
-  expect(city, 'the desk has no door to Production').toContain('productionHref(')
-  expect(readFileSync(path.join(SRC, 'features', 'city', 'CityScreen.tsx'), 'utf8'), 'the HQ does not compose Production').toContain(`import { PortProduction } from '../../live/PortProduction'`)
-  // and no screen keeps a building face of its own (PORT's folder is its screen and its chrome)
+// EVERY BUILDING FACE HAS ONE HOME, ON HQ (H3 `desk-into-hq`, 2026-11-24; docs/design/simplify-2026-11-24.md S3). Until then the
+// Office's City face composed every one of them a second time (and PORT a third, before 2026-10-18). The Office and the Trade desk
+// are deleted; each face is ONE component in src/live, composed by HQ's plates (features/city) or HQ's sheet (app/HqSheet.tsx):
+//   Market (buy, sell, the best sale, requests) MarketFace · City hall (invest, donate) CityHallPanel, Invest's CityTownHall ·
+//   Production PortProduction · Craft PortWorkstation · Inn (hire, resupply, captains) PortInn · Build PortYard ·
+//   Repair PortShipyard · Skills PortAcademy · Gear PortGear · the fair QuayFair · a tow TowNote.
+test('every building face is one component in src/live, and HQ composes each one', () => {
+  const FACES = ['CityTownHall', 'PortWorkstation', 'PortInn', 'PortYard', 'PortShipyard', 'PortAcademy', 'PortGear', 'PortProduction', 'QuayFair', 'TowNote']
+  const hq = [
+    ...files(path.join(SRC, 'features', 'city')),
+    path.join(SRC, 'app', 'HqSheet.tsx'),
+    path.join(SRC, 'features', 'command', 'invest', 'Invest.tsx'),
+  ]
+    .map((f) => readFileSync(f, 'utf8'))
+    .join(' ')
+  const missing = FACES.filter((name) => !new RegExp(`import [{][^}]*[ ,{]${name}[ ,}][^}]*[}] from '[./]+/live/`).test(hq))
+  expect(missing, `HQ does not compose: ${missing.join(', ')}`).toEqual([])
+  // the one trade list is HQ's Market plate, and the one trade sheet is HQ's
+  expect(readFileSync(path.join(SRC, 'features', 'city', 'CityFace.tsx'), 'utf8'), 'HQ has no Market plate').toContain("import { MarketFace } from './MarketFace'")
+  expect(readFileSync(path.join(SRC, 'app', 'HqSheet.tsx'), 'utf8'), 'HQ has no trade sheet').toContain("import { TradePanel } from '../features/command/buysell/TradePanel'")
+  // the deleted second homes stay deleted
+  for (const gone of ['features/command/city/City.tsx', 'features/command/OfficeScreen.tsx', 'features/command/CommandScreen.tsx', 'live/PortTrade.tsx'])
+    expect(existsSync(path.join(SRC, gone)), `${gone} is back: a second home for a building's act`).toBe(false)
+  // and no screen keeps a building face of its own
   const portFaces = files(path.join(SRC, 'features')).filter((f) =>
     /\/(Port(Trade|Town|Production|Forge|Workstation|Yard|Shipyard|Academy|Fair)|CityTownHall|TownHallInfluence)\.tsx$/.test(f.split(path.sep).join('/')),
   )

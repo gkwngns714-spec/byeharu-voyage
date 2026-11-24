@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable, WORLD_BOOT_MS } from './appReady.fixture'
 import { serveRoutesOn } from './routesOn.fixture'
+import { openFleetSheet } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE ROUTE BUILDER ON THE MAP, DRIVEN (owner row 209, docs/ROUTE_BUILDER.md B2)
@@ -293,8 +294,9 @@ async function driveRepeat(page: Page, label: string) {
   await expect(bar).toHaveCount(0)
   await expect(page.getByTestId('map-detail-tray')).toBeVisible()
 
-  // THE DESK LISTS THE ROUTE, by the same harbours in the same order
-  await page.locator('a[href$="/command"]:visible').first().click()
+  // HER SHEET LISTS THE ROUTE (H3, 2026-11-24: it stood on the Trade desk), by the same harbours in the same order
+  await page.locator('a[href$="/city"]:visible').first().click()
+  await openFleetSheet(page)
   await expect(page.getByTestId('route-row')).toContainText(names.join(' ⇄ '), { timeout: 60_000 })
   await page.screenshot({ path: `test-results/route-builder-${label}-repeat-saved.png` })
 }

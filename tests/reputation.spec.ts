@@ -66,7 +66,7 @@ for (const size of SIZES) {
         test.setTimeout(LANDING_TEST_TIMEOUT_MS)
         expect(await reachable(request, baseURL ?? ''), `nothing served at ${baseURL}: run a preview (or set PLAYWRIGHT_BASE_URL)`).toBe(true)
         const words = WORDS[lang]
-        await page.goto('command')
+        await page.goto('city')
         await ready(page)
 
         // a new company: 0, with its word, left of the purse, and the bar stays inside the glass
@@ -95,7 +95,7 @@ for (const size of SIZES) {
         }
         await insideGlass()
 
-        // the Trade screen's goal card carries the same served balance on its second line (the phone's place for it)
+        // HQ's goal card (H3, 2026-11-24: it stood on the Trade screen) carries the same served balance on its second line (the phone's place for it)
         await expect(page.getByTestId('goal-reputation')).toHaveAttribute('data-value', '0')
         await expect(page.getByTestId('goal-reputation')).toHaveText(/^Reputation\s+0$/)
 

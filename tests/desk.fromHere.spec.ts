@@ -1,13 +1,14 @@
 import { test, expect } from '@playwright/test'
 import { PHONE, ready, reachable } from './appReady.fixture'
+import { openMarket } from './desk.fixture'
 
 // THE "FROM HERE" LINE (roadmap 2026-11-23 slice 4, the client half) AND THE ROUTES TAB FOLDED IN (X3).
 //
-//   1. Where she lies, the desk names the best sale to each of up to three harbours: one tile a harbour, each the profit of a goods
+//   1. Where she lies, HQ's Market plate (H3, 2026-11-24: it was the Trade desk) names the best sale to each of up to three harbours: one tile a harbour, each the profit of a goods
 //      card that sells there (the same served figure, world.best_sales), and the best of that harbour's cards. On a phone the
 //      tiles stand on one 44-px line; a tile that does not fit gives way whole (hidden), never cut.
 //   2. A tile pressed is its card pressed: the trip opens, sold at that harbour, and the tile is lit.
-//   3. X3: the Menu has no Routes; an old /routes link opens the Trade desk; the world's lanes stand at /lanes, behind a row on
+//   3. X3: the Menu has no Routes; an old /routes link opens HQ; the world's lanes stand at /lanes, behind a row on
 //      Stats > Markets, with the Stats cell lit there.
 
 test.beforeEach(async ({ request, baseURL }) => {
@@ -17,13 +18,15 @@ test.beforeEach(async ({ request, baseURL }) => {
 for (const size of [PHONE, { width: 1280, height: 800 }]) {
   test(`From here at ${size.width}: the best card per harbour, pressed opens its trip`, async ({ page }) => {
     await page.setViewportSize(size)
-    await page.goto('command')
+    await page.goto('city')
     await ready(page)
-    const line = page.getByTestId('from-here')
+    await openMarket(page)
+    const list = page.getByTestId('city-market-buy')
+    const line = list.getByTestId('from-here')
     await expect(line).toBeVisible({ timeout: 90_000 })
     // the cards' own sales, as served: each harbour's best profit
-    await expect(page.locator('[data-testid="best-sale"][data-state="sale"]').first()).toBeVisible({ timeout: 60_000 })
-    const cards = await page.locator('[data-testid="best-sale"][data-state="sale"][data-pays="true"]').evaluateAll((els) =>
+    await expect(list.locator('[data-testid="best-sale"][data-state="sale"]').first()).toBeVisible({ timeout: 60_000 })
+    const cards = await list.locator('[data-testid="best-sale"][data-state="sale"][data-pays="true"]').evaluateAll((els) =>
       els.map((e) => ({ port: e.getAttribute('data-port') ?? '', profit: Number(e.getAttribute('data-profit')), near: e.getAttribute('data-near') })),
     )
     const best = new Map<string, number>()
@@ -64,11 +67,11 @@ for (const size of [PHONE, { width: 1280, height: 800 }]) {
   })
 }
 
-test('X3: no Routes in the Menu; /routes opens the desk; the lanes stand behind Stats > Markets', async ({ page }) => {
+test('X3: no Routes in the Menu; /routes opens HQ; the lanes stand behind Stats > Markets', async ({ page }) => {
   await page.setViewportSize(PHONE)
   await page.goto('routes')
   await ready(page)
-  await expect(page).toHaveURL(/\/command$/)
+  await expect(page).toHaveURL(/\/city$/)
 
   await page.getByTestId('nav-cell-cabin').click()
   await expect(page.getByRole('link', { name: /^Routes$/ })).toHaveCount(0)

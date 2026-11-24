@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
-import { openOfficeFace } from './desk.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -283,8 +282,8 @@ test('Stats: a city row opens its page with its kind in the title and the People
 
 // ── ROW 296: THE REPORT'S DAY AND WEEK ───────────────────────────────────────────────────────────
 test('Report: its spans and its bars are real days (row 296)', async ({ page, request, baseURL }) => {
-  await open(page, request, baseURL, 'command')
-  await openOfficeFace(page, /^(Report|보고)$/)
+  await open(page, request, baseURL, 'city')
+  await page.getByTestId('city-office-report').click()
   await expect(page.getByTestId('report-spans')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 60_000 })
   const spans = (await page.getByTestId('report-spans').getByRole('tab').allInnerTexts()).map((s) => s.trim())

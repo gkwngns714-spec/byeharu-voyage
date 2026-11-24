@@ -1,23 +1,30 @@
-// A CITY PRESSED ON THE DESK'S SMALL MAP (owner row 218) — the way a player presses it: on the harbour's NAME where
+// A CITY PRESSED ON A SMALL MAP (owner row 218) — the way a player presses it: on the harbour's NAME where
 // one is drawn, else on its mark, through the chart's own tap (the picture takes no pointer; the surface under it
 // does, and THE map tab's hit test answers). Never an element click.
 //
-// The Trade face is ONE screen now (owner 2026-10-30: Buy and Sell are one combined list; the map is small, at the
-// bottom, foldable). These helpers drive that face: a city pressed on the map or the chip strip is the city in hand,
-// a card's Buy or Sell button opens the panel. The test ids below are the combined board's (TradeBoard.tsx).
+// THE TRADE LIST IS HQ'S MARKET PLATE (H3 `desk-into-hq`, 2026-11-24; it was the Trade desk's board): a city chip is the city read,
+// a card's Buy or Sell opens the trade sheet over HQ. The map of a fleet's orders is a page of her sheet (her HQ row's press).
+// These helpers drive those; the test ids are MarketFace.tsx's and HqSheet.tsx's.
 import { expect, type Locator, type Page } from '@playwright/test'
+import { closeTop, openFleetSheet, openMarket } from './desk.fixture'
 
-/** THE MAP IS A PAGE (owner, 2026-10-31): a spec that drives it presses its summary row and works
- *  inside the full-screen page, then closes it before touching the face behind. */
-export async function openTradeMap(face: Locator): Promise<void> {
-  await face.getByTestId('trade-map-open').click()
-  await expect(face.getByTestId('trade-map-open-page')).toBeVisible()
+/** THE MAP IS A PAGE of her sheet: her HQ row pressed (unless her sheet is open), then the sheet's Map row. Returns the page
+ *  (`trade-map` inside). */
+export async function openTradeMap(page: Page, fleet?: string): Promise<Locator> {
+  if ((await page.getByTestId('hq-sheet-fleet').count()) === 0) await openFleetSheet(page, fleet)
+  await page.getByTestId('hq-sheet-fleet-map').click()
+  const map = page.getByTestId('hq-sheet-fleet-map-page')
+  await expect(map).toBeVisible()
+  return map
 }
 
-/** Close the page a summary opened (the one back press every DetailPage carries). */
-export async function closeTradeMap(face: Locator): Promise<void> {
-  await face.getByTestId('trade-map-open-page').locator('[data-detail-back]').click()
-  await expect(face.getByTestId('trade-map-open-page')).toHaveCount(0)
+/** Close the map's page by its back press, and her sheet under it (`sheet: false` leaves her sheet open). */
+export async function closeTradeMap(page: Page, { sheet = true }: { sheet?: boolean } = {}): Promise<void> {
+  await page.getByTestId('hq-sheet-fleet-map-page').locator('[data-detail-back]').first().click()
+  await expect(page.getByTestId('hq-sheet-fleet-map-page')).toHaveCount(0)
+  if (!sheet) return
+  await closeTop(page)
+  await expect(page.getByTestId('hq-sheet-fleet')).toHaveCount(0)
 }
 
 export async function pressCity(page: Page, map: Locator, code: string): Promise<void> {
@@ -58,63 +65,59 @@ export async function pressCity(page: Page, map: Locator, code: string): Promise
   await page.mouse.click(at.x, at.y)
 }
 
-/** THE NEAREST CITY SHE IS NOT AT (owner row 229): the second chip of the strip (the first is where she lies).
- *  Pressed; its code returned. */
-export async function pressNearCity(face: Locator): Promise<string> {
-  const chip = face.getByTestId('city-chip').nth(1)
+/** THE NEAREST CITY SHE IS NOT AT (owner row 229): the second chip of the Market's strip (the first is HQ's own city, where she
+ *  lies). Pressed; its code returned. */
+export async function pressNearCity(page: Page): Promise<string> {
+  const read = await openMarket(page)
+  const chip = page.getByTestId('city-chip').nth(1)
   await expect(chip).toBeVisible({ timeout: 60_000 })
   const code = (await chip.getAttribute('data-port'))!
   await chip.click()
-  await expect(face.getByTestId('trade-board')).toHaveAttribute('data-city', code)
+  await expect(read).toHaveAttribute('data-city', code)
   return code
 }
 
-/** A good to BUY, pressed on the combined board: the first card whose Buy button is live — its code. */
-export async function pressFirstPricedCard(face: Locator): Promise<string> {
-  const buyable = face.locator('[data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))')
-  const card = buyable.first()
+const LIST = '[data-testid="city-market-buy"]'
+const BUYABLE = `${LIST} [data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))`
+
+/** A good to BUY, pressed on the Market's list: the first card whose Buy button is live — its code. */
+export async function pressFirstPricedCard(page: Page): Promise<string> {
+  const card = page.locator(BUYABLE).first()
   await expect(card).toBeVisible({ timeout: 120_000 })
   const code = (await card.getAttribute('data-good'))!
   await card.getByTestId('trade-buy').click()
   return code
 }
 
-/** A GOOD TO CARRY, FOUND THE WAY A PLAYER FINDS ONE (owner row 229: no list of where to sell — press cities): on the
- *  Trade face, the goods where she lies, then the harbours nearest her (the chip strip, then the map) pressed one by
- *  one until one deals in a good she can buy here — a city that sells a good buys it too (its market row has a bid).
- *  Returns the good, that city and where she lies; the face is left back on where she lies. */
+/** A GOOD TO CARRY, FOUND THE WAY A PLAYER FINDS ONE (owner row 229: no list of where to sell — press cities): on HQ's Market
+ *  plate, the goods where she lies, then the harbours nearest her (the chip strip) pressed one by one until one deals in a good
+ *  she can buy here — a city that sells a good buys it too (its market row has a bid).
+ *  Returns the good, that city and where she lies; the list is left back on where she lies. */
 export async function findCarry(page: Page, skip: readonly string[] = []): Promise<{ code: string; city: string; home: string }> {
-  const face = page.getByTestId('desk-trade')
-  const board = face.getByTestId('trade-board')
-  const chips = face.getByTestId('city-chip')
+  const read = await openMarket(page)
+  const chips = page.getByTestId('city-chip')
   await expect(chips.first()).toBeVisible({ timeout: 60_000 })
   const home = (await chips.first().getAttribute('data-port'))!
   const goodsOf = async () => {
-    // its buyable cards, or an empty board — a city that sells nothing is answered at once, not waited out
-    await expect(face.locator('[data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first().or(face.getByTestId('trade-board-empty'))).toBeVisible({ timeout: 60_000 })
-    return face.locator('[data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').evaluateAll((es) => es.map((e) => e.getAttribute('data-good') ?? ''))
+    // its buyable cards, or a list that has landed with none — a city that sells nothing is answered at once, not waited out
+    await expect(page.locator(BUYABLE).first().or(page.locator(`${LIST}:not(:has([data-testid="trade-good"]))`))).toBeVisible({ timeout: 60_000 })
+    return page.locator(BUYABLE).evaluateAll((es) => es.map((e) => e.getAttribute('data-good') ?? ''))
   }
   await chips.first().click()
-  await expect(board).toHaveAttribute('data-city', home)
+  await expect(read).toHaveAttribute('data-city', home)
   const here = new Set(await goodsOf())
   const near = (await chips.evaluateAll((es) => es.map((e) => e.getAttribute('data-port') ?? ''))).slice(1)
   const tried = new Set<string>([home, ...skip])
   for (const city of near) {
     if (!city || tried.has(city)) continue
     tried.add(city)
-    const chip = face.locator(`[data-testid="city-chip"][data-port="${city}"]`)
-    if (await chip.count()) await chip.click()
-    else {
-      await openTradeMap(face)
-      await pressCity(page, face.getByTestId('trade-map'), city)
-      await closeTradeMap(face)
-    }
-    if (!(await expect(board).toHaveAttribute('data-city', city, { timeout: 3_000 }).then(() => true, () => false))) continue
+    await page.locator(`[data-testid="city-chip"][data-port="${city}"]`).click()
+    if (!(await expect(read).toHaveAttribute('data-city', city, { timeout: 3_000 }).then(() => true, () => false))) continue
     const there = await goodsOf().catch(() => [] as string[])
     const code = there.find((c) => here.has(c))
     if (!code) continue
-    await face.locator(`[data-testid="city-chip"][data-port="${home}"]`).click()
-    await expect(board).toHaveAttribute('data-city', home)
+    await page.locator(`[data-testid="city-chip"][data-port="${home}"]`).click()
+    await expect(read).toHaveAttribute('data-city', home)
     return { code, city, home }
   }
   throw new Error('no harbour deals in a good sold where she lies')
@@ -122,18 +125,11 @@ export async function findCarry(page: Page, skip: readonly string[] = []): Promi
 
 /** Sell → the city → the good → Sail & sell (owner row 229). Its estimate's labels are 1–2 words (row 202). */
 export async function sailAndSell(page: Page, code: string, city: string): Promise<void> {
-  const face = page.getByTestId('desk-trade')
-  const board = face.getByTestId('trade-board')
-  const chip = face.locator(`[data-testid="city-chip"][data-port="${city}"]`)
-  if (await chip.count()) await chip.click()
-  else {
-    await openTradeMap(face)
-    await pressCity(page, face.getByTestId('trade-map'), city)
-    await closeTradeMap(face)
-  }
-  await expect(board).toHaveAttribute('data-city', city)
-  await expect(board).toHaveAttribute('data-docked', 'false')
-  const card = face.locator(`[data-testid="trade-good"][data-good="${code}"]`)
+  const read = await openMarket(page)
+  await page.locator(`[data-testid="city-chip"][data-port="${city}"]`).click()
+  await expect(read).toHaveAttribute('data-city', city)
+  await expect(read).toHaveAttribute('data-here', 'false')
+  const card = page.locator(`${LIST} [data-testid="trade-good"][data-good="${code}"]`)
   await expect(card.getByTestId('trade-good-sell')).toHaveText(/\d/, { timeout: 60_000 })
   await card.getByTestId('trade-sell').click()
   const act = page.getByTestId('trade-act')
@@ -146,15 +142,18 @@ export async function sailAndSell(page: Page, code: string, city: string): Promi
   await expect(page.getByTestId('good-detail')).toHaveCount(0, { timeout: 60_000 })
 }
 
-/** Buy, where she lies, the good's first count (the panel's one button). */
+/** Buy, where she lies, the good's first count (the sheet's one button). The sheet stays for the next lot, so it is closed here. */
 export async function buyHere(page: Page, code: string): Promise<void> {
-  const face = page.getByTestId('desk-trade')
-  const card = face.locator(`[data-testid="trade-good"][data-good="${code}"]`)
+  await openMarket(page)
+  const card = page.locator(`${LIST} [data-testid="trade-good"][data-good="${code}"]`)
   await expect(card).toBeVisible({ timeout: 60_000 })
   await card.getByTestId('trade-buy').click()
   const act = page.getByTestId('trade-act')
   await expect(act).toHaveAttribute('data-act', 'buy')
   await expect(act).toBeEnabled({ timeout: 60_000 })
+  const toast = page.getByTestId('trade-toast').waitFor({ state: 'visible', timeout: 60_000 })
   await act.click()
+  await toast
+  await page.getByTestId('tray-close').last().click()
   await expect(page.getByTestId('good-detail')).toHaveCount(0, { timeout: 60_000 })
 }

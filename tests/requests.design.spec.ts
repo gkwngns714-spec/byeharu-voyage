@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
-import { openCityFace } from './desk.fixture'
+import { openMarket } from './desk.fixture'
 import { tradeDict } from '../src/lib/i18n/dict/trade'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -57,10 +57,11 @@ for (const glass of GLASSES) {
     test('a request reads one price each, quantity, held, budget and a live time', async ({ page, request, baseURL }) => {
       test.setTimeout(420_000)
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-      await page.goto('command')
+      // H3 (2026-11-24): the board is HQ's Market plate, on its Requests face (it was the Office's City face)
+      await page.goto('city')
       await ready(page)
-      await openCityFace(page)
-      await page.getByRole('tablist', { name: 'Trade faces' }).getByRole('tab', { name: /^Requests$/ }).click()
+      await openMarket(page)
+      await page.getByRole('tablist', { name: 'Market', exact: true }).getByRole('tab', { name: /^Requests$/ }).click()
       await expect(page.locator('[data-testid="request-row"]').first()).toBeVisible({ timeout: 30_000 })
 
       await expect.poll(async () => (await rowsOf(page)).length).toBeGreaterThan(0)

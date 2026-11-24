@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { DetailPage, Note, SUMMARY_STACK_CLASS, SummaryRow } from '../../components/ui'
 import { buildingTier, hasBuilding } from '../../domain/port'
-import { fleetCrew, worstHullFraction } from '../../domain/fleet'
+import { alongsideAt, fleetCrew, worstHullFraction } from '../../domain/fleet'
 import { PortInn } from '../../live/PortInn'
 import { PORT_FACES } from '../../live/cityFaces'
 import { PortGear } from '../../live/PortGear'
@@ -13,6 +13,10 @@ import { formatInt, formatOfTotal, formatPct } from '../../lib/format'
 import { useT, type TKey } from '../../lib/i18n'
 import { CityPanel } from './CityPanel'
 import { MarketFace } from './MarketFace'
+import { openHq } from '../../app/hqPlace'
+import { useLevelGate } from '../../live/levelGate'
+import { TowNote } from '../../live/TowNote'
+import { useWorld } from '../../live/worldStore'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A BUILDING'S FACE, IN THE RIGHT PANEL (the City page, 2026-10-31)
@@ -60,12 +64,12 @@ const BUILDING_LABEL: Record<CityBuilding, TKey> = {
 }
 
 /** A face's own player word, read off the one face table (live/cityFaces.ts) — never restated. */
-function faceWord(id: 'building_yard' | 'shipyard' | 'gear'): string {
+function faceWord(id: 'building_yard' | 'shipyard' | 'gear' | 'workstation' | 'academy'): string {
   return PORT_FACES.find((f) => f.id === id)!.label
 }
 
 /** And its glyph, off the same table (visual pass 2): each door on the Port and Inn panels wears its face's mark. */
-function faceIcon(id: 'building_yard' | 'shipyard' | 'gear' | 'inn') {
+function faceIcon(id: 'building_yard' | 'shipyard' | 'gear' | 'inn' | 'workstation' | 'academy') {
   return PORT_FACES.find((f) => f.id === id)!.icon
 }
 
@@ -111,12 +115,38 @@ function PortFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null
   // 2026-11-15: "Repair 0%" read as "0% repaired"; the figure shows only when there is damage to repair
   const hurt = fleet ? 1 - worstHullFraction(fleet) : 0
   const damage = hurt >= 0.005 ? formatPct(hurt, 0) : undefined
+  // H3 (2026-11-24): the workshop (Craft) and the academy (Skills) stood on the Office's City face; their doors stand here, each
+  // opening its sheet over HQ (app/HqSheet.tsx). A door the level gate holds is not drawn (live/levelGate.ts, as the Office did).
+  const gate = useLevelGate()
+  const craft = hasBuilding(port, 'workstation') && !gate.shut('workstation')
+  const skills = hasBuilding(port, 'academy') && !gate.shut('academy')
+  const fleets = useWorld((s) => s.fleets)
+  const lying = alongsideAt(fleets, port.code, fleet?.id ?? null).docked
   return (
     <>
       {!yard && !repair && <Note tone="neutral" className="mb-2">{t('city.noYard')}</Note>}
       {yard && <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={buildWord} icon={faceIcon('building_yard')} onClick={() => setOpen('yard')} data-testid="city-port-yard" />}
       {repair && <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={repairWord} icon={faceIcon('shipyard')} figure={damage} onClick={() => setOpen('repair')} data-testid="city-port-repair" />}
       <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={gearWord} icon={faceIcon('gear')} onClick={() => setOpen('gear')} data-testid="city-port-gear" />
+      {craft && (
+        <SummaryRow
+          className={`min-h-row! ${SUMMARY_STACK_CLASS}`}
+          title={faceWord('workstation')}
+          icon={faceIcon('workstation')}
+          onClick={() => openHq({ sheet: 'workstation', port: port.code, fleet: fleet?.id })}
+          data-testid="city-port-craft"
+        />
+      )}
+      {skills && (
+        <SummaryRow
+          className={`min-h-row! ${SUMMARY_STACK_CLASS}`}
+          title={faceWord('academy')}
+          icon={faceIcon('academy')}
+          onClick={() => openHq({ sheet: 'academy' })}
+          data-testid="city-port-skills"
+        />
+      )}
+      <TowNote docked={lying} />
       {open === 'gear' && (
         <DetailPage title={gearWord} onClose={() => setOpen(null)} data-testid="city-port-gear-page">
           <PageBody>

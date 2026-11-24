@@ -2,6 +2,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { openCityPanel } from './openCity.fixture'
+import { openPlate } from './desk.fixture'
 
 // EVERY LIST LINES UP (owner rows 196, 198, 199, 201 — 2026-10-25).
 //
@@ -43,10 +44,13 @@ interface Screen {
 }
 
 const SCREENS: Screen[] = [
-  { name: 'Command', route: 'command' },
-  // 2026-11-16: City, Invest and Report left the Trade desk for the Office tab; Levels stand on You
-  { name: 'Office', route: 'office', faces: [[null, 'City'], [null, 'Invest'], [null, 'Report']] },
-  { name: 'City', route: 'office', faces: [[null, 'City'], ['City buildings', '*']] },
+  // H3 (2026-11-24): the Trade desk and the Office are gone; their faces are HQ's plates and its sheets
+  { name: 'HQ', route: 'city' },
+  { name: 'Market', route: 'city', open: (page) => openPlate(page, 'market') },
+  { name: 'Port', route: 'city', open: (page) => openPlate(page, 'port') },
+  { name: 'Inn', route: 'city', open: (page) => openPlate(page, 'inn') },
+  { name: 'Invest', route: 'city?sheet=invest' },
+  { name: 'Report', route: 'city?sheet=report' },
   { name: 'Production', route: 'city?place=production' },
   { name: 'Fleets', route: 'fleets' },
   { name: 'Map › Lisbon', route: 'map', open: (page) => openCityPanel(page, 'LIS', 'Lisbon') },
@@ -328,8 +332,7 @@ async function audit(page: Page, vp: { width: number; height: number }): Promise
         await look(`${s.name} › ${tab}`)
         continue
       }
-      // (Production is the HQ's page, not a desk face: its tab leaves the desk. It is walked as its own screen.)
-      for (const name of (await pressFace(page, list, '*')).filter((n) => n !== 'Production')) {
+      for (const name of await pressFace(page, list, '*')) {
         await pressFace(page, list, name)
         await look(`${s.name} › ${name}`)
       }

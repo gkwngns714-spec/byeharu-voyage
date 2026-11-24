@@ -6,6 +6,7 @@ import { awayLand, awayReport, AWAY_MS, parseSeenMark, seenMark, type SeenMark }
 import { tripRoute } from '../src/live/standingRouteDraft'
 import type { LandView, LedgerEvent, SnapshotGood, StandingRoute, StandingRouteBook } from '../src/lib/rpc'
 import { LANGS } from './korean.paused'
+import { openFleetSheet, openMarket } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A ROUTE IN REACH, AND A REPORT ON RETURN (2026-11-16, the content plan's slice B; docs/design/content-plan-2026-11.md
@@ -138,9 +139,10 @@ for (const run of RUNS) {
       expect(await reachable(request, baseURL ?? ''), `nothing served at ${baseURL}: run a preview (or set PLAYWRIGHT_BASE_URL)`).toBe(true)
       await page.addInitScript((l) => localStorage.setItem('bv.locale', l), run.lang)
       await serveRoutesOn(page)
-      await page.goto('command')
+      await page.goto('city')
       await ready(page)
-      const face = page.getByTestId('desk-trade')
+      await openMarket(page)
+      const face = page.getByTestId('city-market-buy')
 
       // A BRAND-NEW COMPANY: the device keeps its first mark and says nothing
       await expect.poll(async () => (await mark(page)) !== null, { timeout: 120_000 }).toBe(true)
@@ -190,9 +192,10 @@ for (const run of RUNS) {
       expect(await noSideways(page)).toBe(true)
       await page.screenshot({ path: `${OUT}/arrival-on-route-${tag}.png` })
 
-      // TRADE SAYS IT WHERE HER NAME STANDS, and the Route row is her route
-      await page.goto('command')
+      // HER SHEET SAYS IT WHERE HER NAME STANDS (H3, 2026-11-24: it was the Trade desk), and the Route row is her route
+      await page.goto('city')
       await ready(page)
+      await openFleetSheet(page)
       // (on a phone at sea the passage line keeps the strip's room, TradeStatus.tsx; the Route row and Fleets say it)
       const strip = page.getByTestId('trade-status').first()
       await expect(strip).toBeVisible({ timeout: 60_000 })

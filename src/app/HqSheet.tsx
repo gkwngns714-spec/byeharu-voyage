@@ -1,28 +1,33 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { DetailPage, Note, Skeleton, useBackLayer } from '../components/ui'
-import { alongsideAt, fleetCargoByCode } from '../domain/fleet'
+import { DetailPage, Note, SummaryRow, useBackLayer } from '../components/ui'
+import { alongsideAt, fleetCargoByCode, fleetPortCode } from '../domain/fleet'
 import { useCommandDraft } from '../domain/order'
 import { buildingTier, hasBuilding } from '../domain/port'
 import { tradeRows } from '../domain/market'
 import type { PlanDraft } from '../domain/plan'
 import { PORT_FACES } from '../live/cityFaces'
 import { PortInn } from '../live/PortInn'
-import { PortTrade } from '../live/PortTrade'
+import { PortAcademy } from '../live/PortAcademy'
+import { PortWorkstation } from '../live/PortWorkstation'
+import { RequestsHere } from '../live/RequestsHere'
 import { PortYard } from '../live/PortYard'
-import { useTradeFace } from '../live/tradeFace'
 import { useBestSales, usePriceWhy } from '../live/useDesk'
 import { usePortMarket } from '../live/usePortMarket'
 import { portNameOf, useWorld } from '../live/worldStore'
 import type { FleetView, SnapshotPort } from '../lib/rpc'
 import { useT } from '../lib/i18n'
-import type { DeskLayout } from '../features/command/DeskFrame'
-import { useYardAsk } from '../features/command/officeView'
+import { useYardAsk } from '../live/yardAsk'
+import type { DeskLayout } from '../features/command/deskLayout'
 import { Invest } from '../features/command/invest/Invest'
 import { Report } from '../features/command/report/Report'
 import { Queue } from '../features/command/Queue'
 import { RouteFold } from '../features/command/RouteFold'
 import { CargoBest } from '../features/command/buysell/CargoBest'
+import { ShipInfo } from '../features/command/buysell/ShipInfo'
+import { TradeStatus } from '../features/command/buysell/TradeStatus'
+import { InsuredVoyages } from '../features/command/plans/InsuredVoyages'
+import { TradeMap, type OrderPick } from '../features/command/plans/TradeMap'
 import { TradePanel } from '../features/command/buysell/TradePanel'
 import { saleChoices } from '../features/command/buysell/saleChoice'
 import { doneWords, type TradeDone } from '../features/command/buysell/tradeDone'
@@ -30,6 +35,8 @@ import { TradeToast } from '../features/command/buysell/TradeToast'
 import { useDeskPlan } from '../features/command/plans/planDraft'
 import { useTripBoard } from '../features/command/plans/useTripBoard'
 import { askOfParams, HQ_ASK_FIELDS, openHq, useHqPlace, type HqAsk } from './hqPlace'
+import { ShellCards } from './ShellCards'
+import { WelcomeCard } from './WelcomeCard'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE SHEETS OVER HQ (2026-11-24, docs/design/simplify-2026-11-24.md S1; the one door is hqPlace.ts `openHq`)
@@ -41,10 +48,15 @@ import { askOfParams, HQ_ASK_FIELDS, openHq, useHqPlace, type HqAsk } from './hq
 //   invest / report   the Office's two faces (Invest.tsx, Report.tsx), their parts one under the other in a DetailPage;
 //   yard              PortYard of that city, a hull's sheet open when the card named one;
 //   inn               PortInn of that city, for her fleet lying there;
-//   requests          the city's market on its Requests face (PortTrade), where a request is fulfilled;
+//   requests          the city's Requests (RequestsHere), where a request is fulfilled;
 //   trade             THE trade sheet (TradePanel), composed by its props: Buy / Sell where she lies, Sail & buy / Sail & sell
 //                     elsewhere, and a best sale's trip (bought here, sold there) at the units the card was priced for;
-//   fleet             her cargo and where it sells (CargoBest), her route (RouteFold), her orders (Queue).
+//   fleet             where she is (TradeStatus), her cargo and where it sells (CargoBest), her route (RouteFold), her orders
+//                     (Queue) and insured voyages, her map (TradeMap), her ship (ShipInfo);
+//   workstation       the city's workshop (PortWorkstation), for her fleet lying there;
+//   academy           the company's skill queue (PortAcademy).
+// H3 `desk-into-hq` (2026-11-24): the Trade desk and the Office are gone, and every face they had stands here or on an HQ plate
+// (tests/hq.desk.spec.ts walks each one).
 // Each is a layer (useBackLayer): its back arrow, Escape and the browser's back close it, and HQ under it is as it was.
 
 /** The desk's parts, one under the other: a face of the desk read in a sheet. */
@@ -68,7 +80,7 @@ function PageBody({ children }: { children: ReactNode }) {
   return <div className="mx-auto w-full max-w-2xl">{children}</div>
 }
 
-const faceWord = (id: 'building_yard') => PORT_FACES.find((f) => f.id === id)!.label
+const faceWord = (id: 'building_yard' | 'workstation' | 'academy') => PORT_FACES.find((f) => f.id === id)!.label
 
 /** HQ's sheet host: mounted once by the screen it stands over. */
 export function HqSheet() {
@@ -98,6 +110,10 @@ export function HqSheet() {
     <>
       {ask && <AskSheet key={askKey(ask)} ask={ask} onClose={close} onDone={done} />}
       <TradeToast text={toast} onGone={clearToast} />
+      {/* H3: a new captain's welcome stands over the home screen, which is HQ now (it stood over the Trade desk, in the shell) */}
+      <WelcomeCard />
+      {/* and the shell's own cards (arrival, level, mastery, away, launch): HQ stands outside the shell, in its own frame */}
+      <ShellCards />
     </>
   )
 }
@@ -142,6 +158,26 @@ function AskSheet({ ask, onClose, onDone }: { ask: HqAsk; onClose: () => void; o
       return port && named ? <TradeSheet ask={ask} fleet={named} onClose={onClose} onDone={onDone} /> : null
     case 'fleet':
       return named ? <FleetSheet fleet={named} route={ask.route ?? false} onClose={onClose} /> : null
+    case 'workstation':
+      return port ? (
+        <DetailPage title={faceWord('workstation')} word={port.name} onClose={onClose} data-testid="hq-sheet-workstation">
+          <PageBody>
+            {hasBuilding(port, 'workstation') ? (
+              <PortWorkstation portId={port.id} fleet={fleet} tier={buildingTier(port, 'workstation')} />
+            ) : (
+              <Note tone="neutral">{t('hq.noWorkshop')}</Note>
+            )}
+          </PageBody>
+        </DetailPage>
+      ) : null
+    case 'academy':
+      return (
+        <DetailPage title={faceWord('academy')} onClose={onClose} data-testid="hq-sheet-academy">
+          <PageBody>
+            <PortAcademy />
+          </PageBody>
+        </DetailPage>
+      )
   }
 }
 
@@ -164,58 +200,56 @@ function YardSheet({ port, fleet, hull, onClose }: { port: SnapshotPort; fleet: 
   )
 }
 
-/** The city's market turned to its Requests (where a request is fulfilled); a price pressed there opens the trade sheet. */
+/** The city's Requests, where a request is fulfilled. */
 function RequestsSheet({ port, fleet, onClose }: { port: SnapshotPort; fleet: FleetView | null; onClose: () => void }) {
   const t = useT()
-  const quay = usePortMarket(port.id)
-  const turnTo = useTradeFace((s) => s.turnTo)
-  useEffect(() => turnTo('requests'), [turnTo])
   return (
     <DetailPage title={t('city.jobsHeading')} word={port.name} onClose={onClose} data-testid="hq-sheet-requests">
-      <PageBody>
-        {!fleet ? (
-          <Note tone="neutral">{t('hq.noFleet')}</Note>
-        ) : quay.market === undefined ? (
-          quay.refusal !== null ? (
-            <Note tone="danger" code={quay.refusal.code} figures={quay.refusal.figures}>
-              {quay.refusal.sentence}
-            </Note>
-          ) : (
-            <Skeleton className="h-28 w-full" />
-          )
-        ) : (
-          <PortTrade
-            goods={quay.market.goods}
-            fleet={fleet}
-            port={port}
-            onTrade={(good, side) => openHq({ sheet: 'trade', port: port.code, fleet: fleet.id, good: good.code, side })}
-          />
-        )}
-      </PageBody>
+      <PageBody>{fleet ? <RequestsHere port={port} fleet={fleet} /> : <Note tone="neutral">{t('hq.noFleet')}</Note>}</PageBody>
     </DetailPage>
   )
 }
 
-/** A fleet's sheet: her cargo (a row pressed sells it there), her route, her orders. Asked from her row's Route, the route stands
- *  first (its row opens the route's own page). */
+/** A fleet's sheet: where she is, her cargo (a row pressed sells it there), her route, her orders, her map, her ship. Asked from
+ *  her row's Route, the route stands first (its row opens the route's own page). An order or the route pressed is the one drawn on
+ *  her map. */
 function FleetSheet({ fleet, route, onClose }: { fleet: FleetView; route: boolean; onClose: () => void }) {
   const t = useT()
   const cancel = useWorld((s) => s.cancel)
   const clearQueue = useWorld((s) => s.clear)
+  const [pick, setPick] = useState<OrderPick | null>(null)
+  const [map, setMap] = useState(false)
+  // a harbour pressed on her map is ringed, and the map glides to it (the press count: a second press on it glides again)
+  const [ringed, setRinged] = useState<{ code: string; n: number } | null>(null)
   const routeRow = (
     <div className="mb-4" data-testid="hq-sheet-fleet-route">
-      <RouteFold fleet={fleet} />
+      <RouteFold fleet={fleet} picked={pick?.kind === 'route'} onPick={(on) => setPick(on ? { kind: 'route' } : null)} />
     </div>
   )
   return (
     <DetailPage title={fleet.name} onClose={onClose} data-testid="hq-sheet-fleet">
       <PageBody>
+        <TradeStatus fleet={fleet} />
         {route && routeRow}
         <h2 className="pb-1 text-t-caption text-ink-faint">{t('hq.cargo')}</h2>
         <CargoBest fleet={fleet} city={null} picked={null} onPress={(city, good) => openHq({ sheet: 'trade', port: city, fleet: fleet.id, good, side: 'sell' })} />
         {!route && <div className="mt-4">{routeRow}</div>}
         <h2 className="pb-1 text-t-caption text-ink-faint">{t('hq.orders')}</h2>
-        <Queue fleet={fleet} onCancel={(position) => cancel(fleet.id, position)} onClear={() => clearQueue(fleet.id)} />
+        <Queue
+          fleet={fleet}
+          onCancel={(position) => cancel(fleet.id, position)}
+          onClear={() => clearQueue(fleet.id)}
+          picked={pick?.kind === 'order' ? pick.id : pick?.kind === 'voyage' ? 'voyage' : null}
+          onPick={setPick}
+        />
+        <InsuredVoyages />
+        <SummaryRow title={t('shell.tab_Map')} onClick={() => setMap(true)} data-testid="hq-sheet-fleet-map" />
+        <ShipInfo fleet={fleet} />
+        {map && (
+          <DetailPage title={t('shell.tab_Map')} word={fleet.name} onClose={() => setMap(false)} data-testid="hq-sheet-fleet-map-page">
+            <TradeMap fleet={fleet} plan={null} pick={pick} onClose={() => setPick(null)} scrollOnPick={false} city={ringed?.code ?? fleetPortCode(fleet)} onCity={(code) => setRinged((r) => ({ code, n: (r?.n ?? 0) + 1 }))} goTo={ringed} />
+          </DetailPage>
+        )}
       </PageBody>
     </DetailPage>
   )

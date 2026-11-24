@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
-import { openOfficeFace } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE REPORT FACE (0286, docs/COMMAND_REDESIGN.md §4–5; owner rows 192, 244) — the phone (390×844)
@@ -27,9 +26,9 @@ async function openReport(page: Page, request: Parameters<typeof reachable>[0], 
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
-  await openOfficeFace(page, 'Report')
+  await page.getByTestId('city-office-report').click()
   await expect(page.getByTestId('desk-report')).toBeVisible()
   await expect(page.getByTestId('report-spans')).toBeVisible()
 }
@@ -86,21 +85,17 @@ for (const size of SIZES) {
       await spanTabs.nth(0).click()
       await expect(spanTabs.nth(0)).toHaveAttribute('aria-selected', 'true')
 
-      // THE ONE-PAGE LAW: the document and the face's own Sheet do not travel.
+      // THE ONE-PAGE LAW: the document does not travel (the Report is a sheet over HQ since H3, 2026-11-24; a page scrolls inside itself).
       const m = await page.evaluate(() => {
-        const sheet = document.querySelector('[data-testid="desk-scroll"]') as HTMLElement | null
         return {
           dh: document.documentElement.scrollHeight,
           ch: document.documentElement.clientHeight,
           dw: document.documentElement.scrollWidth,
           cw: document.documentElement.clientWidth,
-          sh: sheet?.scrollHeight ?? 0,
-          sch: sheet?.clientHeight ?? 0,
         }
       })
       expect(m.dh, 'the Report face scrolls the page down').toBeLessThanOrEqual(m.ch + 1)
       expect(m.dw, 'the Report face scrolls the page sideways').toBeLessThanOrEqual(m.cw + 1)
-      if (m.sch > 0) expect(m.sh, 'the Report face scrolls its own Sheet').toBeLessThanOrEqual(m.sch + 1)
     })
   })
 }

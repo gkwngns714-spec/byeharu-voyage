@@ -35,7 +35,7 @@ test.use({ viewport: PHONE })
 const EMPTY = /No fleets yet/
 
 for (const tab of [
-  { path: 'command', sheet: 'command', fleet: (p: import('@playwright/test').Page) => p.getByTestId('command').getByRole('button').first() },
+  { path: 'city', sheet: 'city-screen', fleet: (p: import('@playwright/test').Page) => p.getByTestId('hq-fleet').first() },
   { path: 'fleets', sheet: 'fleets', fleet: (p: import('@playwright/test').Page) => p.getByTestId('fleet-row').first() },
 ]) {
   test(`${tab.path.toUpperCase()} on a cold load never says "No fleets yet" while the first fleets read is in flight`, async ({

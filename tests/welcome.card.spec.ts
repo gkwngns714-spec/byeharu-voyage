@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 
 // THE FIRST-RUN WELCOME (src/app/WelcomeCard.tsx; P0 of docs/design/playable-2026-11-22.md). A fresh company that has never traded
-// meets one card on the Trade tab: who she is (a trading house in Lisbon, the world's year), the goal (the second ship) and the
+// meets one card on HQ, the home screen (H3, 2026-11-24: it stood on the Trade tab): who she is (a trading house in Lisbon, the world's year), the goal (the second ship) and the
 // first press (a good's green line, then Buy & sell: it buys, sails and sells). It is an overlay (nothing under it moves, nothing scrolls sideways), and Start closes it
 // for good in this browser. Every other spec starts with the mark set (playwright.config.ts); this one starts without it.
 // 2026-11-23 (the visual overhaul's slice 10, fewer words): the card opens on a picture (her city's skyline, her ship on its water),
@@ -14,7 +14,7 @@ test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, storageS
 test('a new company is welcomed once: who, the goal, the first press; Start closes it for good', async ({ page, request, baseURL }, info) => {
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
   const card = page.getByTestId('welcome-card')
   await expect(card).toBeVisible({ timeout: 120_000 })

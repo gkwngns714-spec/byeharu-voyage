@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready } from './appReady.fixture'
-import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MARKET DESK (0288 + the Market face) — the owner's 2026-10-31 instructions, held
@@ -32,37 +31,7 @@ async function openMarket(page: Page, size: { width: number; height: number } = 
 
 test.describe.configure({ mode: 'serial' })
 
-// X1 (src/live/tradeOnDesk.ts, slice 3): while TRADE_ON_DESK stands a press on a card opens the Trade desk (tests/drive.market.spec.ts holds
-// that law), so the chart cannot follow a press here; this law is registered again the day it is false (never skipped: a skip is a red)
-if (!TRADE_ON_DESK) test('market @390: the chart is the city’s left region and follows the pressed good', async ({ page }) => {
-  await openMarket(page)
-  // the good in hand is printed on the chart, and it is not empty
-  const chartGood = page.getByTestId('city-market-chart-good')
-  await expect(chartGood).toBeVisible()
-  const before = (await chartGood.innerText()).trim()
-  expect(before.length).toBeGreaterThan(0)
-
-  // press ANOTHER good's price cell: the chart follows it
-  // THE ONE GOODS CARD (S5): the name is the card's name line's own first text
-  const rows = page.getByTestId('city-face-panel').getByTestId('trade-good')
-  const n = await rows.count()
-  expect(n).toBeGreaterThan(1)
-  let target: string | null = null
-  for (let i = 0; i < n; i++) {
-    const name = await rows.nth(i).getByTestId('trade-good-name').evaluate((e) => (e.firstChild?.textContent ?? '').trim())
-    if (name.length > 0 && name !== before) {
-      target = name
-      await rows.nth(i).getByRole('button').first().click()
-      break
-    }
-  }
-  expect(target).not.toBeNull()
-  await expect(chartGood).toHaveText(target as string)
-
-  // and NO page was opened by the press (the owner's "a new page pops up - this is not good")
-  await expect(page.getByTestId('city-market-buy-page')).toHaveCount(0)
-})
-
+// (H3, 2026-11-24: a press on a card opens the trade sheet over HQ, tests/hq.desk.spec.ts; the chart follows the city read.)
 test('market @390: BUY and SELL are doors in the panel — no page — and SELL lists only cargo', async ({ page }) => {
   await openMarket(page)
   await expect(page.getByTestId('city-market-buy')).toBeVisible()

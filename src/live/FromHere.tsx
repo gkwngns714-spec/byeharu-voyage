@@ -1,11 +1,11 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
-import { Icon, KEEP_WORDS_CLASS, goodIcon, masteredTone, tileToneClass, useWide } from '../../../components/ui'
-import { useMasteryLevels } from '../../../live/goodsMastery'
-import { PortFlag } from '../../../live/PortFlag'
-import { portNameOf, useWorld } from '../../../live/worldStore'
-import { formatPriceDelta } from '../../../lib/format'
-import { properName, useT } from '../../../lib/i18n'
-import type { BestSale } from '../../../lib/rpc'
+import { Icon, KEEP_WORDS_CLASS, goodIcon, masteredTone, tileToneClass, useWide } from '../components/ui'
+import { useMasteryLevels } from './goodsMastery'
+import { PortFlag } from './PortFlag'
+import { portNameOf, useWorld } from './worldStore'
+import { formatPriceDelta } from '../lib/format'
+import { properName, useT } from '../lib/i18n'
+import type { BestSale } from '../lib/rpc'
 import { fromHere } from './fromHereSales'
 
 // THE "FROM HERE" LINE (roadmap 2026-11-23 slice 4, the client half; X3: the Routes tab folds into it). Where her fleet lies, the

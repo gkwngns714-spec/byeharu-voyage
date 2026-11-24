@@ -7,6 +7,7 @@ import { arrivedAtEdge, ready, settled, WORLD_BOOT_MS } from './appReady.fixture
 import { serveVeteranWorld } from './manyFleets.fixture'
 import { serveNpcOn } from './npcOn.fixture'
 import { LOCALES, koreanTest } from './korean.paused'
+import { openYard } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE LIT SCREENS HOLD THEIR LINES (2026-11-14; docs/dev-log/2026-11-14-lit-screens.md)
@@ -96,10 +97,9 @@ for (const locale of LOCALES) {
       test.use({ locale, viewport: glass })
 
       test("the yard's hull tiles: a tonnage is one line and no name is turned inside a word", async ({ page }) => {
-        await open(page, 'port')
-        await page.getByRole('tablist', { name: translate(lang, 'desk.cityBuildings') }).getByRole('tab', { name: translate(lang, 'town.f_building_yard'), exact: true }).click()
-        const yard = page.getByTestId('port-yard')
-        await expect(yard).toBeVisible({ timeout: 60_000 })
+        // HQ's Port plate > Build (H3, 2026-11-24: the yard was a tab of the Office's City face)
+        await open(page, 'city')
+        const yard = await openYard(page, translate(lang, 'town.f_building_yard'))
         await settled(yard)
         const more = page.getByTestId('yard-more')
         if ((await more.count()) > 0) await more.click()

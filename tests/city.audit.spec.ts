@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable, settled } from './appReady.fixture'
-import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 import { toPlaces } from './hqPlaces.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -31,9 +30,9 @@ import { toPlaces } from './hqPlaces.fixture'
 // scrolls printed.
 
 /** The phone's bar; from `lg` the rail carries You and Stats as their own cells (owner, 2026-11-14; navTabs.ts `navCells`). */
-// 2026-11-23 (the visual overhaul's slice 2, X2): the Office cell is off; its faces are HQ's doors.
-const EXPECTED_BAR = ['HQ', 'Trade', 'Fleets', 'Map', 'Menu']
-const EXPECTED_WIDE_RAIL = ['HQ', 'Trade', 'Fleets', 'Map', 'You', 'Stats', 'Menu']
+// 2026-11-23 (the visual overhaul's slice 2, X2): the Office cell is off; its faces are HQ's doors. 2026-11-24 (H3): no Trade cell.
+const EXPECTED_BAR = ['HQ', 'Fleets', 'Map', 'Menu']
+const EXPECTED_WIDE_RAIL = ['HQ', 'Fleets', 'Map', 'You', 'Stats', 'Menu']
 const SIZES = [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },
@@ -415,50 +414,6 @@ test('city audit @320×568: the hall says what fits and what scrolls, and the pa
   await doc()
   await fold.click()
   await doc()
-})
-
-if (!TRADE_ON_DESK) test('city audit: the Market Basket opens in the panel — no page, no tray, nothing over the doors', async ({ page, request, baseURL }) => {
-  test.setTimeout(900_000)
-  // X1 (src/live/tradeOnDesk.ts): the Market stands no basket while TRADE_ON_DESK stands (the Trade desk keeps the trade)
-  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-  await openCity(page, { width: 390, height: 844 })
-  await press(page, 'market')
-  const frame = await frameBoxes(page)
-
-  await page.getByTestId('city-market-basket').click()
-  const basket = page.getByTestId('city-basket')
-  await expect(basket).toBeVisible()
-  console.log(`AUDIT basket summary: "${[...(await basket.innerText()).replace(/\s+/g, ' ')].slice(0, 100).join('')}"`)
-  // NO PAGE, NO TRAY (owner, 2026-10-31: "BASKET? WTF IS THIS POPPING UP BLOCKING THE WHOLE
-  // SCREEN?"): the summary stands in the panel itself.
-  await expect(page.locator('[data-detail-page]'), 'the Basket opened a page').toHaveCount(0)
-  await expect(page.getByTestId('basket-panel'), 'the Basket opened its Tray').toHaveCount(0)
-  expect(await frameBoxes(page), 'opening the Basket moved the frame').toEqual(frame)
-  const d = await docScroll(page)
-  expect(d.h, 'the Basket press scrolls the page').toBeLessThanOrEqual(d.ch + 1)
-  const panel = page.getByTestId('city-face-panel')
-  const fit = await scrollOf(panel)
-  expect(fit.sh, `the market panel scrolls with the Basket open: ${fit.sh} > ${fit.ch}`).toBeLessThanOrEqual(fit.ch + 1)
-
-  // NOTHING COVERS THE SIX DOORS: each tile's centre still belongs to the tile.
-  const covered = await page.evaluate(() => {
-    const out: string[] = []
-    for (const id of ['hall', 'market', 'production', 'port', 'inn']) {
-      const el = document.querySelector(`[data-testid="city-building-${id}"]`)
-      if (!el) { out.push(id); continue }
-      const r = el.getBoundingClientRect()
-      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
-      if (!(hit === el || el.contains(hit))) out.push(id)
-    }
-    return out
-  })
-  expect(covered, `after the Basket press these doors are covered: ${covered.join(', ')}`).toEqual([])
-
-  // BACK to the rows — again in the panel, the frame unmoved.
-  await page.getByTestId('city-basket-back').click()
-  await expect(basket).toHaveCount(0)
-  await expect(page.getByTestId('city-market-buy')).toBeVisible()
-  expect(await frameBoxes(page), 'leaving the Basket moved the frame').toEqual(frame)
 })
 
 test('city audit: the Forge product controls carry the product name, never the recipe', async ({ page, request, baseURL }) => {

@@ -14,6 +14,7 @@ import { RaidOrder } from '../../live/RaidOrder'
 import { CrewHint } from '../../live/CrewHint'
 import { BattleCard } from '../../live/BattleCard'
 import { tabWord } from '../../app/navTabs'
+import { hqHref } from '../../app/hqPlace'
 import { useLocale, useT } from '../../lib/i18n'
 
 // THE FLEET AS A WHOLE, ONE PRESS BEHIND HER SHIPS — the owner, 2026-11-14: *"in fleets, when pressed a fleet, show only ships"*.
@@ -39,7 +40,8 @@ export function FleetMore({ fleet, onClose }: { fleet: FleetView; onClose: () =>
   // The draft is a structured INTENT (domain/order): the verb and the fleet, the pickers open.
   const command = (intent: CommandIntent) => {
     handOff(intent)
-    navigate('/command')
+    // her sheet over HQ: cargo, route, orders (H3: the Trade desk is gone)
+    navigate(hqHref({ ask: { sheet: 'fleet', fleet: fleet.id } }))
   }
 
   const fraction = voyageFraction(fleet)
@@ -76,8 +78,8 @@ export function FleetMore({ fleet, onClose }: { fleet: FleetView; onClose: () =>
         {/* 0354: Rename stands beside the hand-off, on its line */}
         <div className="mt-6 flex flex-wrap gap-3">
           <Button variant="primary" className="flex-1" onClick={() => command({ fleetId: fleet.id })} data-testid="fleet-command">
-            {/* 2026-11-15 owner: shorter words. The press goes to the Trade tab, so it says the tab's own word (navTabs.tabWord). */}
-            {tabWord(locale, '/command')}
+            {/* 2026-11-15 owner: shorter words. The press goes to HQ (her sheet over it), so it says the tab's own word (navTabs.tabWord). */}
+            {tabWord(locale, '/city')}
           </Button>
           <RenameFleet fleet={fleet} />
         </div>

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ready, reachable, settled } from './appReady.fixture'
-import { tradeOnDesk } from './desk.fixture'
+import { closeTop, openMarket, tradeOnDesk } from './desk.fixture'
 import { GLASSES, phoneLaws as defects, readGlass, type Glass } from './unfold.fixture'
 import { koreanDescribe } from './korean.paused'
 
@@ -121,20 +121,22 @@ koreanDescribe('in Korean', () => {
   }
 })
 
-// PRODUCTION WITH A GOOD IN THE HOLD. The canary's hold is empty, so the walk above saw empty columns and never drew a cargo row. A lot is bought on the desk (the way a player does: City › Trade › a price › send),
+// PRODUCTION WITH A GOOD IN THE HOLD. The canary's hold is empty, so the walk above saw empty columns and never drew a cargo row. A lot is bought on HQ's Market (the way a player does: Market › Buy › send),
 // the page is asked for again at the glass under test, and the Production tile is pressed: the row stands, and the four laws hold on it.
 async function stockOneLot(page: Page) {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('office')
+  await page.goto('city')
   await ready(page)
-  await page.getByRole('tab', { name: /^(City|도시)$/ }).first().click()
-  await expect(page.getByTestId('desk-city')).toBeVisible()
-  const cargo = page.getByTestId('command-line')
+  await openMarket(page)
+  const card = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first()
+  await expect(card).toBeVisible({ timeout: 120_000 })
+  const cargo = page.locator(`[data-testid="city-market-buy"] [data-testid="trade-good"][data-good="${await card.getAttribute('data-good')}"]`).getByTestId('trade-good-aboard')
   const before = await cargo.innerText()
-  await page.locator('[data-testid="trade-row"] button:enabled').first().click()
-  // X1 (src/live/tradeOnDesk.ts): the price opens the Trade desk on that good, and the buy runs there
+  await card.getByTestId('trade-buy').click()
+  // the Buy opens the trade sheet over HQ on that good, and the buy runs there
   await tradeOnDesk(page)
   await expect.poll(async () => cargo.innerText(), { timeout: 60_000 }).not.toBe(before)
+  await closeTop(page)
 }
 
 async function storageWithAGood(page: Page, glass: Glass): Promise<string[]> {

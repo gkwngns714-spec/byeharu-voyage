@@ -30,6 +30,7 @@ import { serveRoutesOn } from './routesOn.fixture'
 import { queuedOrderWords, tradeLineWords } from '../src/domain/order'
 import { routeStopLines } from '../src/domain/route'
 import type { QueuedOrder, SnapshotGood, StandingRouteStop } from '../src/lib/rpc'
+import { openFleetSheet } from './desk.fixture'
 
 // ── 1. THE WORDS ─────────────────────────────────────────────────────────────────────────────────
 
@@ -112,7 +113,7 @@ type Box = { top: number; bottom: number; left: number; width: number }
 
 test.use({ viewport: PHONE })
 
-test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves nothing, and a running route reads the same', async ({
+test('THE ROUTE: a route stop is a Sell group above a Buy group, a buy press moves nothing, and a running route reads the same', async ({
   page,
   request,
   baseURL,
@@ -122,11 +123,11 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   await serveRoutesOn(page)
 
   // 0225: no keep level is needed any more — supplies are bought by every SAIL.
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
-  // the route is on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Trade since 2026-10-30
-  // the city's goods load after the press; let them land, so nothing above the route moves later
-  await settled(page.getByTestId('desk-trade'))
+  // the route is in her sheet over HQ (H3, 2026-11-24; it stood on the Trade desk); its reads land, so nothing above the route
+  // moves later
+  await settled(await openFleetSheet(page))
 
   const routeRow = page.getByTestId('route-row')
   await expect(routeRow).toContainText('No route', { timeout: 60_000 })
@@ -191,7 +192,7 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
       return {
         secondStop: Math.round(document.querySelectorAll('[data-testid="route-editor-stop"]')[1]?.getBoundingClientRect().top ?? -1),
         start: top('[data-testid="route-start"]'),
-        queue: top('[data-testid="command-queue"]'),
+        queue: top('[data-testid="hq-sheet-fleet-map"]'),
       }
     })
   // THE CHIP IS BROUGHT INTO VIEW FIRST (2026-10-18): Playwright's click scrolls an off-glass target into
@@ -246,8 +247,8 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   await page.waitForTimeout(600)
   const wideGroups = await groups('[data-testid="route-stop"]')
   console.log(`route face groups @${WIDE.width}px: ${JSON.stringify(wideGroups)}`)
-  // THE SAME FOLD, STILL OPEN, ON THE OTHER SHAPE (2026-10-19). From 1024 px the desk is the terminal
-  // (CommandScreen, #225), a different tree, and the fold's own state folded it shut there: this list
+  // THE SAME FOLD, STILL OPEN, ON THE OTHER SHAPE (2026-10-19). From 1024 px the desk was the terminal
+  // (#225, gone since H3), a different tree, and the fold's own state folded it shut there: this list
   // was EMPTY, the loop below passed over nothing, and the Edit press waited out the whole 10-minute
   // test (main's acceptance, red from db7c956). An empty list is a failure, said here and at once.
   expect(wideGroups, 'the route fold folded when the desk changed shape at 1024 px').toHaveLength(2)

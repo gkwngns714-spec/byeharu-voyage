@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Button, Note, Segmented, Skeleton, categoryLabel } from '../../components/ui'
 import { fleetCargoByCode } from '../../domain/fleet'
+import { useCommandDraft } from '../../domain/order'
 import { hasBuilding } from '../../domain/port'
-import { type FleetView, type SnapshotPort } from '../../lib/rpc'
+import { type BestSale, type FleetView, type SnapshotPort } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
 import { useMarketPick } from '../../live/marketPick'
 import { useMarketRequests } from '../../live/useMarketRequests'
@@ -12,7 +13,14 @@ import { useWorld } from '../../live/worldStore'
 import { RequestsFace } from './RequestPage'
 import { TradeCard } from '../../live/TradeCard'
 import { tradeRows, type TradeGoodRow } from '../../domain/market'
-import { openHq } from '../../app/hqPlace'
+import { openHq, useHqPlace } from '../../app/hqPlace'
+import { CityChips } from '../../live/CityChips'
+import { FromHere } from '../../live/FromHere'
+import { QuayFair } from '../../live/PortFair'
+import { QuayEvents, WorldEventsLine } from '../../live/WorldEventLine'
+import { useNearEvent } from '../../live/eventReach'
+import { useBestSales } from '../../live/useDesk'
+import { useDeskGood } from '../../store/deskGood'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MARKET FACE — the chart on the left region, BUY · SELL · REQUEST in the right panel
@@ -40,19 +48,49 @@ import { openHq } from '../../app/hqPlace'
 // New request row opens the page the owner described: search → press a good → its chart → price and
 // quantity → the payment → Place.
 
+// THE ONE TRADE LIST (H3 `desk-into-hq`, 2026-11-24; docs/design/simplify-2026-11-24.md S3). The Trade desk's goods board and the
+// Office's market were two more lists of the same goods; both are gone, and what only they had stands here:
+//   the city chips    read another city's prices (the chart beside the list follows: live/MarketLeft.tsx); a Buy or Sell pressed
+//                     there is a trip in the one trade sheet (Sail & buy, Sail & sell);
+//   the best sale     on every card, for the fleet that trades (world.best_sales, the board the desk read), and its press;
+//   From here         what sells best where, from the city she lies in;
+//   the city's lines  its fair, its events, what it wants now.
+// WHO TRADES: her fleet lying at this city (the one in hand first); with none here, the fleet in hand, who sails.
 export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) {
   const t = useT()
-  const quay = usePortMarket(port.kind === 'HARBOUR' ? port.id : null)
+  const fleets = useWorld((s) => s.fleets)
+  const portByCode = useWorld((s) => s.portByCode)
+  const hand = useCommandDraft((s) => s.fleetId)
+  const trader = fleet ?? fleets.find((f) => f.id === hand) ?? fleets[0] ?? null
+  // THE CITY READ: HQ's own, or a chip's (store/deskGood.ts `focus`, the one "city the trade list reads"); a glance, so it is let
+  // go when the Market plate closes.
+  const focus = useDeskGood((s) => s.focus)
+  const setFocus = useDeskGood((s) => s.setFocus)
+  useEffect(() => () => useDeskGood.getState().setFocus(null), [])
+  const focused = focus ? (portByCode[focus] ?? null) : null
+  const read = focused && focused.kind === 'HARBOUR' ? focused : port
+  const away = read.code !== port.code
+  const here = trader !== null && trader.status === 'DOCKED' && trader.port === read.code
+  const quay = usePortMarket(read.kind === 'HARBOUR' ? read.id : null)
   const board = useMarketRequests(port.kind === 'HARBOUR' ? port.id : null)
   const face = useTradeFace((s) => s.face)
   const turnTo = useTradeFace((s) => s.turnTo)
   const pin = useMarketPick((s) => s.pick)
+  const best = useBestSales(trader?.id ?? null, trader?.version ?? null, read.id)
+  const sales = useMemo<ReadonlyMap<string, BestSale> | null>(
+    () => (best.view && best.view.port === read.code ? new Map(best.view.goods.map((g) => [g.good, g])) : null),
+    [best.view, read.code],
+  )
+  const nearEvent = useNearEvent(port.code, trader?.speed_kn ?? 0)
+  // the best sale whose trip stands open in the trade sheet: its From-here tile is lit
+  const asked = useHqPlace((s) => (s.ask?.sheet === 'trade' ? (s.ask.best ?? null) : null))
+  const openSale = asked && asked.port ? { good: asked.good, sellAt: asked.port } : null
 
-  // ALL HOOKS UNCONDITIONALLY, before any early return.
   const goods = useMemo(() => quay.market?.goods ?? [], [quay.market])
-  const aboard = useMemo(() => (fleet ? fleetCargoByCode(fleet) : {}), [fleet])
+  const aboard = useMemo(() => (trader ? fleetCargoByCode(trader) : {}), [trader])
   const goodByCode = useWorld((s) => s.goodByCode)
-  const home = board.view?.home ?? false
+  // Requests are HQ's own city's, at her home
+  const home = !away && (board.view?.home ?? false)
   const shown: TradeFace = face === 'requests' && !home ? 'buy' : face
   const matching = useMemo(
     () => tradeRows(goods, aboard, goodByCode).filter((r) => shown !== 'sell' || r.units > 0),
@@ -90,14 +128,33 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
   }
 
   const openGood = (code: string, intent: 'buy' | 'sell') => {
+    // a carried good this quay does not list has no chart to pin, and still sells (the trade sheet reads its bid: owner row 231)
     const good = goods.find((g) => g.code === code)
-    if (!good) return
-    pin(port.id, good)
-    if (fleet) openHq({ sheet: 'trade', port: port.code, fleet: fleet.id, good: code, side: intent })
+    if (good) pin(read.id, good)
+    if (trader) openHq({ sheet: 'trade', port: read.code, fleet: trader.id, good: code, side: intent })
   }
+  // a best sale pressed: its trip (bought here, sold there), or her cargo sold at its city, in the one trade sheet
+  const pressBest = (sale: BestSale) => {
+    if (trader) openHq({ sheet: 'trade', port: read.code, fleet: trader.id, good: sale.good, side: 'buy', best: sale })
+  }
+  const readCity = (c: string) => setFocus(c === port.code ? null : c)
+  const chips = (
+    <div data-testid="city-market-read" data-city={read.code} data-here={here ? 'true' : 'false'}>
+      <WorldEventsLine city={read.code} onCity={readCity} near={nearEvent} />
+      <CityChips home={port.code} city={read.code} onCity={readCity} />
+      <QuayFair portId={read.id} />
+      <QuayEvents portCode={read.code} />
+      {quay.market?.wants && quay.market.wants.length > 0 && (
+        <Note tone="neutral" className="mt-2" data-testid="city-market-wants">
+          {t('ui.wanted', { mult: String(Number(quay.market.wants[0].mult)) })}: {quay.market.wants.map((w) => w.name).join(' · ')}
+        </Note>
+      )}
+    </div>
+  )
 
   return (
     <>
+      {chips}
       <Segmented<TradeFace>
         label={t('city.market')}
         segments={TRADE_FACES.filter((f) => f.id !== 'requests' || home)}
@@ -123,18 +180,21 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
                   {rows.map((r) => (
                     <TradeCard
                       key={r.code}
-                      portId={port.id}
+                      portId={read.id}
                       r={r}
-                      docked={fleet !== null}
+                      docked={here}
                       on={false}
                       onBuy={(code) => openGood(code, 'buy')}
                       onSell={(code) => openGood(code, 'sell')}
+                      sale={trader ? sales?.get(r.code) : undefined}
+                      onBest={trader ? pressBest : undefined}
                     />
                   ))}
                 </div>
               </div>
             ))
           )}
+          {here && <FromHere sales={sales} open={openSale} onBest={pressBest} />}
         </div>
       )}
     </>

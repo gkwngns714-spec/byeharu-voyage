@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
+import { openPlate } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE PAGE — the owner's law, measured on every main tab, every face and every pop-up page
@@ -22,7 +23,8 @@ import { reachable, ready } from './appReady.fixture'
 // The City page already carried its own no-scroll proof (tests/city.page.spec.ts) and is asserted
 // here too, without touching src/features/city/** (another slice owns those files).
 
-const ROUTES = ['command', 'office', 'fleets', 'map', 'stats', 'ledger', 'rank', 'lanes', 'compendium', 'profile', 'city'] as const
+// (H3, 2026-11-24: `command` and `office` are gone; both open HQ, the `city` route walked here)
+const ROUTES = ['fleets', 'map', 'stats', 'ledger', 'rank', 'lanes', 'compendium', 'profile', 'city'] as const
 const SIZES = [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },
@@ -48,7 +50,7 @@ async function read(page: Page): Promise<DocReport> {
     }
     const main = document.querySelector('main')
     const box = main?.getBoundingClientRect() ?? null
-    const sheet = document.querySelector('[data-sheet], [data-testid="desk-scroll"]') as HTMLElement | null
+    const sheet = document.querySelector('[data-sheet]') as HTMLElement | null
     // A choice strip its screen lays out as a WRAPPING LINE instead (display flex: the City face's buildings in the wide desk's
     // left pane, each as wide as its word — src/features/command/city/City.tsx, 2026-11-14) is not a grid, so the equal-cell law
     // is not its law. It was never on a route's first screen until the City face became the Office tab's (2026-11-16).
@@ -218,11 +220,16 @@ for (const size of SIZES) {
       gridsMeasured += assertGrids(m.grids, size, `${route} @${size.width}`)
 
       // 3b. EVERY FACE INSIDE THE TAB, AND EVERY PAGE ITS SUMMARIES OPEN.
-      if (route === 'office') pagesMeasured += await walkFaces(page, size, /office faces/i, ['Invest', 'Report', 'City'])
       // the five up front and "More" (2026-11-23, slice 2, X5); then the More strip's own faces, the Overview last (3c reads it)
-      else if (route === 'stats') {
+      if (route === 'stats') {
         pagesMeasured += await walkFaces(page, size, null, ['News', 'Markets', 'Cities', 'Me', 'More'])
         pagesMeasured += await walkFaces(page, size, /^more faces$/i, ['Merchants', 'Overview'])
+      } else if (route === 'city') {
+        // HQ's summary rows stand on its Port and Inn plates (H3, 2026-11-24: the desk's and the Office's summary pages are gone)
+        for (const plate of ['port', 'inn']) {
+          await openPlate(page, plate)
+          pagesMeasured += await walkPages(page, size)
+        }
       } else pagesMeasured += await walkPages(page, size)
 
       // 3c. A FACE KEEPS ITS INFORMATION WHERE IT STANDS (the unfold slice, 2026-11-02, owner row 260: Stats has no
@@ -238,6 +245,8 @@ for (const size of SIZES) {
 
     // NON-VACUITY: choice grids on several screens, and many summary pages actually opened.
     expect(gridsMeasured, 'the walk met almost no choice grids — did the screens render?').toBeGreaterThan(3)
-    expect(pagesMeasured, 'the walk opened almost no summary pages — did the summaries render?').toBeGreaterThan(8)
+    // (the floor was 8 while the Trade desk and the Office stood: their cargo, map, orders and report pages were most of the walk.
+    // Since H3, 2026-11-24, the summary pages left are HQ's seven, on its Port and Inn plates: MEASURED 7 at both glasses.)
+    expect(pagesMeasured, 'the walk opened almost no summary pages — did the summaries render?').toBeGreaterThan(5)
   })
 }

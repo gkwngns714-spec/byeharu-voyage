@@ -1,20 +1,19 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { RequireAuth } from './RequireAuth'
 import { AppShell } from './AppShell'
 import { NewVersionToast } from './NewVersionToast'
-import { HOME_TAB } from './navTabs'
+import { HOME_TAB, LANDING } from './navTabs'
+import { hqHref } from './hqPlace'
+import { PORT_PLACE } from '../live/cityFaces'
 import { pageVarsClass } from '../components/ui'
 import { AuthPage } from '../features/auth/AuthPage'
 import { GalleryScreen } from '../features/gallery/GalleryScreen'
 import { PageGalleryScreen } from '../features/gallery/PageGalleryScreen'
 import { BattleGalleryScreen } from '../features/gallery/BattleGalleryScreen'
 import { GatesGalleryScreen } from '../features/found/GatesGalleryScreen'
-import { CommandScreen } from '../features/command/CommandScreen'
 import { FleetsScreen } from '../features/fleets/FleetsScreen'
-import { OfficeScreen } from '../features/command/OfficeScreen'
-import { OFFICE_TAB, openOfficeCity } from '../features/command/officeView'
 import { MapScreen } from '../features/map/MapScreen'
 import { StatsScreen } from '../features/stats/StatsScreen'
 import { LedgerScreen } from '../features/ledger/LedgerScreen'
@@ -76,8 +75,7 @@ export function App() {
         {/* THE CITY PAGE (2026-10-30, owner's "Game screen development"). A FULL-SCREEN city with
             its own header and its own bottom rail, so it is INSIDE RequireAuth but OUTSIDE AppShell
             — the shell's tab bar would be a second navigation on the same glass. It opens the world
-            itself (idempotent) and provides the shell clock its building faces read. Entry: the
-            Office tab's City face (`features/command/city/City.tsx`, the `City view` press). */}
+            itself (idempotent) and provides the shell clock its building faces read. It is HQ, the home screen. */}
         <Route
           path="/city"
           element={
@@ -93,20 +91,22 @@ export function App() {
             </RequireAuth>
           }
         >
-          <Route path="/command" element={<CommandScreen />} />
-          <Route path="/office" element={<OfficeScreen />} />
+          {/* THE LANDING, AND THE OLD ROUTES (H3 `desk-into-hq`, 2026-11-24). The Trade desk (`/command`) and the Office (`/office`)
+              are gone: their faces are HQ's plates and sheets. An old link opens HQ, on the sheet that face became where one is
+              named (`OldRoute`). They stand INSIDE the shell so a captain with no house meets the register first (navTabs LANDING). */}
+          <Route path={LANDING} element={<Navigate to={HOME_TAB} replace />} />
+          <Route path="/command" element={<Navigate to={HOME_TAB} replace />} />
+          <Route path="/office" element={<OldOffice />} />
           <Route path="/fleets" element={<FleetsScreen />} />
-          {/* 2026-10-18 (docs/COMMAND_DESK.md D8, the owner: "delete port tab, and focus on command tab"): PORT
-              is gone; an old link to it opens the Office tab's City face, where every building it carried now is. */}
-          <Route path="/port" element={<PortMovedToCity />} />
+          <Route path="/port" element={<Navigate to={HOME_TAB} replace />} />
           <Route path="/map" element={<MapScreen />} />
           {/* 0455: the Land tab. Its cell is on the bar only while the world serves land_enabled; dark, this route prints "Not open yet." */}
           <Route path="/land" element={<LandScreen />} />
           <Route path="/stats" element={<StatsScreen />} />
           <Route path="/ledger" element={<LedgerScreen />} />
           <Route path="/rank" element={<RankScreen />} />
-          {/* X3 (2026-11-23): the world's lanes moved to /lanes (a door on Stats > Markets); an old /routes link opens the Trade
-              desk, whose "From here" line names what to sell where from her harbour. */}
+          {/* X3 (2026-11-23): the world's lanes moved to /lanes (a door on Stats > Markets); an old /routes link opens HQ, whose
+              Market plate's "From here" line names what to sell where from her harbour. */}
           <Route path="/lanes" element={<RoutesScreen />} />
           <Route path="/routes" element={<Navigate to={HOME_TAB} replace />} />
           <Route path="/compendium" element={<CompendiumScreen />} />
@@ -116,18 +116,27 @@ export function App() {
           <Route path="/logbook" element={<LogbookScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
         </Route>
-        <Route path="/" element={<Navigate to={HOME_TAB} replace />} />
-        <Route path="*" element={<Navigate to={HOME_TAB} replace />} />
+        <Route path="/" element={<Navigate to={LANDING} replace />} />
+        <Route path="*" element={<Navigate to={LANDING} replace />} />
       </Routes>
       </div>
     </BrowserRouter>
   )
 }
 
-/** An old `/port` link: the Office tab's City face, where PORT's buildings now are (COMMAND_DESK D8; the Office since 2026-11-16). */
-function PortMovedToCity() {
-  useEffect(() => {
-    openOfficeCity()
-  }, [])
-  return <Navigate to={OFFICE_TAB} replace />
+/** An old `/office` link: HQ, on the sheet or plate its face became. `?face=invest|report` are HQ's two sheets; the City face's
+ *  yard, repair dock and gear are HQ's Port plate; its academy is the Skills sheet; every other building is a plate on HQ itself. */
+function OldOffice() {
+  const q = new URLSearchParams(useLocation().search)
+  const face = q.get('face')
+  const building = q.get('building')
+  const to =
+    face === 'invest' || face === 'report'
+      ? hqHref({ ask: { sheet: face } })
+      : building === 'academy'
+        ? hqHref({ ask: { sheet: 'academy' } })
+        : building === 'building_yard' || building === 'shipyard' || building === 'gear'
+          ? hqHref({ place: PORT_PLACE })
+          : HOME_TAB
+  return <Navigate to={to} replace />
 }

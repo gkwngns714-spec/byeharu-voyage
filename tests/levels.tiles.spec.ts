@@ -92,11 +92,11 @@ async function nothingCut(page: Page, scope: Locator, what: string) {
 }
 
 async function openLevels(page: Page, lang: 'en' | 'ko') {
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
   if (lang === 'ko') {
     await page.evaluate(() => localStorage.setItem('bv.locale', 'ko'))
-    await page.goto('command')
+    await page.goto('city')
     await ready(page)
   }
   expect(await page.evaluate(() => document.documentElement.lang)).toBe(lang)
@@ -149,7 +149,7 @@ for (const size of SIZES) {
         expect(at >= 2 && at <= 3, `Trading's next opening is at level ${at}`).toBe(true)
         if (at === 3) await expect(opens).toContainText(words.fleet)
         await expect(page.getByTestId('levels-way-trading')).toHaveAttribute('data-activity', 'trade')
-        await expect(page.getByTestId('levels-way-trading')).toHaveAttribute('href', /\/command$/)
+        await expect(page.getByTestId('levels-way-trading')).toHaveAttribute('href', /\/city$/)
         await expect(page.getByTestId('levels-way-supplies')).toHaveAttribute('href', /\/map$/)
         await expect(page.getByTestId('levels-way-combat')).toHaveCount(0)
         expect((await page.getByTestId('levels-way-trading').boundingBox())!.height, 'the way is a press target').toBeGreaterThanOrEqual(44)
@@ -237,7 +237,7 @@ test.describe('Levels at 390×844, en: a voyage raises Supplies', () => {
   test('after a first voyage into a port, Supplies holds its days at sea and lists the grant', async ({ page, request, baseURL }) => {
     test.setTimeout(Math.max(LANDING_TEST_TIMEOUT_MS, 900_000))
     expect(await reachable(request, baseURL ?? ''), `nothing served at ${baseURL}: run a preview (or set PLAYWRIGHT_BASE_URL)`).toBe(true)
-    await page.goto('command')
+    await page.goto('city')
     await ready(page)
     const { code, city } = await findCarry(page)
     await buyHere(page, code)

@@ -34,8 +34,9 @@ import { formatDucats, formatInt, formatMiles, formatRealShort, formatTons, voya
 import { cmdLaunchHull, cmdOrderHull, worldHullQuote, worldLevels } from '../lib/rpc'
 import type { FleetView, HullQuote, LevelsView, PlanLine, Refusal, YardHull, YardInput, YardSource } from '../lib/rpc'
 import { goTo, useGoTo } from '../chart'
-import { useDeskGood } from '../store/deskGood'
-import { openOfficeCity, useYardAsk } from '../features/command/officeView'
+import { openHq } from '../app/hqPlace'
+import { useYardAsk } from './yardAsk'
+import { useCommandDraft } from '../domain/order'
 import { useRouteSeed } from '../features/map/routeSeed'
 import { properName, useLocale, useT, t as tNow } from '../lib/i18n'
 
@@ -188,7 +189,7 @@ export function PortYard({
   const [clock, setClock] = useState(() => Date.now())
   // her purse: the Order she cannot pay yet says by how much, on the button (2026-11-23 play-test: the refusal stood below the fold)
   const purse = useWorld((s) => s.ducats)
-  // A HULL ASKED FOR FROM OUTSIDE (the goal card's press, officeView.ts `useYardAsk`): its sheet opens once the yard has answered
+  // A HULL ASKED FOR FROM OUTSIDE (the goal card's press, yardAsk.ts `useYardAsk`): its sheet opens once the yard has answered
   const asked = useYardAsk((s) => s.hull)
   useEffect(() => {
     if (asked === null || !view) return
@@ -253,9 +254,10 @@ export function PortYard({
       if (!okay) setRefusal(useWorld.getState().refusal)
     })()
   }
-  /** The hire door that exists: this city's Inn, on the Office tab's City face. */
+  /** The hire door that exists: this city's Inn, its sheet over HQ. */
   const toInn = () => {
-    navigate(openOfficeCity('inn'))
+    const code = useWorld.getState().snapshot?.ports.find((p) => p.id === portId)?.code
+    if (code) openHq({ sheet: 'inn', port: code, fleet: fleet?.id })
   }
 
   const build = (hull: YardHull) => {
@@ -827,7 +829,6 @@ function SourceRow({
 }) {
   const t = useT()
   const navigate = useNavigate()
-  const openOnDesk = useDeskGood((s) => s.open)
   if (source.port === null || source.name === null) {
     return <Row label={t('yard.nowhere')} data-testid={testid ?? `yard-source-${source.code}`} />
   }
@@ -837,12 +838,13 @@ function SourceRow({
   const seller = properName('port', source.name, source.name)
   const go = () => {
     if (kind === 'good') {
-      // the map's own hand-over (live/PriceTray.tsx "Open in Command"): the Trade desk reads this city, this good in hand
-      openOnDesk(source.code, port)
-      navigate('/command')
+      // THE trade sheet over HQ, on this good at its seller's city, for the fleet in hand (she sails there to buy)
+      const w = useWorld.getState()
+      const hand = w.fleets.find((f) => f.id === useCommandDraft.getState().fleetId) ?? w.fleets[0]
+      if (hand) openHq({ sheet: 'trade', port, fleet: hand.id, good: source.code, side: 'buy' })
     } else if (here) {
-      // a fitting is made at this city's Workshop, on the Office tab's City face
-      navigate(openOfficeCity('workstation'))
+      // a fitting is made at this city's Workshop: its sheet over HQ
+      openHq({ sheet: 'workstation', port })
     } else {
       // a fitting made elsewhere: that harbour on the map (outside the shell no tab answers the request, so the route does)
       goTo({ kind: 'port', code: port })

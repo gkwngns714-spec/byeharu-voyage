@@ -15,7 +15,6 @@ import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
 import { clearBackend, createLocalBackend, setBackend, worldHistory, HISTORY_PERIODS, type HistoryCompanyPoint, type HistoryGoodPoint } from '../src/lib/rpc'
 import { PHONE, reachable, ready } from './appReady.fixture'
-import { openOfficeFace } from './desk.fixture'
 
 const WIDE = { width: 1280, height: 707 }
 
@@ -129,9 +128,9 @@ test.describe('the page', () => {
         expect(await flat(page)).toBe(true)
       }
 
-      await page.goto('command')
+      await page.goto('city')
       await ready(page)
-      await openOfficeFace(page, 'Report')
+      await page.getByTestId('city-office-report').click()
       await page.getByTestId('report-history').click() // the Report keeps its record behind one door, so the face stays one glass tall
       const mine = page.getByTestId('history-me')
       await expect(mine).toBeVisible({ timeout: 120_000 })

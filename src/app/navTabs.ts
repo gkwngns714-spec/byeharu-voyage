@@ -135,11 +135,8 @@ const ALL_TABS: readonly (NavTab & {
   // carry it). Five cells: 390 ÷ 5 = 78 px, clear of the 44 px floor and the 46 px the widest
   // label needs, and nav.geometry.spec re-measures the row on every run.
   { to: '/city', label: 'HQ', icon: 'fort', enabled: true },
-  // TRADE (owner remaster, 2026-11-11, S1: a new captain landed on HQ with nothing to press and the desk
-  // — where you buy, pick a city and sail & sell — was six presses away). The desk IS the first screen
-  // now: its own cell, one press from everywhere, and HOME_TAB. The route is still `/command` (old links,
-  // FLEETS' "Command her"); the word is "Trade", the desk's own first face. Bar: HQ · Trade · Fleets · Map · Menu.
-  { to: '/command', label: 'Trade', icon: 'scales', enabled: true },
+  // TRADE (the desk, `/command`, 2026-10-18 to 2026-11-24) is gone: its faces are HQ's Market plate and the sheets over HQ, and
+  // HQ is HOME_TAB (H3 `desk-into-hq`, docs/design/simplify-2026-11-24.md S3). An old `/command` link opens HQ (App.tsx).
   { to: '/fleets', label: 'Fleets', icon: 'ship', enabled: true },
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
   // LAND (owner, 2026-11-16: *"sending expeditions to land site (mountains), for minerals like rs3"*; docs/design/land-2026-11.md 6.7).
@@ -147,16 +144,7 @@ const ALL_TABS: readonly (NavTab & {
   // world serves `land_enabled` true, so until the owner lights it the bar is the six cells nav.geometry.spec measures. Lit, the
   // phone's bar is seven cells: 320 / 7 = 45.7 px, over the 44-px reach floor (tests/land.party.spec.ts measures it).
   { to: '/land', label: 'Land', icon: 'mountain', enabled: true, served: 'land_enabled' },
-  // OFFICE (owner, 2026-11-16: *"in trade, there are city invest report and levels, which aren't that related to trade. they
-  // should have separate tab like map you stats etc."*). The desk's City, Invest and Report faces, MOVED to their own tab
-  // (features/command/OfficeScreen.tsx); Levels went to You, where the company's levels already stood. Its OWN cell on the bar and on the rail,
-  // like Map, never a Menu member: six cells, which nav.geometry.spec measures at 320 and 390 (this file's 2026-08-25 note:
-  // six cells of 53 px at 320, clear of the reach floor). The word is "Office" / "사무소": the company's office ashore; "City"
-  // was the HQ page's own word and one of the faces.
-  // SWITCHED OFF 2026-11-23 (the visual overhaul's slice 2, roadmap X2: docs/design/visual-overhaul-2026-11-23.md). The bar is for
-  // the loop you play; the Office's three faces are the company ashore, so they stand on HQ as three doors (CityScreen's Office
-  // row) and the route stays, its face picked by `?face=`. The HQ cell is lit on it (`under`). Reversible: `enabled: true`.
-  { to: '/office', label: 'Office', icon: 'office', enabled: false, under: '/city' },
+  // THE OFFICE (2026-11-16 to 2026-11-24) and its route are gone: its faces are HQ's plates and sheets (H3 `desk-into-hq`).
   // STATS (owner, 2026-10-20) moved INTO the Menu on 2026-11-11 (S1): the top bar is for the loop you play
   // (Trade · Fleets · Map); the world's figures are consulted, so they sit with the cabin. Every Stats
   // face stays reachable from here.
@@ -248,10 +236,10 @@ function buildCells(wide: boolean, lit: LitSwitches): readonly NavCell[] {
   return cells
 }
 
-/** The PHONE BAR's cells: HQ · Trade · Fleets · Map · (Land, lit) · Menu, with You and Stats inside the Menu. */
+/** The PHONE BAR's cells: HQ · Fleets · Map · (Land, lit) · Menu, with You and Stats inside the Menu. */
 export const NAV_CELLS: readonly NavCell[] = buildCells(false, NONE_LIT)
 
-/** The WIDE RAIL's cells: HQ · Trade · Fleets · Map · (Land, lit) · You · Stats · Menu, the Menu without those two. */
+/** The WIDE RAIL's cells: HQ · Fleets · Map · (Land, lit) · You · Stats · Menu, the Menu without those two. */
 export const NAV_RAIL_CELLS: readonly NavCell[] = buildCells(true, NONE_LIT)
 
 /** What the nav draws on this glass: the rail's cells from `lg` (`useWide()`), the bar's below it; a switched tab (`served`) only
@@ -261,9 +249,14 @@ export function navCells(wide: boolean, lit: LitSwitches = NONE_LIT): readonly N
   return buildCells(wide, lit)
 }
 
-/** The landing destination: the TRADE desk (owner remaster, 2026-11-11, S1) — a player lands where the
- *  buy buttons are. The City page stays one press away on the HQ cell. */
-export const HOME_TAB = '/command'
+/** The home screen: HQ (H3 `desk-into-hq`, 2026-11-24: the Trade desk, the home since 2026-11-11, is gone; HQ's Best moves
+ *  stand first on it, so a new captain lands on the buy presses there). */
+export const HOME_TAB = '/city'
+
+/** WHERE A SIGN-IN, `/` AND AN UNKNOWN ROUTE LAND: a route INSIDE the shell that opens HOME_TAB (App.tsx). HQ stands outside
+ *  the shell (its own frame), and the shell is where a captain with no house meets the register (AppShell.tsx `SignTheBook`), so the
+ *  landing passes through the shell first. H3, 2026-11-24. */
+export const LANDING = '/home'
 
 /** The URL a destination actually has in the browser. The router is mounted on
  *  `import.meta.env.BASE_URL` (App.tsx passes it as the basename, and vite.config.ts sets it to
@@ -304,12 +297,9 @@ export function litRoute(pathname: string): string {
  *  about a decision you are in the middle of; on the chart, on the standings or in the cabin it is
  *  a number with nothing to do, which is precisely what §2 counted 93 lines of.
  *
- *  The one screen that holds a market payload is Command — the desk (docs/COMMAND_DESK.md): its
- *  Markets, its City's quay, its plans. PORT was the second until 2026-10-18 (D8), when its every
- *  face moved under Command's City. The OFFICE is the second since 2026-11-16: the City face, with its
- *  quay's market, moved there from the desk, and its countdown went with it. Derived from nothing — it is a
- *  JUDGEMENT about which screens are about prices, so it is written down once rather than re-decided in the bar. */
-export const TRADE_ROUTES: readonly string[] = ['/command', '/office']
+ *  The one screen that holds a market payload is HQ: its Market plate and the trade sheet over it (the Trade desk and the
+ *  Office, which held it before, are gone since H3, 2026-11-24). */
+export const TRADE_ROUTES: readonly string[] = ['/city']
 
 /** Is this pathname one of the price screens? Takes the router's `pathname`, basename already
  *  stripped, which is what `useLocation()` serves. */

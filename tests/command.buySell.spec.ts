@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { closeDetail, openDetail, ready, reachable } from './appReady.fixture'
+import { ready, reachable } from './appReady.fixture'
+import { openFleetSheet, openMarket } from './desk.fixture'
 import { closeTradeMap, openTradeMap } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -9,9 +10,10 @@ import { closeTradeMap, openTradeMap } from './deskMap.fixture'
 //   Trade → the docked city's goods in ONE list, each card carrying BOTH prices (Buy = the city's ask,
 //   Sell = its bid) and its day line → press Buy on a good: THE panel (the chart, the units, the money,
 //   ONE button "Buy") → Buy 1 → press Sell on that same card: the panel says Sell → Sell 1 → no cargo.
-// The SMALL map stands at the bottom of the face, in a fold (owner 2026-10-30); no cross-city list stands
+// The SMALL map is a page of her sheet; no cross-city list stands
 // anywhere — trade happens where she lies, and the map is there to glance at, not to work from. Nothing
 // here asserts a price; "a figure, not a dash" is the claim.
+// H3 (2026-11-24): the list is HQ's Market plate, and her ship and her map are in her sheet over HQ (the Trade desk is gone).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 test.use({ locale: 'en-US' })
@@ -31,24 +33,26 @@ for (const size of SIZES) {
         !(await reachable(request, baseURL ?? '')),
         `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
       )
-      await page.goto('command')
+      await page.goto('city')
       await ready(page)
-      const face = page.getByTestId('desk-trade')
-      await expect(face).toBeVisible()
-      // the ship stands inside the folded Orders on a phone (the one-page law); a press reveals it
-      await openDetail(page, 'command-queue')
+      // the ship stands in her sheet (her HQ row's press)
+      const sheet = await openFleetSheet(page)
 
       // THE SHIP under the orders (row 233): cargo, crew, stores — from the readings FLEETS already draws
-      const ship = face.getByTestId('buy-ship')
+      const ship = sheet.getByTestId('buy-ship')
       await expect(ship).toBeVisible()
       await expect(ship.getByTestId('buy-ship-crew')).toContainText(/\d+ · room \d+/)
       await expect(ship.getByTestId('buy-ship-stores')).toContainText(/\d/)
-      // back to the compact face before working the board
-      await closeDetail(page)
+      // the small map is there, a page of her sheet (owner 2026-10-30): a player presses its line to open it
+      await openTradeMap(page)
+      await expect(page.getByTestId('trade-map')).toHaveCount(1)
+      // back to HQ before working the list
+      await closeTradeMap(page)
 
-      // THE BOARD: the docked city's goods, one card per good, both prices; no map, no cross-city list
-      const board = face.getByTestId('trade-board')
-      await expect(board).toBeVisible()
+      // THE LIST: the docked city's goods, one card per good, both prices; no map, no cross-city list
+      await openMarket(page)
+      const board = page.getByTestId('city-market-buy')
+      await expect(board).toBeVisible({ timeout: 120_000 })
       const cards = board.getByTestId('trade-good')
       await expect(cards.first()).toBeVisible({ timeout: 120_000 })
       expect(await cards.count()).toBeGreaterThan(2)
@@ -56,11 +60,6 @@ for (const size of SIZES) {
       await expect(cards.first().getByTestId('trade-good-sell')).toHaveText(/\d|No buyer/)
       await expect(cards.first().getByTestId('trade-good-spark')).toBeVisible()
       await expect(cards.first().getByTestId('trade-good-aboard')).toHaveText(/On board \d/)
-      // the small map is there, at the bottom, in a fold (owner 2026-10-30); on a phone it starts
-      // closed and a player presses its line to open it
-      await openTradeMap(face)
-      await expect(page.getByTestId('trade-map')).toHaveCount(1)
-      await closeTradeMap(face)
       await expect(page.getByTestId('trade-sell-list')).toHaveCount(0)
 
       // BUY: a good's Buy button opens THE panel — the chart, the units with Max, the money, ONE button "Buy"
@@ -85,6 +84,8 @@ for (const size of SIZES) {
       await expect(act).toBeEnabled({ timeout: 60_000 })
       await act.click()
       await expect(page.getByTestId('trade-toast')).toContainText(/^Bought 1 /, { timeout: 60_000 })
+      // the sheet stays for the next lot where she lies (S1): its own close returns to the list
+      await panel.getByTestId('tray-close').click()
       await expect(panel).toHaveCount(0)
       await expect(
         board.locator(`[data-testid="trade-good"][data-good="${code}"]`).getByTestId('trade-good-aboard'),

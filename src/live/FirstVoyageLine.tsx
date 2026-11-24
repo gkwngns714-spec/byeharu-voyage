@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Clip, Icon, useWide } from '../components/ui'
 import { useGoTo } from '../chart'
 import { useRouteSeed } from '../features/map/routeSeed'
-import { openOfficeCity } from '../features/command/officeView'
+import { hqHref, openHq } from '../app/hqPlace'
 import { formatInt, formatRealShort } from '../lib/format'
 import { properName, useT } from '../lib/i18n'
 import { worldFirstVoyages, type FirstVoyages } from '../lib/rpc'
@@ -29,6 +29,7 @@ export function FirstVoyageLine() {
   const t = useT()
   const wide = useWide()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const purse = useWorld((s) => s.ducats)
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
@@ -79,6 +80,13 @@ export function FirstVoyageLine() {
   })()
   const from = job ? t('trade.holdFrom', { city: portName(job.from.code), time: formatRealShort(job.sail_seconds * 1000) }) : null
 
+  // the inn or the yard of the city one of her fleets lies in, its sheet over HQ (H3: they stood on the Office's City face)
+  const lying = fleets.find((f) => f.status === 'DOCKED' && f.port)?.port ?? null
+  const toSheet = (sheet: 'inn' | 'yard') => {
+    if (lying) openHq({ sheet, port: lying })
+    if (pathname !== '/city') navigate(hqHref())
+  }
+
   const go: (() => void) | null =
     v.code === 'deliver'
       ? job && fleet
@@ -92,9 +100,9 @@ export function FirstVoyageLine() {
       : v.code === 'trading'
         ? () => navigate('/you')
         : v.code === 'captain'
-          ? () => navigate(openOfficeCity('inn'))
+          ? () => toSheet('inn')
           : v.code === 'hull'
-            ? () => navigate(openOfficeCity('building_yard'))
+            ? () => toSheet('yard')
             : null
 
   const body = (

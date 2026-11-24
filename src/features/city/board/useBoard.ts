@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { whereabouts } from '../../../domain/fleet'
 import type { Move } from '../../../domain/hq'
 import { routeOfFleet } from '../../../domain/route'
-import type { BestSale, FleetView, HqBoardView, HqMove, TradeRequest } from '../../../lib/rpc'
+import type { FleetView, HqBoardView, HqMove } from '../../../lib/rpc'
 import { useLevelGate } from '../../../live/levelGate'
 import { useHqBoard } from '../../../live/useHqBoard'
 import { useRoleEdits } from '../../../live/useShipRoles'
@@ -30,17 +30,8 @@ export interface BoardFleet {
   route: ReturnType<typeof routeOfFleet>
 }
 
-/** What a card carries to draw and press it. A card is built only from a served move (`served`).
- *  THE OTHER SHAPES ARE BUILT NOWHERE: they were v1's client-made cards. They stay in the type only because useMovePress.ts (H3's
- *  file) still narrows on them; H3 deletes them with its cases. */
-export type MoveData =
-  | { kind: 'trade'; sale: BestSale; at: string; fleet: FleetView; haunt: boolean }
-  | { kind: 'request'; request: TradeRequest; units: number; at: string; fleet: FleetView }
-  | { kind: 'yard'; port: string | null; hull: string; price: number }
-  | { kind: 'crew'; fleet: FleetView }
-  | { kind: 'invest'; idle: number }
-  /** 0480: a move the server ranked; its press is its own `act` (servedPress.ts). */
-  | { kind: 'served'; move: HqMove; fleet: FleetView | null }
+/** What a card carries to draw and press it: a move the server ranked; its press is its own `act` (servedPress.ts, 0480). */
+export type MoveData = { kind: 'served'; move: HqMove; fleet: FleetView | null }
 
 export interface Board {
   fleets: BoardFleet[]

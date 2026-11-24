@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { Button, Field, Hint, LanguageSwitch, Note } from '../../components/ui'
-import { HOME_TAB } from '../../app/navTabs'
+import { LANDING } from '../../app/navTabs'
 import { useT } from '../../lib/i18n'
 
 // The sign-in / sign-up screen. Functionally identical to byeharu's: one form, two modes, the
@@ -47,7 +47,7 @@ export function AuthPage() {
       setMode('signin')
       return
     }
-    navigate(HOME_TAB, { replace: true })
+    navigate(LANDING, { replace: true })
   }
 
   return (

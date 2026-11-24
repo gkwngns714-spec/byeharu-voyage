@@ -16,8 +16,8 @@ import type { BoardFleet, MoveData } from './useBoard'
 import { useFleetPress, useMovePress } from './useMovePress'
 
 // THE FLEETS (docs/design/hq-command-2026-11-23.md): one row a fleet — her flagship's picture in the tone of her job, her whole name, the
-// job (a route, a trip, idle), what her route earned today, and one press: Route (the desk's route page, RouteFold) or Plan (the desk
-// with her in hand). AN IDLE FLEET GLOWS (the gold edge, "you may act") and offers her best card under her row.
+// job (a route, a trip, idle), what her route earned today, and one press: her sheet over HQ (app/HqSheet.tsx: status, cargo, route,
+// orders, map, ship), her route first on Route. AN IDLE FLEET GLOWS (the gold edge, "you may act") and offers her best card under her row.
 // 0481 (lit): her standing job's mark and setter under her row (JobControl).
 // 0485 (lit): each of her hulls' role chips under her row (RoleControl), one press each.
 

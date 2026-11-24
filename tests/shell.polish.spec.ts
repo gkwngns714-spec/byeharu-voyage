@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { RAIL_REM } from '../src/components/ui/screenLayout'
 import { ready } from './appReady.fixture'
+import { openMarket } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE SHELL'S TWO LEFTOVERS (2026-11-11, after S9: docs/dev-log/2026-11-11-shell-polish.md)
@@ -37,9 +38,10 @@ for (const glass of GLASSES) {
 
     test('the trade toast is centred on the page beside the rail, not on the window', async ({ page }) => {
       test.setTimeout(480_000)
-      await page.goto('command')
+      await page.goto('city')
       await ready(page)
-      const card = page.getByTestId('desk-trade').getByTestId('trade-board').getByTestId('trade-good').first()
+      await openMarket(page)
+      const card = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first()
       await expect(card).toBeVisible({ timeout: 120_000 })
       await card.getByTestId('trade-buy').click()
       const panel = page.getByTestId('good-detail')

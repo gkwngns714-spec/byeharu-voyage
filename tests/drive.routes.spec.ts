@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { ready, reachable, settled } from './appReady.fixture'
 import { serveRoutesOn } from './routesOn.fixture'
+import { openFleetSheet } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DRIVE AUDIT, 2026-11-08 — A ROUTE THAT SAILS BY ITSELF, DRIVEN AS THE OWNER WOULD
@@ -10,7 +11,7 @@ import { serveRoutesOn } from './routesOn.fixture'
 // route, trade routes - going back and forth, afk, running all the time"*. route.stopface.spec.ts
 // sets a route up and starts it; no browser spec has ever watched a LAP close — the fleet sail out,
 // come back and the route count a lap on its own. This one sets the route up the way the owner does
-// (the desk's Trade face, two stops), starts it, and then only WATCHES: the row's all-time laps and
+// (her sheet over HQ, two stops), starts it, and then only WATCHES: the row's all-time laps and
 // History's own line. The tab plays the arrivals and the lap starts itself (localBackend.ts), and a
 // voyage in this world lasts seconds, so a lap that never closes is a finding.
 
@@ -19,14 +20,14 @@ const WIDE = { width: 1280, height: 800 }
 
 test.use({ deviceScaleFactor: 2 })
 
-test('Routes: a two-stop route started on the desk closes a lap by itself, and History says so (row 106)', async ({ page, request, baseURL }) => {
+test('Routes: a two-stop route started on her sheet closes a lap by itself, and History says so (row 106)', async ({ page, request, baseURL }) => {
   test.setTimeout(900_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await serveRoutesOn(page)
   await page.setViewportSize(WIDE)
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
-  await settled(page.getByTestId('desk-trade'))
+  await settled(await openFleetSheet(page))
 
   const routeRow = page.getByTestId('route-row')
   await expect(routeRow).toContainText('No route', { timeout: 60_000 })
@@ -64,7 +65,7 @@ test('Routes: a two-stop route started on the desk closes a lap by itself, and H
   console.log(`just started: ${(await laps.innerText()).replace(/\s+/g, ' ')}; queue: ${JSON.stringify(await page.getByTestId('queue-row').allInnerTexts())}`)
   await page.screenshot({ path: `${OUT}/route-started-1280@2x.png` })
 
-  // NOW WATCH. The desk re-reads on the world beat; the row's all-time laps must leave 0 on its own.
+  // NOW WATCH. Her sheet re-reads on the world beat; the row's all-time laps must leave 0 on its own.
   const t0 = Date.now()
   let lapWords = ''
   await expect

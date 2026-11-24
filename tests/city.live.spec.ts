@@ -28,11 +28,7 @@ test('the City page asks town_hall once a second, in place, and stops while hidd
     ;(window as unknown as { __hallAsks: number[] }).__hallAsks = log
   })
 
-  await page.goto('office')
-  await ready(page)
-  await page.getByRole('tab', { name: 'City', exact: true }).click()
-  await page.getByTestId('desk-city-open').click()
-  await expect(page).toHaveURL(/\/city\?port=[A-Z]{3}/)
+  await page.goto('city')
   await ready(page)
   await expect(page.getByTestId('city-gold')).toContainText(/\d/, { timeout: 60_000 })
   await expect(page.getByTestId('city-population')).toHaveAttribute('data-population', /^\d+$/)

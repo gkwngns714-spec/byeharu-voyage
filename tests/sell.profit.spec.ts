@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready } from './appReady.fixture'
-import { openOfficeFace } from './desk.fixture'
+import { closeTop, openFleetSheet, openMarket } from './desk.fixture'
 import { formatPriceDelta } from '../src/lib/format'
 import { translate } from '../src/lib/i18n'
 import { LOCALES } from './korean.paused'
@@ -34,11 +34,15 @@ function signed(text: string): number {
   return /[−-]/.test(s) ? -n : n
 }
 
-async function reportToday(page: Page, lang: 'en' | 'ko'): Promise<number> {
-  await openOfficeFace(page, translate(lang, 'command.f_report'))
+/** The Report's Today total: HQ's Report sheet, opened, read and closed. */
+async function reportToday(page: Page): Promise<number> {
+  await page.getByTestId('city-office-report').click()
   const total = page.getByTestId('desk-report').getByTestId('report-total')
   await expect(total).toContainText(/\d/, { timeout: 120_000 })
-  return signed(await total.innerText())
+  const n = signed(await total.innerText())
+  await closeTop(page)
+  await expect(page.getByTestId('hq-sheet-report')).toHaveCount(0)
+  return n
 }
 
 /** The units on the sheet's stepper (after its clamp). */
@@ -61,16 +65,15 @@ for (const { locale, lang } of LANGS) {
 
       test('Bought, Sells for and Profit before the press; the profit shown is the one the sale settles', async ({ page }) => {
         test.setTimeout(900_000)
-        await page.goto('command')
+        await page.goto('city')
         await ready(page)
-        const r0 = await reportToday(page, lang)
-        await page.goto('command')
-        await ready(page)
+        const r0 = await reportToday(page)
         const p0 = await purse(page)
 
-        // BUY 204 Woollen Cloth at Lisbon
-        const board = page.getByTestId('desk-trade').getByTestId('trade-board')
-        await expect(board).toHaveAttribute('data-docked', 'true', { timeout: 120_000 })
+        // BUY 204 Woollen Cloth at Lisbon, on HQ's Market plate (H3, 2026-11-24: it was the Trade desk's board)
+        const read = await openMarket(page)
+        const board = page.getByTestId('city-market-buy')
+        await expect(read).toHaveAttribute('data-here', 'true', { timeout: 120_000 })
         const card = board.locator(`[data-testid="trade-good"][data-good="${GOOD}"]`)
         await expect(card).toBeVisible({ timeout: 120_000 })
         await card.getByTestId('trade-buy').click()
@@ -84,8 +87,10 @@ for (const { locale, lang } of LANGS) {
         await expect(act).toBeEnabled({ timeout: 60_000 })
         const units = await unitsOn(page)
         await act.click()
-        await expect(panel).toHaveCount(0, { timeout: 60_000 })
         await expect(card.getByTestId('trade-good-aboard')).toContainText(units.toLocaleString('en-US'), { timeout: 60_000 })
+        // the sheet stays for the next lot where she lies (S1): its own close returns to the list
+        await panel.getByTestId('tray-close').click()
+        await expect(panel).toHaveCount(0, { timeout: 60_000 })
 
         // THE SELL FACE, BEFORE THE PRESS
         await card.getByTestId('trade-sell').click()
@@ -110,12 +115,13 @@ for (const { locale, lang } of LANGS) {
 
         // SELL
         await act.click()
-        await expect(panel).toHaveCount(0, { timeout: 60_000 })
         await expect(card.getByTestId('trade-good-aboard')).not.toContainText(units.toLocaleString('en-US'), { timeout: 60_000 })
+        if ((await panel.count()) > 0) await panel.getByTestId('tray-close').click()
+        await expect(panel).toHaveCount(0, { timeout: 60_000 })
 
         // THE FIGURE SHOWN IS THE ONE SETTLED: her purse moved it over the buy and the sale, and Report's Today profit too
         await expect.poll(() => purse(page), { timeout: 60_000 }).toBe(p0 + shown)
-        expect(await reportToday(page, lang), 'Report Today moved other than the profit shown before the press').toBe(r0 + shown)
+        expect(await reportToday(page), 'Report Today moved other than the profit shown before the press').toBe(r0 + shown)
       })
     })
   }
@@ -125,9 +131,10 @@ test.describe('Your cargo prints Bought and Here\'s served profit', () => {
   test.use({ viewport: { width: 390, height: 844 }, locale: 'en-US' })
   test('a good aboard: Bought a unit beside it, and Here\'s profit is the sell face\'s', async ({ page }) => {
     test.setTimeout(900_000)
-    await page.goto('command')
+    await page.goto('city')
     await ready(page)
-    const board = page.getByTestId('desk-trade').getByTestId('trade-board')
+    const read = await openMarket(page)
+    const board = page.getByTestId('city-market-buy')
     const card = board.locator(`[data-testid="trade-good"][data-good="${GOOD}"]`)
     await expect(card).toBeVisible({ timeout: 120_000 })
     await card.getByTestId('trade-buy').click()
@@ -139,8 +146,9 @@ test.describe('Your cargo prints Bought and Here\'s served profit', () => {
     await expect(act).toBeEnabled({ timeout: 60_000 })
     const units = await unitsOn(page)
     await act.click()
-    await expect(panel).toHaveCount(0, { timeout: 60_000 })
     await expect(card.getByTestId('trade-good-aboard')).toContainText(units.toLocaleString('en-US'), { timeout: 60_000 })
+    await panel.getByTestId('tray-close').click()
+    await expect(panel).toHaveCount(0, { timeout: 60_000 })
 
     await card.getByTestId('trade-sell').click()
     const lines = panel.getByTestId('sale-lines')
@@ -150,12 +158,13 @@ test.describe('Your cargo prints Bought and Here\'s served profit', () => {
     await panel.getByTestId('tray-close').click()
     await expect(panel).toHaveCount(0, { timeout: 30_000 })
 
-    await page.getByTestId('cargo-open').click()
+    // Your cargo: in her sheet over HQ (her row's press)
+    await openFleetSheet(page)
     const block = page.getByTestId('cargo-best').locator(`[data-testid="cargo-good"][data-good="${GOOD}"]`)
     // the same served basis: the dry run's at full precision, FleetView.cargo_basis to the hundredth
     await expect(block.getByTestId('cargo-good-bought')).toHaveAttribute('data-each', /\d/, { timeout: 120_000 })
     expect(Number(await block.getByTestId('cargo-good-bought').getAttribute('data-each'))).toBeCloseTo(Number(each), 2)
-    const home = (await board.getAttribute('data-city'))!
+    const home = (await read.getAttribute('data-city'))!
     await expect(block.locator(`[data-testid="cargo-place"][data-port="${home}"]`).getByTestId('cargo-place-profit')).toHaveText(formatPriceDelta(shown), {
       timeout: 120_000,
     })

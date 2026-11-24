@@ -51,10 +51,10 @@ test('lit: the only ship moves to a new fleet, and the empty fleet stands', asyn
   await page.keyboard.press('Escape')
   await expect(page.getByTestId('fleet-row')).toHaveCount(2)
 
-  // the desk offers the fleet with a ship, and never the empty one
-  await page.goto('command')
+  // HQ offers the fleet with a ship (H3, 2026-11-24: the desk's fleet picker is gone; her HQ row is the press)
+  await page.goto('city')
   await ready(page)
-  await expect(page.getByTestId('fleet-picker').first()).toContainText('Nova Armada')
+  await expect(page.getByTestId('hq-fleets')).toContainText('Nova Armada', { timeout: 60_000 })
 
   // the map stands
   await page.goto('map')

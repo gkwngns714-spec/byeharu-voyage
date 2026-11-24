@@ -2,13 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { ShellStateContext } from './shellState'
 import { ShellFrame } from './ShellFrame'
+import { ShellCards } from './ShellCards'
 import { RebuildNotice } from './RebuildNotice'
-import { ArrivalCard } from './ArrivalCard'
-import { LevelUpCard } from './LevelUpCard'
-import { MasteryToast } from '../live/MasteryUp'
-import { WelcomeCard } from './WelcomeCard'
-import { AwayCard } from './AwayCard'
-import { LaunchOffer } from './LaunchOffer'
 import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
 import { readIntervalMs } from '../domain/readClock'
@@ -109,21 +104,7 @@ export function AppShell() {
       <ShellFrame
         data-world={worldPhase}
         nav={!(worldPhase === 'ready' && houseUnfounded)}
-        overlay={
-          /* THE ARRIVAL CARD at the glass's foot and, on a return, the WHILE AWAY card at its head (src/app/ArrivalCard.tsx,
-             AwayCard.tsx): overlays over any tab, never in the flow. */
-          <>
-            <ArrivalCard />
-            {/* a level crossed: its own loud card over the glass's middle, which takes no press (LevelUpCard.tsx, roadmap slice 10) */}
-            <LevelUpCard />
-            {/* a sale raised a good's mastery, with no arrival card to say it (src/live/MasteryUp.tsx, roadmap slice 11) */}
-            <MasteryToast />
-            <AwayCard />
-            {/* a hull joined her fleet: its own fleet on her best route, or stay (LaunchOffer.tsx, the roadmap's slice 6) */}
-            <LaunchOffer />
-            <WelcomeCard />
-          </>
-        }
+        overlay={<ShellCards />}
       >
         {/* A world that was demolished and rebuilt says so, once, above everything — one `Note`,
             see RebuildNotice.tsx. It renders nothing on an ordinary boot. */}

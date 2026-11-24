@@ -1,20 +1,20 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { Icon, Ring, useWide } from '../../components/ui'
-import { properName, useLocale, useT } from '../../lib/i18n'
-import { levelName, nextOpening } from '../../live/levelWords'
-import { worldLevels, type LevelsView } from '../../lib/rpc'
-import { useServedRead } from '../../live/useServedRead'
-import { useSecondShipGoal } from '../../live/useSecondShipGoal'
-import { useWorld } from '../../live/worldStore'
-import { formatInt } from '../../lib/format'
-import { useShellState } from '../../app/shellState'
-import { useNavigate } from 'react-router-dom'
-import { openOfficeCity } from './officeView'
-import { useShowOnMap } from '../../live/showOnMap'
-import { litRoles, useShipRoles } from '../../live/useShipRoles'
-import type { IconName } from '../../components/ui'
-import type { LadderStep } from '../../lib/rpc'
-import type { TKey } from '../../lib/i18n'
+import { Icon, Ring, useWide } from '../components/ui'
+import { properName, useLocale, useT } from '../lib/i18n'
+import { levelName, nextOpening } from './levelWords'
+import { worldLevels, type LevelsView } from '../lib/rpc'
+import { useServedRead } from './useServedRead'
+import { useSecondShipGoal } from './useSecondShipGoal'
+import { useWorld } from './worldStore'
+import { formatInt } from '../lib/format'
+import { useShellState } from '../app/shellState'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { hqHref, openHq } from '../app/hqPlace'
+import { useShowOnMap } from './showOnMap'
+import { litRoles, useShipRoles } from './useShipRoles'
+import type { IconName } from '../components/ui'
+import type { LadderStep } from '../lib/rpc'
+import type { TKey } from '../lib/i18n'
 
 // THE GOAL CARD (remaster S6): one line on the Trade face saying what to aim for: the next Title and how far along you are.
 // NOT a quest: it reads the SAME served read the You page's levels read (`world.levels()`, 0325, the same cached `worldLevels` read) and
@@ -82,6 +82,7 @@ export function GoalCard() {
   const wide = useWide()
   const place = wide ? WIDE : PHONE
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const showOnMap = useShowOnMap()
   const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
   const v = read.view
@@ -126,11 +127,12 @@ export function GoalCard() {
   const press = () => {
     if (next2 === 'yard' && second) {
       // the yard ON the hull's sheet, where the Order is (finding 3); with a hull on order, the yard itself
-      navigate(openOfficeCity('building_yard', second.order ? undefined : second.hull))
+      if (second.port) openHq({ sheet: 'yard', port: second.port, hull: second.order ? undefined : second.hull })
+      if (pathname !== '/city') navigate(hqHref())
     } else if (next2 === 'map' && second?.port) {
       // the yard's city, its tray up with the Sail press (finding 21)
       showOnMap(second.port, true)
-    } else navigate(next2 === 'map' ? '/map' : next2 === 'hq' ? '/city' : '/you')
+    } else if (next2 !== 'hq' || pathname !== '/city') navigate(next2 === 'map' ? '/map' : next2 === 'hq' ? '/city' : '/you')
   }
   // THE RING'S FILL: the goal's own served figures, nothing worked out but the share
   const ringPct = saving

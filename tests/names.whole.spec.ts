@@ -5,7 +5,8 @@ import { test, expect, type Page } from '@playwright/test'
 import { KO_GOODS } from '../src/lib/i18n/names/goods'
 import { KO_PORTS } from '../src/lib/i18n/names/ports'
 import { KO_HULLS } from '../src/lib/i18n/names/realms'
-import { openDetail, ready, settled } from './appReady.fixture'
+import { ready, settled } from './appReady.fixture'
+import { closeTop, openFleetSheet, openMarket } from './desk.fixture'
 import { serveVeteranWorld, VETERAN_FLEETS } from './manyFleets.fixture'
 import { openCityPanel } from './openCity.fixture'
 import { LOCALES } from './korean.paused'
@@ -379,9 +380,11 @@ for (const locale of LOCALES) {
         }
         await serveVeteranWorld(page)
 
-        // TRADE, AND "YOUR CARGO" (the page the owner saw the cut on): buy one unit so the hold has a good and its cities
-        await open('command')
-        const card = page.locator('[data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first()
+        // THE MARKET, AND "YOUR CARGO" (the list the owner saw the cut on; in her sheet over HQ since H3, 2026-11-24): buy one unit
+        // so the hold has a good and its cities
+        await open('city')
+        await openMarket(page)
+        const card = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first()
         await expect(card).toBeVisible({ timeout: 120_000 })
         await card.getByTestId('trade-buy').click()
         const figure = page.getByTestId('good-detail').getByTestId('stepper-figure')
@@ -391,24 +394,28 @@ for (const locale of LOCALES) {
         await expect(page.getByTestId('trade-act')).toBeEnabled({ timeout: 60_000 })
         await page.getByTestId('trade-act').click()
         await expect(page.getByTestId('trade-toast')).toBeVisible({ timeout: 60_000 })
-        await open('command')
-        await look('Trade')
-        await openDetail(page, 'cargo-open')
-        const cargo = page.getByTestId('cargo-open-page')
+        await open('city')
+        const cargo = await openFleetSheet(page)
         await expect(cargo.getByTestId('cargo-place').first()).toBeVisible({ timeout: 120_000 })
         await settled(cargo)
         // the good's name, the page's title, and a city in every row
-        await look('Trade › Your cargo', '[data-testid="cargo-open-page"]', 3)
+        await look('HQ › Your cargo', '[data-testid="hq-sheet-fleet"]', 3)
         for (const name of [null, ...cat.stress.port]) {
           const rows = await page.evaluate(CARGO_ROWS, name)
           expect(rows.rows, 'Your cargo has no city row').toBeGreaterThan(0)
-          for (const f of rows.faults) faults.push(`Trade › Your cargo, the row's line: ${f}`)
+          for (const f of rows.faults) faults.push(`HQ › Your cargo, the row's line: ${f}`)
         }
+        await closeTop(page)
 
-        // THE OFFICE'S FACES (2026-11-16, #755: City · Invest · Report left the Trade desk for the Office tab; City carries the
-        // city's name over its buildings). Levels went to the You page, walked below with the ships and captains.
-        await open('office')
-        await faces('Office')
+        // HQ'S TWO SHEETS (H3, 2026-11-24: Invest and Report were the Office's faces). Levels went to the You page, walked below
+        // with the ships and captains.
+        for (const face of ['invest', 'report']) {
+          await page.getByTestId(`city-office-${face}`).click()
+          await expect(page.getByTestId(`hq-sheet-${face}`)).toBeVisible({ timeout: 60_000 })
+          await look(`HQ › ${face}`, `[data-testid="hq-sheet-${face}"]`, 0)
+          await closeTop(page)
+          await expect(page.getByTestId(`hq-sheet-${face}`)).toHaveCount(0)
+        }
 
         // THE CITY PAGE (its market chart names the good in hand) AND THE HQ's PRODUCTION
         await open('city')

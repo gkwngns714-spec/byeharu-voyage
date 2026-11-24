@@ -8,7 +8,7 @@ import { useServedRead } from '../../../live/useServedRead'
 import { useWorld } from '../../../live/worldStore'
 import { formatDucats, formatDucatsDelta, formatInt } from '../../../lib/format'
 import { worldHoldings, type FleetView, type Holdings } from '../../../lib/rpc'
-import type { DeskLayout } from '../DeskFrame'
+import type { DeskLayout } from '../deskLayout'
 import { useT, properName } from '../../../lib/i18n'
 
 // INVEST — your money in the cities (docs/COMMAND_DESK.md §3.7, D6). The owner, 2026-10-17: *"… investing, and all"*.
@@ -38,7 +38,6 @@ export function Invest({ fleet, layout }: { fleet: FleetView; layout: DeskLayout
 
   return layout({
     testid: 'desk-invest',
-    sideHint: t('desk.investSide'),
     list: (
       <SheetSection heading={t('desk.holdings')} data-testid="invest-holdings">
         {held.loading && !h ? (

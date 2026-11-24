@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { koreanDescribe } from './korean.paused'
+import { openYard } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // S8 — A YARD A PLAYER CAN FINISH (owner rows 180 and 305; world.yard_sources, 0349)
@@ -29,10 +30,10 @@ async function noSideways(page: Page, what: string) {
 }
 
 async function yard(page: Page) {
-  await page.goto('port')
+  // HQ's Port plate > Build (H3, 2026-11-24: the yard was a tab of the Office's City face)
+  await page.goto('city')
   await ready(page)
-  await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: 'Build', exact: true }).click()
-  await expect(page.getByTestId('port-yard')).toBeVisible({ timeout: 60_000 })
+  await openYard(page, 'Build')
 }
 
 async function box(l: Locator) {
@@ -93,13 +94,17 @@ for (const glass of GLASSES) {
       // the seller's name as the row carries it (since 0358 the row also prints the real time and the cost)
       const sellerName = (await timber.getAttribute('data-seller')) ?? ''
 
-      // 4. the press goes where it is bought: the Trade desk, reading that city, the Timber in hand
+      // 4. the press goes where it is bought: the trade sheet over HQ (H3, 2026-11-24: it was the Trade desk), on that city,
+      // the Timber in hand
       await timber.click()
-      await expect(page).toHaveURL(/\/command$/)
-      const hand = await page.evaluate(() => sessionStorage.getItem('byeharu-voyage.desk-good.v1'))
-      expect(JSON.parse(hand ?? '{}').state).toMatchObject({ code: 'timber', focus: seller })
-      if (sellerName) await expect(page.getByText(sellerName, { exact: false }).first()).toBeVisible({ timeout: 30_000 })
-      await noSideways(page, 'the Trade desk')
+      await expect(page).toHaveURL(/\/city(\?|$)/)
+      const sheet = page.getByTestId('good-detail')
+      await expect(sheet).toBeVisible({ timeout: 60_000 })
+      await expect(sheet).toHaveAttribute('data-good', 'timber')
+      await expect(sheet).toHaveAttribute('data-city', seller!)
+      await expect(sheet).toHaveAttribute('data-side', 'buy')
+      if (sellerName) await expect(sheet.getByText(sellerName, { exact: false }).first()).toBeVisible({ timeout: 30_000 })
+      await noSideways(page, 'the trade sheet')
       await page.screenshot({ path: info.outputPath('trade-at-seller.png') })
     })
   })
@@ -111,9 +116,9 @@ koreanDescribe('a fitting made here, and the words in Korean', () => {
   test('Make here opens the Workshop; the yard reads in Korean', async ({ page, request, baseURL }, info) => {
     test.setTimeout(240_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-    await page.goto('port')
+    await page.goto('city')
     await ready(page)
-    await page.getByRole('tablist').getByRole('tab', { name: '건조', exact: true }).click()
+    await openYard(page)
     await expect(page.getByTestId('yard-more')).toContainText('더보기')
     await page.getByTestId('yard-now').getByTestId('hull-carlat').click()
     const sails = page.getByTestId('yard-tray').getByTestId('yard-source-suit-of-sails')
@@ -124,7 +129,7 @@ koreanDescribe('a fitting made here, and the words in Korean', () => {
     if ((await sails.getAttribute('data-port')) === 'LIS') {
       await expect(sails).toContainText('여기서 제작')
       await sails.click()
-      await expect(page).toHaveURL(/\/office$/)
+      await expect(page).toHaveURL(/\/city(\?|$)/)
       await expect(page.getByTestId('port-workstation')).toBeVisible({ timeout: 60_000 })
       await page.screenshot({ path: info.outputPath('workshop.png') })
     }

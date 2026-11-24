@@ -3,6 +3,7 @@ import { reachable, ready } from './appReady.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 import { barcaWithParts, putBarcaPartsBack } from './barcaParts.fixture'
 import { koreanDescribe } from './korean.paused'
+import { openYard } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // S1 — THE YARD PLANS THE BUILD (docs/SECOND_SHIP.md; world.yard_sources re-cut by 0358; owner rows 180, 305, 316)
@@ -85,10 +86,10 @@ async function noBrokenWord(tray: Locator, what: string) {
 }
 
 async function barcaSheet(page: Page, buildTab: string): Promise<Locator> {
-  await page.goto('port')
+  // HQ's Port plate > Build (H3, 2026-11-24: the yard was a tab of the Office's City face)
+  await page.goto('city')
   await ready(page)
-  await page.getByRole('tablist').getByRole('tab', { name: buildTab, exact: true }).click()
-  await expect(page.getByTestId('port-yard')).toBeVisible({ timeout: 60_000 })
+  await openYard(page, buildTab)
   await page.getByTestId('yard-now').getByTestId('hull-barca').click()
   const tray = page.getByTestId('yard-tray')
   await expect(tray).toBeVisible()
@@ -212,7 +213,8 @@ for (const glass of GLASSES) {
       await page.screenshot({ path: info.outputPath('4-hire.png') })
       await next.click()
       presses++
-      await expect(page).toHaveURL(/\/office$/)
+      await expect(page).toHaveURL(/\/city(\?|$)/)
+      await expect(page.getByTestId('hq-sheet-inn')).toBeVisible({ timeout: 60_000 })
       await expect(page.getByTestId('port-inn')).toBeVisible({ timeout: 60_000 })
       await expect(page.getByTestId('inn-crew')).toBeVisible()
       expect(presses, 'the flow is four presses and a name').toBe(4)

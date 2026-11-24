@@ -27,6 +27,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, ready, reachable } from './appReady.fixture'
 import { serveRoutesOn } from './routesOn.fixture'
+import { openFleetSheet } from './desk.fixture'
 
 // ── 1. STATIC ────────────────────────────────────────────────────────────────────────────────────
 
@@ -102,15 +103,16 @@ declare global {
 
 test.use({ viewport: PHONE })
 
-test('COMMAND: no button greys and Start route never leaves across three beats', async ({ page, request, baseURL }) => {
+test('the route page: no button greys and Start route never leaves across three beats', async ({ page, request, baseURL }) => {
   test.setTimeout(600_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await serveRoutesOn(page)
 
   // 0225: no keep level is needed any more — supplies are bought by every SAIL.
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
-  // the route is on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Trade since 2026-10-30
+  // the route is in her sheet over HQ (H3, 2026-11-24; it stood on the Trade desk)
+  await openFleetSheet(page)
 
   const routeRow = page.getByTestId('route-row')
   await expect(routeRow).toContainText('No route', { timeout: 60_000 })
@@ -134,12 +136,12 @@ test('COMMAND: no button greys and Start route never leaves across three beats',
   const start = page.getByTestId('route-start')
   // Non-vacuity: the button under watch is on the page and pressable before the window opens.
   await expect(start).toBeEnabled({ timeout: 60_000 })
-  const buttons = await page.getByTestId('command').locator('button').count()
+  const buttons = await page.getByTestId('route-page').locator('button').count()
   expect(buttons).toBeGreaterThan(3)
 
   await page.evaluate(() => {
-    const root = document.querySelector('[data-testid="command"]')
-    if (!root) throw new Error('no COMMAND to watch')
+    const root = document.querySelector('[data-testid="route-page"]')
+    if (!root) throw new Error('no route page to watch')
     const t0 = Date.now()
     const log: Moved[] = []
     const name = (el: Element) => el.getAttribute('data-testid') ?? el.getAttribute('aria-label') ?? el.textContent?.trim() ?? '?'

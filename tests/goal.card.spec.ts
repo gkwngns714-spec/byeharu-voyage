@@ -1,11 +1,11 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 
-// THE GOAL CARD (remaster S6, src/features/command/GoalCard.tsx): one line on the Trade screen with the next Title and the
+// THE GOAL CARD (remaster S6, src/live/GoalCard.tsx): one line on HQ, under the bridge (H3, 2026-11-24: it stood on the Trade screen), with the next Title and the
 // progress toward it, read from the same `world.levels()` the You page's levels read. Pinned on a local build at the phone and the desk:
 //   · a fresh player sees the card, and its figures are the You page's own (the next title, Trading and Exploration levels);
 //   · the card stands at the same height and place before and after the read lands (no re-flow), and nothing scrolls sideways;
-//   · pressing it opens the step that is next (2026-11-22): with the second ship's count on it, the build yard (Office > City);
+//   · pressing it opens the step that is next (2026-11-22): with the second ship's count on it, the build yard (its sheet over HQ);
 //     the You page, where the levels stand, is read for the card's figures.
 // 0363 (S3 of docs/SECOND_SHIP.md): while the company has ONE ship the second line is "Second ship n / of" in place of the two
 // tracks (one line for the other, no height added); a fresh player at Lisbon reads "Second ship · materials 0 / 4". The tracks are then the
@@ -31,7 +31,7 @@ for (const size of SIZES) {
     test('shows the next title with the You page level figures, holds its height, and opens the yard', async ({ page, request, baseURL }) => {
       test.setTimeout(480_000)
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
-      await page.goto('command')
+      await page.goto('city')
       // the card's place exists from the first paint: the hold, then the card, at one height and one top edge
       const hold = page.locator('[data-testid="goal-card-hold"], [data-testid="goal-card"]').first()
       await ready(page)
@@ -40,7 +40,7 @@ for (const size of SIZES) {
       const first = await box(page, '[data-testid="goal-card-hold"], [data-testid="goal-card"]')
       const card = page.getByTestId('goal-card')
       await expect(card).toBeVisible({ timeout: 120_000 })
-      await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
+      await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 120_000 })
       const loaded = await box(page, '[data-testid="goal-card"]')
       expect(loaded!.h, 'the card is not a fixed two-line height').toBe(44)
       expect(loaded, 'the card moved when the read landed').toEqual(first)
@@ -61,7 +61,8 @@ for (const size of SIZES) {
       // press it: the next step, the build yard where the four materials are stored (2026-11-22)
       await expect(card).toHaveAttribute('data-next', 'yard')
       await card.click()
-      await expect(page).toHaveURL(/\/office$/)
+      await expect(page).toHaveURL(/\/city$/)
+      await expect(page.getByTestId('hq-sheet-yard')).toBeVisible({ timeout: 60_000 })
       await expect(page.getByTestId('port-yard')).toBeVisible({ timeout: 60_000 })
       // the You page: its levels door (roadmap slice 10) and its house plate carry the card's figures
       await page.goto('you')

@@ -8,6 +8,8 @@ import { litAway, useAwayReport } from '../../../live/useAwayReport'
 import { litRace, useNationRace } from '../../../live/useNationRace'
 import { litRoles, useShipRoles } from '../../../live/useShipRoles'
 import { litSea, useSeaChoices } from '../../../live/useSeaChoices'
+import { FirstVoyageLine } from '../../../live/FirstVoyageLine'
+import { GoalCard } from '../../../live/GoalCard'
 import { JobsAway } from './JobsAway'
 import { Bridge } from './Bridge'
 import { FleetRows } from './FleetRows'
@@ -86,6 +88,11 @@ export function HqBoard(props: { port: SnapshotPort | null }) {
       {sea?.open.map((c) => <SeaChoiceCard key={c.id} c={c} />)}
       {away && <JobsAway report={away} sea={sea?.recent ?? []} />}
       <Bridge board={board} />
+      {/* H3 (2026-11-24, simplify S3): the goal card and the starter chain's step stood over the Trade desk; they stand under the bridge */}
+      <div className="flex flex-col gap-2" data-testid="hq-goal">
+        <GoalCard />
+        <FirstVoyageLine />
+      </div>
       {race && <RaceBridge race={race} />}
 
       <SheetSection heading={t('hq.moves')} trailing={<span className="text-t-caption tabular-nums text-ink-faint">{formatInt(shown.length)}</span>}>

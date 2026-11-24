@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { openDetail, ready, reachable } from './appReady.fixture'
+import { ready, reachable } from './appReady.fixture'
+import { openFleetSheet, openMarket } from './desk.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -25,7 +26,7 @@ for (const size of SIZES) {
         !(await reachable(request, baseURL ?? '')),
         `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
       )
-      await page.goto('command')
+      await page.goto('city')
       await ready(page)
       // THREE TRIPS (owner row 229, cities pressed): buy a good here, Sail & sell it at a city that deals in it, then
       // Sail & buy at two more. The cities are near (a leg is minutes), so the first trip may be done by the time the
@@ -33,20 +34,18 @@ for (const size of SIZES) {
       const { code, city, home } = await findCarry(page)
       await buyHere(page, code)
       await sailAndSell(page, code, city)
-      const face = page.getByTestId('desk-trade')
-      const board = face.getByTestId('trade-board')
-      const chips = face.getByTestId('city-chip')
+      const read = await openMarket(page)
+      const list = page.getByTestId('city-market-buy')
+      const chips = page.getByTestId('city-chip')
       const codes = await chips.evaluateAll((es) => es.map((e) => e.getAttribute('data-port') ?? ''))
       let queuedMore = 0
       for (const other of codes.slice(1)) {
         if (queuedMore >= 2) break
         if (other === city || other === home) continue
-        await face.locator(`[data-testid="city-chip"][data-port="${other}"]`).click()
-        const card = face.locator('[data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first()
-        await expect(board).toHaveAttribute('data-city', other)
-        await expect(
-          face.locator('[data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first().or(face.getByTestId('trade-board-empty')),
-        ).toBeVisible({ timeout: 60_000 })
+        await page.locator(`[data-testid="city-chip"][data-port="${other}"]`).click()
+        const card = list.locator('[data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first()
+        await expect(read).toHaveAttribute('data-city', other)
+        await expect(card.or(page.locator('[data-testid="city-market-buy"]:not(:has([data-testid="trade-good"]))'))).toBeVisible({ timeout: 60_000 })
         if (!(await card.isVisible())) continue
         await card.getByTestId('trade-buy').click()
         const act = page.getByTestId('trade-act')
@@ -54,7 +53,8 @@ for (const size of SIZES) {
         await expect(act).toBeEnabled({ timeout: 30_000 }).catch(() => {})
         if (!(await act.isEnabled())) {
           console.log(`no trip to ${other}: ${await act.innerText()}`)
-          await card.getByTestId('trade-buy').click()
+          await page.getByTestId('tray-close').last().click()
+          await expect(page.getByTestId('good-detail')).toHaveCount(0)
           continue
         }
         await act.click()
@@ -62,8 +62,8 @@ for (const size of SIZES) {
         queuedMore++
       }
       expect(queuedMore, 'two more trips could not be queued').toBe(2)
-      // the queue is inside the folded Orders on a phone (the one-page law)
-      await openDetail(page, 'command-queue')
+      // the queue is in her sheet (her HQ row's press)
+      await openFleetSheet(page)
       expect(await page.getByTestId('queue-row').count()).toBeGreaterThanOrEqual(3)
 
       // the Map: press her in the fleets list

@@ -7,6 +7,7 @@ import { useSecondShipGoal } from '../live/useSecondShipGoal'
 import { gameToday } from '../lib/format'
 import { useT } from '../lib/i18n'
 import { portNameOf, useWorld } from '../live/worldStore'
+import { HOME_TAB } from './navTabs'
 import { useShellState } from './shellState'
 
 // THE FIRST-RUN WELCOME (2026-11-22, P0 of docs/design/playable-2026-11-22.md: "No welcome, no goal"). A new player met about
@@ -61,7 +62,7 @@ export function WelcomeCard() {
   const portByCode = useWorld((s) => s.portByCode)
   const goal = useSecondShipGoal(nowMs)
 
-  if (closed || !ready || !fresh || pathname !== '/command') return null
+  if (closed || !ready || !fresh || pathname !== HOME_TAB) return null
   const year = gameToday(nowMs).year
   const at = fleet?.port ?? null
   const flagship = fleet?.ships.find((s) => s.is_flagship) ?? fleet?.ships[0]

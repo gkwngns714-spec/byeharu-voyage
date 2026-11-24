@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { openDetail, ready, reachable } from './appReady.fixture'
+import { ready, reachable } from './appReady.fixture'
+import { openFleetSheet } from './desk.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE TRADE LOOP FROM THE DESK (owner row 194's acceptance, docs/COMMAND_REDESIGN.md R1; the face is ONE screen
-// since owner 2026-10-30): a new company at Lisbon makes a whole buy → sail → sell trip, at the owner's desktop
+// THE TRADE LOOP FROM HQ (owner row 194's acceptance, docs/COMMAND_REDESIGN.md R1; the list is HQ's Market plate
+// since H3, 2026-11-24): a new company at Lisbon makes a whole buy → sail → sell trip, at the owner's desktop
 // (1440×900) and the phone (390×844):
 //   Trade → a good of Lisbon → Buy (the panel's one button) → a city she is not at (the chip strip; owner
 //   row 229: no list of where to sell) → the good → Sail & sell
@@ -23,16 +24,14 @@ for (const size of SIZES) {
   test.describe(`the trade loop at ${size.width}×${size.height}`, () => {
     test.use({ viewport: size })
 
-    test('buy → sail → sell is queued from Trade, and the fleet leaves', async ({ page, request, baseURL }) => {
+    test('buy → sail → sell is queued from HQ, and the fleet leaves', async ({ page, request, baseURL }) => {
       test.setTimeout(480_000)
       test.skip(
         !(await reachable(request, baseURL ?? '')),
         `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
       )
-      await page.goto('command')
+      await page.goto('city')
       await ready(page)
-      const face = page.getByTestId('desk-trade')
-      await expect(face).toBeVisible()
 
       // a good Lisbon sells that a harbour near her deals in — found by pressing cities (owner row 229)
       const { code, city } = await findCarry(page)
@@ -42,8 +41,8 @@ for (const size of SIZES) {
       await sailAndSell(page, code, city)
 
       // the trip is in the queue: SAIL … , SELL last — no BUY (the cargo is already aboard) and no PROVISION (0225).
-      // The queue stands in the folded Orders on a phone (the one-page law).
-      await openDetail(page, 'command-queue')
+      // The queue stands in her sheet (her HQ row's press).
+      await openFleetSheet(page)
       const queued = page.getByTestId('queue-row')
       await expect(queued.first()).toBeVisible({ timeout: 30_000 })
       const texts = (await queued.allInnerTexts()).map((t) => t.replace(/\s+/g, ' '))

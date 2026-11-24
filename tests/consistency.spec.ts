@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { toPlaces } from './hqPlaces.fixture'
+import { closeTop, openMarket } from './desk.fixture'
 import { NAV_CELLS, tabWord } from '../src/app/navTabs'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -57,10 +58,10 @@ const SIZES = [
   { width: 1280, height: 800 },
 ] as const
 
-/** Every route this pass walks. `command` is the Trade desk; `office` its old City · Invest · Report faces (2026-11-16); `city` is
- *  the HQ page with its own rail. The City's BUILDING faces are owned by the city slice and are
- *  measured only by its own spec today (the audit's evidence is in the dev-log). */
-const ROUTES = ['command', 'office', 'fleets', 'map', 'stats', 'ledger', 'rank', 'lanes', 'compendium', 'profile', 'you', 'city'] as const
+/** Every route this pass walks. `city` is the HQ page with its own rail; since H3 (2026-11-24) the Trade desk's goods cards are
+ *  its Market plate and the Office's Invest and Report are its sheets, walked there. The City's other BUILDING faces are owned by
+ *  the city slice and are measured only by its own spec today (the audit's evidence is in the dev-log). */
+const ROUTES = ['fleets', 'map', 'stats', 'ledger', 'rank', 'lanes', 'compendium', 'profile', 'you', 'city'] as const
 
 /** The tab screens that print a Sheet title, and the route each one's rail word belongs to. */
 const TITLED = [
@@ -79,7 +80,7 @@ const TITLED = [
 // pressed after "More" has opened its strip; every one of the ten is still walked.
 const STATS_FACES = ['News', 'Markets', 'Cities', 'Pirates', 'Me', 'Overview', 'Merchants', 'Navy', 'Cargo', 'Ships'] as const
 const STATS_MORE = new Set<string>(['Overview', 'Merchants', 'Navy', 'Cargo', 'Ships'])
-const OFFICE_FACES = ['City', 'Invest', 'Report'] as const
+const HQ_SHEETS = ['invest', 'report'] as const
 
 /** THE ONE DECLARED PLACE FOR A SUB-44 CONTROL — NOW EMPTY (consistency row 33 fixed: the Command
  *  desk City face's `City view` is the md 44-px size, and #426 removed the city faces' Back).
@@ -173,7 +174,7 @@ async function snapshot(page: Page): Promise<Snapshot> {
       }))
 
     const de = document.documentElement
-    const sheet = document.querySelector('[data-sheet], [data-testid="desk-scroll"]') as HTMLElement | null
+    const sheet = document.querySelector('[data-sheet]') as HTMLElement | null
     return {
       doc: { sw: de.scrollWidth, cw: de.clientWidth, sh: de.scrollHeight, ch: de.clientHeight },
       sheet: sheet ? { sh: sheet.scrollHeight, ch: sheet.clientHeight, top: sheet.scrollTop, page: sheet.getAttribute('data-sheet-layout') === 'page' } : null,
@@ -432,15 +433,20 @@ for (const size of SIZES) {
           statsPanels += await panelsHere()
           pagesOpened += await walkPages(page, failures, `${size.width} stats/${face}`)
         }
-      } else if (route === 'command') {
-        // ROW 37: every good card's spark is a line iff the SERVED series holds two or more points.
-        failures.push(...(await sparkAbsence(page, `${size.width} desk/Trade`)))
-      } else if (route === 'office') {
-        for (const face of OFFICE_FACES) {
-          if (!(await pressFace(page.getByRole('tablist', { name: 'Office faces' }), face, `${size.width} office/${face}`, failures))) continue
+      } else if (route === 'city') {
+        // HQ's two sheets (they were the Office's Invest and Report faces)
+        for (const face of HQ_SHEETS) {
+          await page.getByTestId(`city-office-${face}`).click()
+          await expect(page.getByTestId(`hq-sheet-${face}`)).toBeVisible({ timeout: 60_000 })
           await page.waitForTimeout(400)
-          failures.push(...violations(await snapshot(page), `${size.width} office/${face}`))
+          failures.push(...violations(await snapshot(page), `${size.width} hq/${face}`))
+          await closeTop(page)
+          await expect(page.getByTestId(`hq-sheet-${face}`)).toHaveCount(0)
         }
+        // ROW 37: every good card's spark is a line iff the SERVED series holds two or more points (the Market plate's cards).
+        await openMarket(page)
+        await page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]').first().waitFor({ timeout: 120_000 })
+        failures.push(...(await sparkAbsence(page, `${size.width} hq/Market`)))
       } else if (route === 'fleets') {
         // HER PAGE IS THE ONE DETAIL (owner, 2026-10-31): every fleet row opens it, and it obeys
         // the page law like any other.
@@ -458,7 +464,7 @@ for (const size of SIZES) {
           await expect(page.getByTestId('fleet-page')).toHaveCount(0)
           pagesOpened++
         }
-      } else if (route !== 'city' && route !== 'map') {
+      } else if (route !== 'map') {
         pagesOpened += await walkPages(page, failures, `${size.width} ${route}`)
       }
     }
@@ -654,11 +660,9 @@ test('HQ at 320: the page never scrolls; the folded hall fits, and the expanded 
 // found the facts printed on more than one tab. Each repeat was removed from the tab whose subject
 // it is not; this test holds the removals:
 //   * the captains' board is RANK's — Stats/Me no longer repeats it;
-//   * the desk's cargo DOOR carries no figure (Fleets is the home); the strip keeps her hold,
-//     because the desk acts on that hold (stated judgment call);
 //   * the hall's five figures (Population · Gold · Status · Relationship · Employees) never
 //     appear outside the City screen.
-test('one home per fact: the captains board is Rank’s, the desk’s cargo door is a door, the hall’s figures stay in the City', async ({ page, request, baseURL }) => {
+test('one home per fact: the captains board is Rank’s, the hall’s figures stay in the City', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.setViewportSize(SIZES[0])
@@ -678,16 +682,8 @@ test('one home per fact: the captains board is Rank’s, the desk’s cargo door
   await expect(page.getByTestId('rank-list')).toBeVisible()
   if ((await page.getByTestId('rank-you').count()) === 0) failures.push('rank: the captains board does not name you')
 
-  // THE DESK — the cargo door carries no figure; the strip keeps the acting figure
-  await screen(page, 'command')
-  await page.getByTestId('cargo-open').waitFor({ timeout: 60_000 })
-  const door = (await page.getByTestId('cargo-open').innerText()).trim()
-  if (/\d/.test(door)) failures.push(`desk/Trade: the cargo door carries a figure ("${door}") — Fleets is the home; the door must be a door`)
-  const strip = (await page.getByTestId('command-line').innerText()).trim()
-  if (!/\d/.test(strip)) failures.push('desk: the strip lost the acting cargo figure')
-
   // THE HALL'S FIVE FIGURES — the City screen only
-  for (const route of ['fleets', 'map', 'stats', 'rank', 'lanes', 'compendium', 'you', 'profile', 'ledger', 'command', 'office']) {
+  for (const route of ['fleets', 'map', 'stats', 'rank', 'lanes', 'compendium', 'you', 'profile', 'ledger']) {
     await screen(page, route)
     for (const id of ['city-population', 'city-gold', 'city-status', 'city-relationship', 'city-employees']) {
       if ((await page.getByTestId(id).count()) !== 0) failures.push(`${route} prints the hall's ${id}`)

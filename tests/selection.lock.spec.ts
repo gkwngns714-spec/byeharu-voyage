@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
-import { openCityFace } from './desk.fixture'
+import { openMarket } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A PRESS AFTER A TEXT SELECTION MUST ACT — the owner, 2026-09-14, desktop Chrome:
@@ -69,11 +69,11 @@ test.beforeEach(up())
 // no field above its board, so the board cannot drop under a press; PortField's fold-on-click rule is unchanged
 // and the route editor's field is pressed in route.stopface.spec.
 
-test('PORT: a selection swept across the board, ending on the nav bar, then a nav press — it acts', async ({ page }) => {
-  await page.goto('command')
+test('MARKET: a selection swept across the board, ending on the nav bar, then a nav press — it acts', async ({ page }) => {
+  await page.goto('city')
   await ready(page)
-  await openCityFace(page)
-  const first = await page.getByTestId('trade-row').nth(0).boundingBox()
+  await openMarket(page)
+  const first = await page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]').nth(0).boundingBox()
   const nav = await page.getByTestId('nav-bar').boundingBox()
   await drag(page, { x: first!.x + 4, y: first!.y + 10 }, { x: nav!.x + 300, y: nav!.y + 20 })
   const selected = await page.evaluate(() => (document.getSelection()?.toString() ?? '').trim())

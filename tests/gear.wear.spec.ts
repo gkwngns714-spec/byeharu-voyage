@@ -6,6 +6,7 @@ import { serveGearWearWorld, WORN_SHIP } from './gearWear.fixture'
 import { translate } from '../src/lib/i18n'
 import { wornFittings } from '../src/domain/fleet'
 import { LOCALES } from './korean.paused'
+import { openPlate } from './desk.fixture'
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════
 // GEAR WEAR ON THE GLASS (0158, the switch gear_wear_bite), lit and dark, at 390 and 320 wide, in English and Korean.
@@ -94,9 +95,12 @@ for (const locale of LOCALES) {
         await shot(page, `sheet-${lang}-${width}`)
 
         // ── THE YARD: the hull is whole, and she still has a reason to press ───────────────────────────────────────
-        await page.goto('port')
+        // HQ's Port plate > Repair (H3, 2026-11-24: the dock was a tab of the Office's City face)
+        await page.goto('city')
         await ready(page, { quietMs: 90_000 })
-        await page.getByRole('tab', { name: translate(lang, 'town.f_shipyard'), exact: true }).click()
+        await openPlate(page, 'port')
+        await expect(page.getByTestId('city-port-repair')).toContainText(translate(lang, 'town.f_shipyard'))
+        await page.getByTestId('city-port-repair').click()
         const yard = page.getByTestId('port-shipyard')
         await expect(yard).toBeVisible({ timeout: 30_000 })
         const worn = yard.getByTestId('shipyard-worn')
@@ -148,9 +152,10 @@ test.describe('gear wear dark, as the world ships', () => {
     await expect(sheet.getByTestId('ship-worn')).toHaveCount(0)
     await shot(page, 'sheet-dark-390')
 
-    await page.goto('port')
+    await page.goto('city')
     await ready(page, { quietMs: 90_000 })
-    await page.getByRole('tab', { name: 'Repair', exact: true }).click()
+    await openPlate(page, 'port')
+    await page.getByTestId('city-port-repair').click()
     await expect(page.getByTestId('port-shipyard')).toBeVisible({ timeout: 30_000 })
     await expect(page.getByTestId('shipyard-worn')).toHaveCount(0)
   })

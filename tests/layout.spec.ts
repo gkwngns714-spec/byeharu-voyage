@@ -40,8 +40,7 @@ import { test, expect } from '@playwright/test'
 // same three, and two copies of `ready()` would drift apart in silence. The reasoning that used to
 // sit inline here travelled with them; nothing about it changed.
 import { PHONE, reachable, ready, settled } from './appReady.fixture'
-import { openCityFace, tradeOnDesk } from './desk.fixture'
-import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
+import { openFleetSheet, openMarket, openPlate, tradeOnDesk } from './desk.fixture'
 
 // 'rank' joined the list 2026-08-23, when 0025 gave that tab a wide table to draw. It was the only
 // tab carrying a scrolling table that this guard did not measure, which is the combination the guard
@@ -56,7 +55,8 @@ import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 // AFTER its screen shipped because this list was not grown in the same slice. Not this time.
 // 'market' LEFT 2026-09-11: the tab folded into PORT (owner row 76, docs/QUAY_LEDGER.md), whose
 // entry below now measures what MARKET's used to.
-const TABS = ['command', 'fleets', 'port', 'ledger', 'rank', 'compendium'] as const
+// 'command' and 'port' LEFT 2026-11-24 (H3 `desk-into-hq`): both routes open HQ ('city'), which is measured in their place.
+const TABS = ['city', 'fleets', 'ledger', 'rank', 'compendium'] as const
 
 test.use({ viewport: PHONE })
 
@@ -200,126 +200,6 @@ for (const tab of TABS) {
   })
 }
 
-// RETARGETED 2026-09-11, MARKET → PORT. The MARKET tab folded into PORT (owner row 76, the Quay
-// Ledger), and the good is ONE ROW now rather than a tile: `TradeRow` under `trade-row`. The proof
-// is the same proof — complete priced goods above the fold, the first carrying its range as a
-// meter — measured on the screen that draws them.
-test('the desk puts complete priced goods above the fold, per K.1 — Buy, and City › Trade', async ({ page, request, baseURL }) => {
-  // The same measured budget its sibling tests carry (line ~133): a cold boot builds the whole
-  // chain in the tab — ~100 s at 39 migrations, more under parallel load, and 0041's 52k-row
-  // affinity recompute adds to it — so the global 120 s timeout fails a CORRECT build. The
-  // standing cure is the pre-built database image (DEV_LOG D21); until then the number moves
-  // with the world it measures.
-  test.setTimeout(420_000)
-  test.skip(
-    !(await reachable(request, baseURL ?? '')),
-    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
-  )
-  await page.goto('command')
-  await ready(page)
-  await openCityFace(page)
-
-  // THE GOODS WERE TILES from 2026-08-23 ("make trade goods in blocks") to 2026-09-11, when the
-  // owner's row 76 approved the Quay Ledger: ONE ROW per good — name, rarity mark, `N t aboard`,
-  // the tide inside the served range as a `Bar` labelled "<good> price range", and the two price
-  // cells. A row is ~79px where a tile was ~112px and two abreast, so a floor of 2 would be
-  // near-vacuous: MEASURED 2026-09-11 on the local fixture at 390×844, the fold (the nav's top)
-  // is at 787px, the first row starts at 322px under title · faces · port field · Stores · filter,
-  // and FIVE complete rows fit above it. The floor is that measured figure; the first row must
-  // carry its range meter, and so must every other.
-  //
-  // THE FAIR IS NOT THE DESK'S CHROME (2026-11-10, main's Acceptance on #568). While a fair is on at the quay,
-  // `QuayFair` (src/live/PortFair.tsx) stands one 52-px accent Row above the trade pane — "only when true"
-  // (docs/UI_DIRECTION.md §6), ~1.6% of port-days, and whether it is true is the clock and the world's seed
-  // (0026 `buff_season_of`), not anything this build decides. Once `openCityFace` waited for the fair read (#568)
-  // the row was reliably on the glass whenever CI's world had a fair live: the first row went 584 → 636 px and
-  // only one fit (run 42822227533). A floor that passes only when no fair happens to be on is a flake, so the
-  // floor is measured on the layout with the fair row taken out of flow — the same glass in every season — and
-  // the fair's own cost is held separately below, whenever one is on.
-  const fold = await page.evaluate(() => {
-    const nav = document.querySelector('nav')
-    const foldY = nav ? nav.getBoundingClientRect().top : window.innerHeight
-    const rows = [...document.querySelectorAll('[data-testid="trade-row"]')]
-    const below = () => rows.filter((t) => t.getBoundingClientRect().bottom <= foldY).length
-    // Measured with the fair in, then out of flow (synchronous: getBoundingClientRect forces the layout, and
-    // nothing renders between the two reads), then put back exactly as it was.
-    const fair = document.querySelector<HTMLElement>('[data-testid="quay-fair"]')
-    const withFair = fair ? below() : null
-    const shown = fair?.style.display ?? ''
-    if (fair) fair.style.display = 'none'
-    const complete = below()
-    const firstRowTop = rows[0]?.getBoundingClientRect().top ?? 0
-    if (fair) fair.style.display = shown
-    return {
-      foldY: Math.round(foldY),
-      fairOn: fair !== null,
-      completeRowsWithFair: withFair,
-      firstRowTop: Math.round(firstRowTop),
-      rowHeight: Math.round(rows[0]?.getBoundingClientRect().height ?? 0),
-      completeRowsAboveFold: complete,
-      // 2026-10-18 (owner: "i don't see stock of the trade goods"): the row's meter is the city's STOCK
-      // against its normal level (StockGauge), which replaced the tide-in-range bar.
-      firstRowHasRange: rows[0]?.querySelector('[data-testid="stock-gauge"]') !== null,
-      rowsWithoutRange: rows.filter((r) => r.querySelector('[data-testid="stock-gauge"]') === null).length,
-    }
-  })
-
-  console.log(`CITY › Trade fold @${PHONE.width}px: ${JSON.stringify(fold)}`)
-
-  // RETARGETED AGAIN 2026-10-18, PORT → COMMAND (docs/COMMAND_DESK.md D8). The board is City's Trade face
-  // now, under the fleet strip, the desk's faces, the city's name and its buildings: MEASURED at 390×844 the
-  // first row stood at 536px and THREE complete rows fit above the 787px fold.
-  //
-  // RE-MEASURED 2026-10-30 (the desk's chrome grew by the owner's own two changes): #396 made the building
-  // strip WRAP instead of scrolling sideways ("i don't like things needed scrolling sideways") — eight
-  // buildings on two 44-px lines where one scrolling line stood, +52px — and #400 put the City page's door
-  // ("City view") beside the city's name, +14px. The first row now stands at 594px, and TWO complete rows
-  // fit above the fold; a wrapped strip and 44-px controls are not negotiable (the owner asked for the
-  // wrap; the floor of 44 is the desk's law), so the floor here is the measured two. K.1's beat is proven
-  // below, on the face a player LANDS on (Trade), with its own floor of five priced cards.
-  expect(
-    fold.completeRowsAboveFold,
-    `only ${fold.completeRowsAboveFold} complete good rows above the fold at ${fold.foldY}px ` +
-      `(first row at ${fold.firstRowTop}px, ${fold.rowHeight}px each) — two fit on City › Trade on 2026-10-30`,
-  ).toBeGreaterThanOrEqual(2)
-  // WITH A FAIR ON, it costs its own row and no more: MEASURED 2026-11-10 (run 42822227533) the first row stood
-  // at 636 px and ONE complete row fit above the 787-px fold. The floor is that measured one — a fair may push
-  // the second row under the fold, it may not push the goods off the glass.
-  if (fold.completeRowsWithFair !== null) {
-    expect(
-      fold.completeRowsWithFair,
-      `no complete good row above the fold at ${fold.foldY}px while a fair is on — one fit on 2026-11-10`,
-    ).toBeGreaterThanOrEqual(1)
-  }
-  // 0071: this used to require a `%` — the nearby index. That figure is gone, and with it the
-  // only thing on the row that was a comparison rather than a fact. What must be on screen now is
-  // the RANGE, which is what replaced it: how far this price can travel, here — on EVERY row.
-  expect(fold.firstRowHasRange, 'the first good row carries no price-range bar').toBe(true)
-  expect(fold.rowsWithoutRange, 'a good row carries no price-range bar — the tide is the row\'s second line').toBe(0)
-
-  // K.1 on the face a player lands on: Trade (owner 2026-10-30 — Buy and Sell became ONE combined face), the
-  // docked city's goods as cards, every buyable one priced. MEASURED 2026-10-30 at 390×844: the cards are
-  // 129–145 px (two prices, the day's line and two 44-px buttons in one card, not a 52-px ledger row), the
-  // city chips wrap above them (owner: no sideways scrolling), and FOUR complete cards stand above the
-  // 787-px fold — two rows of two. Five would need a third row: 3 × 129 px = 387 px in the 381 px left
-  // below the highest card start, so five is arithmetically out of reach of this shape, not a regression.
-  // The floor was the measured four. 2026-11-11 (remaster S6): the goal card (command/GoalCard.tsx, one 44-px control, the game's
-  // one stated goal) stands on this face and takes the second row, so the floor is the two that stand whole beside the card.
-  // The City face above is the Office tab's since 2026-11-16; Trade is its own tab.
-  await page.locator('a[href$="/command"]:visible').first().click()
-  await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 60_000 })
-  const buy = await page.evaluate(() => {
-    const nav = document.querySelector('nav')
-    const foldY = nav ? nav.getBoundingClientRect().top : window.innerHeight
-    const rows = [...document.querySelectorAll('[data-testid="trade-good"]')]
-    const above = rows.filter((r) => r.getBoundingClientRect().bottom <= foldY)
-    return { complete: above.length, priced: above.filter((r) => /\d/.test(r.querySelector('[data-testid="trade-good-buy"]')?.textContent ?? '')).length }
-  })
-  console.log(`TRADE fold @${PHONE.width}px: ${JSON.stringify(buy)}`)
-  expect(buy.complete, 'fewer than two goods above the fold on Trade').toBeGreaterThanOrEqual(2)
-  expect(buy.priced, 'a good above the fold on Trade carries no price').toBe(buy.complete)
-})
-
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CODEX'S LISTS STAND ON THE PAGE, ONE ENTRY A LINE ON A PHONE (the page slice, 2026-11-02)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -375,14 +255,6 @@ const MEASURE_FIELD = (testId: string) => {
   }
 }
 
-/** Where every tile sits INSIDE the picker, not inside the viewport — so a rail above it
- *  re-rendering its own figures cannot be mistaken for the list restructuring. */
-const MEASURE_OFFSETS = (testId: string) =>
-  ([...document.querySelectorAll(`[data-testid="${testId}"]`)] as HTMLElement[]).map((t) => ({
-    left: t.offsetLeft,
-    top: t.offsetTop,
-  }))
-
 for (const field of FIELDS) {
   test(`COMPENDIUM ${field.face}: ${field.noun} stand on the glass, one a line, no press, at ${PHONE.width}px`, async ({
     page,
@@ -415,121 +287,6 @@ for (const field of FIELDS) {
     expect(report.pageScrollW, 'the page shears sideways').toBeLessThanOrEqual(report.pageClientW)
   })
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-// PORT'S LEDGER — one row per good, AND the price cells are still the trade
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-//
-// Two owner rules meet on this one screen:
-//   · row 6  — *"i want to be able to click on buy and sell itself and do trades. when pressed
-//               unfold another so that i can choose how much i buy."* Every price is a real,
-//               labelled, 44px button, and a sell of what she does not carry says "none aboard"
-//               ON THE CELL rather than going silently dead.
-//   · row 15 — *"when pressing sail, stop folding the sail… don't restruct anything."* Said THREE
-//               times. Nothing at or above the pressed row may move when a cell is pressed.
-// MOVED DELIBERATELY 2026-09-09, COMMAND → PORT. The owner: *"Buy and sell should be in port -
-// market … they should be located accordingly at different locations - the command."* COMMAND's
-// verb grid and its BUY question are deleted (tests/verbHomes.spec.ts holds that they stay gone).
-//
-// RETARGETED 2026-09-11 — THE GRID RULE IS REVERSED BY OWNER ROW 76 (the Quay Ledger,
-// docs/QUAY_LEDGER.md). The 2026-08-26 telling ("grid like shape - organized not in lines") was
-// pinned here as `maxPerRow ≥ 2` and `tileWidth < 220`. The approved board is ONE ROW PER GOOD —
-// `TradeRow` under `trade-row` — so those two assertions are replaced by their honest opposites
-// (`maxPerRow === 1`, a row at least 300px wide), and everything about the CELLS stands unchanged:
-// two per good, 44px, a figure on each, a dead one says why, no `Choose`, and a press moves
-// nothing at or above its own row. The COMPENDIUM field proofs above keep the grid rule for the
-// catalogue faces the owner has not spoken about since.
-// The Trade face is the face PORT opens on (portView.ts), so nothing has to be pressed to reach it.
-if (!TRADE_ON_DESK) test(`PORT: the ledger's price cells are the trade, and a press moves nothing above it`, async ({
-  page,
-  request,
-  baseURL,
-}) => {
-  test.setTimeout(420_000)
-  // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
-  test.skip(
-    !(await reachable(request, baseURL ?? '')),
-    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
-  )
-  await page.goto('command')
-  await ready(page)
-  await openCityFace(page)
-
-  const shape = await page.evaluate(MEASURE_FIELD, 'trade-row')
-  const cellReport = await page.evaluate(() => {
-    // SCOPED TO THE ROWS, not to the page. A price cell is a cell IN a good's row.
-    const cells = [...document.querySelectorAll('[data-testid="trade-row"] button')].filter((b) =>
-      /^(buy|sell)\b/i.test(((b as HTMLElement).innerText || '').trim()),
-    ) as HTMLButtonElement[]
-    return {
-      priceCells: cells.length,
-      shortestCell: cells.length ? Math.min(...cells.map((c) => c.getBoundingClientRect().height)) : 0,
-      // The column must not zig-zag: every cell one width, every cell one height, whether or not
-      // it carries a reason line. Measured after the first canary drive (2026-09-11) showed a row
-      // with cargo aboard shrinking narrower and shorter than its neighbours.
-      distinctCellWidths: new Set(cells.map((c) => Math.round(c.getBoundingClientRect().width))).size,
-      distinctCellHeights: new Set(cells.map((c) => Math.round(c.getBoundingClientRect().height))).size,
-      unlabelledCells: cells.filter((c) => !/\d/.test(c.innerText || '')).length,
-      deadCellsSayingWhy: cells.filter((c) => (c as HTMLButtonElement).disabled && /none on board/i.test(c.innerText || '')).length,
-      deadCellsSayingNothing: cells.filter((c) => (c as HTMLButtonElement).disabled && !/none on board/i.test(c.innerText || '')).length,
-      chooseButtons: [...document.querySelectorAll('button')].filter((b) => /^choose /i.test((b.innerText || '').trim())).length,
-    }
-  })
-  const field = { ...shape, ...cellReport }
-  console.log(`PORT ledger @${PHONE.width}px: ${JSON.stringify(field)}`)
-
-  expect(field.tiles, 'no [data-testid="trade-row"] found — is PORT open on its Trade face with a fleet alongside?').toBeGreaterThan(1)
-
-  // 1. ONE ROW PER GOOD — owner row 76 (2026-09-11), reversing the 2026-08-26 grid rule. A ledger
-  //    row spans the sheet; two goods sharing a line is the tile grid coming back.
-  expect(
-    field.maxPerRow,
-    `${field.maxPerRow} goods share one line — the Quay Ledger is one row per good (docs/QUAY_LEDGER.md §3 A). ` +
-      `Compose <TradeRow> (src/components/ui/TradeRow.tsx), not a grid.`,
-  ).toBe(1)
-  expect(field.tileWidth, `a good row is ${field.tileWidth}px wide — that is a tile, not a row`).toBeGreaterThanOrEqual(300)
-
-  // 2. ROW 6 SURVIVED THE LEDGER. Two price cells per good, every one a real 44px labelled button,
-  //    and a dead one says why on its own face.
-  expect(field.priceCells, 'the price cells are gone — row 6 says the price IS the trade').toBe(field.tiles * 2)
-  expect(field.shortestCell, 'a price cell is under the 44px reach floor').toBeGreaterThanOrEqual(44)
-  expect(field.unlabelledCells, 'a price cell carries no figure').toBe(0)
-  expect(field.distinctCellWidths, 'price cells differ in width — the column zig-zags (the TradeRow cell is a fixed box)').toBe(1)
-  expect(field.distinctCellHeights, 'price cells differ in height — a live cell must stand as tall as a dead one').toBe(1)
-  expect(field.deadCellsSayingNothing, 'a disabled sell cell went grey without saying "none on board"').toBe(0)
-  expect(field.deadCellsSayingWhy, 'no sell cell says "none on board" — is `aboard` reaching the picker?').toBeGreaterThan(0)
-  expect(field.chooseButtons, 'a `Choose <good>` button is back — two authorities for the pick').toBe(0)
-
-  // 3. ROW 15 SURVIVED THE LEDGER. Press a price cell and NOTHING at or above the pressed row may
-  //    move inside the ledger. What is BELOW may move down, which is what an unfold IS (the tray
-  //    is `fixed`, so in practice nothing moves at all). Offsets are read against the ledger's own
-  //    container, so a rail above it re-rendering its figures cannot make this red for a reason
-  //    it is not about.
-  const before = await page.evaluate(MEASURE_OFFSETS, 'trade-row')
-  await page.evaluate(() => {
-    const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) => /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()))
-    ;(cell as HTMLButtonElement | undefined)?.click()
-  })
-  await page.waitForTimeout(900)
-  const after = await page.evaluate(MEASURE_OFFSETS, 'trade-row')
-
-  expect(after.length, 'the ledger unmounted its goods on a press — that is the restructure row 15 forbids').toBe(
-    before.length,
-  )
-  // The pressed cell is on the first row; it and everything above it must be where it was.
-  const rowTop = before[0].top
-  const moved = before
-    .map((b, i) => ({ i, b, a: after[i] }))
-    .filter(({ b, a }) => b.top <= rowTop && (a.top !== b.top || a.left !== b.left))
-  expect(
-    moved.map(({ i, b, a }) => `row#${i} ${b.left},${b.top} → ${a.left},${a.top}`),
-    'pressing a price cell MOVED the pressed row. The tray is `fixed` and inserts nothing into ' +
-      'the ledger (src/components/ui/TradeTray.tsx) — the owner has refused restructure-on-press ' +
-      'three times.',
-  ).toEqual([])
-  // And what it opened is the TRADE tray — a fleet is alongside, so a price is an order.
-  await expect(page.locator('[data-testid="trade-tray"]')).toBeVisible()
-})
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // FLEETS — a fleet row opens her page, and the list behind it does not move
@@ -661,24 +418,13 @@ test(`FLEETS: a fleet row opens her page, nothing behind it moves at ${PHONE.wid
   expect(await page.evaluate(ABOVE), 'closing the page moved the list').toEqual(before)
 })
 
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-// PORT READS ELSEWHERE — the port field, and a quay with nobody alongside is read-only
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-//
-// ADDED 2026-09-11 with the fold of MARKET into PORT (owner row 76). MARKET's one job — read the
-// prices at a harbour you are not standing on — is PORT's now, through the same port field it
-// carried. ONE fact decides what a price cell opens: a fleet of yours alongside the harbour on
-// screen. Alongside → `trade-tray` (proved above). Nobody alongside → `price-tray`, which steps
-// nothing and issues nothing. This proof picks a harbour where nobody is (the local world has one
-// house with one fleet, so any chip that is not the current harbour is such a place) and presses
-// a cell.
-// 0092 (owner row 106): COMMAND's route row stands ABOVE the queue. Since the consistency audit
+// 0092 (owner row 106): the route row stands ABOVE the queue (in her sheet over HQ since H3, 2026-11-24; it stood on the desk). Since the consistency audit
 // (row 38) the press opens THE ROUTE'S PAGE — the one `DetailPage`, fixed OVER the desk and out of
 // flow by construction — where it used to unfold in place. The owner's law is the stronger one the
 // fold could never keep: a press selects and opens, and NOTHING behind it moves — the row AND the
 // queue below it keep their boxes to the pixel. The local build ships with routes DARK, so the
 // page's whole content here is the one line that says so; the mechanism is the same page.
-test(`COMMAND: the route row opens the route page, the queue below it may not move, and Back returns`, async ({
+test(`HER SHEET: the route row opens the route page, the queue below it may not move, and Back returns`, async ({
   page,
   request,
   baseURL,
@@ -688,11 +434,11 @@ test(`COMMAND: the route row opens the route page, the queue below it may not mo
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
-  // 2026-10-18: the route and the queue are on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Trade since 2026-10-30
-  // the city's goods load after the press; let them land before measuring
-  await settled(page.getByTestId('desk-trade'))
+  // the route and the queue are in her sheet (her HQ row's press); its reads land before anything is measured
+  await settled(await openFleetSheet(page))
+  // an order in the queue, so there is a row below the route to hold still: none is needed — the sheet's Map row stands below it
   const row = page.getByTestId('route-row')
   await expect(row).toBeVisible()
   // The route book has landed (the label names what it read), so no late text moves the row.
@@ -710,15 +456,15 @@ test(`COMMAND: the route row opens the route page, the queue below it may not mo
       return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }
     }
     return {
-      header: rect('[data-testid="desk-header"]'),
-      line: rect('[data-testid="command-line"]'),
+      header: rect('[data-testid="hq-sheet-fleet"] h1'),
+      line: rect('[data-testid="trade-status"]'),
       row: rect('[data-testid="route-row"]'),
-      queue: rect('[data-testid="command-queue"]'),
+      queue: rect('[data-testid="hq-sheet-fleet-map"]'),
       page: rect('[data-testid="route-page"]'),
       pageScrollW: document.documentElement.scrollWidth,
       pageClientW: document.documentElement.clientWidth,
-      rootSh: (document.querySelector('[data-detail-page]') as HTMLElement | null)?.scrollHeight ?? 0,
-      rootCh: (document.querySelector('[data-detail-page]') as HTMLElement | null)?.clientHeight ?? 0,
+      rootSh: (document.querySelector('[data-testid="route-page"]')?.closest('[data-detail-page]') as HTMLElement | null)?.scrollHeight ?? 0,
+      rootCh: (document.querySelector('[data-testid="route-page"]')?.closest('[data-detail-page]') as HTMLElement | null)?.clientHeight ?? 0,
     }
   }
   const before = await page.evaluate(MEASURE)
@@ -753,356 +499,6 @@ test(`COMMAND: the route row opens the route page, the queue below it may not mo
   expect(closed.row).toEqual(before.row)
 })
 
-// PORT went under COMMAND on 2026-10-18 (docs/COMMAND_DESK.md D8): the "port field on the sheet / a harbour with nobody alongside opens the read-only tray" test went with
-// PORT's field. A distant city's prices are read on the desk's good page (desk.layout.spec) and on the map's
-// city panel (map.townhall / PortPrices); the field itself lives on in the route editor (route.stopface.spec).
-
-if (!TRADE_ON_DESK) test(`PORT: a line staged onto the basket docks the one tray at peek, moves nothing, and lands as a receipt`, async ({
-  page,
-  request,
-  baseURL,
-}) => {
-  test.setTimeout(420_000)
-  // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
-  test.skip(
-    !(await reachable(request, baseURL ?? '')),
-    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
-  )
-  await page.goto('command')
-  await ready(page)
-  await openCityFace(page)
-
-  const rows = page.locator('[data-testid="trade-row"]')
-  expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
-  // On a phone an EMPTY basket docks nothing: there is nothing to say.
-  await expect(page.locator('[data-testid="basket-panel"]')).toHaveCount(0)
-
-  const before = await page.evaluate(MEASURE_OFFSETS, 'trade-row')
-  // Press the first live BUY cell and remember whose row it is; the trade tray opens with
-  // `Add to basket` beside its button.
-  const pressed = await page.evaluate(() => {
-    const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) =>
-      /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()),
-    ) as HTMLButtonElement | undefined
-    const row = cell?.closest('[data-testid="trade-row"]') as HTMLElement | null
-    cell?.click()
-    return row ? (row.innerText || '').split('\n')[0].trim() : ''
-  })
-  expect(pressed, 'no live buy cell to press').not.toBe('')
-  const stage = page.locator('[data-testid="trade-tray-stage"]')
-  await expect(stage).toBeVisible()
-  // The dry run must price the quantity first — the stage button is disabled until the act is ready.
-  await expect(stage).toBeEnabled({ timeout: 20_000 })
-  await stage.click()
-
-  // ONE tray: the pick is gone and the basket stands in its place, at PEEK, its title the line.
-  await expect(page.locator('[data-testid="trade-tray"]')).toHaveCount(0)
-  const basket = page.locator('[data-testid="basket-panel"]')
-  await expect(basket).toBeVisible()
-  expect(await basket.getAttribute('data-tray-detent')).toBe('peek')
-  // `.first()`: the tray's title is its first h2; the On-board section under the lines (row 81)
-  // carries a heading of its own.
-  await expect(basket.locator('h2').first()).toHaveText(/^Buy 1 line/)
-
-  // Row 15: staging moved nothing in the ledger.
-  await page.waitForTimeout(600)
-  const after = await page.evaluate(MEASURE_OFFSETS, 'trade-row')
-  expect(after.length, 'the ledger unmounted its goods when a line was staged').toBe(before.length)
-  expect(
-    before.map((b, i) => ({ b, a: after[i] })).filter(({ b, a }) => a.top !== b.top || a.left !== b.left).length,
-    'staging a line MOVED the ledger — the basket is `fixed` and inserts nothing',
-  ).toBe(0)
-
-  // Up to half: the cargo bar, the line, the served totals and the one button. Every control
-  // clears the floor. The button carries the served figure and stays enabled across the world's
-  // 3-second re-read (PR #59 MUST-FIX 1): it is checked, then checked again after a beat.
-  await basket.locator('button[aria-label="Resize"]').focus()
-  await page.keyboard.press('ArrowUp')
-  await expect(basket).toHaveAttribute('data-tray-detent', 'half')
-  await expect(basket.locator('[data-testid="cargo-bar"]')).toBeVisible()
-  await expect(basket.locator('[data-testid="basket-line"]')).toHaveCount(1)
-  const send = basket.locator('[data-testid="basket-send"]')
-  await expect(send, 'the basket was never priced — cmd.preview_basket did not answer').toBeEnabled({ timeout: 20_000 })
-  await expect(send).toHaveText(/^Buy 1 line · [\d,]+\s🪙$/)
-  expect(await basket.locator('[data-testid="basket-total"]').count(), 'no served totals rows').toBeGreaterThanOrEqual(3)
-  await page.waitForTimeout(3_500)
-  await expect(send, 'the button went dead on the world\'s re-read — the estimate was thrown away').toBeEnabled()
-  await expect(send).toHaveText(/^Buy 1 line · [\d,]+\s🪙$/)
-  const short = await basket.evaluate((el) =>
-    [...el.querySelectorAll('button')]
-      .map((b) => ({ text: (b.innerText || b.getAttribute('aria-label') || '').slice(0, 24), r: b.getBoundingClientRect() }))
-      .filter(({ r }) => r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44))
-      .map(({ text, r }) => `${text} ${Math.round(r.width)}×${Math.round(r.height)}`),
-  )
-  expect(short, 'a control in the basket is under the 44px reach floor').toEqual([])
-  // The staged units are drawn back onto the cargo bar as a wash.
-  await expect(basket.locator('[data-testid="cargo-bar"] [data-bar-pending]')).toHaveCount(1)
-
-  // Trade it. The same tray turns over to the receipt: the settled line, tax, fee, net, ducats,
-  // trading — the server's own figures, at least five rows of them — dismissed by ONE press.
-  await send.click()
-  const receipt = page.locator('[data-testid="receipt-panel"]')
-  await expect(receipt).toBeVisible({ timeout: 30_000 })
-  await expect(receipt.locator('h2')).toHaveText(/^Traded · \d\d:\d\d$/)
-  expect(await receipt.locator('[data-testid="receipt-row"]').count()).toBeGreaterThanOrEqual(5)
-  await expect(page.locator('[data-testid="basket-panel"]')).toHaveCount(0)
-  // …and the world was READ BACK: the pressed good's own row now says what is on board.
-  await expect(rows.filter({ hasText: pressed }).first()).toContainText(/\d units? on board/, { timeout: 20_000 })
-  // No row says where a good grows: the owner removed the `native` tag (2026-10-17, 0141).
-  await expect(rows.filter({ hasText: /·\s*native\b/ })).toHaveCount(0)
-  await receipt.locator('[data-testid="receipt-done"]').click()
-  await expect(receipt).toHaveCount(0)
-  expect(await rows.count()).toBe(before.length)
-})
-
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-// PORT'S HAGGLE IS A THREAD, ON BOTH SIDES — it unfolds in place, moves nothing above it, and a
-// press adds the merchant's turn (owner row 76, slice 3; docs/QUAY_LEDGER.md §3 D, Appendix A)
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-//
-// ADDED 2026-09-13. The trade tray carries one `Haggle` row (`Haggle · 3 / 3 tries left · 45%`)
-// under the stepper on BOTH its faces. A press on the row unfolds the thread INSIDE the tray body:
-// the stake rows (Port fee, Price, Tries, Next try) and two buttons on the 44px floor — and nothing
-// at or above the row moves (the Trend row and the stepper are measured). `Haggle` asks the server
-// for one attempt and its answer lands as a turn in the server's own sentence, the folded figure
-// re-reads (`2 / 3 tries left`) without ever going blank, and the button now reads `Try again`.
-// Then the good is BOUGHT — one step of the book, the tray's own default — so its SELL cell comes
-// alive, and the same row stands on the SELL face and takes a press there too. The in-tab PGlite
-// world is disposable, so real attempts and a real buy are fine here.
-if (!TRADE_ON_DESK) test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, moves nothing, and a press adds a turn`, async ({
-  page,
-  request,
-  baseURL,
-}) => {
-  test.setTimeout(420_000)
-  // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
-  test.skip(
-    !(await reachable(request, baseURL ?? '')),
-    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
-  )
-  await page.goto('command')
-  await ready(page)
-  await openCityFace(page)
-
-  const rows = page.locator('[data-testid="trade-row"]')
-  expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
-
-  // Press the first live BUY cell and remember whose row it is.
-  const pressed = await page.evaluate(() => {
-    const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) =>
-      /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()),
-    ) as HTMLButtonElement | undefined
-    const row = cell?.closest('[data-testid="trade-row"]') as HTMLElement | null
-    cell?.click()
-    return row ? (row.innerText || '').split('\n')[0].trim() : ''
-  })
-  expect(pressed, 'no live buy cell to press').not.toBe('')
-  const tray = page.locator('[data-testid="trade-tray"]')
-  await expect(tray).toBeVisible()
-  // The tray's title is the good's name alone (owner row 101, 2026-09-18: "Beer · buy — remove
-  // buy"); the SIDE is read off the send button's verb.
-  await expect(tray.locator('[data-testid="trade-tray-send"]')).toHaveText(/^Buy /, { timeout: 20_000 })
-
-  // textContent runs a Figure's value and unit together (two spans, no whitespace between), so
-  // the unit is matched with optional whitespace before it.
-  const TRIES = /(\d+) \/ (\d+)\s*tries left/
-  const threadOn = async (face: 'buy' | 'sell') => {
-    // the bargain stands under the tray's More (S5, 2026-11-11: the short tray) — a layer over the body
-    if ((await tray.locator('[data-testid="trade-tray-detail"]').count()) === 0) await tray.locator('[data-testid="trade-tray-more"]').click()
-    const row = tray.locator('[data-testid="haggle-row"]')
-    await expect(row, `no haggle row on the ${face} face`).toBeVisible({ timeout: 20_000 })
-    // The folded form: the label, the tries as a share of their whole, the odds as a percentage.
-    await expect(row).toHaveText(/Bargain[\s\S]*\d+ \/ \d+\s*tries left[\s\S]*\d+%/)
-    const foldedTries = TRIES.exec((await row.textContent()) ?? '')
-    expect(foldedTries).not.toBeNull()
-    const leftBefore = Number(foldedTries![1])
-    const max = Number(foldedTries![2])
-    expect(max).toBeGreaterThan(0)
-    expect(leftBefore).toBeGreaterThan(0)
-
-    // ROW 15 INSIDE THE TRAY: what stands ABOVE the haggle row — the stepper, a price row, the
-    // row itself — must be exactly where it was once the thread unfolds. Measured against the
-    // tray body's own scroll, not the glass: the click scrolls the row into view, and a scroll is
-    // not a restructure. The rows differ by face since 2026-09-14 (owner row 96): SELL carries no
-    // Trend row at all — the count, then `Bought at`; BUY has the Trend row below the count.
-    const rowsAbove = face === 'buy' ? ['trend-row', 'trade-tray-qty', 'haggle-row'] : ['trade-tray-qty', 'trade-tray-paid', 'haggle-row']
-    const above = () =>
-      page.evaluate((ids) => {
-        const scrollerOf = (el: Element) => {
-          let p = el.parentElement
-          while (p) {
-            if (/auto|scroll/.test(getComputedStyle(p).overflowY)) return p
-            p = p.parentElement
-          }
-          return document.scrollingElement
-        }
-        return ids.map((id) => {
-          const el = document.querySelector(`[data-testid="${id}"]`)
-          if (!el) return { id, top: -1, left: -1 }
-          const r = el.getBoundingClientRect()
-          return { id, top: Math.round(r.top + (scrollerOf(el)?.scrollTop ?? 0)), left: Math.round(r.left) }
-        })
-      }, rowsAbove)
-    // Let the tray settle first: the ceiling, the dry run and the cargo-space row all land after
-    // the first paint, and each of those is the tray's own row, not the thread's. The button
-    // carries the served figure once the dry run has answered.
-    const button = tray.locator('[data-testid="trade-tray-send"]')
-    await expect(button).toBeEnabled({ timeout: 20_000 })
-    await expect(button).toHaveText(/· [\d,]+\s🪙$/, { timeout: 20_000 })
-    await page.waitForTimeout(600)
-    const before = await above()
-    expect(before.every((b) => b.top >= 0), 'a row above the thread was not found').toBe(true)
-    await row.click()
-    const thread = tray.locator('[data-testid="haggle-thread"]')
-    await expect(thread).toBeVisible()
-    await page.waitForTimeout(400)
-    expect(await above(), 'unfolding the haggle thread MOVED what stands above it').toEqual(before)
-
-    // The stake, every figure served: the port's fee, the price for the quantity on the button.
-    await expect(thread.locator('[data-testid="haggle-fee"]')).toHaveText(/\d+(\.\d)?%/)
-    await expect(thread.locator('[data-testid="haggle-price"]')).toHaveText(/\d[\d,.]*\s🪙 each/, { timeout: 20_000 })
-    await expect(thread.locator('[data-testid="haggle-odds"]')).toHaveText(/\d+%/)
-    // Both buttons on the reach floor.
-    const short = await thread.evaluate((el) =>
-      [...el.querySelectorAll('button')]
-        .map((b) => ({ text: (b.innerText || '').slice(0, 24), r: b.getBoundingClientRect() }))
-        .filter(({ r }) => r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44))
-        .map(({ text, r }) => `${text} ${Math.round(r.width)}×${Math.round(r.height)}`),
-    )
-    expect(short, 'a haggle button is under the 44px reach floor').toEqual([])
-    const press = thread.locator('[data-testid="haggle-press"]')
-    await expect(press).toHaveText(/^(Bargain|Try again)$/)
-    await expect(thread.locator('[data-testid="haggle-take"]')).toHaveText('Take it')
-
-    // A PRESS ADDS A TURN — the server's sentence — and the folded figure re-reads one try down
-    // without ever blanking (the row is present at every step).
-    const turnsBefore = await thread.locator('[data-testid="haggle-turn"]').count()
-    await press.click()
-    await expect(thread.locator('[data-testid="haggle-turn"]')).toHaveCount(turnsBefore + 1, { timeout: 20_000 })
-    const turn = (await thread.locator('[data-testid="haggle-turn"]').last().innerText()).trim()
-    expect(turn.length, 'the turn is not a sentence').toBeGreaterThan(20)
-    await expect(press).toHaveText('Try again')
-    await expect(row).toHaveText(new RegExp(`${leftBefore - 1} / ${max}\\s*tries left`), { timeout: 20_000 })
-    await expect(row).toBeVisible()
-    // `Take it` folds the thread and leaves the tray standing.
-    await thread.locator('[data-testid="haggle-take"]').click()
-    await expect(thread).toHaveCount(0)
-    await expect(row).toBeVisible()
-  }
-
-  await threadOn('buy')
-
-  // BUY the good — the tray's own default quantity, priced by the server — so it is on board.
-  const send = tray.locator('[data-testid="trade-tray-send"]')
-  await expect(send).toBeEnabled({ timeout: 20_000 })
-  await expect(send).toHaveText(/^Buy \d+ units? · [\d,]+\s🪙$/)
-  await send.click()
-  await expect(tray).toHaveCount(0, { timeout: 30_000 })
-  const bought = rows.filter({ hasText: pressed }).first()
-  await expect(bought).toContainText(/\d+ units? on board/, { timeout: 20_000 })
-
-  // …and its SELL cell is alive: the same thread stands on the SELL face. (Found by innerText,
-  // as the cell tests above do — a cell's textContent runs "Sell" straight into its figure.)
-  const sold = await bought.evaluate((row) => {
-    const cell = [...row.querySelectorAll('button:enabled')].find((b) =>
-      /^sell\b/i.test(((b as HTMLElement).innerText || '').trim()),
-    ) as HTMLButtonElement | undefined
-    cell?.click()
-    return cell !== undefined
-  })
-  expect(sold, 'the bought good has no live SELL cell').toBe(true)
-  await expect(tray).toBeVisible()
-  await expect(tray.locator('[data-testid="trade-tray-send"]')).toHaveText(/^Sell /, { timeout: 20_000 })
-  await threadOn('sell')
-})
-
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE TREND OPENS AS A CHART, AND CLOSES BACK TO THE SPARKLINE (owner row 76, slice 3)
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-//
-// ADDED 2026-09-13. The Trend row's folded form is the sparkline; a press unfolds the same served
-// line as `PriceChart` — at least three y labels (the served min, midpoint and max), an x axis in
-// hours before now (`−Nh … now`, DERIVED from the points and `slot_seconds`, never a literal), the
-// low · now · high legend — and a second press folds it back to the sparkline. A fresh in-tab
-// world carries two snapshots per (port, good) (measured 2026-09-13 on the applied chain: two
-// slots at every port), and a good whose two mids happen to agree draws a flat line with ONE label,
-// which is the honest answer for it; so this proof walks the rows for the first good whose record
-// MOVED, and requires that there is one.
-if (!TRADE_ON_DESK) test(`PORT: the Trend row opens the price chart with an axis, and closes back to the sparkline`, async ({
-  page,
-  request,
-  baseURL,
-}) => {
-  test.setTimeout(420_000)
-  // X1 (src/live/tradeOnDesk.ts): a price on Office > City > Market opens the Trade desk; the quay's tray these laws hold returns with the switch off
-  test.skip(
-    !(await reachable(request, baseURL ?? '')),
-    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
-  )
-  await page.goto('command')
-  await ready(page)
-  await openCityFace(page)
-
-  const rows = page.locator('[data-testid="trade-row"]')
-  const n = await rows.count()
-  expect(n, 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
-  const tray = page.locator('[data-testid="trade-tray"]')
-  const trend = tray.locator('[data-testid="trend-row"]')
-  const chart = tray.locator('[data-testid="price-chart"]')
-
-  let found: string | null = null
-  const tried: string[] = []
-  for (let i = 0; i < Math.min(n, 12) && found === null; i++) {
-    const row = rows.nth(i)
-    const name = (await row.innerText()).split('\n')[0].trim()
-    await row.locator('button:enabled').first().click()
-    await expect(tray).toBeVisible()
-    // the trend stands under the tray's More (S5, 2026-11-11: the short tray)
-    await tray.locator('[data-testid="trade-tray-more"]').click()
-    await expect(trend).toBeVisible()
-    // The record is READ on the press since 0226 (one series per city and good): wait for the read to
-    // land — a sparkline, or the row's "No data yet" — before judging it.
-    await expect(trend.locator('svg[role="img"], [data-testid="trend-empty"]').first()).toBeVisible({ timeout: 60_000 })
-    // No record yet, or a record of one point: no sparkline, nothing to unfold.
-    if ((await trend.locator('svg[role="img"]').count()) === 0) {
-      tried.push(`${name}: no history`)
-      await tray.locator('[data-testid="tray-close"]').click()
-      await expect(tray).toHaveCount(0)
-      continue
-    }
-    await trend.locator('svg[role="img"]').first().click() // the line, not the span picker that shares the row
-    await expect(chart).toBeVisible()
-    // A RECORD THAT HAS NOT MOVED IS STILL A RECORD. A fresh world (CI's disposable one) has two or
-    // more slots of the same mid for every good, so the chart draws ONE y label there; asserting
-    // three would assert a world that has traded (docs/NO_SPAGHETTI.md's "proofs never assert
-    // ambient defaults", which is exactly how this test was first red). Three labels are required
-    // only of a record that moved; the axis, the marks and the fold are required of any record.
-    const yLabels = await chart.locator('[data-testid="price-chart-y"]').count()
-    const moved = yLabels >= 3
-    tried.push(`${name}: ${moved ? 'moved' : `flat (${yLabels} label)`}`)
-    found = name
-    expect(yLabels).toBeGreaterThanOrEqual(1)
-    // THE AXES SAY WHAT WAS SERVED. `−Nh` on the left, `now` on the right.
-    // SVG <text> has no innerText; textContent is the label.
-    const xs = await chart.locator('[data-testid="price-chart-x"]').allTextContents()
-    expect(xs).toHaveLength(3)
-    expect(xs[0], `the left x label is "${xs[0]}", not hours before now`).toMatch(/^−\d+(\.\d)?h$/)
-    expect(xs[2]).toBe('now')
-    await expect(chart.locator('[data-testid="price-chart-low"]')).toHaveCount(1)
-    await expect(chart.locator('[data-testid="price-chart-high"]')).toHaveCount(1)
-    await expect(chart.locator('[data-testid="price-chart-now"]')).toHaveCount(1)
-    await expect(chart.locator('[data-testid="price-chart-legend"]')).toHaveText(/low[\s\S]*now[\s\S]*high/)
-    // And back: a second press folds it to the sparkline.
-    await chart.click()
-    await expect(chart).toHaveCount(0)
-    await expect(trend.locator('svg[role="img"]')).toHaveCount(1)
-    await tray.locator('[data-testid="tray-close"]').click()
-    await expect(tray).toHaveCount(0)
-  }
-  expect(found, `no good on this ledger has a price record of two points or more — tried: ${tried.join('; ')}`).not.toBeNull()
-  console.log(`PORT chart @${PHONE.width}px: opened on ${found} after [${tried.join('; ')}]`)
-})
-
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // PORT'S REQUEST BOARD — the third face of the trade board: rows shaped like the ledger, a Fulfil
 // cell that is dead with its reason, and turning a face moves nothing above the board
@@ -1119,7 +515,7 @@ if (!TRADE_ON_DESK) test(`PORT: the Trend row opens the price chart with an axis
 // to stop going silent. The live press — the tray in the slot, the served preview, the premium
 // line, the delivery — is proven end to end in tests/rpc.surface.spec.ts and 0087's self-assert,
 // where the lot can be put aboard through the server's own mover.
-test(`PORT › Requests: the third face lists this port's requests as board rows, a dead fulfil cell says why, and turning faces moves nothing above the board`, async ({
+test(`MARKET › Requests: the third face lists this port's requests as board rows, a dead fulfil cell says why, and turning faces moves nothing above the board`, async ({
   page,
   request,
   baseURL,
@@ -1129,15 +525,18 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('command')
+  // H3 (2026-11-24): the board is HQ's Market plate (it was the Office's City face)
+  await page.goto('city')
   await ready(page)
-  await openCityFace(page)
+  await openMarket(page)
 
-  // The three faces stand in one strip, Buy up first, and the ledger is under it.
-  const faces = page.getByRole('tablist', { name: 'Trade faces' })
+  // The three faces stand in one strip, Buy up first, and the goods are under it.
+  const faces = page.getByRole('tablist', { name: 'Market', exact: true })
   await expect(faces).toBeVisible()
   await expect(faces.getByRole('tab')).toHaveText(['Buy', 'Sell', 'Requests'])
-  expect(await page.locator('[data-testid="trade-row"]').count()).toBeGreaterThan(1)
+  const goods = page.locator('[data-testid="city-face-panel"] [data-testid="trade-good"]')
+  await expect(goods.first()).toBeVisible({ timeout: 60_000 })
+  expect(await goods.count()).toBeGreaterThan(1)
 
   // Everything AT OR ABOVE the board: the sheet's title, the supplies row, the port field, the
   // faces strip. By viewport rect — a face turn does not scroll the sheet.
@@ -1149,10 +548,10 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
         return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }
       }
       return {
-        header: rect(document.querySelector('[data-testid="desk-header"]')),
-        supplies: rect(document.querySelector('[data-testid="quay-stores"]')),
-        field: rect(document.querySelector('[data-testid="desk-city"] h2')),
-        faces: rect(document.querySelector('[role="tablist"][aria-label="Trade faces"]')),
+        header: rect(document.querySelector('[data-testid="city-header"]')),
+        places: rect(document.querySelector('[data-testid="city-buildings"]')),
+        field: rect(document.querySelector('[data-testid="city-chips"]')),
+        faces: rect(document.querySelector('[role="tablist"][aria-label="Market"]')),
       }
     })
   const before = await ABOVE()
@@ -1164,7 +563,7 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
   await expect(rows.first(), 'no request rows — the board did not read, or this port posted nothing').toBeVisible({ timeout: 30_000 })
   await page.waitForTimeout(600)
   expect(await ABOVE(), 'turning to Requests MOVED what stands above the board').toEqual(before)
-  await expect(page.locator('[data-testid="trade-row"]')).toHaveCount(0)
+  await expect(goods).toHaveCount(0)
 
   const report = await page.evaluate(() => {
     const rows = [...document.querySelectorAll('[data-testid="request-row"]')] as HTMLElement[]
@@ -1205,9 +604,8 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
   expect(report.pageScrollW, 'the page shears sideways').toBeLessThanOrEqual(report.pageClientW)
   expect(report.pastItsRow, 'a fulfil cell, or the reason it gives, runs past its row').toBe(0)
   expect(report.paneSideways, 'the board the request rows stand in scrolls sideways').toBeLessThanOrEqual(1)
-  // Nothing is docked: no tray opened by turning a face, and on a phone an empty basket docks nothing.
+  // Nothing is docked: no tray opened by turning a face.
   await expect(page.locator('[data-testid="fulfil-tray"]')).toHaveCount(0)
-  await expect(page.locator('[data-testid="basket-panel"]')).toHaveCount(0)
 
   // SELL is the same ledger narrowed to what she carries — nothing, on a fresh hull — and BUY
   // brings every row back; neither turn moves what stands above.
@@ -1215,7 +613,7 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
   await expect(page.locator('[data-testid="request-row"]')).toHaveCount(0)
   await expect(page.getByText('No cargo to sell.')).toBeVisible()
   await faces.getByRole('tab', { name: /^Buy$/ }).click()
-  await expect(page.locator('[data-testid="trade-row"]').first()).toBeVisible()
+  await expect(goods.first()).toBeVisible()
   await page.waitForTimeout(400)
   expect(await ABOVE(), 'turning back to Buy MOVED what stands above the board').toEqual(before)
 })
@@ -1240,31 +638,27 @@ test(`HQ › Production: a cell opens the one tray with a stepper, moves nothing
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
-  await openCityFace(page)
+  await openMarket(page)
 
-  // SOMETHING ON BOARD: buy the first live good (on the Trade desk, X1), and wait for the world to
-  // be read back (the ledger row says what is on board).
-  const rows = page.locator('[data-testid="trade-row"]')
-  expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
-  const bought = await page.evaluate(() => {
-    const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) =>
-      /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()),
-    ) as HTMLButtonElement | undefined
-    const row = cell?.closest('[data-testid="trade-row"]') as HTMLElement | null
-    cell?.click()
-    return row ? (row.innerText || '').split('\n')[0].trim() : ''
-  })
-  expect(bought, 'no live buy cell to press').not.toBe('')
-  // S1 (2026-11-24, src/app/HqSheet.tsx): the price opens THE trade sheet over the City; the lot is bought there, and Back closes it
+  // SOMETHING ON BOARD: buy the first live good (in the trade sheet over HQ), and wait for the world to
+  // be read back (the card says what is on board).
+  const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]')
+  await expect(rows.first()).toBeVisible({ timeout: 60_000 })
+  expect(await rows.count(), 'no goods cards — is a fleet docked at HQ?').toBeGreaterThan(1)
+  const card = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first()
+  const bought = (await card.getAttribute('data-good')) ?? ''
+  expect(bought, 'no live buy to press').not.toBe('')
+  await card.getByTestId('trade-buy').click()
+  // S1 (2026-11-24, src/app/HqSheet.tsx): the Buy opens THE trade sheet over HQ; the lot is bought there, and Back closes it
   await tradeOnDesk(page, 5)
   await page.goBack()
-  await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })
-  await expect(rows.filter({ hasText: bought }).first()).toContainText(/\d units? on board/, { timeout: 20_000 })
+  await expect(page.getByTestId('good-detail')).toHaveCount(0, { timeout: 30_000 })
+  await expect(page.locator(`[data-testid="city-market-buy"] [data-testid="trade-good"][data-good="${bought}"]`).getByTestId('trade-good-aboard')).toContainText('5', { timeout: 20_000 })
 
-  // PRODUCTION: the desk's tab goes to the HQ's page; on a phone the columns stand under a segmented control. One row per good, one cell per row.
-  await page.getByRole('tab', { name: /^Production$/i }).first().click()
+  // PRODUCTION: HQ's plate; on a phone the columns stand under a segmented control. One row per good, one cell per row.
+  await openPlate(page, 'production')
   await expect(page.locator('[data-testid="port-production"]')).toBeVisible()
   await page.locator('[data-testid="port-production"]').getByRole('tab', { name: 'Cargo', exact: true }).click()
   const storageRows = page.locator('[data-testid="cargo-row"]')
@@ -1343,7 +737,7 @@ test(`HQ › Production: a cell opens the one tray with a stepper, moves nothing
 // under the finger — so pressing `More` must CHANGE it, from the server — and ONE button whose
 // word follows the direction (`Hire 1` up, `Dismiss 1` down). Every control clears 44px. Row 15:
 // the rows above the stepper stay exactly where they were when `More` is pressed.
-test(`PORT: the Inn's crew face is a figure, a stepper, a served daily cost and one button, and a press moves nothing above it`, async ({
+test(`HQ › Inn: the crew face is a figure, a stepper, a served daily cost and one button, and a press moves nothing above it`, async ({
   page,
   request,
   baseURL,
@@ -1353,10 +747,11 @@ test(`PORT: the Inn's crew face is a figure, a stepper, a served daily cost and 
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
-  await openCityFace(page)
-  await page.getByRole('tab', { name: /^Inn/i }).first().click()
+  await openPlate(page, 'inn')
+  await page.getByTestId('city-inn-crew').click()
+  await expect(page.getByTestId('city-inn-page')).toBeVisible()
   await page.waitForTimeout(600)
 
   const face = page.locator('[data-testid="inn-crew-face"]')

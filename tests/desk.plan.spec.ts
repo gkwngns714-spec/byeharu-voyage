@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { openDetail, ready, reachable } from './appReady.fixture'
+import { ready, reachable } from './appReady.fixture'
+import { openFleetSheet } from './desk.fixture'
 import { pressFirstPricedCard, pressNearCity } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // SAIL & BUY, DRIVEN (owner row 229; the trip's lines since docs/COMMAND_REDESIGN.md §2) — on a local build, at the phone:
-//   Trade → a city she is not at (the chip strip) → a good's Buy button → THE panel's one button says "Sail & buy" →
+//   HQ's Market plate (H3, 2026-11-24: it was the Trade desk) → a city she is not at (the chip strip) → a good's Buy button → THE panel's one button says "Sail & buy" →
 //   pressed → the trip's lines are queued: SAIL there (it runs at once in port: she leaves), then BUY. No sell list
 //   stands anywhere (row 229).
 // Nothing here asserts a price; the lines and the button's word are the claim.
@@ -12,19 +13,18 @@ import { pressFirstPricedCard, pressNearCity } from './deskMap.fixture'
 
 test.use({ viewport: { width: 390, height: 844 }, locale: 'en-US' })
 
-test('Sail & buy from a city she is not at is queued whole and stands on Trade', async ({ page, request, baseURL }) => {
+test('Sail & buy from a city she is not at is queued whole and stands in her orders', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
-  const face = page.getByTestId('desk-trade')
-  await expect(face.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
-  const city = await pressNearCity(face)
-  await expect(face.getByTestId('trade-board')).toHaveAttribute('data-docked', 'false')
-  await pressFirstPricedCard(face)
+  const city = await pressNearCity(page)
+  const read = page.getByTestId('city-market-read')
+  await expect(read).toHaveAttribute('data-here', 'false')
+  await pressFirstPricedCard(page)
 
   const act = page.getByTestId('trade-act')
   await expect(act).toHaveAttribute('data-act', 'sail-buy')
@@ -34,9 +34,9 @@ test('Sail & buy from a city she is not at is queued whole and stands on Trade',
   await act.click()
   await expect(page.getByTestId('trade-toast')).toContainText('Sailing to', { timeout: 60_000 })
   await expect(page.getByTestId('good-detail')).toHaveCount(0)
-  await expect(face).toBeVisible()
-  // the queue is inside the folded Orders on a phone (the one-page law)
-  await openDetail(page, 'command-queue')
+  await expect(page.getByTestId('city-screen')).toBeVisible()
+  // the queue is in her sheet (her HQ row's press)
+  await openFleetSheet(page)
   const queued = page.getByTestId('queue-row')
   await expect(queued.first()).toBeVisible({ timeout: 30_000 })
   const texts = (await queued.allInnerTexts()).map((t) => t.replace(/\s+/g, ' '))
@@ -50,7 +50,7 @@ test('Sail & buy from a city she is not at is queued whole and stands on Trade',
       async () =>
         (await page.getByTestId('queue-passage').count()) > 0 ||
         (await queued.filter({ hasText: /sail/i }).count()) > 0 ||
-        (await face.getByTestId('trade-board').getAttribute('data-city')) === city && (await face.getByTestId('trade-board').getAttribute('data-docked')) === 'true',
+        (await page.locator(`[data-testid="city-market-read"][data-city="${city}"][data-here="true"]`).count()) > 0,
       { timeout: 90_000, message: 'no SAIL there' },
     )
     .toBe(true)

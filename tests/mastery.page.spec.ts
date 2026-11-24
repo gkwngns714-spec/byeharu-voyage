@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { PHONE, ready, reachable } from './appReady.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
+import { openMarket } from './desk.fixture'
 
 // GOODS MASTERY (0479, roadmap 2026-11-23 slice 11). The shipped world is DARK (`goods_mastery_enabled` false): You draws no specialty
 // and no good is named in gold. A copy of the image with the ladder and the logbook lit, and her company given two goods her home
@@ -45,7 +46,7 @@ test('dark: You names no specialty', async ({ page, request, baseURL }) => {
   await expect(page.getByTestId('you-specialty')).toHaveCount(0)
 })
 
-test('lit: the specialty on You, the level rings on the logbook, the mastered good in gold on the Trade desk', async ({ page, request, baseURL }) => {
+test('lit: the specialty on You, the level rings on the logbook, the mastered good in gold on the Market', async ({ page, request, baseURL }) => {
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), 'no served build')
   await serveWorldImage(page, await lit())
@@ -65,9 +66,10 @@ test('lit: the specialty on You, the level rings on the logbook, the mastered go
   await expect(page.locator('[data-testid="logbook-slot"][data-level="10"]')).toHaveCount(1)
   await expect(page.locator('[data-testid="logbook-slot"][data-level="2"]')).toHaveCount(1)
 
-  // the Trade desk: the level-10 good's card is named in gold, the other is not
-  await page.goto('command')
+  // HQ's Market plate (H3, 2026-11-24: it was the Trade desk): the level-10 good's card is named in gold, the other is not
+  await page.goto('city')
   await ready(page)
+  await openMarket(page)
   await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
   const card = page.locator(`[data-testid="trade-good"][data-good="${good}"]`).first()
   await expect(card.getByTestId('trade-good-name')).toHaveAttribute('data-mastered', 'true', { timeout: 60_000 })

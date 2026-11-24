@@ -161,16 +161,8 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
 
-  // ── THE ENTRY POINT (as a player: COMMAND → City → City view) ────────────────────────────────
-  await page.goto('office')
-  await ready(page)
-  await page.getByRole('tab', { name: 'City', exact: true }).click()
-  await expect(page.getByTestId('desk-city')).toBeVisible()
-  const door = page.getByTestId('desk-city-open')
-  await expect(door).toBeVisible()
-  await expect(door).toHaveText('City view')
-  await door.click()
-  await expect(page).toHaveURL(/\/city\?port=[A-Z]{3}/)
+  // ── THE ENTRY POINT: HQ is the home screen (H3, 2026-11-24: the Office and its "City view" door are gone) ──
+  await page.goto('city')
   await ready(page)
   const screen = page.getByTestId('city-screen')
   await expect(screen).toBeVisible()
@@ -490,12 +482,9 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   // face — "i keep getting the old screen"). The root route lands on the city; the rail has NO
   // Command cell (owner, 2026-10-31: "i told you to remove the command tab"), and the desk's door
   // from here is the MARKET building, whose face composes the trade face.
-  // (S1, 2026-11-11: the ROOT now lands on Trade — tests/trade.home.spec.ts — so the city is reached by its own cell.)
-  await page.goto('/')
-  await expect(page).toHaveURL(/\/command$/)
-  await ready(page)
-  await page.getByTestId('nav-cell-/city').first().click()
-  await expect(page).toHaveURL(/\/city(\?|$)/)
+  // (H3, 2026-11-24: the Trade desk is gone and the ROOT lands on the city again.)
+  await page.goto('./')
+  await expect(page).toHaveURL(/\/city$/, { timeout: 60_000 })
   await ready(page)
   await expect(page.getByTestId('city-screen')).toBeVisible()
   await expect(page.getByTestId('city-rail').getByTestId('nav-cell-command')).toHaveCount(0)
@@ -518,13 +507,6 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await page.goto('stats')
   await ready(page)
   await expect(page.getByTestId('stats')).toBeVisible()
-
-  // And the Office's City face is exactly where it was, with its door.
-  await page.goto('office')
-  await ready(page)
-  await page.getByRole('tab', { name: 'City', exact: true }).click()
-  await expect(page.getByTestId('desk-city')).toBeVisible()
-  await expect(page.getByTestId('desk-city-open')).toBeVisible()
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════

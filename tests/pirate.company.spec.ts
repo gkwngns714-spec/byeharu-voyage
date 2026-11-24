@@ -108,9 +108,9 @@ for (const lang of LANGS) {
       await shot(page, `levels-${lang}-${size.width}`)
 
       // her own free port: a tax of 0 is not "half: your country"
-      await page.goto('office')
+      await page.goto('city')
       await ready(page)
-      await page.getByText(translate(lang, 'command.f_invest'), { exact: true }).first().click()
+      await page.getByTestId('city-office-invest').click()
       const tax = page.getByTestId('townhall-your-tax')
       await expect(tax).toBeVisible({ timeout: 60_000 })
       await expect(tax).not.toContainText(translate(lang, 'books.half').trim())

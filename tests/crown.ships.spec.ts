@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { koreanDescribe } from './korean.paused'
+import { openYard } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A PLAYER BUILDS THE CROWN'S SHIPS: the cargo ship and the navy ship, named where a hull is chosen (migration 0332)
@@ -36,10 +37,10 @@ async function pressKeepsPlace(page: Page, target: Locator, tray: string) {
 }
 
 async function yard(page: Page) {
-  await page.goto('port')
+  // HQ's Port plate > Build (H3, 2026-11-24: the yard was a tab of the Office's City face)
+  await page.goto('city')
   await ready(page)
-  await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: 'Build', exact: true }).click()
-  await expect(page.getByTestId('port-yard')).toBeVisible({ timeout: 60_000 })
+  await openYard(page, 'Build')
   // S8: the hulls not buildable here and now wait under one "More" row (the crown hulls are built abroad, at Lisbon)
   await page.getByTestId('yard-more').click()
 }
@@ -127,9 +128,9 @@ koreanDescribe('the words, in Korean', () => {
   test('the yard and the Codex at 390', async ({ page, request, baseURL }, info) => {
     test.setTimeout(170_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-    await page.goto('port')
+    await page.goto('city')
     await ready(page)
-    await page.getByRole('tablist').getByRole('tab', { name: '건조', exact: true }).click()
+    await openYard(page)
     await page.getByTestId('yard-more').click()
     await expect(page.getByTestId('hull-navire').getByTestId('hull-crown')).toHaveText('화물선')
     await expect(page.getByTestId('hull-galion').getByTestId('hull-crown')).toHaveText('군함')

@@ -1,5 +1,14 @@
 # CMD — orders are MADE, not typed
 
+> **NO SCREEN LIVES HERE ANY MORE — 2026-11-24 (H3 `desk-into-hq`, `docs/design/hq-corp-2026-11-24.md`).** The Trade desk
+> (`CommandScreen.tsx`, `/command`) and the Office (`OfficeScreen.tsx`, `/office`) are deleted, with their shell
+> (`DeskShell.tsx`, `DeskFrame.tsx`, `FleetStrip.tsx`, `FleetPicker.tsx`), the desk's Trade face (`buysell/Trade.tsx`,
+> `TradeBoard.tsx`) and the Office's City face (`city/`). Their routes open HQ. What is left in this folder are FACES that HQ's
+> sheet composes (`src/app/HqSheet.tsx`): the trade sheet (`buysell/TradePanel.tsx`), a fleet's cargo, route, orders, map and ship
+> (`buysell/CargoBest.tsx`, `RouteFold.tsx`, `Queue.tsx`, `plans/TradeMap.tsx`, `buysell/ShipInfo.tsx`), Invest and Report. The one
+> trade list is HQ's Market plate (`features/city/MarketFace.tsx`). `tests/hq.desk.spec.ts` lists every face the two screens had and
+> walks to each one from HQ. Everything below this note is history.
+
 > **TWO TABS, ONE SHELL — 2026-11-16.** The owner: *"in trade, there are city invest report and levels, which aren't that
 > related to trade. they should have separate tab like map you stats etc."* The Trade tab (`CommandScreen.tsx`, route
 > `/command`) is the Trade face alone. City (`city/`), Invest (`invest/`) and Report (`report/`) are the OFFICE tab's faces

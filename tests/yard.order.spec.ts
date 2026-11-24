@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 import { LOCALES, koreanDescribe } from './korean.paused'
+import { openYard } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE YARD TAKES AN ORDER (migration 0465; docs/design/content-plan-2026-11.md 5.3 item 3, slice C)
@@ -42,12 +43,10 @@ async function noSideways(page: Page, what: string) {
 }
 
 async function yard(page: Page, buildTab: string): Promise<Locator> {
-  await page.goto('port')
+  // HQ's Port plate > Build (H3, 2026-11-24: the yard was a tab of the Office's City face)
+  await page.goto('city')
   await ready(page)
-  await page.getByRole('tablist').getByRole('tab', { name: buildTab, exact: true }).click()
-  const root = page.getByTestId('port-yard')
-  await expect(root).toBeVisible({ timeout: 60_000 })
-  return root
+  return openYard(page, buildTab)
 }
 
 async function barcaSheet(page: Page, root: Locator): Promise<Locator> {
@@ -186,7 +185,7 @@ for (const [locale, words] of ([
           await pg.exec(`update public.world_config set value = 'true'::jsonb where key in ('yard_order_enabled', 'first_hour_enabled');`)
         }),
       )
-      await page.goto('command')
+      await page.goto('city')
       await ready(page)
       const card = page.getByTestId('goal-card')
       await expect(card).toBeVisible({ timeout: 120_000 })
@@ -196,12 +195,13 @@ for (const [locale, words] of ([
       // the purse against the price is the card's RING since slice 3 (2026-11-23): it was a thin bar in the line's rest
       await expect(card.getByTestId('goal-ring')).toHaveAttribute('data-pct', '77')
       expect(Math.round((await card.boundingBox())!.height), 'the card is not its one fixed height').toBe(44)
-      await noSideways(page, 'Trade with the saving line')
+      await noSideways(page, 'HQ with the saving line')
       await page.screenshot({ path: info.outputPath(`goal-${locale}.png`) })
 
       await expect(card).toHaveAttribute('data-next', 'yard')
       await card.click()
-      await expect(page).toHaveURL(/\/office$/)
+      await expect(page).toHaveURL(/\/city$/)
+      await expect(page.getByTestId('hq-sheet-yard')).toBeVisible({ timeout: 60_000 })
       const tray = page.getByTestId('yard-tray')
       await expect(tray).toBeVisible({ timeout: 60_000 })
       await expect(page.getByTestId('yard-order')).toHaveAttribute('data-price', '52000', { timeout: 60_000 })

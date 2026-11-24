@@ -5,7 +5,7 @@ import { formatDucatsDelta, formatRealDay } from '../../../lib/format'
 import { worldReport, type Report as ReportView, type ReportLine, type ReportPlace, type ReportSection } from '../../../lib/rpc'
 import { t as tNow, useLocale, useT, type TKey } from '../../../lib/i18n'
 import { moneyKindWord } from '../../../live/moneyWords'
-import type { DeskLayout } from '../DeskFrame'
+import type { DeskLayout } from '../deskLayout'
 import { HistoryChart } from '../../../live/HistoryChart'
 import { companyLines } from '../../../live/historyLines'
 import { reportBars } from '../../../live/reportBars'
@@ -57,7 +57,6 @@ const SECTION_ICONS: Record<ReportSection['id'], IconName> = {
   other: 'coin',
 }
 
-const hint = () => tNow('desk.reportHint')
 
 const tone = (n: number): 'success' | 'danger' | 'muted' => (n > 0 ? 'success' : n < 0 ? 'danger' : 'muted')
 
@@ -73,7 +72,6 @@ export function Report({ layout }: { layout: DeskLayout }) {
   if (read.loading && !r) {
     return layout({
       testid: 'desk-report',
-      sideHint: hint(),
       list: (
         <>
           <Skeleton className="h-11 w-full" />
@@ -85,7 +83,7 @@ export function Report({ layout }: { layout: DeskLayout }) {
     })
   }
   if (!r) {
-    return layout({ testid: 'desk-report', sideHint: hint(), list: <Note tone="danger">{t('desk.reportFailed')}</Note>, main: null })
+    return layout({ testid: 'desk-report', list: <Note tone="danger">{t('desk.reportFailed')}</Note>, main: null })
   }
 
   const nothing = r.sections.every((s) => s.lines.length === 0) && r.places.length === 0
@@ -149,7 +147,6 @@ export function Report({ layout }: { layout: DeskLayout }) {
 
   return layout({
     testid: 'desk-report',
-    sideHint: hint(),
     list: (
       <>
         <div data-testid="report-spans">

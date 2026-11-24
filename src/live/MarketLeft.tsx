@@ -4,6 +4,8 @@ import { formatOfTotal, formatPriceFigure } from '../lib/format'
 import type { MarketGood, SnapshotPort } from '../lib/rpc'
 import { useT } from '../lib/i18n'
 import { usePickedGood } from './marketPick'
+import { useDeskGood } from '../store/deskGood'
+import { useWorld } from './worldStore'
 import { usePortMarket } from './usePortMarket'
 import { usePriceSeries } from './usePriceSeries'
 import { firstAtMs, useChartNews } from './useChartNews'
@@ -18,8 +20,13 @@ import { firstAtMs, useChartNews } from './useChartNews'
 // under it is the design system's Row/StockGauge with the same ui.* words PriceRows prints, so this
 // panel is a column of the same facts, not a second price block. The span control is the one
 // SpanPicker over the one chart-span store.
-export function MarketLeft({ port, good: given = null }: { port: SnapshotPort; good?: MarketGood | null }) {
+export function MarketLeft({ port: own, good: given = null }: { port: SnapshotPort; good?: MarketGood | null }) {
   const t = useT()
+  // THE CITY THE TRADE LIST READS (H3, 2026-11-24: HQ's Market plate's city chips, store/deskGood.ts `focus`): the chart follows
+  // it. A good handed in (a request's) is this city's own, and stays here.
+  const focus = useDeskGood((s) => s.focus)
+  const read = useWorld((s) => (focus && given === null ? (s.portByCode[focus] ?? null) : null))
+  const port = read && read.kind === 'HARBOUR' ? read : own
   const { nowMs } = useShellState()
   // One market read for the port; the panel reads the same cached answer (usePortMarket).
   const quay = usePortMarket(port.kind === 'HARBOUR' ? port.id : null)

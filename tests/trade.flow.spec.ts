@@ -2,7 +2,8 @@ import { test, expect, type Page } from '@playwright/test'
 import { boundFor } from '../src/domain/order'
 import { MINUS, formatDaysReal, formatRealShort, formatVoyageDays, moneyFigure, moneyWord, voyageDaysToRealMs } from '../src/lib/format'
 import type { FleetView, QueuedOrder } from '../src/lib/rpc'
-import { closeDetail, openDetail, ready } from './appReady.fixture'
+import { ready } from './appReady.fixture'
+import { closeTop, openFleetSheet, openMarket } from './desk.fixture'
 // HOW LONG A NEAR TRIP MAY TAKE TO LAND: the fixture's ten voyage-days (a calm or a storm costs one or more, 450 real seconds
 // each since 0413). CI met a delay on 2026-11-12 (run 43137152187, a 300-second wait) and a 480-second wait ran out
 // on 2026-11-15.
@@ -12,6 +13,10 @@ import { LOCALES } from './korean.paused'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE'S FLOW, FIVE LAWS (2026-11-11, the trade-flow slice; docs/dev-log/2026-11-11-trade-flow-1.md, SUCCESS_PLAN §A)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// (H3 `desk-into-hq`, 2026-11-24: the Trade desk is gone. The goods and the city chips are HQ's Market plate; the line that says
+// where she is, Your cargo and her orders are her sheet over HQ, her HQ row's press. The laws below are held there; the lines the
+// desk alone drew, the board's "Docked / Not docked" head and the phone's one-page sheet, went with it.)
 //
 // A played audit of the Trade home screen found five places where the screen was a dead end, said something false, or moved
 // under the thumb. One law for each, measured on a phone (390×844) and a laptop (1,280×800), in English and Korean:
@@ -89,8 +94,6 @@ test('T9 (pure): days carry the real time through the one rate; a cost is unsign
 const WORDS = {
   'en-US': {
     inPort: 'In port',
-    docked: 'Docked',
-    notDocked: 'Not docked',
     noBuyer: 'No buyer',
     noneAboard: 'None on board',
     avg: 'avg',
@@ -105,8 +108,6 @@ const WORDS = {
   },
   'ko-KR': {
     inPort: '정박 중',
-    docked: '정박 중',
-    notDocked: '정박 중 아님',
     noBuyer: '안 삼',
     noneAboard: '적재 없음',
     avg: '평균',
@@ -126,11 +127,15 @@ const GLASSES = [
   { width: 1280, height: 800 },
 ] as const
 
+const CARDS = '[data-testid="city-market-buy"] [data-testid="trade-good"]'
+
+/** HQ, its Market plate open on the goods where she lies (H3 `desk-into-hq`, 2026-11-24: the list stood on the Trade desk). */
 async function openTrade(page: Page) {
   test.setTimeout(LANDING_TEST_TIMEOUT_MS)
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
-  await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
+  await openMarket(page)
+  await expect(page.locator(CARDS).first()).toBeVisible({ timeout: 120_000 })
   await expect(page.getByTestId('city-chip').first()).toBeVisible()
   await page.evaluate(() => document.fonts.ready)
 }
@@ -143,8 +148,8 @@ const chipsOf = (page: Page) =>
   }))
 
 /** A box on the page (not on the glass): its place does not depend on how far the page is scrolled. */
-const boxOf = (page: Page, testid: string) =>
-  page.getByTestId(testid).first().evaluate((e) => {
+const boxOf = (page: Page, selector: string) =>
+  page.locator(selector).first().evaluate((e) => {
     let scrolled = 0
     for (let p = e.parentElement; p; p = p.parentElement) scrolled += p.scrollTop
     const r = e.getBoundingClientRect()
@@ -156,31 +161,31 @@ const oneLine = (s: string) => s.replace(/\s+/g, ' ').trim()
 for (const locale of LOCALES) {
   const W = WORDS[locale]
   for (const glass of GLASSES) {
-    const phone = glass.width < 1024
     test.describe(`Trade's flow — ${locale} at ${glass.width}×${glass.height}`, () => {
       test.use({ locale, viewport: glass })
 
       test('in port: the strip, the honest sell word, no jumps, the cargo page and its tray both ways, the units; then a near trip and its arrival', async ({ page }) => {
         await openTrade(page)
         const where = `${locale} @${glass.width}`
-        const face = page.getByTestId('desk-trade')
-        const board = face.getByTestId('trade-board')
+        const read = page.getByTestId('city-market-read')
+        const sheet = page.getByTestId('hq-sheet-fleet')
         const status = page.getByTestId('trade-status')
         const panel = page.getByTestId('good-detail')
         const act = page.getByTestId('trade-act')
-        const cargoPage = page.getByTestId('cargo-open-page')
         const home = (await chipsOf(page)).order[0]
 
-        await test.step('T3: in port, the strip names her port', async () => {
+        await test.step('T3: in port, the strip names her port (in her sheet)', async () => {
+          const name = await page.locator(`[data-testid="city-chip"][data-port="${home}"]`).getByTestId('city-chip-name').innerText()
+          await openFleetSheet(page)
           await expect(status).toHaveAttribute('data-state', 'docked')
           await expect(status).toContainText(W.inPort)
-          const name = await face.locator(`[data-testid="city-chip"][data-port="${home}"]`).getByTestId('city-chip-name').innerText()
           await expect(status.getByTestId('trade-status-place')).toContainText(name)
-          expect((await boxOf(page, 'trade-status')).top, `${where}: the strip is not above the goods`).toBeLessThan((await boxOf(page, 'trade-good')).top)
+          await closeTop(page)
+          await expect(sheet).toHaveCount(0)
         })
 
         await test.step('T2: a bid is printed with none aboard; "No buyer" only where no bid is served', async () => {
-          const cells = await face.getByTestId('trade-good').evaluateAll((cards) =>
+          const cells = await page.locator(CARDS).evaluateAll((cards) =>
             cards.map((c) => {
               const sell = c.querySelector('[data-testid="trade-good-sell"]') as HTMLElement
               return {
@@ -210,56 +215,45 @@ for (const locale of LOCALES) {
           }
         })
 
-        await test.step('T8: a chip pressed moves no chip and nothing under the chips; the phone sheet still does not scroll', async () => {
+        await test.step('T8: a chip pressed moves no chip and nothing under the chips', async () => {
           const before = await chipsOf(page)
           expect(before.on).toEqual([home])
-          // what stands under the chips: the board's own line on the wide desk; on a phone there is none, the cards start there
-          const under = async () => ({
-            chips: await boxOf(page, 'city-chips'),
-            head: phone ? null : await boxOf(page, 'trade-board-head'),
-            headShown: await face.getByTestId('trade-board-head').isVisible(),
-          })
+          // what stands under the chips: the Market's Buy · Sell strip
+          // READ AGAINST THE MARKET'S OWN PANEL: the panel stands under HQ's board, whose lines land from their own reads with no
+          // press at all (a move's line coming or going is 20 px), so a place on the page is not the press's to answer for
+          const under = () =>
+            page.evaluate(() => {
+              const panel = document.querySelector('[data-testid="city-face-panel"]')!.getBoundingClientRect()
+              const rel = (sel: string) => {
+                const r = document.querySelector(sel)!.getBoundingClientRect()
+                return { top: Math.round(r.top - panel.top), height: Math.round(r.height) }
+              }
+              return { chips: rel('[data-testid="city-chips"]'), faces: rel('[role="tablist"][aria-label="Market"]') }
+            })
+          // the city's own lines (a fair, an event, what it wants) stand between the chips and the strip and are the city's: a
+          // city that has one is taller there, so the strip is read at her own city, before and after
           const rest = await under()
-          expect(rest.headShown, `${where}: the board's own line`).toBe(!phone)
-          if (!phone) await expect(face.getByTestId('trade-board-docked')).toHaveText(W.docked)
-          else await expect(page.getByTestId('trade-status-board')).toHaveCount(0)
-          const strip0 = await boxOf(page, 'trade-status')
           for (const i of [2, before.order.length - 1, 1]) {
             const code = before.order[i]
-            const chip = face.locator(`[data-testid="city-chip"][data-port="${code}"]`)
-            await chip.click()
-            await expect(board).toHaveAttribute('data-city', code)
+            await page.locator(`[data-testid="city-chip"][data-port="${code}"]`).click()
+            await expect(read).toHaveAttribute('data-city', code)
+            await expect(read).toHaveAttribute('data-here', 'false')
             const now = await chipsOf(page)
             expect(now.order, `${where}: pressing ${code} moved the chips`).toEqual(before.order)
             expect(now.on, `${where}: ${code} is not the one marked`).toEqual([code])
-            // "Not docked" is said, in a place that pushes nothing
-            if (!phone) await expect(face.getByTestId('trade-board-not-docked')).toHaveText(W.notDocked)
-            else {
-              const name = await chip.getByTestId('city-chip-name').innerText()
-              await expect(page.getByTestId('trade-status-board')).toHaveText(`${name} · ${W.notDocked}`)
-            }
-            expect(await under(), `${where}: something under the chips moved when ${code} was pressed`).toEqual(rest)
-            expect(await boxOf(page, 'trade-status'), `${where}: the line that says where she is changed its box when ${code} was pressed`).toEqual(strip0)
+            expect((await under()).chips, `${where}: the chips moved when ${code} was pressed`).toEqual(rest.chips)
           }
-          await face.locator(`[data-testid="city-chip"][data-port="${home}"]`).click()
-          await expect(board).toHaveAttribute('data-city', home)
-          await expect(board).toHaveAttribute('data-docked', 'true')
+          await page.locator(`[data-testid="city-chip"][data-port="${home}"]`).click()
+          await expect(read).toHaveAttribute('data-city', home)
+          await expect(read).toHaveAttribute('data-here', 'true')
           expect((await chipsOf(page)).order).toEqual(before.order)
+          await expect(page.locator(CARDS).first()).toBeVisible({ timeout: 60_000 })
           expect(await under(), `${where}: something under the chips moved back at her own city`).toEqual(rest)
-          await expect(face.getByTestId('trade-good').first()).toBeVisible({ timeout: 60_000 })
-
-          // THE OWNER'S ONE-PAGE LAW ON THIS FACE (tests/onepage.spec.ts holds it for every tab): the phone's sheet does not
-          // scroll with the line that says where she is added, and that line is in the fleet picker's own 44-px row
-          if (phone) {
-            const sheet = await page.getByTestId('desk-scroll').evaluate((e) => ({ h: e.scrollHeight, ch: e.clientHeight }))
-            expect(sheet.h, `${where}: the Trade face scrolls its sheet (${sheet.h} px in ${sheet.ch})`).toBeLessThanOrEqual(sheet.ch + 1)
-            expect(strip0.height, `${where}: the line beside her name is taller than the picker's row`).toBeLessThanOrEqual(44)
-          }
         })
 
         let bought = ''
         await test.step('T9: a buy is a Cost, unsigned, on the tray and on its toast', async () => {
-          const card = face.locator('[data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first()
+          const card = page.locator(`${CARDS}:has([data-testid="trade-buy"]:not([disabled]))`).first()
           bought = (await card.getAttribute('data-good'))!
           await card.getByTestId('trade-buy').click()
           const total = panel.getByTestId('good-detail-total')
@@ -272,14 +266,16 @@ for (const locale of LOCALES) {
           const toast = page.getByTestId('trade-toast')
           await expect(toast).toContainText(W.bought, { timeout: 60_000 })
           expect(await toast.innerText(), `${where}: the buy's toast is drawn with a minus`).not.toMatch(/[−-]/)
+          // the sheet stays for the next lot where she lies (S1): its own close returns to HQ
+          await panel.getByTestId('tray-close').click()
           await expect(panel).toHaveCount(0)
         })
 
-        const block = page.getByTestId('cargo-best').locator(`[data-testid="cargo-good"][data-good="${bought}"]`)
+        const block = sheet.getByTestId('cargo-best').locator(`[data-testid="cargo-good"][data-good="${bought}"]`)
         const away = block.locator(`[data-testid="cargo-place"]:not([data-port="${home}"])`)
         let to = ''
         await test.step('T9: Your cargo prints the real time beside the days, and "avg" on an averaged price', async () => {
-          await openDetail(page, 'cargo-open')
+          await openFleetSheet(page)
           await expect(away.first()).toBeVisible({ timeout: 120_000 })
           const rows = await block.getByTestId('cargo-place').evaluateAll((es) =>
             es.map((e) => ({
@@ -297,9 +293,9 @@ for (const locale of LOCALES) {
           to = (await away.first().getAttribute('data-port'))!
         })
 
-        await test.step('T1: a cargo row closes its page and shows the tray; Back returns to the page; Back again to Trade', async () => {
+        await test.step('T1: a cargo row closes its page and shows the tray; Back returns to the page; Back again to HQ', async () => {
           await away.first().click()
-          await expect(cargoPage, `${where}: the cargo page stays over the tray`).toHaveCount(0)
+          await expect(sheet, `${where}: her sheet stays over the tray`).toHaveCount(0)
           await expect(panel).toBeVisible()
           await expect(panel).toHaveAttribute('data-city', to)
           await expect(panel).toHaveAttribute('data-good', bought)
@@ -316,41 +312,49 @@ for (const locale of LOCALES) {
           // Back from the tray: where she was
           await panel.getByTestId('tray-close').click()
           await expect(panel).toHaveCount(0)
-          await expect(cargoPage, `${where}: the tray's Back did not return to the cargo page`).toBeVisible()
+          await expect(sheet, `${where}: the tray's Back did not return to her sheet`).toBeVisible()
           await expect(away.first()).toBeVisible()
-          // Back from the page: Trade
-          await closeDetail(page)
-          await expect(board).toBeVisible()
+          // Back from the page: HQ
+          await closeTop(page)
+          await expect(sheet).toHaveCount(0)
+          await expect(page.getByTestId('city-screen')).toBeVisible()
           await expect(panel).toHaveCount(0)
         })
 
         let sailing: string[] = []
-        await test.step('T3 + T9: a near trip — its toast carries the amount, the strip says where and when, the board is her destination', async () => {
-          await openDetail(page, 'cargo-open')
+        await test.step('T3 + T9: a near trip — its toast carries the amount, the strip says where and when, the list is her destination', async () => {
+          await openFleetSheet(page)
           await block.locator(`[data-testid="cargo-place"][data-port="${to}"]`).click()
           await expect(act).toBeEnabled({ timeout: 60_000 })
           await act.click()
           await expect(page.getByTestId('trade-toast')).toContainText(W.sailed, { timeout: 60_000 })
+          // the trip sent, the tray goes and her sheet is back: its strip says where she is
+          await expect(panel).toHaveCount(0, { timeout: 60_000 })
+          if ((await sheet.count()) === 0) await openFleetSheet(page)
           await expect(status).toHaveAttribute('data-state', 'sailing', { timeout: 30_000 })
           await expect(status).toHaveAttribute('data-to', to)
           await expect(status.getByRole('meter')).toBeVisible()
           // one leg: the clock is the arrival's
           await expect(status).toHaveAttribute('data-next', '')
           expect(oneLine(await status.getByTestId('trade-status-arrives').innerText()), `${where}: the strip gives no arrival clock`).toMatch(W.arrives)
-          await expect(board).toHaveAttribute('data-city', to)
+          // a short strip: one line and its bar where the words fit, never more than two lines
+          expect((await boxOf(page, '[data-testid="trade-status"]')).height, `${where}: the line under way is taller than its place`).toBeLessThanOrEqual(84)
+          await closeTop(page)
+          await expect(sheet).toHaveCount(0)
+          // HQ is her destination's now, and so is the Market's list
+          await openMarket(page)
+          await expect(read).toHaveAttribute('data-city', to)
           const chips = await chipsOf(page)
           expect(chips.order[0], `${where}: under way the chips do not start at her destination`).toBe(to)
           expect(chips.on).toEqual([to])
           sailing = chips.order
-          // a short strip: one line and its bar where the words fit, never more than two lines
-          expect((await boxOf(page, 'trade-status')).height, `${where}: the line under way is taller than its place`).toBeLessThanOrEqual(phone ? 44 : 84)
         })
 
         await test.step('T9 + T8: the arrival card names its figure; landing does not sort the chips again', async () => {
           // watched from the moment the trip is sent (the step above ends within seconds of it), so the card cannot come and go
           // unseen: it stands 20 s (ArrivalCard.tsx SHOWN_MS) and this polls it every second or less
           const card = page.getByTestId('arrival-card')
-          await expect(card, `${where}: no arrival card ${LANDS_WITHIN_MS / 1000} s after she sailed; the line read ${JSON.stringify(oneLine(await status.innerText()))}`).toBeVisible({ timeout: LANDS_WITHIN_MS })
+          await expect(card, `${where}: no arrival card ${LANDS_WITHIN_MS / 1000} s after she sailed`).toBeVisible({ timeout: LANDS_WITHIN_MS })
           const figure = card.getByTestId('arrival-figure').first()
           await expect(figure).toHaveAttribute('data-kind', 'profit')
           const word = (await figure.getByTestId('arrival-figure-word').innerText()).trim()
@@ -361,23 +365,24 @@ for (const locale of LOCALES) {
           const net = Number(await card.getAttribute('data-net'))
           expect(text, `${where}: the card does not print the served figure`).toContain(moneyFigure('profit', net).replace(/\s.*$/, ''))
           await page.getByTestId('arrival-close').click()
-          await expect(status).toHaveAttribute('data-state', 'docked', { timeout: 60_000 })
-          await expect(board).toHaveAttribute('data-docked', 'true')
+          await openMarket(page)
+          await expect(read).toHaveAttribute('data-here', 'true', { timeout: 60_000 })
           expect((await chipsOf(page)).order, `${where}: landing sorted the chips again`).toEqual(sailing)
         })
       })
 
-      test('T3: on a far trip the board, the strip and the first chip are her destination, and the strip names the next stop', async ({ page }) => {
+      test('T3: on a far trip the list, the strip and the first chip are her destination, and the strip names the next stop', async ({ page }) => {
         await openTrade(page)
         const where = `${locale} @${glass.width}`
-        const face = page.getByTestId('desk-trade')
+        const read = page.getByTestId('city-market-read')
+        const sheet = page.getByTestId('hq-sheet-fleet')
         const status = page.getByTestId('trade-status')
         const act = page.getByTestId('trade-act')
         // a best sale pressed is a trip: bought here, sold at its city. The first one her purse can pay for.
         // Since 0351 the card's own sale is the NEAR one she can pay for (one leg), and its dearer, farther sale is the tray's
         // places to sell (P1). The far one is the trip this law is about, so it is the one sent: the first good whose far
         // sale makes a trip she can sail.
-        const sales = face.locator('[data-testid="best-sale"][data-state="sale"][data-far]')
+        const sales = page.locator(`${CARDS} [data-testid="best-sale"][data-state="sale"][data-far]`)
         await expect(sales.first(), `${where}: no card serves a far sale`).toBeVisible({ timeout: 180_000 })
         const panel = page.getByTestId('good-detail')
         let to = ''
@@ -388,42 +393,39 @@ for (const locale of LOCALES) {
           // P1 (2026-11-22): the far sale is one of the tray's places to sell
           const other = panel.locator(`[data-testid="trade-sale-choice"][data-port="${far}"]`)
           // the place lands with the trip's board; a good whose far sale is not offered is not this law's
-          if (!(await other.waitFor({ timeout: 15_000 }).then(() => true, () => false))) continue
-          await other.click()
-          await expect(panel).toHaveAttribute('data-sell-at', far)
-          const ready = await expect(act).toBeEnabled({ timeout: 20_000 }).then(
-            () => true,
-            () => false,
-          )
+          const offered = await other.waitFor({ timeout: 15_000 }).then(() => true, () => false)
+          const ready = offered && (await other.click().then(() => true)) && (await expect(panel).toHaveAttribute('data-sell-at', far).then(() => true, () => false)) && (await expect(act).toBeEnabled({ timeout: 20_000 }).then(() => true, () => false))
           if (ready) {
             to = far
             break
           }
+          // not this one: the tray is closed (it stands over the cards on a phone) before the next card's line is pressed
+          await panel.getByTestId('tray-close').click()
+          await expect(panel).toHaveCount(0)
         }
         expect(to, `${where}: no far sale made a trip she can sail`).not.toBe('')
         await act.click()
         await expect(page.getByTestId('trade-toast')).toContainText(W.sailed, { timeout: 60_000 })
-        await expect(status).toHaveAttribute('data-state', 'sailing', { timeout: 60_000 })
-        await expect(status).toHaveAttribute('data-to', to)
-        await expect(face.getByTestId('trade-board')).toHaveAttribute('data-city', to)
+        await expect(panel).toHaveCount(0, { timeout: 60_000 })
+        // HQ is her destination's now, and so are the Market's list and its first chip
+        await openMarket(page)
+        await expect(read).toHaveAttribute('data-city', to, { timeout: 60_000 })
         const chips = await chipsOf(page)
         expect(chips.order[0], `${where}: the chips do not start at her destination`).toBe(to)
-        // her orders: every SAIL past the leg she is on means a stop on the way
-        const orders = Number((await face.getByTestId('command-queue').innerText()).replace(/\D+/g, ' ').trim().split(' ')[0])
+        // her sheet: the strip, and her orders (every SAIL past the leg she is on means a stop on the way)
+        await openFleetSheet(page)
+        await expect(status).toHaveAttribute('data-state', 'sailing', { timeout: 60_000 })
+        await expect(status).toHaveAttribute('data-to', to)
+        const orders = await sheet.getByTestId('queue-row').count()
         const next = (await status.getAttribute('data-next')) ?? ''
         console.log(`far trip ${where}: to ${to}, next stop "${next}", ${orders} orders, strip ${JSON.stringify(oneLine(await status.innerText()))}`)
-        const box = await boxOf(page, 'trade-status')
-        const sheet = glass.width < 1024 ? await page.getByTestId('desk-scroll').evaluate((e) => ({ h: e.scrollHeight, ch: e.clientHeight })) : null
-        console.log(`far trip ${where}: the line is ${box.height} px high${sheet ? `, the sheet ${sheet.h} in ${sheet.ch}` : ''}`)
-        if (glass.width < 1024) {
-          expect(box.height, `${where}: under way the line beside her name is taller than the picker's row`).toBeLessThanOrEqual(44)
-          expect(sheet!.h, `${where}: under way the Trade face scrolls its sheet`).toBeLessThanOrEqual(sheet!.ch + 1)
-        }
+        const box = await boxOf(page, '[data-testid="trade-status"]')
+        console.log(`far trip ${where}: the line is ${box.height} px high`)
         if (orders > 1) {
           expect(next, `${where}: a trip of ${orders} orders has no next stop on the strip`).not.toBe('')
           expect(next, `${where}: the next stop is the destination`).not.toBe(to)
           expect(oneLine(await status.getByTestId('trade-status-next').innerText()), `${where}: the strip does not name the next stop and its clock`).toMatch(W.nextStop)
-          expect(chips.order, `${where}: the stop on the way has taken the board's chips`).not.toContain(next)
+          expect(chips.order, `${where}: the stop on the way has taken the list's chips`).not.toContain(next)
         }
       })
     })

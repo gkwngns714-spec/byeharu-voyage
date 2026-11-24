@@ -7,6 +7,7 @@ import { NewsLine } from '../../live/NewsCard'
 import { newsAtMs } from '../../live/newsWords'
 import { WorldEventsLine } from '../../live/WorldEventLine'
 import { useDeskGood } from '../../store/deskGood'
+import { hqHref } from '../../app/hqPlace'
 import { useNavigate } from 'react-router-dom'
 
 // THE NEWS FACE (0347, owner row 216: *"major event, real time news-like feature"*; docs/NEWS_AND_MARKERS.md §4). Newest first, fifty
@@ -83,7 +84,8 @@ export function NewsFace({ live }: { live: StatsNow | null }) {
   const shown = list !== null && list.filter === filter ? list : (keptNews.get(filter) ?? null)
   const openHarbour = (code: string) => {
     setDeskCity(code)
-    navigate('/command')
+    // HQ's Market reads that city (H3: the Trade desk is gone)
+    navigate(hqHref({ place: 'market' }))
   }
   // THE FACE'S LIST is a card list like every Stats face's (consistency.spec: each face stands one list panel)
   return (

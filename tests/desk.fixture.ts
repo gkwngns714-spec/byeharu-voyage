@@ -1,50 +1,58 @@
-// THE DESK'S CITY FACE, OPENED THE WAY A PLAYER OPENS IT (2026-10-18, docs/COMMAND_DESK.md D8). PORT is gone:
-// every building it carried is a face of COMMAND · City, so a spec that used to `goto('port')` opens the desk
-// and turns to City — the press a player makes. (An old `/port` link lands here too, through the router.)
-//
-// OPENED MEANS SETTLED. City opens on Trade, and Trade stands a Skeleton until the quay's market read lands
-// (src/features/command/city/City.tsx). The specs used to sleep 1200 ms after this and then count ledger
-// rows once; under CI load the read took longer and they counted 0 beside the Skeleton (runs 39097978019,
-// 39107062920, 39107806852). So the face is returned only once it has drawn its first read.
-//
-// AND ITS SECOND READ. The quay's fair (src/live/PortFair.tsx `QuayFair`) is read apart from the market and draws
-// NOTHING until it lands — no Skeleton — then, only while a fair is on at this port, a 52-px accent Row above
-// the trade pane (src/features/command/city/City.tsx). So `settled` alone returned the face with that read still
-// in flight, and whenever the clock and the world's seed (migration 0026, `buff_season_of`) had a fair live, the
-// row could land between a spec's "before" and "after" measurements and shift everything under it by 52 px
-// (tests/layout.spec.ts, the three "a press moves nothing" laws, 2026-11-10). City marks its frame
-// `data-fair-loaded` once the store holds the quay's buffs — the same store state that draws the row, in the same
-// commit — so waiting on the mark is waiting on the row, fair or no fair.
-import { expect, type Page } from '@playwright/test'
-import { settled, WORLD_BOOT_MS } from './appReady.fixture'
+// HQ'S FACES, OPENED THE WAY A PLAYER OPENS THEM (H3 `desk-into-hq`, 2026-11-24). The Trade desk (`/command`) and the Office
+// (`/office`) are gone: the goods list is HQ's Market plate, a fleet's cargo, route, orders and map are her sheet over HQ, and the
+// buildings are HQ's plates (tests/hq.desk.spec.ts carries the whole table). These helpers make those presses; the URL stays `/city`.
+import { expect, type Locator, type Page } from '@playwright/test'
+import { toPlaces } from './hqPlaces.fixture'
 
-/** THE OFFICE'S FACE (2026-11-16: City, Invest and Report left the Trade desk for the Office; 2026-11-24, simplify S1: HQ's City door
- *  is gone — HQ is the city, and Invest and Report open as sheets over HQ). The Office stands only on its route until S4 removes it, so
- *  the route is the way in (in place, as the router would take it, never a reload); then the face in the Office's strip. */
-export async function openOfficeFace(page: Page, face: string | RegExp): Promise<void> {
-  if (!new URL(page.url()).pathname.endsWith('/office'))
-    await page.evaluate(() => {
-      history.pushState({}, '', `${location.pathname.replace(/\/[^/]*$/, '')}/office`)
-      dispatchEvent(new PopStateEvent('popstate'))
-    })
-  const office = page.getByTestId('office')
-  await expect(office).toBeVisible({ timeout: WORLD_BOOT_MS })
-  await office.getByRole('tablist').first().getByRole('tab', typeof face === 'string' ? { name: face, exact: true } : { name: face }).click()
+/** One of HQ's plates, pressed open (`hall`, `market`, `production`, `port`, `inn`). */
+export async function openPlate(page: Page, id: string): Promise<void> {
+  await toPlaces(page)
+  const plate = page.getByTestId(`city-building-${id}`)
+  if ((await plate.getAttribute('aria-pressed')) !== 'true') await plate.click()
+  await expect(plate).toHaveAttribute('aria-pressed', 'true')
 }
 
-export async function openCityFace(page: Page): Promise<void> {
-  await openOfficeFace(page, 'City')
-  const city = page.getByTestId('desk-city')
-  await expect(city).toBeVisible()
-  await settled(city)
-  await expect(city, "the quay's fair read has not landed").toHaveAttribute('data-fair-loaded', '', { timeout: WORLD_BOOT_MS })
+/** HQ's Market plate, open on its first read: the one trade list (the city chips, the goods cards). Returns the read's wrapper
+ *  (`city-market-read`: `data-city` the city read, `data-here` whether the fleet that trades lies there). */
+export async function openMarket(page: Page): Promise<Locator> {
+  const read = page.getByTestId('city-market-read')
+  if ((await read.count()) === 0) await openPlate(page, 'market')
+  await expect(read).toBeVisible({ timeout: 120_000 })
+  return read
 }
 
-/** THE TRADE SHEET, IN PLACE (2026-11-24, simplify S1; src/app/HqSheet.tsx): a Buy or Sell pressed on the HQ Market or on
- *  Office > City > Market opens THE trade sheet over the page it was pressed on, on that city, that good and that side — the URL does
- *  not move. This waits for the sheet and runs the trade there (`n` units), the press a player makes: the count, the one big button,
- *  the toast. The sheet stays open after a trade where she lies; the browser's back (or its ✕, or Escape) closes it.
- *  (The name is X1's, kept so S3's specs read it unchanged until S3 renames it.) */
+/** A fleet's sheet over HQ (her row's press): where she is, her cargo, her route, her orders, her map, her ship. */
+export async function openFleetSheet(page: Page, fleet?: string): Promise<Locator> {
+  const row = fleet ? page.locator(`[data-testid="hq-fleet"][data-fleet="${fleet}"]`) : page.getByTestId('hq-fleet').first()
+  await row.getByTestId('hq-fleet-press').click()
+  const sheet = page.getByTestId('hq-sheet-fleet')
+  await expect(sheet).toBeVisible({ timeout: 60_000 })
+  return sheet
+}
+
+/** The build yard: HQ's Port plate, its Build row, the yard's page (`port-yard`). `word`, when given, is the row's own word. */
+export async function openYard(page: Page, word?: string): Promise<Locator> {
+  await openPlate(page, 'port')
+  const door = page.getByTestId('city-port-yard')
+  if (word) await expect(door).toContainText(word)
+  await door.click()
+  const yard = page.getByTestId('port-yard')
+  await expect(yard).toBeVisible({ timeout: 60_000 })
+  return yard
+}
+
+/** Close the top layer over HQ by its own back: a page's arrow, else the trade sheet's close. */
+export async function closeTop(page: Page): Promise<void> {
+  const arrow = page.locator('[data-detail-page] [data-detail-back]')
+  if ((await arrow.count()) > 0) await arrow.last().click()
+  else await page.getByTestId('tray-close').last().click()
+}
+
+/** THE TRADE SHEET, IN PLACE (2026-11-24, simplify S1; src/app/HqSheet.tsx): a Buy or Sell pressed on the HQ Market opens THE trade
+ *  sheet over the page it was pressed on, on that city, that good and that side — the URL does not move. This waits for the sheet
+ *  and runs the trade there (`n` units), the press a player makes: the count, the one big button, the toast. The sheet stays open
+ *  after a trade where she lies; the browser's back (or its ✕, or Escape) closes it.
+ *  (The name is X1's, kept so the specs read it unchanged.) */
 export async function tradeOnDesk(page: Page, n = 1): Promise<void> {
   const before = page.url()
   const figure = page.getByTestId('good-detail').getByTestId('stepper-figure')

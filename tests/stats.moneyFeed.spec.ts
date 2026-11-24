@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { asWorldImageFile } from '../src/lib/db/worldImage'
 import { ready, reachable } from './appReady.fixture'
-import { openCityFace, tradeOnDesk } from './desk.fixture'
+import { closeTop, openMarket, tradeOnDesk } from './desk.fixture'
 
 // THE MONEY LOG (0235, owner row 219): every money move beside World money. Since the unfold slice
 // (2026-11-02, owner row 260: *"everything is folded in stats"*) it is the Overview's own list panel — its rows
@@ -35,16 +35,13 @@ async function litWorld(): Promise<Buffer> {
 }
 
 async function buyOne(page: Page): Promise<void> {
-  const pressed = await page.evaluate(() => {
-    const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) =>
-      /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()),
-    ) as HTMLButtonElement | undefined
-    cell?.click()
-    return cell !== undefined
-  })
-  expect(pressed, 'no live buy cell to press').toBe(true)
-  // X1 (src/live/tradeOnDesk.ts): the price opens the Trade desk on that good, and the buy runs there
+  const buy = page.locator('[data-testid="city-market-buy"] [data-testid="trade-buy"]:not([disabled])').first()
+  await expect(buy, 'no live Buy to press').toBeVisible({ timeout: 120_000 })
+  await buy.click()
+  // the Buy opens the trade sheet over HQ on that good, and the buy runs there; the sheet is closed after it
   await tradeOnDesk(page)
+  await closeTop(page)
+  await expect(page.getByTestId('good-detail')).toHaveCount(0)
 }
 
 const noSideways = (page: Page) =>
@@ -55,10 +52,10 @@ test('Stats › the money log panel shows my buy in red and the city’s side in
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   const world = await litWorld()
   await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body: world, contentType: 'application/gzip' }))
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
-  await openCityFace(page)
-  expect(await page.locator('[data-testid="trade-row"]').count(), 'no ledger rows — is a fleet docked?').toBeGreaterThan(1)
+  await openMarket(page)
+  await expect(page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]').nth(1), 'no goods cards — is a fleet docked?').toBeVisible({ timeout: 120_000 })
 
   await buyOne(page)
 

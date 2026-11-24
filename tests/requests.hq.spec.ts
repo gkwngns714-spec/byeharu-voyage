@@ -1,11 +1,11 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
-import { openCityFace } from './desk.fixture'
+import { closeTop, openMarket } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // "REQUESTS" MEANT TWO THINGS (remaster S7, 2026-11-11; owner rows 279, 293)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// Trade > City > Requests drew the harbour's delivery jobs; HQ > Market > Requests drew only the
+// (H3, 2026-11-24: the Trade desk is gone; the reference is the city Requests sheet over HQ.) Trade > City > Requests drew the harbour's delivery jobs; HQ > Market > Requests drew only the
 // player's OWN request, so a new player never found the jobs. Now the HQ tab and the Map's port tray
 // draw the SAME RequestBoard under "City requests", and the player's own "New request" stands
 // beneath, under its own heading "Your orders". Run it: npm run build && npx vite preview --port 4291,
@@ -55,26 +55,28 @@ const same = (a: Job[], b: Job[], what: string) => {
 }
 
 for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
-  test(`at ${size.width}: HQ Requests show the same city jobs as Trade, and New request keeps its own heading`, async ({ page, request, baseURL }) => {
+  test(`at ${size.width}: HQ Requests show the same city jobs as the Requests sheet, and New request keeps its own heading`, async ({ page, request, baseURL }) => {
     test.setTimeout(900_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await page.setViewportSize(size)
 
-    // Trade > City > Requests: the reference
-    await page.goto('command')
+    // The city's Requests sheet (where a request is fulfilled; H3, 2026-11-24: it was Trade > City > Requests): the reference
+    await page.goto('city')
     await ready(page)
-    await openCityFace(page)
-    await page.getByRole('tablist', { name: 'Trade faces' }).getByRole('tab', { name: /^Requests$/ }).click()
+    const city = await (await openMarket(page)).getAttribute('data-city')
+    const fleet = await page.getByTestId('hq-fleet').first().getAttribute('data-fleet')
+    await page.goto(`city?sheet=requests&at=${city}&fleet=${fleet}`)
+    await ready(page)
+    await expect(page.getByTestId('hq-sheet-requests')).toBeVisible({ timeout: 120_000 })
     const trade = await jobs(page)
     expect(trade[0].each, 'no reward on the job').toBeTruthy()
     expect(trade[0].secs, 'no timer on the job').toBeGreaterThan(0)
+    await closeTop(page)
+    await expect(page.getByTestId('hq-sheet-requests')).toHaveCount(0)
 
     // HQ > Market > Requests
-    await page.goto('city')
-    await ready(page)
-    await expect(page.getByTestId('city-building-market')).toBeVisible({ timeout: 120_000 })
-    await page.getByTestId('city-building-market').click()
-    await page.getByRole('tab', { name: /^(Requests|요청)$/ }).click()
+    await openMarket(page)
+    await page.getByRole('tablist', { name: 'Market', exact: true }).getByRole('tab', { name: /^Requests$/ }).click()
     const panel = page.getByTestId('city-market-requests')
     await expect(panel).toBeVisible({ timeout: 60_000 })
     same(trade, await jobs(page), 'HQ')

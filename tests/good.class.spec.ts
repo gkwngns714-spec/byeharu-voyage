@@ -28,12 +28,11 @@
 // the name column to one character — measured on main before this change, BEFORE screenshot in
 // docs/dev-log/2026-11-01-good-class.md — and belongs to the City page's own slice).
 
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { ready, reachable } from './appReady.fixture'
-import { openCityFace } from './desk.fixture'
-import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
+import { openMarket } from './desk.fixture'
 import { GOOD_CLASSES, GOOD_CLASS_BARS, GOOD_CLASS_BAR_HEIGHTS, GOOD_CLASS_LOOK, goodClassRow } from '../src/components/ui/goodClassTiers'
 import { RARITY_TIER_LOOK } from '../src/components/ui/rarityTiers'
 import { DICT } from '../src/lib/i18n'
@@ -382,13 +381,6 @@ function expectOneTable(colours: Map<number, Set<string>>) {
   }
 }
 
-async function openDeskBuy(page: Page) {
-  await page.goto('command')
-  await ready(page)
-  await openCityFace(page)
-  await expect(page.getByTestId('trade-row').first()).toBeVisible()
-}
-
 for (const vp of [
   { name: 'phone 390×844', size: PHONE, wide: false },
   { name: 'wide 1280×800', size: WIDE, wide: true },
@@ -400,37 +392,14 @@ for (const vp of [
     await page.setViewportSize(vp.size)
     const colours = new Map<number, Set<string>>()
 
-    // 1. THE DESK'S BUY FACE — the Market ledger (TradeRow)
-    await openDeskBuy(page)
-    expectList(`${vp.name} · desk Buy`, await page.evaluate(inspectRows, '[data-testid="trade-row"]'), colours)
-
-    // …and the press that opens a good spells the class out: the City face's tray (TradeTray →
-    // PriceRows) says it in its Kind row, beside the kind and the rarity. X1 (src/live/tradeOnDesk.ts): while TRADE_ON_DESK stands the
-    // press opens the Trade desk instead, whose panel says the class (1b below), so the tray's Kind row is read only with the switch off.
-    if (!TRADE_ON_DESK) {
-      const row = page.getByTestId('trade-row').first()
-      const rowClass = Number(await row.getAttribute('data-good-class'))
-      await row.getByRole('button').first().click()
-      const tray = page.getByTestId('trade-tray')
-      await expect(tray).toBeVisible()
-      // the Kind row stands under the tray's More (S5, 2026-11-11: the short tray)
-      await tray.getByTestId('trade-tray-more').click()
-      const spoken = tray.getByTestId('good-kind-row').locator('[data-good-class-mark]')
-      await expect(spoken, "the trade tray names the good's class").toHaveCount(1)
-      await expect(spoken).toHaveAttribute('data-good-class-mark', String(rowClass))
-      await expect(spoken).toHaveText(EN_WORDS[rowClass - 1])
-      // the three words stand in the Kind row without pushing it sideways (at 390 it is the tray's whole width)
-      const kind = await tray.getByTestId('good-kind-row').evaluate((el) => ({ spill: el.scrollWidth - el.clientWidth, over: el.getBoundingClientRect().right - el.closest('[data-testid="trade-tray"]')!.getBoundingClientRect().right }))
-      expect(kind.spill, 'the Kind row scrolls sideways').toBeLessThanOrEqual(1)
-      expect(kind.over, 'the Kind row runs past the tray').toBeLessThanOrEqual(1)
-    }
-
-    // 1b. THE TRADE FACE — the one a player lands on: a Buy press opens TradePanel, whose header says it too
-    await page.goto('command')
+    // 1. THE TRADE LIST — HQ's Market plate (H3, 2026-11-24: the Office's ledger of TradeRows and the Trade desk are gone; the
+    // cards themselves are measured in step 5): a Buy press opens TradePanel, whose header says the class
+    await page.goto('city')
     await ready(page)
+    await openMarket(page)
     // the desk is Trade alone: press the first Buy that is alive
-    const buy = page.locator('[data-testid="trade-buy"]:not([disabled])').first()
-    await expect(buy, 'the Trade face has no good to buy').toBeVisible({ timeout: 60_000 })
+    const buy = page.locator('[data-testid="city-market-buy"] [data-testid="trade-buy"]:not([disabled])').first()
+    await expect(buy, 'the Market has no good to buy').toBeVisible({ timeout: 60_000 })
     await buy.click()
     const detail = page.getByTestId('good-detail')
     await expect(detail).toBeVisible()
@@ -444,12 +413,9 @@ for (const vp of [
     await expect(detail).toHaveCount(0)
 
     // 2. THE REQUEST BOARD — the same face, turned (world.contracts)
-    await page.goto('command')
-    await ready(page)
-    await openCityFace(page)
-    await page.getByRole('tablist', { name: 'Trade faces' }).getByRole('tab', { name: /^Requests$/ }).click()
+    await page.getByRole('tablist', { name: 'Market', exact: true }).getByRole('tab', { name: /^Requests$/ }).click()
     await expect(page.getByTestId('request-row').first()).toBeVisible({ timeout: 30_000 })
-    expectList(`${vp.name} · desk Requests`, await page.evaluate(inspectRows, '[data-testid="request-row"]'), colours)
+    expectList(`${vp.name} · Market Requests`, await page.evaluate(inspectRows, '[data-testid="request-row"]'), colours)
 
     // 3. THE CODEX'S GOODS (SnapshotGood): every good of the world, every class — the face stands on the glass (the
     // Codex unfold, #448): its 629 rows are one list panel, nothing to open

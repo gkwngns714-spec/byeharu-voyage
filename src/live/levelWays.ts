@@ -2,7 +2,10 @@ import type { IconName } from '../components/ui'
 import type { LevelSkill } from '../lib/rpc'
 import { translate, type Locale } from '../lib/i18n'
 import { navWord } from '../app/navTabs'
-import { openOfficeCity, OFFICE_TAB } from '../features/command/officeView'
+import { hqHref, openHq } from '../app/hqPlace'
+import { useCommandDraft } from '../domain/order'
+import { fleetPortCode } from '../domain/fleet'
+import { useWorld } from './worldStore'
 import { PRODUCTION_PLACE, yardHref } from './cityFaces'
 import type { GatedPlace } from './levelGate'
 
@@ -22,7 +25,7 @@ export interface LevelWay {
   icon: IconName
   /** The place's own word (the tab's, or the building's). */
   word: (locale: Locale) => string
-  /** Turns the Office to the right building first (a City-face building). */
+  /** Opens the building's sheet over HQ (a building with no plate of its own). */
   prepare?: () => void
   /** A place the level gate may hold. */
   gated?: GatedPlace
@@ -30,16 +33,29 @@ export interface LevelWay {
 
 type Way = Omit<LevelWay, 'activity'>
 
-const TRADE: Way = { to: '/command', icon: 'scales', word: (l) => navWord(l, 'Trade') }
+/** The city of the fleet in hand (else one in port, else her first): where a building's sheet opens from another screen. */
+function cityInHand(): string | null {
+  const fleets = useWorld.getState().fleets
+  const hand = useCommandDraft.getState().fleetId
+  const f = fleets.find((x) => x.id === hand) ?? fleets.find((x) => x.status === 'DOCKED') ?? fleets[0]
+  return f ? fleetPortCode(f) : null
+}
+
+// H3 (2026-11-24): trading is done on HQ (its Market plate, the trade sheet); the Trade desk and the Office are gone.
+const TRADE: Way = { to: hqHref(), icon: 'scales', word: (l) => navWord(l, 'HQ') }
 const SAIL: Way = { to: '/map', icon: 'chart', word: (l) => navWord(l, 'Map') }
 const LAND: Way = { to: '/land', icon: 'mountain', word: (l) => navWord(l, 'Land') }
 const YARD: Way = { to: yardHref(null), icon: 'mallet', word: (l) => translate(l, 'town.f_building_yard') }
-const INVEST: Way = { to: '/office?face=invest', icon: 'invest', word: (l) => translate(l, 'command.f_invest'), gated: 'invest' }
+const INVEST: Way = { to: hqHref({ ask: { sheet: 'invest' } }), icon: 'invest', word: (l) => translate(l, 'command.f_invest'), gated: 'invest' }
 const CRAFT: Way = {
-  to: OFFICE_TAB,
+  to: hqHref(),
   icon: 'crate',
   word: (l) => translate(l, 'town.f_workstation'),
-  prepare: () => void openOfficeCity('workstation'),
+  // the workshop's sheet stands over HQ when it opens (HqSheet.tsx)
+  prepare: () => {
+    const port = cityInHand()
+    if (port) openHq({ sheet: 'workstation', port })
+  },
   gated: 'workstation',
 }
 const PRODUCE: Way = { to: `/city?place=${PRODUCTION_PLACE}`, icon: 'hold', word: (l) => translate(l, 'city.production') }
@@ -73,7 +89,7 @@ export function fastestWay(skill: Pick<LevelSkill, 'activities' | 'counted'>, sh
   return null
 }
 
-/** THE ACADEMY (X6): where the captain studies are trained. The Office's City face at its Academy. */
+/** THE ACADEMY (X6): where the captain studies are trained. Its sheet over HQ (HqSheet.tsx `academy`). */
 export function openAcademy(): string {
-  return openOfficeCity('academy')
+  return hqHref({ ask: { sheet: 'academy' } })
 }

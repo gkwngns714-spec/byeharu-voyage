@@ -3,6 +3,7 @@ import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
 import { KO_PORTS } from '../src/lib/i18n/names/ports'
 import { ready } from './appReady.fixture'
+import { openMarket } from './desk.fixture'
 import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -25,8 +26,7 @@ import { LOCALES } from './korean.paused'
 //   (3) IN A ROW OF GOODS CARDS every card is one height, the prices and the Buy buttons stand level (also at 1,920), and no
 //       part of a card stands past its own edge.
 //   (4) NOTHING SCROLLS SIDEWAYS: not the page, not the picker.
-//   (5) ON THE WIDE DESK the left pane carries the picker and the doors (cargo, map, the route's line, orders), and the centre pane
-//       the goods.
+//   (5) (went with the Trade desk's three panes: H3 `desk-into-hq`, 2026-11-24. The picker and the cards are HQ's Market plate.)
 //   (6) NO BEST SALE'S CITY IS CUT IN A GOODS CARD (the owner's rule: a name is never cut with "…"; it was "Hag…" at 1,280 and
 //       one letter at 1,920). Measured on the cards' own best-sale lines, as they stand and with every seeded port name put in
 //       them, at 390, 1,280 and 1,920: each word on one line, the name inside its card, no ellipsis, no clip, and (3) still
@@ -41,8 +41,9 @@ const shown = (name: string, ko: boolean) => (ko ? (KO_PORTS[name] ?? name) : na
 
 async function openTrade(page: Page) {
   test.setTimeout(480_000)
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
+  await openMarket(page)
   await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
   await expect(page.getByTestId('city-chip').first()).toBeVisible()
   // the fonts decide every width measured below
@@ -231,14 +232,6 @@ for (const locale of LOCALES) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${where}: the page scrolls sideways`).toBe(true)
 
         if (glass.width >= 1024) {
-          // (5) the wide desk: where and what she has on the left, the goods in the centre
-          const left = page.getByTestId('desk-pane-list')
-          await expect(left.getByTestId('city-chips')).toBeVisible()
-          for (const door of ['cargo-open', 'trade-map-open', 'command-queue']) await expect(left.getByTestId(door), `${door} is not in the left pane`).toBeVisible()
-          const centre = page.getByTestId('desk-pane-chart')
-          await expect(centre.getByTestId('trade-good').first()).toBeVisible()
-          await expect(centre.getByTestId('city-chip')).toHaveCount(0)
-
           // (3) at 1,920 too, where six cards stand in a row
           await page.setViewportSize({ width: 1920, height: 1080 })
           await page.waitForTimeout(600)

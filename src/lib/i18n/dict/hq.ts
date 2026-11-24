@@ -72,6 +72,8 @@ export const hqDict = defineDict({
     racePlace: '{n} of {of}',
     // S1 (2026-11-24): the sheets over HQ (app/HqSheet.tsx)
     noFleet: 'No fleet',
+    // H3 (2026-11-24): the workshop's sheet, and the doors of the faces that came from the Office
+    noWorkshop: 'No workshop',
     cargo: 'Cargo',
     orders: 'Orders',
     raceCities: '{n} cities',

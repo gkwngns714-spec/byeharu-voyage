@@ -6,7 +6,6 @@ import { buildChartModel } from '../src/chart/chartModel'
 import { hitTest } from '../src/chart/hitTest'
 import type { MapPort } from '../src/chart/mapTypes'
 import { PHONE, reachable, ready } from './appReady.fixture'
-import { openCityFace } from './desk.fixture'
 import { openCityPanel } from './openCity.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -251,18 +250,18 @@ for (const [glass, size] of [['1440', WIDE], ['390', PHONE]] as const) {
   })
 }
 
-// 2026-10-18 (docs/COMMAND_DESK.md D8): PORT's title is the desk City's heading now. A merchant's sheet flag is
-// checked where her sheet opens from — the map's city list (map.merchants.spec, the Porto test).
-test('the desk City\'s title flies its city\'s flag', async ({ page, request, baseURL }) => {
+// 2026-10-18 (docs/COMMAND_DESK.md D8): PORT's title became the desk City's heading; since H3 (2026-11-24) the city is HQ, and
+// its header carries the title. A merchant's sheet flag is checked where her sheet opens from — the map's city list
+// (map.merchants.spec, the Porto test).
+test('HQ\'s title flies its city\'s flag', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   mkdirSync(SHOTS, { recursive: true })
   for (const [glass, size] of [['1440', WIDE], ['390', PHONE]] as const) {
     await page.setViewportSize(size)
-    await page.goto('command')
+    await page.goto('city')
     await ready(page)
-    await openCityFace(page)
-    await expectFlags(page.getByTestId('desk-city').locator('h2').first())
+    await expectFlags(page.getByTestId('city-header'))
     await page.screenshot({ path: path.join(SHOTS, `city-${glass}.png`) })
   }
 })

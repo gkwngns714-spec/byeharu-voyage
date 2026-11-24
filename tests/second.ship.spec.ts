@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 import { koreanDescribe } from './korean.paused'
+import { closeTop, openFleetSheet, openPlate } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // S2 + S3 — A SECOND SHIP WITHIN REACH (docs/SECOND_SHIP.md; migration 0363; owner rows 180, 305, 316)
@@ -71,9 +72,9 @@ async function wholeWords(root: Locator, what: string) {
   expect(bad, `${what}: a word is broken or a name is cut`).toEqual([])
 }
 
-/** The goal card on Trade: its second line is the second ship, on one line, at the card's one height. */
+/** The goal card on HQ (H3, 2026-11-24: it stood on Trade): its second line is the second ship, on one line, at the card's one height. */
 async function goalCard(page: Page, words: RegExp) {
-  await page.goto('command')
+  await page.goto('city')
   await ready(page)
   const card = page.getByTestId('goal-card')
   await expect(card).toBeVisible({ timeout: 120_000 })
@@ -92,14 +93,17 @@ async function goalCard(page: Page, words: RegExp) {
   const inside = await line.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)
   expect(inside, 'the second ship runs out of the card').toBe(true)
   await wholeWords(card, 'the goal card')
-  await noSideways(page, 'Trade')
+  await noSideways(page, 'HQ')
   return card
 }
 
 async function barcaSheet(page: Page, buildTab: string): Promise<Locator> {
-  await page.goto('port')
+  // the yard is HQ's Port plate > Build (H3, 2026-11-24: it was a tab of the Office's City face)
+  await page.goto('city')
   await ready(page)
-  await page.getByRole('tablist').getByRole('tab', { name: buildTab, exact: true }).click()
+  await openPlate(page, 'port')
+  await expect(page.getByTestId('city-port-yard')).toContainText(buildTab)
+  await page.getByTestId('city-port-yard').click()
   await expect(page.getByTestId('port-yard')).toBeVisible({ timeout: 60_000 })
   await page.getByTestId('yard-now').getByTestId('hull-barca').click()
   const tray = page.getByTestId('yard-tray')
@@ -200,14 +204,18 @@ test.describe('the played flow at 1280×800', () => {
     await expect(tray.getByTestId('yard-fleet-full')).toHaveText('Fleet full')
     await next.click()
     presses++
-    await expect(page).toHaveURL(/\/office$/)
+    await expect(page).toHaveURL(/\/city(\?|$)/)
+    await expect(page.getByTestId('hq-sheet-inn')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByTestId('port-inn')).toBeVisible({ timeout: 60_000 })
     expect(presses, 'the flow is three presses and a name').toBe(3)
 
-    // with two ships the card's second line is the two tracks again. The goal card is the Trade tab's (2026-11-16, #755: the
-    // hire lands on the Office's Inn, which carries no goal card): the player's press on Trade's own cell
-    await page.locator('a[href$="/command"]:visible').first().click()
-    await expect(page).toHaveURL(/\/command$/)
+    // with two ships the card's second line is the two tracks again. The goal card is HQ's (H3, 2026-11-24): the hire's sheet
+    // stands over HQ, so the player's backs return to it
+    for (let i = 0; i < 4 && (await page.locator('[data-detail-page]').count()) > 0; i++) {
+      await closeTop(page)
+      await page.waitForTimeout(300)
+    }
+    await expect(page.locator('[data-detail-page]')).toHaveCount(0)
     const card = page.getByTestId('goal-card')
     await expect(card.getByTestId('goal-tracks')).toBeVisible({ timeout: 60_000 })
     await expect(card.getByTestId('goal-second-ship')).toHaveCount(0)
@@ -218,6 +226,8 @@ test.describe('the played flow at 1280×800', () => {
     await page.screenshot({ path: info.outputPath('3-two-ships.png') })
 
     // the red crew line says what to do (2026-11-23, finding 26): the hands she lacks, and one press that hires them
+    // (it stands with her ship, in her sheet)
+    await openFleetSheet(page)
     const hint = page.getByTestId('crew-hint').first()
     await expect(hint).toBeVisible({ timeout: 60_000 })
     await expect(hint.getByTestId('crew-hint-hire')).toHaveText('Hire crew · 8')

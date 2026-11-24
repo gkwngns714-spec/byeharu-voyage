@@ -113,7 +113,8 @@ async function openApp(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('command')
+  // a screen inside the shell (H3, 2026-11-24: `command` was the home; HQ, the home now, draws the same bar as its own rail)
+  await page.goto('fleets')
   await ready(page)
 }
 
@@ -164,8 +165,11 @@ test(`nav: one row, every cell reachable, no label shaved at ${PHONE.width}px`, 
   //     And 2026-11-23 (the visual overhaul's slice 2, roadmap X2): the Office cell is switched off in the tab table and its faces are
   //     HQ's doors. FIVE while Land is dark (this world) — HQ · Trade · Fleets · Map · Menu; lit, Land stands before the Menu.
   expect(report.cells.map((c) => c.label), "an Office cell is back on the bar; its faces are HQ's doors (X2)").not.toContain('Office')
-  expect(report.cells.map((c) => c.label)).toEqual(['HQ', 'Trade', 'Fleets', 'Map', 'Menu'])
-  expect(report.cells.length, `the bar draws ${report.cells.length} cells; five — HQ · Trade · Fleets · Map · Menu (slice 2, 2026-11-23)`).toBe(5)
+  //     And 2026-11-24 (H3 `desk-into-hq`): the Trade desk is gone, its faces HQ's plates and sheets. FOUR while Land is dark —
+  //     HQ · Fleets · Map · Menu.
+  expect(report.cells.map((c) => c.label), "a Trade cell is back on the bar; the desk's faces are HQ's (H3)").not.toContain('Trade')
+  expect(report.cells.map((c) => c.label)).toEqual(['HQ', 'Fleets', 'Map', 'Menu'])
+  expect(report.cells.length, `the bar draws ${report.cells.length} cells; four — HQ · Fleets · Map · Menu (H3, 2026-11-24)`).toBe(4)
 
   // 1. ONE ROW. The decision this file pins: at nine tabs the bar wrapped to 3×3 and ate 168px of
   //    an 844px screen. The cure was grouping, not a second row, so a second row is a failure.
@@ -356,7 +360,7 @@ test('nav: the Menu tray stands as tall as its rows — every member whole and r
   expect(broken, `the Menu tray is shorter than its rows:\n${broken.join('\n')}`).toEqual([])
 })
 
-test('nav: HQ leads, Trade follows; the City rail is the shell rail (HQ · Trade · Fleets · Map · Menu); Market opens in place', async ({
+test('nav: HQ leads; the City rail is the shell rail (HQ · Fleets · Map · Menu); Market opens in place', async ({
   page,
   request,
   baseURL,
@@ -368,7 +372,7 @@ test('nav: HQ leads, Trade follows; the City rail is the shell rail (HQ · Trade
   const bar = page.getByTestId('nav-bar')
   await expect(bar.getByTestId('nav-cell-/city')).toBeVisible()
   await expect(bar.getByTestId('nav-label-/city')).toHaveText('HQ')
-  await expect(bar.getByTestId('nav-label-/command')).toHaveText('Trade')
+  await expect(bar.getByTestId('nav-cell-/command'), 'the Trade cell is back on the bar (H3)').toHaveCount(0)
 
   // FLEETS → HQ: one press lands on the City page.
   await bar.getByTestId('nav-cell-/fleets').click()
@@ -395,7 +399,7 @@ test('nav: HQ leads, Trade follows; the City rail is the shell rail (HQ · Trade
         return { label: (e.textContent ?? '').trim(), w: Math.round(r.width), h: Math.round(r.height) }
       }),
     )
-  expect(railCells.length, `the City rail draws ${railCells.length} cells; HQ · Trade · Fleets · Map · Menu`).toBe(5)
+  expect(railCells.length, `the City rail draws ${railCells.length} cells; HQ · Fleets · Map · Menu`).toBe(4)
   for (const c of railCells) {
     expect(
       c.w,
@@ -414,9 +418,8 @@ test('nav: HQ leads, Trade follows; the City rail is the shell rail (HQ · Trade
   await page.getByTestId('city-building-market').click()
   await expect(page.getByTestId('city-face-panel')).toBeVisible()
   await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
-  // #429/#430: the Market building composes the market face (Basket · Buy · Sell · Requests); its
-  // own Buy door renders once the quay read has landed. PortTrade (`quay-stores`) now lives inside
-  // the pressed board page, not on the face.
+  // #429/#430: the Market building composes the market face (Buy · Sell · Requests); its
+  // own Buy door renders once the quay read has landed.
   await expect(page.getByTestId('city-market-buy'), 'the market face did not stand').toBeVisible({
     timeout: 60_000,
   })

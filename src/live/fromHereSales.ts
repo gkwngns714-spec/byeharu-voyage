@@ -1,4 +1,4 @@
-import type { BestSale } from '../../../lib/rpc'
+import type { BestSale } from '../lib/rpc'
 
 // "FROM HERE" (roadmap 2026-11-23, slice 4; X3 folds the Routes tab into it): the best sale per harbour from where her fleet lies,
 // read off the board's own cards (world.best_sales, the one read Trade.tsx already asks). No figure is made here: each harbour

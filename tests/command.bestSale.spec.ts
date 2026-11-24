@@ -1,5 +1,6 @@
 import { test, expect, type Locator } from '@playwright/test'
 import { ready } from './appReady.fixture'
+import { openMarket } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // EVERY CARD NAMES ITS BEST SALE (0348, owner row 307 — the remaster: "make it playable, make it fun").
@@ -35,14 +36,15 @@ for (const size of SIZES) {
 
     test('a card names its best sale, opens that trip at the same figure, and a loss is marked before buying', async ({ page }) => {
       test.setTimeout(600_000)
-      await page.goto('command')
+      // H3 (2026-11-24): the goods list is HQ's Market plate (it was the Trade desk's board)
+      await page.goto('city')
       await ready(page)
-      const face = page.getByTestId('desk-trade')
-      const board = face.getByTestId('trade-board')
-      await expect(board).toBeVisible()
-      const home = await board.getAttribute('data-city')
-      expect(home, 'the board opens on the city she lies at').toBeTruthy()
-      await expect(board).toHaveAttribute('data-docked', 'true')
+      const read = await openMarket(page)
+      const board = page.getByTestId('city-market-buy')
+      await expect(board).toBeVisible({ timeout: 120_000 })
+      const home = await read.getAttribute('data-city')
+      expect(home, 'the list opens on the city she lies at').toBeTruthy()
+      await expect(read).toHaveAttribute('data-here', 'true')
       const cards = board.getByTestId('trade-good')
       await expect(cards.first()).toBeVisible({ timeout: 120_000 })
 
@@ -55,7 +57,7 @@ for (const size of SIZES) {
       const named = board.locator('[data-testid="best-sale"][data-state="sale"][data-pays="true"]')
       await expect(named.first()).toBeVisible({ timeout: 180_000 })
       expect((await first.boundingBox())!.height, 'the card grew when its best sale landed').toBe(before)
-      await expect(board).toHaveAttribute('data-city', home!)
+      await expect(read).toHaveAttribute('data-city', home!)
       // 0351: a card whose near sale is not its dearest (a new company's purse at Lisbon: the hop that pays, and the far city)
       const line = board.locator('[data-testid="best-sale"][data-state="sale"][data-pays="true"][data-far]').first()
       await expect(line).toBeVisible()
@@ -126,15 +128,18 @@ for (const size of SIZES) {
       await expect(page.getByTestId('good-detail')).toHaveAttribute('data-sell-at', port)
       await expect(page.getByTestId('good-detail').getByTestId('trade-profit')).toContainText(figure, { timeout: 120_000 })
       if (size.width === 390) await page.screenshot({ path: 'test-results/sell-choice-390.png' })
-      // the board did not move to the sell city: the press opened a trip, it did not pick a chip
-      await expect(board).toHaveAttribute('data-city', home!)
+      // the list did not move to the sell city: the press opened a trip, it did not pick a chip
+      await expect(read).toHaveAttribute('data-city', home!)
 
       // A LOSS, MARKED BEFORE BUYING. Fill the hold with the first good but for five units of it: what is left
       // is a few tuns, and a few units cannot carry a long voyage's wages.
       // the trip's tray closed first (on a phone it covers the board)
       await panel.getByTestId('tray-close').click()
       await expect(panel).toHaveCount(0)
-      const filler = cards.first()
+      // (the cheapest good on the list: the Market stands its cards by category, and a dear first card would spend the purse, which
+      // is "No money", not the loss looked for here)
+      const asks = await cards.evaluateAll((els) => els.map((e) => Number((e.querySelector('[data-testid="trade-good-buy"]')?.textContent ?? '').replace(/\D/g, '')) || Infinity))
+      const filler = cards.nth(asks.indexOf(Math.min(...asks)))
       await filler.getByTestId('trade-buy').click()
       const buyPanel = page.getByTestId('good-detail')
       await expect(buyPanel).toHaveAttribute('data-good', (await filler.getAttribute('data-good'))!)
@@ -151,6 +156,9 @@ for (const size of SIZES) {
       await expect(act).toBeEnabled({ timeout: 60_000 })
       await act.click()
       await expect(page.getByTestId('trade-toast')).toContainText(/^Bought /, { timeout: 60_000 })
+      // the sheet stays for the next lot where she lies: closed, so the chips under it can be pressed
+      await buyPanel.getByTestId('tray-close').click()
+      await expect(buyPanel).toHaveCount(0)
 
       // the board re-asks for her new hold (a trade is a new question). Where a few units still pay at her own city,
       // a farther city in hand adds the sail there to the wages: the chips are pressed farthest first until one shows it.
@@ -158,13 +166,14 @@ for (const size of SIZES) {
       const loss = board.locator('[data-testid="best-sale"][data-pays="false"]:not([data-short])')
       const landed = board.locator('[data-testid="best-sale"]:not([data-state="wait"])')
       await expect(landed.first()).toBeVisible({ timeout: 180_000 })
+      // (the read for her NEW hold is given a moment at her own city first: the lines of the read before the buy still stand until it lands)
+      await expect(loss.first()).toBeVisible({ timeout: 20_000 }).catch(() => undefined)
       // the strip re-orders as a city is pressed (the city in hand leads), so its codes are read once, nearest first
-      // (the strip stands in the board on a phone and in the desk's left pane on a wide glass: it is read off the face)
-      const codes = await face.getByTestId('city-chip').evaluateAll((els) => els.map((e) => e.getAttribute('data-port') ?? ''))
+      const codes = await page.getByTestId('city-chip').evaluateAll((els) => els.map((e) => e.getAttribute('data-port') ?? ''))
       for (const code of codes.filter((c) => c !== home).reverse()) {
         if ((await loss.count()) > 0) break
-        await face.locator(`[data-testid="city-chip"][data-port="${code}"]`).click()
-        await expect(board).toHaveAttribute('data-city', code)
+        await page.locator(`[data-testid="city-chip"][data-port="${code}"]`).click()
+        await expect(read).toHaveAttribute('data-city', code)
         await expect(landed.first()).toBeVisible({ timeout: 180_000 })
       }
       await expect(loss.first()).toBeVisible()

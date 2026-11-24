@@ -23,8 +23,7 @@ import {
   trayDockPageClass,
 } from '../src/components/ui/screenLayout'
 import { reachable, ready } from './appReady.fixture'
-import { openCityFace } from './desk.fixture'
-import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
+import { openFleetSheet } from './desk.fixture'
 
 /** A readable row, in rem: the gulf between a name and its price stays shut. A law of the desk's panes, not a layout constant. */
 const ROW_MAX_REM = 48
@@ -68,237 +67,8 @@ test('the literal page classes encode the named page constants — the split and
 test.describe('wide glass', () => {
   test.use({ viewport: WIDE })
 
-  test(`PORT › Trade at ${WIDE.width}px: a readable column, and the tray beside it`, async ({
-    page,
-    request,
-    baseURL,
-  }) => {
-    test.setTimeout(420_000)
-    test.skip(
-      !(await reachable(request, baseURL ?? '')),
-      `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
-    )
-    await page.goto('command')
-    await ready(page)
-    await openCityFace(page)
-    // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
-    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Market/i }).first().click()
-    await page.waitForTimeout(400)
-
-    const rows = page.locator('[data-testid="trade-row"]')
-    expect(await rows.count(), 'no trade rows — is a fleet docked with a market here?').toBeGreaterThan(1)
-
-    const remPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
-    const rowBox = (await rows.first().boundingBox())!
-    // 1. THE COLUMN. A row is no wider than ROW_MAX_REM: the gulf between name and price is gone.
-    expect(rowBox.width, `a trade row is ${rowBox.width}px wide — the column cap is not applied`).toBeLessThanOrEqual(
-      ROW_MAX_REM * remPx + 1,
-    )
-
-    // S1 (2026-11-24, src/app/HqSheet.tsx): a price pressed opens THE trade sheet on that good over the Office, in the desk's own right
-    // pane, and the URL does not move; the quay's tray laws below return with the switch off
-    if (TRADE_ON_DESK) {
-      await page.evaluate(() => {
-        const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) => /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()))
-        ;(cell as HTMLButtonElement | undefined)?.click()
-      })
-      await expect(page.getByTestId('desk-pane-ticket').getByTestId('good-detail')).toBeVisible({ timeout: 60_000 })
-      await expect(page).toHaveURL(/\/office$/)
-      return
-    }
-
-    // 2. PRESS A PRICE. Nothing at or above the pressed row moves (row 15), and the tray opens.
-    const before = await page.evaluate(() =>
-      [...document.querySelectorAll('[data-testid="trade-row"]')].map((t) => {
-        const r = t.getBoundingClientRect()
-        return { left: r.left, top: r.top }
-      }),
-    )
-    await page.evaluate(() => {
-      const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) => /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()))
-      ;(cell as HTMLButtonElement | undefined)?.click()
-    })
-    await page.waitForTimeout(900)
-    const after = await page.evaluate(() =>
-      [...document.querySelectorAll('[data-testid="trade-row"]')].map((t) => {
-        const r = t.getBoundingClientRect()
-        return { left: r.left, top: r.top }
-      }),
-    )
-    expect(after).toEqual(before)
-
-    // 3. THE TRAY STANDS IN THE DESK'S RIGHT PANE (2026-10-19, DeskFrame.tsx — the owner: "no pop
-    //    ups"): to the right of the rows, no overlap, the pane's own x and width, and the pane's height
-    //    rather than rising from the bottom edge.
-    const tray = page.locator('[data-testid="trade-tray"]')
-    await expect(tray).toBeVisible()
-    const trayBox = (await tray.boundingBox())!
-    const paneBox = (await page.getByTestId('desk-pane-ticket').boundingBox())!
-    expect(trayBox.x, 'the tray overlaps the rows — it is not beside the column').toBeGreaterThanOrEqual(
-      rowBox.x + rowBox.width,
-    )
-    expect(Math.abs(trayBox.x - paneBox.x), 'the tray is not in the desk’s right pane').toBeLessThanOrEqual(2)
-    expect(Math.abs(trayBox.width - paneBox.width)).toBeLessThanOrEqual(2)
-    expect(trayBox.height, 'the tray is a bottom sheet, not the pane').toBeGreaterThan(WIDE.height * 0.7)
-  })
-
-  // ═════════════════════════════════════════════════════════════════════════════════════════════
-  // THE BASKET IS THE SLOT'S FIXTURE (owner rows 76 and 80, slice 2). The reference has the goods
-  // on the left and the basket on the right; here the right-hand slot shows the basket BEFORE any
-  // press, a price press puts the trade tray in the SAME slot (same x, same width), `Add to basket`
-  // hands the slot back to the basket with the line on it and the served total on its button, and
-  // through all of it the goods column does not move.
-  // ═════════════════════════════════════════════════════════════════════════════════════════════
-  if (!TRADE_ON_DESK) test(`PORT › Trade at ${WIDE.width}px: the basket stands in the slot, a pick replaces it, a stage returns it`, async ({
-    page,
-    request,
-    baseURL,
-  }) => {
-    test.setTimeout(420_000)
-    // X1 (src/live/tradeOnDesk.ts): the basket is the Trade desk's now; this law returns with the switch off
-    test.skip(
-      !(await reachable(request, baseURL ?? '')),
-      `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
-    )
-    await page.goto('command')
-    await ready(page)
-    await openCityFace(page)
-    // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
-    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Market/i }).first().click()
-    await page.waitForTimeout(400)
-
-    const rows = page.locator('[data-testid="trade-row"]')
-    expect(await rows.count(), 'no trade rows — is a fleet docked with a market here?').toBeGreaterThan(1)
-    const offsets = () =>
-      page.evaluate(() =>
-        [...document.querySelectorAll('[data-testid="trade-row"]')].map((t) => {
-          const r = t.getBoundingClientRect()
-          return { left: r.left, top: r.top }
-        }),
-      )
-    const before = await offsets()
-
-    // 1. NO PICK, AND THE BASKET IS THERE — empty, with the cargo bar, in the side slot.
-    const basket = page.locator('[data-testid="basket-panel"]')
-    await expect(basket, 'the basket panel is absent with no pick — the slot must never be empty at lg').toBeVisible()
-    await expect(basket.locator('[data-testid="basket-empty"]')).toBeVisible()
-    await expect(basket.locator('[data-testid="cargo-bar"]')).toContainText(/\d+ \/ \d+ tons?/)
-    const basketBox = (await basket.boundingBox())!
-    // in the desk's right pane (2026-10-19, DeskFrame.tsx): its x and width, its height
-    const paneBox = (await page.getByTestId('desk-pane-ticket').boundingBox())!
-    expect(Math.abs(basketBox.x - paneBox.x), 'the basket is not in the desk’s right pane').toBeLessThanOrEqual(2)
-    expect(Math.abs(basketBox.width - paneBox.width)).toBeLessThanOrEqual(2)
-    expect(basketBox.height, 'the basket is a bottom sheet, not the pane').toBeGreaterThan(WIDE.height * 0.7)
-    // No ✕ on a fixture: there is nothing to close it to.
-    await expect(basket.locator('[data-testid="tray-close"]')).toHaveCount(0)
-    // ROWS 81/82: what the ship carries stands under the basket, as board-shaped rows. The fixture
-    // fleet sails with cargo (0003's flagship); a lot this market lists draws its sale as a bar and
-    // the gap of the two prices, for one unit, beside it — a meter and a signed figure, not a sentence.
-    const onBoard = basket.locator('[data-testid="on-board"]')
-    await expect(onBoard).toBeVisible()
-    const sale = basket.locator('[data-testid^="on-board-sale-"]').first()
-    if ((await sale.count()) > 0) {
-      await expect(sale.locator('[role="meter"]')).toHaveCount(1)
-      await expect(sale, 'the sale line has no per-unit gap figure').toContainText(/[+−][\d,]+\s🪙\s*each/, { timeout: 20_000 })
-    }
-
-    // 2. PRESS A PRICE. The trade tray takes the SAME slot — same x, same width — and the basket
-    //    is not standing beside or under it (one tray at a time, PR #59 MUST-FIX 3).
-    await page.evaluate(() => {
-      const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) =>
-        /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()),
-      )
-      ;(cell as HTMLButtonElement | undefined)?.click()
-    })
-    const tray = page.locator('[data-testid="trade-tray"]')
-    await expect(tray).toBeVisible()
-    await expect(basket).toHaveCount(0)
-    const trayBox = (await tray.boundingBox())!
-    expect(Math.abs(trayBox.x - basketBox.x), 'the trade tray does not stand where the basket stood').toBeLessThanOrEqual(1)
-    expect(Math.abs(trayBox.width - basketBox.width)).toBeLessThanOrEqual(1)
-    expect(await offsets()).toEqual(before)
-
-    // 3. ADD TO BASKET. The slot hands back to the basket with the line on it, priced: the one
-    //    button carries the served total, and the wash is on the cargo bar.
-    const stage = tray.locator('[data-testid="trade-tray-stage"]')
-    await expect(stage).toBeEnabled({ timeout: 20_000 })
-    await stage.click()
-    await expect(tray).toHaveCount(0)
-    await expect(basket).toBeVisible()
-    const stagedBox = (await basket.boundingBox())!
-    expect(Math.abs(stagedBox.x - basketBox.x)).toBeLessThanOrEqual(1)
-    await expect(basket.locator('[data-testid="basket-line"]')).toHaveCount(1)
-    const send = basket.locator('[data-testid="basket-send"]')
-    await expect(send, 'the basket was never priced — cmd.preview_basket did not answer').toBeEnabled({ timeout: 20_000 })
-    await expect(send).toHaveText(/^Buy 1 line · [\d,]+\s🪙$/)
-    expect(await basket.locator('[data-testid="basket-total"]').count()).toBeGreaterThanOrEqual(3)
-    await expect(basket.locator('[data-testid="cargo-bar"] [data-bar-pending]')).toHaveCount(1)
-    // The goods column has not moved through any of it.
-    expect(await offsets()).toEqual(before)
-  })
-
-  // ═════════════════════════════════════════════════════════════════════════════════════════════
-  // THE REQUEST BOARD ON A WIDE GLASS (owner row 76, slice 4, 2026-09-14; migration 0087). The
-  // third face of the trade board lists rows in the same 48rem column the ledger uses, and the
-  // right-hand slot keeps the basket standing while the board is read — a face turn is a SELECT,
-  // it moves nothing above the board and docks nothing new. (A live fulfil press — the tray in
-  // the same slot — is proven in rpc.surface and 0087; the fixture fleet carries none of what
-  // its port asks for, by the rule.)
-  // ═════════════════════════════════════════════════════════════════════════════════════════════
-  test(`PORT › Requests at ${WIDE.width}px: the board's rows sit in the column, and the basket keeps the slot`, async ({
-    page,
-    request,
-    baseURL,
-  }) => {
-    test.setTimeout(420_000)
-    test.skip(
-      !(await reachable(request, baseURL ?? '')),
-      `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
-    )
-    await page.goto('command')
-    await ready(page)
-    await openCityFace(page)
-    // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
-    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Market/i }).first().click()
-    await page.waitForTimeout(400)
-
-    const remPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
-    const faces = page.getByRole('tablist', { name: 'Trade faces' })
-    await expect(faces).toBeVisible()
-    const facesBox = (await faces.boundingBox())!
-    // X1: no basket stands in the slot (the Trade desk keeps the trade); the slot is the desk's right pane all the same
-    const basket = page.locator(TRADE_ON_DESK ? '[data-testid="desk-pane-ticket"]' : '[data-testid="basket-panel"]')
-    await expect(basket).toBeVisible()
-    const basketBox = (await basket.boundingBox())!
-
-    await faces.getByRole('tab', { name: /^Requests$/ }).click()
-    const rows = page.locator('[data-testid="request-row"]')
-    await expect(rows.first(), 'no request rows on the wide glass').toBeVisible({ timeout: 30_000 })
-    await page.waitForTimeout(600)
-
-    // 1. THE COLUMN: every row no wider than ROW_MAX_REM, and inside the strip's own x range.
-    const boxes = await page.evaluate(() =>
-      [...document.querySelectorAll('[data-testid="request-row"]')].map((r) => {
-        const b = r.getBoundingClientRect()
-        return { left: Math.round(b.left), width: Math.round(b.width) }
-      }),
-    )
-    for (const b of boxes) {
-      expect(b.width, `a request row is ${b.width}px wide — the column cap is not applied`).toBeLessThanOrEqual(ROW_MAX_REM * remPx + 1)
-      expect(Math.abs(b.left - Math.round(facesBox.x)), 'a request row does not share the column\'s left edge').toBeLessThanOrEqual(1)
-    }
-    // 2. THE STRIP DID NOT MOVE, and the basket still stands in the slot where it stood.
-    expect((await faces.boundingBox())!, 'turning to Requests moved the faces strip').toEqual(facesBox)
-    await expect(basket).toBeVisible()
-    const stillBox = (await basket.boundingBox())!
-    expect(Math.abs(stillBox.x - basketBox.x)).toBeLessThanOrEqual(1)
-    expect(Math.abs(stillBox.width - basketBox.width)).toBeLessThanOrEqual(1)
-    // 3. The board's rows never reach into the slot.
-    for (const b of boxes) {
-      expect(b.left + b.width, 'a request row reaches into the tray\'s slot').toBeLessThanOrEqual(Math.round(basketBox.x))
-    }
-    await expect(page.locator('[data-testid="fulfil-tray"]')).toHaveCount(0)
-  })
+  // (H3 `desk-into-hq`, 2026-11-24: the Trade desk's three panes are gone, and with them the laws of the quay's tray, the basket
+  // and the request board standing in the desk's right pane. The Market plate's own laws are tests/trade.layout.spec.ts.)
 
   // ═════════════════════════════════════════════════════════════════════════════════════════════
   // FLEETS — a fleet's PAGE holds THREE COLUMNS on a wide glass. The shape is row 89's (*"ships
@@ -388,10 +158,10 @@ test.describe('wide glass', () => {
     expect(await rows.first().boundingBox()).toEqual(rowBox)
   })
 
-  // 0092: COMMAND's route row at the desktop's width — inside the 48rem column; since consistency
-  // row 38 the press opens THE ROUTE'S PAGE (the one `DetailPage`, fixed over the desk) instead of
-  // an in-column unfold: the row and the queue row below it keep their boxes, and Back returns.
-  test(`COMMAND › Route at ${WIDE.width}px: the route row sits in the column and opens its page`, async ({
+  // 0092: the route row at the desktop's width (in her sheet over HQ since H3, 2026-11-24) — inside the 48rem column; since
+  // consistency row 38 the press opens THE ROUTE'S PAGE (the one `DetailPage`, fixed over the glass) instead of
+  // an in-column unfold: the row and the row below it keep their boxes, and Back returns.
+  test(`HER SHEET › Route at ${WIDE.width}px: the route row sits in the column and opens its page`, async ({
     page,
     request,
     baseURL,
@@ -401,9 +171,9 @@ test.describe('wide glass', () => {
       !(await reachable(request, baseURL ?? '')),
       `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
     )
-    await page.goto('command')
+    await page.goto('city')
     await ready(page)
-    // the route and the queue are on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Trade since 2026-10-30
+    await openFleetSheet(page)
     const row = page.getByTestId('route-row')
     await expect(row).toContainText(/Not open yet|No route|Route ·/)
     await page.waitForTimeout(400)
@@ -411,14 +181,14 @@ test.describe('wide glass', () => {
     const rowBox = (await row.boundingBox())!
     expect(rowBox.width).toBeLessThanOrEqual(ROW_MAX_REM * remPx + 1)
 
-    const queueBox = (await page.getByTestId('command-queue').boundingBox())!
+    const queueBox = (await page.getByTestId('hq-sheet-fleet-map').boundingBox())!
     await row.click()
     const routePage = page.getByTestId('route-page')
     await expect(routePage).toBeVisible()
     await expect(routePage).toHaveAttribute('data-detail-page', '')
     await page.waitForTimeout(400)
     expect(await row.boundingBox(), 'pressing the route row moved it').toEqual(rowBox)
-    expect(await page.getByTestId('command-queue').boundingBox(), 'the route page re-flowed the row below').toEqual(queueBox)
+    expect(await page.getByTestId('hq-sheet-fleet-map').boundingBox(), 'the route page re-flowed the row below').toEqual(queueBox)
     const pageBox = (await routePage.boundingBox())!
     console.log(`COMMAND route page @${WIDE.width}px: row ${JSON.stringify(rowBox)} page ${JSON.stringify(pageBox)}`)
     // 2026-11-11 (S9): from `lg` a detail page stands on the glass beside the rail (screenLayout.ts `glassBesideRailClass`), so it is
@@ -429,6 +199,6 @@ test.describe('wide glass', () => {
     await routePage.locator('[data-detail-back]').click()
     await expect(page.getByTestId('route-page')).toHaveCount(0)
     expect(await row.boundingBox()).toEqual(rowBox)
-    expect(await page.getByTestId('command-queue').boundingBox()).toEqual(queueBox)
+    expect(await page.getByTestId('hq-sheet-fleet-map').boundingBox()).toEqual(queueBox)
   })
 })
