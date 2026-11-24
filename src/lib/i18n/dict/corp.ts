@@ -10,6 +10,8 @@ export const corpDict = defineDict({
     assign: 'Assign',
     change: 'Change',
     stop: 'Stop',
+    repair: 'Repair',
+    repairFor: 'Repair {n}',
     ship: 'Ship',
     idle: 'Idle',
     working: 'Working',
