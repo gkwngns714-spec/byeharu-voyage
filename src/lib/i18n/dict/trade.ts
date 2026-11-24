@@ -102,6 +102,9 @@ export const tradeDict = defineDict({
     fvPays: '+{ducats}',
     fvWaiting: 'Pay waits',
     fvPaid: 'Done +{ducats}',
+    // 0490 (owner 2026-11-24, "the price i bought, the price i will get, how much profit"): the sell face's lines, before the press
+    bought: 'Bought',
+    sellsFor: 'Sells for',
   },
   ko: {
     supplies: '보급',
@@ -199,5 +202,7 @@ export const tradeDict = defineDict({
     fvPays: '+{ducats}',
     fvWaiting: '지급 대기',
     fvPaid: '완료 +{ducats}',
+    bought: '산 값',
+    sellsFor: '판매가',
   },
 })
