@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, type ReactNode } from 'react'
 import { Button, Note, Segmented, Skeleton, categoryLabel } from '../../components/ui'
 import { fleetCargoByCode } from '../../domain/fleet'
 import { useCommandDraft } from '../../domain/order'
@@ -108,8 +108,12 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
   }, [matching])
 
   if (!hasBuilding(port, 'market')) return <Note tone="neutral">{t('city.noMarket')}</Note>
+  // BELOW lg HQ IS TALLER THAN THE GLASS, and while this plate's read is on its way the plate is one short block: the page shrank
+  // under its own scroll and the plates' row slid 36 px as Market was pressed (tests/city.page.spec.ts, "pressing market re-flowed
+  // the frame"). The plate holds a glass of height there, as Production does (live/PortProduction.tsx).
+  const held = (body: ReactNode) => <div className="min-h-dvh lg:min-h-0">{body}</div>
   if (quay.market === undefined) {
-    return quay.refusal !== null ? (
+    return held(quay.refusal !== null ? (
       <Note
         tone="danger"
         code={quay.refusal.code}
@@ -124,7 +128,7 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
       </Note>
     ) : (
       <Skeleton className="h-28 w-full" />
-    )
+    ))
   }
 
   const openGood = (code: string, intent: 'buy' | 'sell') => {
@@ -152,7 +156,7 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
     </div>
   )
 
-  return (
+  return held(
     <>
       {chips}
       <Segmented<TradeFace>
@@ -197,6 +201,6 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
           {here && <FromHere sales={sales} open={openSale} onBest={pressBest} />}
         </div>
       )}
-    </>
+    </>,
   )
 }

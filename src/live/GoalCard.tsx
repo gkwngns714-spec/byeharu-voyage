@@ -72,9 +72,14 @@ const LADDER_ICON: Record<LadderStep, IconName> = { ships: 'ship', routes: 'rout
 const LADDER_WORD: Record<LadderStep, TKey> = { ships: 'hq.ladderShips', routes: 'hq.ladderRoutes', captains: 'hq.ladderCaptains' }
 const ROLE_WORD_GOAL = { guard: 'hq.roleGuard', fast: 'hq.roleFast', hold: 'hq.roleHold' } as const
 
-const CARD = 'grid min-h-11 min-w-0 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] content-center items-baseline gap-x-2.5 rounded-control px-3 text-left'
-const PHONE = 'mb-1'
-const WIDE = 'mx-3 mb-2 w-[22rem] min-[90rem]:mx-6'
+// ONE HEIGHT IN EVERY STATE (H3, 2026-11-25): the card stands on HQ now, over the worker list and Best moves. Its tracks line may
+// turn onto a second line where its other lines (the second ship, the ladder) are one, and the card changes from one to the other as
+// its reads answer: 58 px, then 44, and everything under it went up 14 px by itself (tests/pages.standStill.spec.ts, the lit board:
+// one run in seven). The box holds the taller of the two always, the placeholder included.
+const CARD = 'grid min-h-[3.625rem] min-w-0 shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] content-center items-baseline gap-x-2.5 rounded-control px-3 text-left'
+// (the margins were the desk header's; on HQ the company block's own gap spaces it)
+const PHONE = ''
+const WIDE = 'w-[22rem] max-w-full'
 
 export function GoalCard() {
   const t = useT()
