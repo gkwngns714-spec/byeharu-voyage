@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { navWord } from '../../app/navTabs'
+import { useSearchParams } from 'react-router-dom'
 import { Card, Icon, KEEP_WORDS_CLASS, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, Skyline, skylineOf, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { ShellFrame } from '../../app/ShellFrame'
@@ -23,11 +22,13 @@ import { levelName } from '../../live/levelWords'
 import { daylightAt, subsolarPoint } from '../../chart'
 import { serverNow } from '../../lib/serverClock'
 import { useLocale, useT, type TKey } from '../../lib/i18n'
-import { buildingsOf, regardBandWord } from '../../domain/port'
+import { regardBandWord } from '../../domain/port'
 import { CityFacePanel, type CityBuilding } from './CityFace'
 import { CityHallPanel } from './CityHallPanel'
 import { CityScene } from './CityScene'
 import { HqBoard } from './board/HqBoard'
+import { HqSheet } from '../../app/HqSheet'
+import { openHq } from '../../app/hqPlace'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PAGE — a city, full screen (owner's "Game screen development", 2026-10-30)
@@ -117,9 +118,9 @@ const CITY_TILES: readonly { id: CitySelection; icon: IconName; label: TKey }[] 
   { id: 'inn', icon: 'crew', label: 'city.inn' },
 ]
 
-/** THE OFFICE'S FACES AS HQ'S DOORS (slice 2, X2), in the Office's own order; the words are the Office strip's own. */
-const OFFICE_DOORS: readonly { id: 'city' | 'invest' | 'report'; icon: IconName; label: TKey }[] = [
-  { id: 'city', icon: 'office', label: 'command.f_city' },
+/** HQ'S TWO DOORS (slice 2, X2: the Office's faces; 2026-11-24, simplify S1: each opens its sheet over HQ, hqPlace.ts). The Office's
+ *  third face, City, was a second HQ (a second city of nine buildings) with no way back, and its door is gone: HQ is the city. */
+const HQ_DOORS: readonly { id: 'invest' | 'report'; icon: IconName; label: TKey }[] = [
   { id: 'invest', icon: 'invest', label: 'command.f_invest' },
   { id: 'report', icon: 'report', label: 'command.f_report' },
 ]
@@ -237,10 +238,16 @@ export function CityScreen() {
     return gate(
       <>
         <NoCity fleets={fleets} inHand={draftPort ?? null} />
+        <HqSheet />
       </>,
     )
 
-  return gate(<CityBody port={port} draftFleetId={draftFleetId} />)
+  return gate(
+    <>
+      <CityBody port={port} draftFleetId={draftFleetId} />
+      <HqSheet />
+    </>,
+  )
 }
 
 /** THE HQ WITH NO CITY IN HAND (2026-11-02, the HQ-on-a-phone slice; the sweep's row 8). The fleet in hand is bound for a cape or open water, so there is no harbour to
@@ -357,7 +364,6 @@ function CityFrame({
   onSelect: (s: CitySelection) => void
 }) {
   const t = useT()
-  const officeWord = navWord(useLocale(), 'Office')
   const { nowMs } = useShellState()
   const kind = useCityKinds()(port.code)
   // THE LOADING METER, WHILE THE SCREEN IS STILL LOADING: the world steps ride `boot`, the hall
@@ -394,8 +400,7 @@ function CityFrame({
     port: { text: formatInt(docked.length), name: t('city.fleetsHere'), mark: 'anchor' },
     inn: { text: formatInt(crewHere), name: t('city.crewHere'), mark: 'crew' },
   }
-  const doorFigure: Record<(typeof OFFICE_DOORS)[number]['id'], PlateFigure | null> = {
-    city: { text: formatInt(buildingsOf(port).length), name: t('city.buildings') },
+  const doorFigure: Record<(typeof HQ_DOORS)[number]['id'], PlateFigure | null> = {
     invest: { text: hall ? formatInt(hall.you.holdings.reduce((n, h) => n + h.shares, 0)) : '—', name: t('city.yourShares') },
     report: null,
   }
@@ -460,11 +465,11 @@ function CityFrame({
           <HqBoard port={port} />
           {/* THE PLACES AS PLATES (2026-11-23, the visual overhaul's slice 7): each building and each door is a plate — its mark on a gold
               disc, its word, and ONE figure, a fact of that place already on this page (no plate asks a read of its own): the hall the city's
-              gold, the market its tax, production the free hold of your fleets here, the port your fleets here, the inn their crew; the
-              City door this city's buildings, Invest your shares here. Report has no figure here: its one figure, the week's profit, is a
-              read of its own. Each figure's word is its accessible name. From `lg` the five buildings and the three doors stand on ONE row
-              (5 : 3), so the plan still stands whole on the first glass (law h). */}
-          <div className="flex flex-col gap-3 md:gap-4 lg:grid lg:grid-cols-[5fr_3fr] xl:gap-6">
+              gold, the market its tax, production the free hold of your fleets here, the port your fleets here, the inn their crew;
+              Invest your shares here. Report has no figure here: its one figure, the week's profit, is a read of its own. Each figure's word
+              is its accessible name. From `lg` the five buildings and the two doors stand on ONE row (5 : 2), so the plan still stands whole
+              on the first glass (law h). */}
+          <div className="flex flex-col gap-3 md:gap-4 lg:grid lg:grid-cols-[5fr_2fr] xl:gap-6">
             {/* THE FIVE PLACES — a row of cards across the page, always there: a press swaps the plan and the side panel and moves nothing here
                 (owner, 2026-10-31: "in buildings 6 building tappable should always be inside"). */}
             <nav aria-label={t('city.buildings')} data-testid="city-buildings">
@@ -487,22 +492,21 @@ function CityFrame({
               </div>
             </nav>
 
-            {/* THE OFFICE'S THREE FACES ARE HQ'S DOORS (2026-11-23, the visual overhaul's slice 2, roadmap X2): the Office cell left the bar and
-                City, Invest and Report stand here as buildings, each a press to its page (`/office?face=`, OfficeScreen turns to it). They
-                open a page rather than this split: each is the desk's own shell with the fleet in hand, which this frame does not carry.
-                X6 (live/levelGate.ts, the one level gate): a door the gate holds is no door — its plate stands dimmed, its figure the level
-                that opens it (the one unlock line; the Office's City face says the same on its Town rows). */}
-            <nav aria-label={officeWord} data-testid="city-office">
-              <div className="grid grid-cols-3 gap-3 md:gap-4 xl:gap-6">
-                {OFFICE_DOORS.map((d) =>
+            {/* INVEST AND REPORT ARE HQ'S DOORS (2026-11-23, the visual overhaul's slice 2, roadmap X2; 2026-11-24, simplify S1): each opens
+                its sheet OVER HQ (hqPlace.ts, HqSheet.tsx) — never a page on another tab — and its back, Escape and the browser's back
+                return to HQ as it was. X6 (live/levelGate.ts, the one level gate): a door the gate holds is no door — its plate stands
+                dimmed, its figure the level that opens it (the one unlock line). */}
+            <nav aria-label={t('city.books')} data-testid="city-office">
+              <div className="grid grid-cols-2 gap-3 md:gap-4 xl:gap-6">
+                {HQ_DOORS.map((d) =>
                   gate.shut(d.id) ? (
                     <div key={d.id} data-testid={`city-office-${d.id}-held`} className={plateClass('held')}>
                       <Plate icon={d.icon} word={t(d.label)} figure={{ text: `${levelName(locale, FROM.track)} ${FROM.level}`, name: t('city.opensAt'), mark: 'levelUp' }} />
                     </div>
                   ) : (
-                    <Link key={d.id} to={`/office?face=${d.id}`} data-testid={`city-office-${d.id}`} className={plateClass('off')}>
+                    <button key={d.id} type="button" onClick={() => openHq({ sheet: d.id })} data-testid={`city-office-${d.id}`} className={plateClass('off')}>
                       <Plate icon={d.icon} word={t(d.label)} figure={doorFigure[d.id]} />
-                    </Link>
+                    </button>
                   ),
                 )}
               </div>

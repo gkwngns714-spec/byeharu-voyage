@@ -1,37 +1,18 @@
-import { useMemo, useState } from 'react'
-import {
-  Button,
-  Figure,
-  Note,
-  Row,
-  Segmented,
-  Skeleton,
-  SummaryRow,
-  TradeTray,
-  type TradePick,
-  categoryLabel,
-} from '../../components/ui'
+import { useMemo } from 'react'
+import { Button, Note, Segmented, Skeleton, categoryLabel } from '../../components/ui'
 import { fleetCargoByCode } from '../../domain/fleet'
 import { hasBuilding } from '../../domain/port'
-import { formatDucats, formatInt } from '../../lib/format'
 import { type FleetView, type SnapshotPort } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
-import { linesFor, useManifest } from '../../store/manifest'
-import { CityGoodTrades } from '../../live/CityGoodTrades'
-import { HaggleThread } from '../../live/HaggleThread'
 import { useMarketPick } from '../../live/marketPick'
 import { useMarketRequests } from '../../live/useMarketRequests'
-import { useTrade } from '../../live/useTrade'
-import { usePriceSeries } from '../../live/usePriceSeries'
-import { useTrendNews } from '../../live/useChartNews'
 import { usePortMarket } from '../../live/usePortMarket'
-import { useManifestPreview } from '../../live/useManifestPreview'
 import { TRADE_FACES, useTradeFace, type TradeFace } from '../../live/tradeFace'
 import { useWorld } from '../../live/worldStore'
 import { RequestsFace } from './RequestPage'
 import { TradeCard } from '../../live/TradeCard'
-import { TRADE_ON_DESK, useOpenOnDesk } from '../../live/tradeOnDesk'
 import { tradeRows, type TradeGoodRow } from '../../domain/market'
+import { openHq } from '../../app/hqPlace'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MARKET FACE — the chart on the left region, BUY · SELL · REQUEST in the right panel
@@ -45,14 +26,12 @@ import { tradeRows, type TradeGoodRow } from '../../domain/market'
 // merchants will come and sell it to you if the price is reasonable" — and "but this feature,
 // request, should only be done in your home country- home city. get it?"
 //
-// SO: no pop-up page for Buy or Sell. The doors are a `Segmented`; beneath the pressed door the
-// goods are listed, grouped by the SERVED category, each good THE one goods card the Trade screen draws
-// (`TradeCard`, from tradeRows — the Trade board's one order and membership rule, never re-spelt here;
+// SO: the doors are a `Segmented`; beneath the pressed door the goods are listed, grouped by the SERVED category, each good THE one
+// goods card the Trade screen draws (`TradeCard`, from tradeRows — the Trade board's one order and membership rule, never re-spelt here;
 // S5, 2026-11-11: the HQ's own `TradeRow` ledger was a second card for the same good). A press on a good pins it for the chart
-// (marketPick.ts) AND opens the trade tray as a PANE inside this panel (mode="pane" — the same
-// TradeTray/useTrade every quay composes, never a screen-covering sheet: the owner's Basket
-// objection, kept). With no fleet of yours here the press only pins the good — the board is read-
-// only, as it was.
+// (marketPick.ts) AND opens THE trade sheet over HQ (2026-11-24, simplify S1: hqPlace.ts `openHq`, HqSheet.tsx) on this city, this
+// good and that side, for the fleet docked here — in place, never on another tab (the owner: *"i can make trade in HQ, or trade in
+// trade tab. it routes to trade tab"*). With no fleet of yours here the press only pins the good — the board is read-only, as it was.
 //
 // REQUEST is drawn ONLY when the server says this port is the house's home city
 // (world.requests().home). That flag is the SAME public.home_port_of() the verb enforces, so hiding
@@ -60,14 +39,6 @@ import { tradeRows, type TradeGoodRow } from '../../domain/market'
 // (good, quantity, price, the money set aside) with the cancel that refunds the unfilled part; the
 // New request row opens the page the owner described: search → press a good → its chart → price and
 // quantity → the payment → Place.
-//
-// The BASKET stays (a summary in this panel, never an overlay): the staged lines and the served
-// basket total, with one row to the board.
-//
-// X1 (2026-11-23, live/tradeOnDesk.ts): while TRADE_ON_DESK stands, the basket row is not drawn and a Buy or Sell pressed on a card
-// opens the Trade desk on this city, this good and that side; the reading (the cards, the chart, Requests) stays here.
-
-type Slot = { kind: 'none' } | { kind: 'basket' } | { kind: 'pick'; pick: TradePick }
 
 export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) {
   const t = useT()
@@ -76,15 +47,11 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
   const face = useTradeFace((s) => s.face)
   const turnTo = useTradeFace((s) => s.turnTo)
   const pin = useMarketPick((s) => s.pick)
-  const openOnDesk = useOpenOnDesk()
-  const [slot, setSlot] = useState<Slot>({ kind: 'none' })
-  const [qty, setQty] = useState<number | null>(null)
 
   // ALL HOOKS UNCONDITIONALLY, before any early return.
   const goods = useMemo(() => quay.market?.goods ?? [], [quay.market])
   const aboard = useMemo(() => (fleet ? fleetCargoByCode(fleet) : {}), [fleet])
   const goodByCode = useWorld((s) => s.goodByCode)
-  const staged = useManifest((s) => (fleet ? linesFor(s, fleet.id, port.code).length : 0))
   const home = board.view?.home ?? false
   const shown: TradeFace = face === 'requests' && !home ? 'buy' : face
   const matching = useMemo(
@@ -126,54 +93,11 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
     const good = goods.find((g) => g.code === code)
     if (!good) return
     pin(port.id, good)
-    if (!fleet) return
-    // X1 (live/tradeOnDesk.ts): the press opens the Trade desk on this city, this good and this side, for the fleet docked here
-    if (TRADE_ON_DESK) {
-      openOnDesk(code, port.code, intent, fleet.id)
-      return
-    }
-    setQty(null)
-    setSlot({ kind: 'pick', pick: { good, intent } })
-  }
-
-  if (slot.kind === 'pick' && fleet) {
-    return (
-      <MarketTray
-        fleet={fleet}
-        port={port}
-        pick={slot.pick}
-        qty={qty}
-        onQty={setQty}
-        onClose={() => {
-          setSlot({ kind: 'none' })
-          setQty(null)
-        }}
-      />
-    )
-  }
-  if (slot.kind === 'basket' && fleet) {
-    return (
-      <BasketSummary
-        fleet={fleet}
-        port={port}
-        onClose={() => setSlot({ kind: 'none' })}
-        onOpenBoard={() => setSlot({ kind: 'none' })}
-      />
-    )
+    if (fleet) openHq({ sheet: 'trade', port: port.code, fleet: fleet.id, good: code, side: intent })
   }
 
   return (
     <>
-      {/* X1: the basket is the Trade desk's to keep now (one place to trade); this row returns with TRADE_ON_DESK false */}
-      {fleet && !TRADE_ON_DESK && (
-        <Row
-          label={t('trade.basket')}
-          value={formatInt(staged)}
-          chevron
-          onClick={() => setSlot({ kind: 'basket' })}
-          data-testid="city-market-basket"
-        />
-      )}
       <Segmented<TradeFace>
         label={t('city.market')}
         segments={TRADE_FACES.filter((f) => f.id !== 'requests' || home)}
@@ -213,95 +137,6 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
           )}
         </div>
       )}
-    </>
-  )
-}
-
-/** THE BASKET, IN THE PANEL — the staged lines and the served total, the hold bar, one row to the
- *  board (moved here from CityFace when the market got its own file; behaviour unchanged). */
-function BasketSummary({
-  fleet,
-  port,
-  onClose,
-  onOpenBoard,
-}: {
-  fleet: FleetView
-  port: SnapshotPort
-  onClose: () => void
-  onOpenBoard: () => void
-}) {
-  const t = useT()
-  const lines = useManifest((s) => linesFor(s, fleet.id, port.code))
-  const preview = useManifestPreview(fleet.id, port.code, lines)
-  const totals = preview.estimate?.totals ?? null
-  return (
-    <div data-testid="city-basket">
-      {/* THE BASKET'S SUMMARY LINE — the count and the total hug the word (owner, 2026-11-01),
-          instead of being pushed to the panel's far edge. */}
-      <div className="flex min-h-11 items-center gap-2 border-b border-edge">
-        <span className="text-t-caption text-ink-faint">{t('trade.basket')}</span>
-        <span className="shrink-0 text-t-caption tabular-nums text-ink-muted">
-          {lines.length === 0 ? t('trade.basketEmpty') : formatInt(lines.length)}
-        </span>
-        {totals !== null && <Figure value={formatDucats(totals.net)} size="body" />}
-      </div>
-      <SummaryRow title={t('town.f_market')} onClick={onOpenBoard} data-testid="city-basket-board" />
-      <Row label={t('common.back')} chevron onClick={onClose} hairline={false} data-testid="city-basket-back" />
-    </div>
-  )
-}
-
-/** THE TRAY, IN THE PANEL — the one TradeTray in pane mode, driven by the one useTrade. */
-function MarketTray({
-  fleet,
-  port,
-  pick,
-  qty,
-  onQty,
-  onClose,
-}: {
-  fleet: FleetView
-  port: SnapshotPort
-  pick: TradePick
-  qty: number | null
-  onQty: (n: number) => void
-  onClose: () => void
-}) {
-  const stageOnBasket = useManifest((s) => s.stage)
-  const stage = (n: number) => {
-    stageOnBasket(fleet.id, port.code, { side: pick.intent, good: pick.good.code, qty: n })
-    onClose()
-  }
-  const trade = useTrade(fleet, pick.intent, pick.good, qty, onClose, stage)
-  // the tray's chart carries its news (owner row 216); the card a dot opens is a tray of its own, out of the flow
-  const { trend: history, card: newsCard } = useTrendNews(port.id, pick.good.good_id, usePriceSeries(port.id, pick.good.good_id))
-  const aboard = fleetCargoByCode(fleet)
-  const goodByCode = useWorld((s) => s.goodByCode)
-  return (
-    <>
-    <TradeTray
-      mode="pane"
-      pick={pick}
-      quay={{
-        aboard: aboard[pick.good.code] ?? 0,
-        bulk: goodByCode[pick.good.code]?.bulk ?? 1,
-        culture: port.culture,
-        history,
-      }}
-      trade={trade}
-      qty={{ value: qty, onChange: onQty }}
-      onClose={onClose}
-    >
-      <HaggleThread
-        key={`${pick.good.code}:${pick.intent}`}
-        fleetId={fleet.id}
-        good={pick.good}
-        side={pick.intent}
-        preview={trade.act.preview}
-      />
-      <CityGoodTrades portId={port.id} goodId={pick.good.good_id} refresh={fleet.version} />
-    </TradeTray>
-    {newsCard}
     </>
   )
 }

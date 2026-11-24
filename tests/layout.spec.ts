@@ -1257,7 +1257,7 @@ test(`HQ › Production: a cell opens the one tray with a stepper, moves nothing
     return row ? (row.innerText || '').split('\n')[0].trim() : ''
   })
   expect(bought, 'no live buy cell to press').not.toBe('')
-  // X1 (src/live/tradeOnDesk.ts): the price opens the Trade desk on that good; the lot is bought there, and Back returns to the City
+  // S1 (2026-11-24, src/app/HqSheet.tsx): the price opens THE trade sheet over the City; the lot is bought there, and Back closes it
   await tradeOnDesk(page, 5)
   await page.goBack()
   await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })
@@ -1288,7 +1288,18 @@ test(`HQ › Production: a cell opens the one tray with a stepper, moves nothing
   expect(cells.livePut, 'nothing on board can be put in storage — did the buy land?').toBeGreaterThan(0)
 
   // PRESS `Put in storage`. The one tray opens with a stepper; nothing at or above the row moves.
-  const before = await page.evaluate(MEASURE_OFFSETS, 'cargo-row')
+  // THE ROWS ARE READ AGAINST THEIR OWN PAGE (2026-11-24, simplify S1): the Production page stands under HQ's board, and the board's
+  // bridge line ("/ hour") lands from its own read whenever it lands — measured, 2 px of the board's height arriving with no press at
+  // all (main's red of this test). The law is the press's: the tray is fixed and inserts nothing into the list, so the rows are read
+  // from the Production page's own top, which nothing above it can move.
+  const ROWS_IN_PAGE = (testId: string) => {
+    const page = document.querySelector('[data-testid="port-production"]')!.getBoundingClientRect()
+    return ([...document.querySelectorAll(`[data-testid="${testId}"]`)] as HTMLElement[]).map((t) => {
+      const r = t.getBoundingClientRect()
+      return { left: Math.round(r.left - page.left), top: Math.round(r.top - page.top) }
+    })
+  }
+  const before = await page.evaluate(ROWS_IN_PAGE, 'cargo-row')
   await page.evaluate(() => {
     const cell = [...document.querySelectorAll('[data-testid="cargo-row"] button:enabled')].find((b) =>
       /^Put in storage/i.test(((b as HTMLElement).innerText || '').trim()),
@@ -1300,7 +1311,7 @@ test(`HQ › Production: a cell opens the one tray with a stepper, moves nothing
   await expect(tray.locator('[data-testid="storage-qty"] input[type="range"]')).toHaveCount(1)
   await expect(tray.locator('[data-testid="cargo-bar"]')).toContainText(/\d+ \/ \d+ tons?/)
   await page.waitForTimeout(600)
-  const after = await page.evaluate(MEASURE_OFFSETS, 'cargo-row')
+  const after = await page.evaluate(ROWS_IN_PAGE, 'cargo-row')
   expect(after.length, 'the storage list unmounted its rows on a press').toBe(before.length)
   expect(
     before.map((b, i) => ({ b, a: after[i] })).filter(({ b, a }) => a.top !== b.top || a.left !== b.left).length,
