@@ -73,6 +73,8 @@ re-measures a sample live every run: a later `sea_courses` write without the gen
   (the same as without --apply). 0491 moves no course, roadstead or raster cell.
 - 63: each leg now sails the stored course (`public.sea_course`; `proof.course` only where none is stored) and each leg's line in the
   failure message says the nm sailed and the board's leg nm and days (#851's diagnostic, folded in; #851 closed).
+- 158 (the land party): it pinned Lisbon-Plymouth's table figure 760.2; the sailed length is 760.16 (the same trip seconds, 950). It now
+  compares the figure to a tenth. Found by CI's pglite-gate (the rest) on #852's first run; 1 of 165 files red, fixed, 9/9 locally.
 - Courses, raster and roadsteads are not touched: proof 148 (straits) and the no-land audit unchanged (outputs below).
 
 ## Prod (filled at deploy)
