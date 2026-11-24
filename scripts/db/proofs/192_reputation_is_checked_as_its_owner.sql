@@ -28,6 +28,7 @@ declare
   v_rows int;
   v_bad  text;
   v_role text;
+  v_was  text := current_user;
 begin
   -- ══ PO_SHAPE ══
   if not (select p.prosecdef from pg_proc p where p.oid = c_fn)
@@ -78,7 +79,7 @@ begin
   v_r := cmd.captain_skill_up('elcano', 'navigator');
   set constraints public.reputation_reconciles immediate;   -- the press's deferred checks, fired as `authenticated`, as its commit would
   set constraints public.reputation_reconciles deferred;
-  reset role;
+  execute format('set local role %I', v_was);   -- by name, never `reset role` (it drops to the session's login role)
   if v_role <> 'authenticated' then
     raise exception 'PO_SCENE: the press did not run as authenticated (%)', v_role;
   end if;

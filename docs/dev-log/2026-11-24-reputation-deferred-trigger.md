@@ -89,3 +89,13 @@ differently (Lisbon posts 1+1 on game days 623232-623244 locally), so the CI day
 frozen self-assert (#839, `src/lib/db/frozenAsserts.ts`). Proof 169 now runs at the first harbour, LIS first, whose two hold
 jobs post today (tried in a rolled-back block), as #839 did for the self-assert. Locally: 9/9 at LIS, and 9/9 with LIS excluded
 (it ran at ACC), so the other-harbour path is proven.
+
+## The first push was refused (2026-11-24 ~02:5x UTC), and why
+
+`bv-deploy.sh 845`: db push failed at the DO block with `permission denied for table reputation_balance` (42501); the file rolled
+back, prod stayed 0488, nothing merged. Cause: the scene returned from `authenticated` with `reset role`. `db push` logs in as a
+temporary login role ("Initialising login role...") and SETs ROLE postgres; `reset role` drops to that login role, which has no
+table rights, and the probe's next read (the probe house's balance, after the post-fix scene) was refused. The disposable chain and
+`db query` run as postgres itself, so they could not show it. Reproduced on PGlite: a login role granted postgres WITH INHERIT FALSE,
+`set role postgres`, then the first file fails ("must be owner", the same drop) and the changed file passes. The scene now captures
+`current_user` and returns with `execute format('set local role %I', ...)`; any error inside the probe is re-raised with its context.

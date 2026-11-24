@@ -62,13 +62,15 @@ language plpgsql
 as $body$
 declare
   v_got int;
+  v_was text := current_user;   -- the migrating role, restored by name: `reset role` would drop to the session's login role (db push
+                                -- logs in as a temporary role and SETs ROLE postgres; that login role reads no table)
 begin
   perform cmd.assume_identity(p_uid);
   set local role authenticated;
   v_got := pg_temp.earn_0489(p_key);
   set constraints public.reputation_reconciles immediate;
   set constraints public.reputation_reconciles deferred;
-  reset role;
+  execute format('set local role %I', v_was);
   if v_got is distinct from 40 then
     return 'booked ' || coalesce(v_got::text, 'null') || ', not 40';
   end if;
@@ -149,8 +151,12 @@ begin
       raise exception '0489 self-assert FAIL: the probe house''s book and balance do not reconcile: balance %, seq %, rows %, pre %', v_bal, v_seq, v_rows, v_pre;
     end if;
     raise exception using errcode = 'ZX489', message = 'PROBE_ROLLBACK_0489';
-  exception when sqlstate 'ZX489' then
-    v_lived := true;
+  exception
+    when sqlstate 'ZX489' then
+      v_lived := true;
+    when others then
+      get stacked diagnostics v_bad = pg_exception_context;
+      raise exception '0489 self-assert FAIL: the probe raised % % (as %, session %) at: %', sqlstate, sqlerrm, current_user, session_user, v_bad;
   end;
   if not v_lived then
     raise exception '0489 self-assert FAIL: the probe did not run to its end';
