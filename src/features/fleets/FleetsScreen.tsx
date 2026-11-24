@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { CargoBar, DetailPage, FactsLine, Icon, ListPanel, PageSplit, Row, Sheet, Clip } from '../../components/ui'
+import { CargoBar, DetailPage, FactsLine, Icon, ListPanel, Row, Sheet, Clip } from '../../components/ui'
 import { formatInt, formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
@@ -56,8 +56,8 @@ import { useLocale, useT } from '../../lib/i18n'
 // ── THE PAGE (2026-11-04, owner row 267: *"everything is on left, too packed. this was a mistake"*) ─────────────────────────────
 // The sheets-grow slice below put the fleets in ONE panel that scrolled inside itself. That is the packing the owner reversed:
 // Fleets is now a PAGE on the pattern Stats set (`Sheet layout="page"`, docs/dev-log/2026-11-04-fleets-design.md): MAIN the fleets as
-// one card list, SIDE (the tray's column) your company in figures; one column on a phone, the list first. The page scrolls;
-// nothing inside it does. A press still opens the fleet's own page (`DetailPage`), and nothing behind it moves.
+// one card list. 2026-11-24 (docs/design/simplify-2026-11-24.md S7): ONE COLUMN at every glass, the Room's two bars its last block (no side
+// column to arrive late or stand empty). The page scrolls; nothing inside it does. A press still opens the fleet's own page (`DetailPage`), and nothing behind it moves.
 //
 // ── ON THE GLASS (the sheets-grow slice, 2026-11-02; docs/dev-log/2026-11-02-sheets-grow.md) ──────
 // The fleets stood straight on a `Sheet`, so a veteran with eight hulls scrolled the PAGE (122 px at 390×844, 326 at 320×640)
@@ -156,50 +156,38 @@ function FleetsBody({ title }: { title: string }) {
       }
       data-testid="fleets"
     >
-      <PageSplit
-        data-testid="fleets-page"
-        // no `sideFirst`: on a phone the company's figures stand AFTER the fleets — the screen's purpose is the list, and its first row is
-        // on the first glass (the Codex's lesson, 2026-11-02)
-        stickySide
-        main={
-          <>
-          {/* THE TITLE IS THE COUNT (as RANK's is): the rows it holds. An empty company has no count to say — its one row does. */}
-          <ListPanel
-            look="card"
-            columns="fit"
-            icon="ship"
-            title={fleets.length === 0 ? undefined : t('fleets.count', { n: formatInt(fleets.length), count: fleets.length })}
-            data-testid="fleets-list"
-          >
-            {fleets.length === 0 ? (
-              <Row label={t('fleets.noFleets')} tone="muted" hairline={false} />
-            ) : (
-              fleets.map((fleet, i) => (
-                <FleetRow
-                  key={fleet.id}
-                  fleet={fleet}
-                  where={[fleet.ships.length === 0 ? t('fleets.noShips') : whereLine(whereabouts(fleet), portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
-                    .filter(Boolean)
-                    .join(' · ')}
-                  selected={openFleetId === fleet.id}
-                  last={i === fleets.length - 1}
-                  onOpen={() => setOpenFleetId(fleet.id)}
-                />
-              ))
-            )}
-            {/* F5: a new fleet is made from here (NewFleet.tsx). Dark, it is a line that says "Not open yet", never a button. */}
-            {fleets.length > 0 && <NewFleet open={newOpen} onOpen={() => setNewOpen(true)} />}
-          </ListPanel>
-          {newOpen && <NewFleetPage onClose={() => setNewOpen(false)} />}
-          {/* 0367: her armadas, and the door to form one (Armadas.tsx). Nothing is drawn while armadas are switched off. */}
-          <Armadas />
-          </>
-        }
-        side={
-          /* 0354: the room she has and how more opens (world.house_room). Dark, it says "Not open yet" and offers no press. */
-          <FleetRoom />
-        }
-      />
+    {/* THE TITLE IS THE COUNT (as RANK's is): the rows it holds. An empty company has no count to say — its one row does. */}
+    <ListPanel
+      look="card"
+      columns="fit"
+      icon="ship"
+      title={fleets.length === 0 ? undefined : t('fleets.count', { n: formatInt(fleets.length), count: fleets.length })}
+      data-testid="fleets-list"
+    >
+      {fleets.length === 0 ? (
+        <Row label={t('fleets.noFleets')} tone="muted" hairline={false} />
+      ) : (
+        fleets.map((fleet, i) => (
+          <FleetRow
+            key={fleet.id}
+            fleet={fleet}
+            where={[fleet.ships.length === 0 ? t('fleets.noShips') : whereLine(whereabouts(fleet), portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
+              .filter(Boolean)
+              .join(' · ')}
+            selected={openFleetId === fleet.id}
+            last={i === fleets.length - 1}
+            onOpen={() => setOpenFleetId(fleet.id)}
+          />
+        ))
+      )}
+      {/* F5: a new fleet is made from here (NewFleet.tsx). Dark, it is a line that says "Not open yet", never a button. */}
+      {fleets.length > 0 && <NewFleet open={newOpen} onOpen={() => setNewOpen(true)} />}
+    </ListPanel>
+    {newOpen && <NewFleetPage onClose={() => setNewOpen(false)} />}
+    {/* 0367: her armadas, and the door to form one (Armadas.tsx). Nothing is drawn while armadas are switched off. */}
+    <Armadas />
+      {/* 0354: the room she has and how more opens (world.house_room), the page's last block: two bars, one column. Dark, it says "Not open yet" and offers no press. */}
+      <FleetRoom />
       {openFleet !== null && (
         <DetailPage title={openFleet.name} onClose={closeFleet} data-testid="fleet-page">
           <FleetFold fleet={openFleet} openShipId={openShipId} onOpenShip={setOpenShipId} />

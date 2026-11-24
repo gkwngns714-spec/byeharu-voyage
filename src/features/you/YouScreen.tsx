@@ -1,8 +1,7 @@
-import { Card, CardMark, Clip, Facts, Icon, ListPanel, MasteryRing, PageSplit, PlateDisc, Ring, Row, Sheet, goodIcon, masteredTone } from '../../components/ui'
+import { Card, CardMark, Clip, Icon, ListPanel, MasteryRing, PageSplit, PlateDisc, Ring, Row, Sheet, goodIcon, masteredTone } from '../../components/ui'
 import { useMasteryLevels } from '../../live/goodsMastery'
-import { ShipPicture } from '../../live/ShipPicture'
 import { formatInt } from '../../lib/format'
-import type { FleetView, PlayerHouse } from '../../lib/rpc'
+import type { PlayerHouse } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CaptainRows, CaptainTray } from '../../live/YourCaptains'
@@ -14,7 +13,7 @@ import type { ReactNode } from 'react'
 import { companyRoom, useHouseRoom } from '../../live/houseRoom'
 import { YouLevelsDoor } from './Levels'
 import { LogbookDoor } from './Logbook'
-import { useLevels } from './useLevels'
+import { useLevels } from '../../live/useLevels'
 import { HullCountry } from '../../live/HullCountry'
 import { seasOpened } from '../../live/levelWords'
 
@@ -32,10 +31,9 @@ import { seasOpened } from '../../live/levelWords'
 //                  level am I". 2026-11-16: the Trade desk's Levels face moved here too, for the same reason
 //                  (Levels.tsx says how). 2026-11-23 (roadmap slice 10) the levels got a page of their own (`/levels`);
 //                  You keeps the title on its plate and a door: every level as a ring.
-//   Your ships     EVERY hull you own, in one list, with the fleet she sails in. FLEETS lists
-//                  FLEETS — where each one is, her stores, her hold, her hull — and a hull inside
-//                  it sits behind a fold, so "what do I own" had no page. This is that page: a
-//                  different reading of rows already served, not a second copy of FLEETS'.
+//   Your ships     NO LIST HERE (2026-11-24, docs/design/simplify-2026-11-24.md S7): the hulls are listed once, on the Fleets tab (her level
+//                  stands on her ship row there). This page keeps ONE figure, the room line (fleets and ships of what she may have), which is
+//                  also the door to Fleets.
 //   Your captains  the roster, MOVED from FLEETS for the reason the levels moved — the owner names
 //                  captains as personal info, and one list belongs in one place.
 //
@@ -50,7 +48,7 @@ import { seasOpened } from '../../live/levelWords'
 // (476 px at 390×844, 1,050 at 320×640) and a company of two left a quarter of the glass empty. The unfold laws (docs/dev-log/
 // 2026-11-01-ui-unfold.md, U2) say what a screen with a list does: its FIGURES on top, the list in ONE `ListPanel` that takes
 // the glass they leave and scrolls INSIDE itself. So: the levels are the figures — a strip of two tracks side by side, the way
-// the Stats faces stand their figures over their panel — and Ships and Captains are the two sections of the panel's body (from
+// the Stats faces stand their figures over their panel — and the Captains are the panel's body (from
 // `lg` side by side, the same blocks with more room). Nothing is dropped: every figure, every row and every test id the old
 // screen drew is on this one, and the captain's tray is a sibling of the panel, never inside its scroller.
 
@@ -68,7 +66,6 @@ export function YouScreen() {
 function YouBody({ title }: { title: string }) {
   const t = useT()
   const player = useWorld((s) => s.player)
-  const fleets = useWorld((s) => s.fleets)
   // 0160: the one captains face — her grade, the traits she uses, the cabin she sits in. ONE read and ONE open captain; her rows
   // stand in the panel below and her tray beside it.
   const face = useYourCaptains()
@@ -85,7 +82,6 @@ function YouBody({ title }: { title: string }) {
         main={
           <>
             {player === null && <RoomLine />}
-            <Ships fleets={fleets} />
             <ListPanel
               look="card"
               columns="fit"
@@ -326,60 +322,5 @@ function Reputation({ player }: { player: PlayerHouse }) {
         word={<span data-testid="you-reputation-today">{today}</span>}
       />
     </div>
-  )
-}
-
-/** EVERY HULL YOU OWN, with the fleet she sails in. The served rows, flattened — a flagship says
- *  so, because she is the one hull this game promises never to lose (DESIGN §C.6). The first section of the panel's body. */
-function Ships({ fleets }: { fleets: readonly FleetView[] }) {
-  const t = useT()
-  const ships = fleets.flatMap((fleet) => fleet.ships.map((ship) => ({ ship, fleet })))
-  // HER LEVEL ON HER ROW (2026-11-16: the Levels face's list of hulls moved onto this one, so a hull is listed once). The served
-  // level (`world.levels().ships`, 0325), and the level it acts as while that is lower (levels not yet in force).
-  const levels = useLevels().view
-  const levelOf = new Map(levels?.company ? levels.ships.map((s) => [s.id, s] as const) : [])
-  const levelWord = (id: string): string | null => {
-    const l = levelOf.get(id)
-    if (!l) return null
-    return l.in_force < l.level ? `${t('command.lvLevel', { n: l.level })} (${t('command.lvActsAs', { n: l.in_force })})` : t('command.lvLevel', { n: l.level })
-  }
-  return (
-    <ListPanel
-      look="card"
-      columns="fit"
-      icon="ship"
-      title={t('you.ships')}
-      count={
-        ships.length === 0 ? undefined : (
-          // 2026-11-15 owner: shorter words — the count alone, like the captains'; the fleets stand in the room line above
-          <span data-testid="you-ships-count">{formatInt(ships.length)}</span>
-        )
-      }
-      data-testid="you-ships"
-    >
-      {ships.length === 0 ? (
-        <Row label={t('you.noShips')} tone="muted" hairline={false} data-testid="you-no-ships" />
-      ) : (
-        ships.map(({ ship, fleet }, i) => (
-          <Row
-            key={ship.id}
-            // HER PICTURE LEADS HER ROW (visual pass 2, 2026-11-23), as on the Fleets tab: her tier's outline, gold for the flagship, whose
-            // word is the picture's name and leaves the caption line
-            mark={<ShipPicture code={ship.class_code} tone={ship.is_flagship ? 'var(--color-accent)' : undefined} label={ship.is_flagship ? t('you.flagship') : undefined} />}
-            label={<Clip>{ship.name}</Clip>}
-            // IN A NARROW ROW HER FLEET GOES UNDER HER NAME (owner, 2026-11-12): beside a 24-letter fleet name the ship's own name
-            // stood on three lines ("Nossa / Senhora da / Estrela") in a 320-px card, and on two at 390. The row is its own query
-            // container (ListPanel `columns="fit"`), so the row's width decides, never the window's.
-            // A fleet named after its ship (every founding fleet) is not said twice (2026-11-15).
-            value={fleet.name === ship.name ? undefined : <span className="text-t-caption text-ink-muted pair:hidden">{fleet.name}</span>}
-            hairline={i < ships.length - 1}
-            data-testid="you-ship"
-          >
-            <Facts className="block text-t-caption text-ink-faint pair:hidden" items={[properName('hull', ship.class, ship.class), levelWord(ship.id)]} />
-            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name === ship.name ? null : fleet.name, properName('hull', ship.class, ship.class), levelWord(ship.id)]} />
-          </Row>
-        ))
-      )}
-    </ListPanel>
   )
 }

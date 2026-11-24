@@ -25,7 +25,7 @@ export function FleetRoom() {
   const room = useHouseRoom()
   if (!room || !room.company) return null
   return (
-    <Card icon="anchor" title={t('fleets.room')} className="mt-4" data-testid="fleet-room">
+    <Card icon="anchor" title={t('fleets.room')} data-testid="fleet-room">
       {!room.on && (
         <Note tone="neutral" data-testid="fleet-room-dark">
           {t('fleets.roomNotOpen')}
