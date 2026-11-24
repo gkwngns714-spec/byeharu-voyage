@@ -3438,6 +3438,32 @@ export type NationRaceView =
       rates: { sale_per: number; job_mult: number; gift_mult: number }
     }
 
+/** One plain line of the company's rate (0493, `public.company_rate_line`): its ledger kinds' sum over the last 24 hours. */
+export interface HqRateLine {
+  /** The line's code: trade, wages, tow, invest, ... (`other` for a kind the server does not name). */
+  line: string
+  total_24h: number
+  per_hour: number
+  count: number
+  /** A purchase made once (investing, a hull, hiring): left out of the per-hour figure. */
+  one_time: boolean
+}
+
+/** `world.hq_board().rate` (0480; 0493 `public.company_rate_for`, the one rate authority). `per_hour` and `net_24h` are her running
+ *  lines only; the keys after `since` are absent from a server before 0493. */
+export interface HqRate {
+  per_hour: number
+  net_24h: number
+  since: string
+  one_time_24h?: number
+  /** Every line's sum: 0480's old figure. */
+  all_24h?: number
+  /** The lines the headline names: up to two running lines, her largest losses under zero, else her largest gains. */
+  top?: string[]
+  /** Running lines first, then one time; in each the largest loss first. */
+  lines?: HqRateLine[]
+}
+
 /** `world.hq_board()` (0480). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her board, ranked by the server. */
 export type HqBoardView =
   | { on: false }
@@ -3446,8 +3472,8 @@ export type HqBoardView =
       on: true
       company: true
       moves: HqMove[]
-      /** Her ledger's last 24 hours, and over 24. */
-      rate: { per_hour: number; net_24h: number; since: string } | null
+      /** Her ledger's last 24 hours, and over 24. 0493: the figure is her RUNNING income and costs; one-time purchases stand beside it. */
+      rate: HqRate | null
       next: { what: 'arrives' | 'ship' | 'training' | 'lap'; at: string; name: string | null } | null
       /** Her voyages under way in dangerous waters or with a bounty pirate on them. */
       threats: number
