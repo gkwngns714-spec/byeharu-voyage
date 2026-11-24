@@ -279,7 +279,6 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
       await serveNpcOn(page)
       await open(page, 'map')
       await pressHarbour(page, true)
-      await page.getByTestId('map-city-tabs').getByRole('tab').nth(3).click()
       const rows = page.getByTestId('merchant-row')
       await expect(rows.first(), 'Lisbon lists no merchant').toBeVisible({ timeout: 60_000 })
       expect(await page.evaluate(READ_LINES, '[data-testid="merchant-row"]'), `${locale}: a merchant's row is broken`).toEqual([])

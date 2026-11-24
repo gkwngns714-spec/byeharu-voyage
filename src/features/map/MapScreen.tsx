@@ -192,7 +192,7 @@ export function MapScreen() {
  *  and how many of them lie here, and which of yours are here or heading here. The merchants
  *  resting here are not drawn on the chart (chartModel.ts), so the city counts them — the
  *  harbour's own read (`world.port_merchants`), never the capped sea window — and the list itself
- *  is the Port tab (CityHarbour.tsx).
+ *  is the harbour body (CityHarbour.tsx).
  *
  *  2026-11-23 (the visual overhaul's slice 4: "fewer words in trays, icon + number"): the counts are a sail and a figure, an
  *  anchor and a figure (`27 merchants · 2 in port` is their accessible name), and your fleets are their names after an anchor

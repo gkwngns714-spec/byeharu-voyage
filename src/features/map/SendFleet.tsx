@@ -1,10 +1,9 @@
 import { useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button, Hint, Row, SheetSection, Skyline, skylineOf, Tray, TrayTitle, seaName, type TrayDetent } from '../../components/ui'
 import { useWorld } from '../../live/worldStore'
 import { PortFlag } from '../../live/PortFlag'
 import { CHART_CHROME, GoToLink } from '../../chart'
-import { CityTabs } from './CityTabs'
-import { useCityTab } from './cityTab'
 import { SendFleetRow } from './SendFleetRow'
 import { SendArmadaRow } from './SendArmadaRow'
 import { useArmadas } from '../../live/armadas'
@@ -13,33 +12,23 @@ import { useSendFleet } from './useSendFleet'
 import { useLocale, useT } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE CITY PANEL — a tapped place: its three tabs, and the map's one act, as a panel at the right.
+// THE CITY PANEL — a tapped place: its name and flag, who is in port and who is coming, and the map's one act.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// docs/UI_DIRECTION.md §6, MAP, grown on 2026-10-13 by the owner's two sentences — *"when i press
-// city … i want there to be a list, showing the total level, and its current time till the resting
-// finishes"* and *"the pop-up page when clicking a ship or a city is not good in terms of
-// friendliness and style"* — and on 2026-10-15 by a third:
+// docs/design/simplify-2026-11-24.md S5: one simple harbour face. The six tabs it used to carry (Info, Town Hall, Market, Port,
+// Inn, Giving) repeated HQ's city and are DELETED; to trade, hire or invest there, HQ opens on that city (`HQ here`).
 //
-//   *"when i click on a city, i don't want to see stupid useless info. Rather, i want there to be
-//    tab, such as market, port, inn."*
-//
-//     Lisbon                                         [Send fleet]
+//     Lisbon                                [Send fleet] [HQ here]
 //     Portugal · 27 merchants · 2 in port
-//     [  Market  |   Port   |   Inn   ]
-//       Market: the price table (PortPrices) — a press slides the price history out beside
-//       Port:   In port · Incoming, yours and the merchants' (CityHarbour)
-//       Inn:    the captains here this quarter hour; crew and supplies for a fleet alongside
+//       In port · Incoming, yours and the merchants' (CityHarbour)
 //     [                 Send Gaivota                     ]
 //
-// A HARBOUR'S BODY IS `CityTabs` (CityTabs.tsx says what each tab composes). A point of OPEN SEA
-// has no tabs: it is only somewhere to send a fleet.
+// A point of OPEN SEA has no harbour: it is only somewhere to send a fleet.
 //
 // THE SEND IS NOT LOST. The owner's flow, step for step (useSendFleet.ts quotes it): tap a place →
 // the panel opens with the place's name, one line, and `Send fleet` → press it and her fleets are
-// listed with the passage's verdict on each row — at the top of the PORT tab, which the press
-// turns to → press one, the insurance press unfolds under it → the one pinned button sends her.
-// `Send fleet` stands in the title on every tab. Nothing navigates; the chart is still the ground.
+// listed with the passage's verdict on each row — at the top of the harbour's body → press one, the insurance press unfolds under it → the one pinned button sends her.
+// `Send fleet` stands in the title. Nothing navigates; the chart is still the ground.
 //
 // THE RULES (useSendFleet.ts carries them): this file composes nothing, judges nothing, and owns
 // no grammar. It is the markup of a decision made elsewhere.
@@ -58,7 +47,7 @@ export function SendFleet({
   sea?: { name: string } | null
   /** The one line under the name — `Portugal · 27 merchants · 2 in port`, `Open sea`. */
   line: ReactNode
-  /** The Port tab's ships — in port and incoming (CityHarbour), built by MapScreen, which holds
+  /** The harbour's ships — in port and incoming (CityHarbour), built by MapScreen, which holds
    *  the harbour's read. Unused at sea. */
   harbour: ReactNode
   onClose: () => void
@@ -72,7 +61,7 @@ export function SendFleet({
   const armadas = useArmadas()
   const inArmada = new Set(armadas.armadas.flatMap((a) => a.fleets))
   const fleets = inArmada.size === 0 ? flow.fleets : flow.fleets.filter((f) => !inArmada.has(f.id))
-  const turnTo = useCityTab((s) => s.turnTo)
+  const navigate = useNavigate()
   const culture = useWorld((s) => (dest.kind === 'port' ? s.portByCode[dest.code]?.culture : undefined))
 
   const picked = fleets.find((f) => f.id === flow.picked) ?? null
@@ -83,12 +72,12 @@ export function SendFleet({
   const busy = picked !== null && flow.act?.state === 'busy' && flow.act.fleetId === picked.id
 
   // HER FLEETS, each with the passage's verdict — once `Send fleet` is pressed: at the top of the
-  // Port tab for a city, alone for a point of open sea.
+  // harbour for a city, alone for a point of open sea.
   const sendSection = open && (
     <SheetSection heading={t('map.yourFleets')} data-testid="map-send-fleets">
       {/* WHY THE TRACK WILL NOT TOUCH THE QUAY (0076): the marker leaves the triangle for a point
           up to 67.7 nm out, and a player who was not told reads that as a bug. Said only where a
-          passage is being chosen — above the tabs it was the first line of every city (2026-10-15,
+          passage is being chosen — above the lists it was the first line of every city (2026-10-15,
           "stupid useless info"). The wording is domain/passage's. */}
       {flow.roads && <Hint data-testid="map-send-roads">{flow.roads}</Hint>}
       {flow.fleets.length === 0 && (
@@ -144,19 +133,18 @@ export function SendFleet({
           }
           testId="map-place-name"
           trailing={
-            !open && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  turnTo('port')
-                  setDetent('half')
-                }}
-                data-testid="map-send-fleet"
-              >
-                {t('map.sendFleet')}
-              </Button>
-            )
+            <span className="flex shrink-0 items-center gap-1.5">
+              {!open && (
+                <Button variant="primary" size="sm" onClick={() => setDetent('half')} data-testid="map-send-fleet">
+                  {t('map.sendFleet')}
+                </Button>
+              )}
+              {dest.kind === 'port' && (
+                <Button variant="secondary" size="sm" onClick={() => navigate(`/city?port=${dest.code}`)} data-testid="map-hq-here">
+                  {t('map.hqHere')}
+                </Button>
+              )}
+            </span>
           }
         />
       }
@@ -180,20 +168,13 @@ export function SendFleet({
       {dest.kind === 'port' ? (
         <>
           {/* THE HARBOUR'S PICTURE (2026-11-23, the visual overhaul's slice 4, principle 7): its regional skyline at dusk, above
-              the tabs, from the served culture (components/ui/Skyline.tsx `skylineOf`, the one table). Decoration; the head
-              above says where. It scrolls away under the pinned tabs. */}
+              the lists, from the served culture (components/ui/Skyline.tsx `skylineOf`, the one table). Decoration; the head
+              above says where. */}
           <div className="mb-2 overflow-hidden rounded-tile border border-edge" data-testid="map-harbour-skyline-band">
             <Skyline kind={skylineOf(culture)} height={64} data-testid="map-harbour-skyline" />
           </div>
-          <CityTabs
-          portCode={dest.code}
-          harbour={
-            <>
-              {sendSection}
-              {harbour}
-            </>
-          }
-          />
+          {sendSection}
+          {harbour}
         </>
       ) : (
         sendSection

@@ -33,7 +33,6 @@ import path from 'node:path'
 import { asWorldImageFile } from '../src/lib/db/worldImage'
 import { NEWS_HIT_PX } from '../src/components/ui/newsMarksModel'
 import { PHONE, reachable, ready } from './appReady.fixture'
-import { openCityPanel } from './openCity.fixture'
 import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 
 const WIDE = { width: 1280, height: 800 }
@@ -288,17 +287,6 @@ for (const glass of [PHONE, WIDE]) {
       await expect(quayTray.getByTestId('price-chart')).toBeVisible({ timeout: 60_000 })
       bad.push(...(await measure(page, at('quay tray'), '[data-testid="trade-tray"]', all)))
     }
-
-    // THE MAP'S GOOD PANEL (PriceRows in PriceTray; owner row 216): Map, Lisbon, Market, a good: its chart stands unfolded
-    await page.goto('map')
-    await ready(page)
-    await page.waitForSelector('[data-testid="map-ports"] > g', { timeout: 300_000 })
-    await openCityPanel(page, 'LIS', 'Lisbon')
-    await page.getByRole('tab', { name: 'Market' }).click()
-    await expect(page.getByTestId('quay-ledger')).toBeVisible({ timeout: 60_000 })
-    await page.locator('[data-testid="trade-row"] button:enabled').filter({ hasText: /^buy/i }).first().click()
-    await expect(page.getByTestId('price-tray').getByTestId('price-chart')).toBeVisible({ timeout: 60_000 })
-    bad.push(...(await measure(page, at('map good'), '[data-testid="price-tray"]', all)))
 
     // THE DESK'S GOOD CHART (PriceChart, TradePanel)
     await page.goto('command')
