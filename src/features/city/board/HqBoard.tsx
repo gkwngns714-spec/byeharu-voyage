@@ -57,7 +57,7 @@ export function HqBoard({ board }: { board: Board }) {
     <div data-testid="hq-board" data-source={board.source ?? undefined}>
       <SheetSection heading={t('hq.moves')} trailing={<span className="text-t-caption tabular-nums text-ink-faint">{formatInt(shown.length)}</span>}>
         {/* dark: no card to filter, so no chips */}
-        {board.source !== 'off' && (
+        {board.source !== 'off' && !board.asking && (
           <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label={t('hq.filter')} data-testid="hq-filters">
             {(
               [
@@ -75,7 +75,14 @@ export function HqBoard({ board }: { board: Board }) {
             ))}
           </div>
         )}
-        {board.source === 'off' ? (
+        {/* WHILE THE BOARD IS ASKED, ONE HELD LINE (2026-11-25, "nothing on a page moves by itself"). Unread, this drew the filter chips and
+            "none" (250 px at 390) before the server had said anything; a dark board then answered "off" (60 px) and the Storage, the Ledger
+            and every plate under it went up 190 px by themselves. The held line is the off line's own room, and it says nothing it does not know. */}
+        {board.asking ? (
+          <p className="text-t-label text-ink-muted" aria-busy="true" data-testid="hq-board-wait">
+            &nbsp;
+          </p>
+        ) : board.source === 'off' ? (
           <p className="text-t-label text-ink-muted" data-testid="hq-board-off">
             {t('hq.boardOff')}
           </p>
