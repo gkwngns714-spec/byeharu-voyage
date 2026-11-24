@@ -27,6 +27,9 @@ import { CityFacePanel, type CityBuilding } from './CityFace'
 import { CityHallPanel } from './CityHallPanel'
 import { CityScene } from './CityScene'
 import { HqBoard } from './board/HqBoard'
+import { LedgerArea } from './corp/LedgerArea'
+import { WarehouseArea } from './corp/WarehouseArea'
+import { WorkerList } from './corp/WorkerList'
 import { HqSheet } from '../../app/HqSheet'
 import { openHq } from '../../app/hqPlace'
 
@@ -462,7 +465,13 @@ function CityFrame({
 
           {/* THE COMMAND BOARD FIRST (owner, 2026-11-23; docs/design/hq-command-2026-11-23.md): the bridge, the best moves and the fleets
               stand at the top of HQ, the first thing seen; the city's buildings and doors stand under it, each one press away. */}
+          {/* THE PAGE'S ORDER (2026-11-24, docs/design/hq-corp-2026-11-24.md C1, slice H1): THE WORKERS first (every fleet and the land
+              party, one row each on one action, the idle ones first with Assign), then the board (its bridge and best moves), the home
+              Warehouse, the Ledger, and the city's plates. */}
+          <WorkerList />
           <HqBoard port={port} />
+          <WarehouseArea port={port} />
+          <LedgerArea />
           {/* THE PLACES AS PLATES (2026-11-23, the visual overhaul's slice 7): each building and each door is a plate — its mark on a gold
               disc, its word, and ONE figure, a fact of that place already on this page (no plate asks a read of its own): the hall the city's
               gold, the market its tax, production the free hold of your fleets here, the port your fleets here, the inn their crew;

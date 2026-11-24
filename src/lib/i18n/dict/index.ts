@@ -9,6 +9,7 @@ import { codesDict } from './codes'
 import { codexDict } from './codex'
 import { commandDict } from './command'
 import { commonDict } from './common'
+import { corpDict } from './corp'
 import { deskDict } from './desk'
 import { domainDict } from './domain'
 import { eventsDict } from './events'
@@ -52,6 +53,7 @@ export const DICT = {
   codex: codexDict,
   command: commandDict,
   common: commonDict,
+  corp: corpDict,
   desk: deskDict,
   domain: domainDict,
   events: eventsDict,
