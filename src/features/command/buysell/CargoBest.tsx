@@ -1,7 +1,8 @@
 import { Clip, Hint, Icon, Skeleton, goodIcon } from '../../../components/ui'
-import { fleetCargoByCode } from '../../../domain/fleet'
+import { fleetCargoByCode, paidPerTun } from '../../../domain/fleet'
 import { PortFlag } from '../../../live/PortFlag'
 import { useGoodBoard, usePriceWhy } from '../../../live/useDesk'
+import { useSaleEstimate } from '../../../live/useSaleEstimate'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatDaysReal, formatInt, formatPriceDelta, formatPriceFigure } from '../../../lib/format'
 import type { BoardSellRow, FleetView } from '../../../lib/rpc'
@@ -93,6 +94,10 @@ function CargoGood({
   // one list, nearest first: the near cities and the best ones, each with its days and profit
   const best = [...top, ...near].sort(byDays)
   const here = hereRow && hereBid.view ? hereBid.view.bid : null
+  // 0490: HERE'S PROFIT is the sale's own dry run (cmd.do_sell of all she carries of it, rolled back): its `trip_net`, the one profit
+  // the SOLD event then tells, tax, wages and the dock fee of her call counted. Asked only where she lies and the city buys it.
+  const hereSale = useSaleEstimate(fleet, 'sell', docked && hereRow ? code : null, docked && hereRow ? units : 0)
+  const paid = paidPerTun(fleet, code)
   const none = b !== null && best.length === 0 && here === null && !hereBid.loading
   return (
     <div className="rounded-md bg-surface-2 p-2" data-testid="cargo-good" data-good={code}>
@@ -101,7 +106,15 @@ function CargoGood({
           <Icon name={goodIcon(code, good?.category ?? '')} size={16} className="shrink-0 text-ink-muted" />
           <Clip className="text-t-label font-medium text-ink">{good?.name ?? code}</Clip>
         </span>
-        <span className="shrink-0 text-t-caption tabular-nums text-ink-muted">{t('desk.aboardN', { n: formatInt(units) })}</span>
+        <span className="flex shrink-0 items-baseline gap-x-3 text-t-caption tabular-nums text-ink-muted">
+          {/* 0490: what she paid a unit (FleetView.cargo_basis, served) beside what she carries */}
+          {paid !== null && (
+            <span data-testid="cargo-good-bought" data-each={paid}>
+              {t('trade.bought')} {formatPriceFigure(paid)}
+            </span>
+          )}
+          <span>{t('desk.aboardN', { n: formatInt(units) })}</span>
+        </span>
       </div>
       {!b ? (
         <Skeleton className="h-8 w-full" />
@@ -118,7 +131,7 @@ function CargoGood({
               price={here}
               avg={false}
               days={null}
-              profit={null}
+              profit={hereSale.previewLoading ? null : (hereSale.preview?.trip_net ?? null)}
               on={city === docked && picked === code}
               onPress={() => onPress(docked, code)}
             />

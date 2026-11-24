@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button, Chip, Figure, GoodKind, Hint, Note, PLAN_LINE_CLASS, PriceChart, Row, Skeleton, SpanPicker, Stepper, Tray, type TrayDetent, type TrayMode, WRAP_ROW_CLASS } from '../../../components/ui'
-import { fleetCargoByCode } from '../../../domain/fleet'
+import { fleetCargoByCode, paidPerTun } from '../../../domain/fleet'
 import { taxFactorWords } from '../../../domain/port'
 import { CityGoodTrades } from '../../../live/CityGoodTrades'
 import { IfAttacked } from '../../../live/IfAttacked'
@@ -10,7 +10,7 @@ import { usePriceSeries } from '../../../live/usePriceSeries'
 import { useTrade } from '../../../live/useTrade'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { useShellState } from '../../../app/shellState'
-import { formatCountdown, formatDaysReal, formatInt, formatPriceDelta, formatPriceFigure, instantMs, moneyFigure, moneyWord } from '../../../lib/format'
+import { formatCountdown, formatDaysReal, formatInt, formatPctDelta, formatPrice, formatPriceDelta, formatPriceFigure, instantMs, moneyFigure, moneyWord } from '../../../lib/format'
 import type { BoardSellRow, FleetView, MarketGood, PriceSeries } from '../../../lib/rpc'
 import { properName, useT } from '../../../lib/i18n'
 import { WhyThisPrice } from '../markets/WhyThisPrice'
@@ -149,6 +149,8 @@ function Frame({
   choices = null,
   onChoose,
   units,
+  sale,
+  pair,
   total,
   extra,
   profit,
@@ -168,6 +170,12 @@ function Frame({
   sellAt?: string | null
   /** The units row: the stepper, or why there is none. */
   units: ReactNode
+  /** 0490: a sale's lines (Bought, Sells for, the costs, Profit): above the units on a sale, under them on a buy-and-sell trip;
+   *  before the chart either way. */
+  sale?: ReactNode
+  /** 0490: a sale's two unit prices, pinned with the button (what she paid a unit, what it sells for a unit): seen at every height
+   *  of the sheet, beside the money and the profit under them. Undefined: no sale. */
+  pair?: { bought: number | null; sells: number | null }
   /** The money the units come to, signed (−paid / +got), or null while unknown. */
   total: number | null
   /** Rows under the total (the trip's estimate). */
@@ -199,6 +207,24 @@ function Frame({
           {/* 2026-11-22 (P0): A TRIP THAT SELLS CARRIES ITS PROFIT ON THE SAME LINE ("Cost 36,244 · Profit +3,222"). It stood fifth
               in the estimate, under the chart: under the fold of a 390 × 844 sheet, so the number a trip is chosen by was never seen
               before the press. One line, not a row of its own, so the half-raised sheet still shows the units. */}
+          {/* 0490: A SALE'S TWO PRICES, pinned above it (the owner, 2026-11-24: "the price i bought, the price i will get"): the half-raised
+              sheet at 390 x 844 showed the sale's lines only to the fold (measured), so the two unit prices ride with the money */}
+          {pair && (
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 pt-1 text-t-caption" data-testid="sale-pair">
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="text-ink-muted">{t('trade.bought')}</span>
+                <span className="font-semibold tabular-nums text-ink" data-testid="sale-pair-bought">
+                  {pair.bought === null ? '—' : formatPriceFigure(pair.bought)}
+                </span>
+              </span>
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="text-ink-muted">{t('trade.sellsFor')}</span>
+                <span className="font-semibold tabular-nums text-ink" data-testid="sale-pair-sells">
+                  {pair.sells === null ? '—' : formatPriceFigure(pair.sells)}
+                </span>
+              </span>
+            </div>
+          )}
           <Row
             // the word whole (2026-11-22 second play-test: in the 1,280 desk's pane the figure and the profit left "Cost" 16 px, and it
             // stood as "Co / st"); whole, the line still fits that pane (measured 286 of 286 px, nothing past the row)
@@ -254,8 +280,13 @@ function Frame({
           {t('desk.noGainWarn')}
         </Note>
       )}
-      {/* the units first, where a half-raised sheet shows them; the chart they are read against under them */}
+      {/* the units first, where a half-raised sheet shows them; the chart they are read against under them. 0490 (the owner, 2026-11-24:
+          "when i sell, i want to see the price i bought, the price i will get, how much profit"): ON A SALE the sale's lines stand
+          ABOVE the units: under them, a half-raised sheet at 390 x 844 cut them off (measured: the stepper's row ended at the fold),
+          and a sale's units are all she carries by default. Decided by default. A buy-and-sell trip keeps its units first. */}
+      {side === 'sell' && sale}
       {units}
+      {side !== 'sell' && sale}
       <Chart name={good.name} trend={trend} portId={portId} goodId={good.good_id} />
       {extra}
       <WhyThisPrice why={why.view ?? null} loading={why.loading} />
@@ -360,6 +391,9 @@ function DockedAct({
   const refused = side === 'buy' && (good.available === false || good.offered === false)
   const live = !act.sending && chosen > 0 && act.ready && !refused
   const total = act.total === null ? null : side === 'buy' ? -act.total : act.total
+  // 0490: THE SALE BEFORE THE PRESS — the dry run of exactly this sale (cmd.do_sell, rolled back): what she paid, what she gets,
+  // the tax, wages and dock fee as the sale counts them, and its one profit (`trip_net`, the SOLD event's). Nothing is added up here.
+  const sale = side === 'sell' && chosen > 0 ? act.preview : null
   return (
     <Frame
       side={side}
@@ -371,6 +405,8 @@ function DockedAct({
       onClose={onClose}
       warn={side === 'buy' && noGain}
       total={chosen > 0 ? total : null}
+      profit={side === 'sell' ? (act.previewLoading ? null : (sale?.trip_net ?? null)) : undefined}
+      pair={side === 'sell' ? { bought: sale?.basis ?? null, sells: sale?.avg_price ?? null } : undefined}
       units={
         ceiling > 0 ? (
           <div className="py-3">
@@ -396,6 +432,21 @@ function DockedAct({
             data-testid="trade-units-none"
           />
         )
+      }
+      sale={
+        side === 'sell' && chosen > 0 ? (
+            <SaleLines
+              boughtEach={sale?.basis ?? null}
+              cost={sale?.cost ?? null}
+              sellEach={sale?.avg_price ?? null}
+              proceeds={sale?.total ?? null}
+              tax={sale?.tax ?? null}
+              wages={sale?.wages ?? null}
+              dockFee={sale?.dock_fee ?? null}
+              profit={sale?.trip_net ?? null}
+              dim={act.previewLoading}
+            />
+        ) : undefined
       }
       extra={
         act.refusal ? (
@@ -507,6 +558,23 @@ function SailAct({
       onChoose={onChoose}
       total={mine ? total : null}
       profit={sells ? profit : undefined}
+      pair={sells ? { bought: side === 'sell' ? paidPerTun(fleet, good.code) : (go.buyRow?.price_each ?? null), sells: go.sellRow?.price_each ?? null } : undefined}
+      sale={
+        sells && mine ? (
+          // 0490: the trip's sale, as the served sell row counts it (supplies on their own row below, as before)
+          <SaleLines
+            boughtEach={side === 'sell' ? paidPerTun(fleet, good.code) : (go.buyRow?.price_each ?? null)}
+            cost={go.sellRow?.cost ?? null}
+            sellEach={go.sellRow?.price_each ?? null}
+            proceeds={go.sellRow?.proceeds ?? null}
+            tax={go.sellRow?.profit_tax ?? null}
+            wages={go.sellRow?.wages ?? null}
+            dockFee={go.sellRow ? dockFeeOf(go.sellRow) : null}
+            dockNote={go.sellRow?.dues ? taxFactorWords(go.sellRow.dues) : null}
+            profit={profit}
+          />
+        ) : undefined
+      }
       units={
         units !== null && units > 0 ? (
           <div className="py-3">
@@ -542,20 +610,6 @@ function SailAct({
           />
           {go.onCredit > 0 && (
             <Row label={t('desk.onCredit')} value={<Figure value={formatPriceDelta(-go.onCredit)} tone="warning" />} data-testid="plan-on-credit" />
-          )}
-          {sells && (
-            <>
-              <Row label={t('desk.wages')} value={<Figure value={go.sellRow?.wages != null ? formatPriceDelta(-go.sellRow.wages) : '—'} />} data-testid="trade-wages" />
-              <Row
-                label={t('desk.dockFee')}
-                value={
-                  <Figure
-                    value={dockFeeWords(go.sellRow)}
-                  />
-                }
-                data-testid="trade-dues"
-              />
-            </>
           )}
           {/* 0475: THE SECOND GOOD (a Trade card's `top`): one line, ticked; the one press buys and sells both. Only for the units it was
               served for: the room and the coin it was sized to go when the first count moves. */}
@@ -625,14 +679,76 @@ function AlsoLine({ also, onToggle }: { also: NonNullable<PlanDraft['also']>; on
   )
 }
 
-/** THE TRIP'S DOCK FEE as the tray prints it: the served row's own `dock_fee` (0361: every harbour she calls at, the last
- *  included; it is in the profit under it), with the destination's tax factor beside it while the economy is closed. A
- *  world before 0361 serves no `dock_fee`: the destination's fee, as it was printed then. Nothing is added up here. */
-function dockFeeWords(row: BoardSellRow | null): string {
-  if (!row) return '—'
-  const fee = row.dock_fee !== undefined ? row.dock_fee : (row.dues?.fee ?? row.port_fee)
-  if (fee == null) return '—'
-  return row.dues ? `${formatPriceDelta(-fee)} · ${taxFactorWords(row.dues)}` : formatPriceDelta(-fee)
+/** THE TRIP'S DOCK FEE: the served row's own `dock_fee` (0361: every harbour she calls at, the last included; it is in the profit
+ *  under it). A world before 0361 serves no `dock_fee`: the destination's fee, as it was printed then. Nothing is added up here. */
+function dockFeeOf(row: BoardSellRow): number | null {
+  return row.dock_fee !== undefined ? row.dock_fee : (row.dues?.fee ?? row.port_fee)
+}
+
+/** 0490: THE SALE, LINE BY LINE, BEFORE THE PRESS (the owner, 2026-11-24: "when i sell, i want to see the price i bought, the price i
+ *  will get, how much profit earn and such"). Figures first, a word or two each: Bought (each, total), Sells for (each, total), the
+ *  tax, wages and dock fee the sale pays (each only when not 0), and Profit: the served one profit, green or red, with its share of
+ *  the cost. Every figure is handed in served (the sale's dry run, or the trip's sell row); the percent is the one ratio drawn here. */
+function SaleLines({
+  boughtEach,
+  cost,
+  sellEach,
+  proceeds,
+  tax,
+  wages,
+  dockFee,
+  dockNote = null,
+  profit,
+  dim = false,
+}: {
+  boughtEach: number | null
+  cost: number | null
+  sellEach: number | null
+  proceeds: number | null
+  tax: number | null
+  wages: number | null
+  dockFee: number | null
+  /** The destination's tax factor words beside a trip's dock fee (closed economy). */
+  dockNote?: string | null
+  profit: number | null
+  /** The figures are the last served, not yet for the units on the button. */
+  dim?: boolean
+}) {
+  const t = useT()
+  const pair = (each: number | null, sum: number | null) => (
+    <span className="inline-flex flex-wrap items-baseline justify-end gap-x-1.5 tabular-nums">
+      <span className="text-t-caption text-ink-muted">{each === null ? '—' : formatPriceFigure(each)}</span>
+      <Figure value={sum === null ? '—' : formatPrice(sum)} />
+    </span>
+  )
+  const cut = (n: number | null, label: string, testid: string, note: string | null = null) =>
+    n !== null && n !== 0 ? (
+      <Row label={label} value={<Figure value={note ? `${formatPriceDelta(-n)} · ${note}` : formatPriceDelta(-n)} />} data-testid={testid} />
+    ) : null
+  return (
+    <div className={`pb-1 transition-opacity ${dim ? 'opacity-60' : ''}`} data-testid="sale-lines" data-profit={profit ?? undefined}>
+      <Row label={t('trade.bought')} value={pair(boughtEach, cost)} data-testid="sale-bought" data-each={boughtEach ?? undefined} />
+      <Row label={t('trade.sellsFor')} value={pair(sellEach, proceeds)} data-testid="sale-sells" data-each={sellEach ?? undefined} />
+      {cut(tax, t('desk.tax'), 'sale-tax')}
+      {cut(wages, t('desk.wages'), 'sale-wages')}
+      {cut(dockFee, t('desk.dockFee'), 'sale-dock', dockNote)}
+      <Row
+        label={t('desk.profit')}
+        value={
+          <span className="inline-flex items-baseline gap-1.5 tabular-nums">
+            <Figure value={profit === null ? '—' : formatPriceDelta(profit)} size="figure" tone={profit === null ? 'faint' : profit >= 0 ? 'success' : 'danger'} />
+            {profit !== null && cost !== null && cost > 0 && (
+              <span className={`text-t-caption ${profit >= 0 ? 'text-success' : 'text-danger'}`} data-testid="sale-profit-pct">
+                {formatPctDelta(profit / cost)}
+              </span>
+            )}
+          </span>
+        }
+        hairline={false}
+        data-testid="sale-profit"
+      />
+    </div>
+  )
 }
 
 /** 0237: "Ready in 0:42" while she is in her port time — a live countdown to the served `ready_at`. */
