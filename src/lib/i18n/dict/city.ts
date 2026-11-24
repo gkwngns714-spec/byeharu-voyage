@@ -38,6 +38,8 @@ export const cityDict = defineDict({
     relationFree: 'Free port',
     relationNone: 'No nation',
     buildings: 'Buildings',
+    // S1 (2026-11-24): the name of HQ's Invest and Report doors, read by a screen reader
+    books: 'Books',
     cityHall: 'City hall',
     market: 'Market',
     request: 'Request',
@@ -130,6 +132,7 @@ export const cityDict = defineDict({
     relationFree: '자유항',
     relationNone: '국적 없음',
     buildings: '건물',
+    books: '장부',
     cityHall: '시청',
     market: '시장',
     request: '의뢰',

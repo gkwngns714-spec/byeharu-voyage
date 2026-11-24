@@ -48,7 +48,7 @@ export async function serveHqLit(
   ]
   await serveWorldImage(
     page,
-    await patchedWorldImage(roles ? 'hq-roles' : race ? 'hq-race' : contracts ? 'hq-contracts' : jobs ? 'hq-jobs' : served ? 'hq-served' : 'hq-lit', async (pg) => {
+    await patchedWorldImage(roles && jobs ? 'hq-roles-jobs' : roles ? 'hq-roles' : race ? 'hq-race' : contracts ? 'hq-contracts' : jobs ? 'hq-jobs' : served ? 'hq-served' : 'hq-lit', async (pg) => {
       await pg.exec(`update public.world_config set value = 'true'::jsonb where key in (${keys.map((k) => `'${k}'`).join(', ')})`)
       await pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite'`)
       if (contracts) await pg.exec(POST_ONE_CONTRACT)
