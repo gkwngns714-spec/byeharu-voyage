@@ -62,7 +62,10 @@
 -- ROWS: none. No table, no index, no cron, no beat step. 0 new rows a minute.
 -- budget: no table, no cron job, no autovacuum or fillfactor change; reads only. world.workers: her fleets, her jobs and ONE range of
 --   her last 24 hours of ledger (the (player_id, created_at) index company_rate_for reads); world.actions: one world.best_sales and at
---   most 8 trips back for a fleet, public.land_terms a job for a party, cut at 1.2 s of its own.
+--   most 8 trips back for a fleet, public.land_terms a job for a party. NOTHING IS CUT BY THE CLOCK (2026-11-25: on CI the 1.2 s cut
+--   left Bring home out at Porto, so a player's choices would come and go with the server's speed): the Best run, every Bring home
+--   and every land job are always served; the single runs are the first 8 paying cards by count; past 5 s the read answers closed
+--   E_SLOW and nothing else.
 -- COST (local PGlite, this file's probe; the notice prints them): world.workers a few ms (budget 100); world.actions about 1 s for a
 --   fleet (budget 1.5 s; world.best_sales is about half of it), under 0.1 s for a party.
 -- HOW OFTEN A CLIENT MAY ASK (served as ask_s): world.workers no more than once in 60 s a client, and once after a command of hers or
@@ -400,6 +403,11 @@ set search_path = public, pg_temp
 as $body$
 -- 0496: WHAT ONE FLEET MAY BE SET TO NOW, each option in the one shape (public.action_shape), and ONLY what cmd.set_fleet_job would take.
 -- {options, closed, cut}. closed {code, sentence}: the door is shut for every option (dark, not her fleet, on a standing route); then none.
+-- WHAT IS ALWAYS THERE, AND WHAT MAY BE LEFT OUT. The Best run and every Bring home the door would take are built first and are never
+-- left out. Only the list of single runs (a good to a harbour) is bounded, BY COUNT: the first c_top paying cards in the plan's own
+-- order (profit a second, then the good), and `cut` true says cards past them were left out. NOTHING IS CUT BY THE CLOCK: a slow
+-- machine serves the same options as a fast one. Past c_guard of its own time the read answers closed E_SLOW and no option (an honest
+-- "ask again"), never a shorter list.
 -- THE QUOTES ARE THE SERVER'S OWN, no second estimator:
 --   world.best_sales(fleet, harbour)   the cards of the harbour she lies at (or is bound for): good, harbour, units, cost, profit, seconds
 --   world.quote                        a card's sale, whole (the coin a completion brings in; Trading counts what is bought and sold)
@@ -421,7 +429,10 @@ as $body$
 -- warehouse, bought at home) or the shed stops (E_SHED_FULL). A read; world.best_sales reads the CALLER, so asked for anyone else: closed.
 declare
   c_top    constant int := 8;
-  c_budget constant interval := interval '1200 milliseconds';
+  -- THE LAST RESORT, never a shorter list: past this the read answers `closed` E_SLOW (ask again) and no option at all
+  c_guard  constant interval := interval '5 seconds';
+  c_slow   constant jsonb := jsonb_build_object('options', '[]'::jsonb, 'cut', false,
+                               'closed', jsonb_build_object('code', 'E_SLOW', 'sentence', 'the quotes are slow just now: ask again in a moment'));
   v_t0     timestamptz := clock_timestamp();
   f        public.fleets%rowtype;
   v_at     uuid;
@@ -488,7 +499,61 @@ begin
     end;
   end if;
 
-  -- THE CARDS, in the order the Best run's plan takes them (public.fleet_job_plan: profit a second, then the good)
+  -- BRING HOME (0492), BUILT FIRST AND NEVER CUT: what the door's own judge takes (public.fleet_job_end), the trip there and back,
+  -- the BUY line's units. Every good the harbour sells, in the order of its code: a fixed list, whatever the machine's speed
+  if v_docked and public.assign_home_on() then
+    begin
+      v_end := public.fleet_job_end(p_player, jsonb_build_object('buy', v_code, 'end', 'store'));
+    exception when others then
+      if sqlerrm !~ '^E_[A-Z0-9_]+:' then raise; end if;
+      v_end := null;
+    end;
+    v_home := v_end->>'sell';
+    if v_home is not null then
+      v_t := public.job_trip(p_fleet, v_at, array[v_home, v_code], true);
+      if not (v_t ? 'shut') then
+        for c in
+          select g.id, g.code
+            from public.port_goods pg join public.goods g on g.id = pg.good_id
+           where pg.port_id = v_at and public.port_offers(v_at, g.id)
+           order by g.code
+        loop
+          if clock_timestamp() - v_t0 > c_guard then
+            return c_slow;
+          end if;
+          v_ends := public.fleet_job_ends(p_player, p_fleet, jsonb_build_object('good', c.code, 'buy', v_code, 'sell', v_home, 'end', 'store'), v_code);
+          continue when v_ends ? 'pause' or v_ends ? 'wait';
+          if v_ends ? 'buy' then
+            select q.units, q.total into v_units, v_cost
+              from world.quote(v_at, c.id, split_part(v_ends->>'buy', ' ', 3)::numeric, 'buy', null, p_fleet) q;
+          else
+            v_cap := public.fleet_buy_capacity(p_fleet, c.id);
+            v_units := (v_cap->>'max_qty')::numeric;
+            v_cost := (v_cap->>'est_total')::numeric;
+          end if;
+          continue when coalesce(v_units, 0) < 1 or v_cost is null;
+          v_int := (v_t->>'seconds')::numeric + v_turn + v_tick;
+          v_day := public.run_day(p_player, p_fleet, v_at, null, c.id, v_units, v_int, v_cost, 0, -(v_cost + (v_t->>'total')::numeric));
+          v_store := v_store || jsonb_build_array(public.action_over_day(public.action_shape(
+            format('sea:fixed:%s:%s:%s:store', c.code, v_code, v_home), 'sea', 'trading', 1, v_int,
+            jsonb_build_object('coin', v_cost),
+            jsonb_build_object('coin', 0, 'items', jsonb_build_array(jsonb_build_object('good', c.code, 'units', v_units, 'basis', round(v_cost / v_units, 2)))),
+            jsonb_build_array(jsonb_build_object('skill', 'trading', 'xp', floor(v_cost / v_tr.per * v_tr.xp)),
+                              jsonb_build_object('skill', 'exploration', 'xp', floor((v_t->>'nm')::numeric / v_ex.per * v_ex.xp))),
+            jsonb_build_object('total', round((v_t->>'total')::numeric), 'wages', v_t->'wages', 'stores', v_t->'stores', 'dock_fee', v_t->'dock_fee'),
+            -(v_cost + (v_t->>'total')::numeric), 'quote',
+            jsonb_build_object('job', jsonb_build_object('kind', 'fixed', 'params', jsonb_build_object('good', c.code, 'buy', v_code, 'end', 'store')),
+                               'good', c.code, 'buy', v_code, 'sell', v_home, 'end', 'store', 'units', v_units, 'returns', true, 'varies', false)),
+            v_day,
+            floor((v_day->>'traded')::numeric / v_tr.per * v_tr.xp) + floor((v_day->>'runs')::numeric * (v_t->>'nm')::numeric / v_ex.per * v_ex.xp),
+            (v_day->>'runs')::numeric * v_units));
+        end loop;
+      end if;
+    end if;
+  end if;
+
+  -- THE CARDS, in the order the Best run's plan takes them (public.fleet_job_plan: profit a second, then the good). The Best run is
+  -- the first of them she can sail: made before any row, so it is never left out
   for c in
     select g.e->>'good' as good, g.e->>'port' as port, g.e->>'basis' as basis, (g.e->>'units')::numeric as units,
            (g.e->>'profit')::numeric as profit, coalesce((g.e->>'cost')::numeric, 0) as cost,
@@ -522,12 +587,17 @@ begin
                            -- not what an hour brings (measured: ten Best runs made 1.5 % of it). Her own runs give it (basis runs).
                            'per_hour', null, 'xp_per_hour', null, 'items_per_hour', null));
     end if;
-    continue when c.basis = 'on_board' or v_n >= c_top;
+    continue when c.basis = 'on_board';
+    -- THE ROWS ARE BOUNDED BY COUNT, NEVER BY THE CLOCK: the first c_top cards in the plan's own order; a card past them is left out
+    -- and `cut` says so. The same harbour and market give the same rows on any machine.
+    if v_n >= c_top then
+      v_cut := true;
+      exit;
+    end if;
+    if clock_timestamp() - v_t0 > c_guard then
+      return c_slow;
+    end if;
     if not (v_t ? 'back') then
-      if clock_timestamp() - v_t0 > c_budget then
-        v_cut := true;
-        continue;
-      end if;
       v_t := v_t || jsonb_build_object('back', public.job_trip(p_fleet, v_dest, array[v_code], true));
       v_trips := v_trips || jsonb_build_object(c.port, v_t);
     end if;
@@ -551,57 +621,12 @@ begin
       floor((v_day->>'traded')::numeric / v_tr.per * v_tr.xp) + floor((v_day->>'runs')::numeric * v_nm / v_ex.per * v_ex.xp), 0));
   end loop;
 
-  -- BRING HOME (0492): what the door's own judge takes (public.fleet_job_end), the trip there and back, the BUY line's units
-  if v_docked and public.assign_home_on() then
-    begin
-      v_end := public.fleet_job_end(p_player, jsonb_build_object('buy', v_code, 'end', 'store'));
-    exception when others then
-      if sqlerrm !~ '^E_[A-Z0-9_]+:' then raise; end if;
-      v_end := null;
-    end;
-    v_home := v_end->>'sell';
-    if v_home is not null then
-      v_t := public.job_trip(p_fleet, v_at, array[v_home, v_code], true);
-      if not (v_t ? 'shut') then
-        for c in
-          select g.id, g.code
-            from public.port_goods pg join public.goods g on g.id = pg.good_id
-           where pg.port_id = v_at and public.port_offers(v_at, g.id)
-           order by g.code
-        loop
-          if clock_timestamp() - v_t0 > c_budget then
-            v_cut := true;
-            exit;
-          end if;
-          v_ends := public.fleet_job_ends(p_player, p_fleet, jsonb_build_object('good', c.code, 'buy', v_code, 'sell', v_home, 'end', 'store'), v_code);
-          continue when v_ends ? 'pause' or v_ends ? 'wait';
-          if v_ends ? 'buy' then
-            select q.units, q.total into v_units, v_cost
-              from world.quote(v_at, c.id, split_part(v_ends->>'buy', ' ', 3)::numeric, 'buy', null, p_fleet) q;
-          else
-            v_cap := public.fleet_buy_capacity(p_fleet, c.id);
-            v_units := (v_cap->>'max_qty')::numeric;
-            v_cost := (v_cap->>'est_total')::numeric;
-          end if;
-          continue when coalesce(v_units, 0) < 1 or v_cost is null;
-          v_int := (v_t->>'seconds')::numeric + v_turn + v_tick;
-          v_day := public.run_day(p_player, p_fleet, v_at, null, c.id, v_units, v_int, v_cost, 0, -(v_cost + (v_t->>'total')::numeric));
-          v_store := v_store || jsonb_build_array(public.action_over_day(public.action_shape(
-            format('sea:fixed:%s:%s:%s:store', c.code, v_code, v_home), 'sea', 'trading', 1, v_int,
-            jsonb_build_object('coin', v_cost),
-            jsonb_build_object('coin', 0, 'items', jsonb_build_array(jsonb_build_object('good', c.code, 'units', v_units, 'basis', round(v_cost / v_units, 2)))),
-            jsonb_build_array(jsonb_build_object('skill', 'trading', 'xp', floor(v_cost / v_tr.per * v_tr.xp)),
-                              jsonb_build_object('skill', 'exploration', 'xp', floor((v_t->>'nm')::numeric / v_ex.per * v_ex.xp))),
-            jsonb_build_object('total', round((v_t->>'total')::numeric), 'wages', v_t->'wages', 'stores', v_t->'stores', 'dock_fee', v_t->'dock_fee'),
-            -(v_cost + (v_t->>'total')::numeric), 'quote',
-            jsonb_build_object('job', jsonb_build_object('kind', 'fixed', 'params', jsonb_build_object('good', c.code, 'buy', v_code, 'end', 'store')),
-                               'good', c.code, 'buy', v_code, 'sell', v_home, 'end', 'store', 'units', v_units, 'returns', true, 'varies', false)),
-            v_day,
-            floor((v_day->>'traded')::numeric / v_tr.per * v_tr.xp) + floor((v_day->>'runs')::numeric * (v_t->>'nm')::numeric / v_ex.per * v_ex.xp),
-            (v_day->>'runs')::numeric * v_units));
-        end loop;
-      end if;
-    end if;
+  -- more paying cards than the plan's own count looks at: rows were left out
+  if not v_cut and (select count(*) from jsonb_array_elements(case when jsonb_typeof(v_bs->'goods') = 'array' then v_bs->'goods' else '[]'::jsonb end) x(e)
+                     where (x.e->>'pays')::boolean and x.e->>'port' is not null and jsonb_typeof(x.e->'profit') = 'number' and (x.e->>'profit')::numeric > 0
+                       and x.e->'near' is distinct from 'false'::jsonb and x.e->>'basis' is distinct from 'on_board')
+                   > greatest(c_top, coalesce(public.wc_int('fleet_jobs_runs'), 12)) then
+    v_cut := true;
   end if;
 
   return jsonb_build_object(
@@ -632,7 +657,7 @@ as $body$
 -- THE QUOTE is public.land_terms, the terms Send would freeze: interval = its trip (march, turns, march, the passage both ways); a
 -- completion is one trip: p units of the good and xp x p; a make job is one unit a trip from its inputs. No coin moves ashore yet.
 declare
-  c_budget constant interval := interval '1200 milliseconds';
+  c_guard constant interval := interval '5 seconds';   -- the last resort: closed E_SLOW, never a shorter list
   v_t0   timestamptz := clock_timestamp();
   lp     public.land_parties%rowtype;
   la     record;
@@ -670,9 +695,9 @@ begin
      where public.land_skill_on(a.skill)
      order by s.ord, a.ord
   loop
-    if clock_timestamp() - v_t0 > c_budget then
-      v_cut := true;
-      exit;
+    if clock_timestamp() - v_t0 > c_guard then
+      return jsonb_build_object('options', '[]'::jsonb, 'cut', false,
+                                'closed', jsonb_build_object('code', 'E_SLOW', 'sentence', 'the terms are slow just now: ask again in a moment'));
     end if;
     t := public.land_terms(p_player, la.code);
     continue when t is null or jsonb_typeof(t->'short') = 'object';
@@ -965,7 +990,8 @@ as $body$
 -- 0496: WHAT ONE WORKER MAY BE SET TO, the Assign sheet's one read (docs/design/hq-corp-2026-11-24.md A2.1, C3). p_worker is a row's
 -- `id` from world.workers(): fleet:<uuid> (public.sea_actions_for) or party:<n> (public.land_actions_for). {company, worker, kind,
 -- options, closed, cut, now, ask_s, ms}: each option in the one shape, only what the server would take; closed {code, sentence} when her
--- door is shut for all of them; cut when the read's budget ran out before every option was priced. Signed out or a merchant:
+-- door is shut for all of them (E_SLOW: the read took too long, ask again); cut when single runs past the first eight were left out
+-- (by count, never by the clock). Signed out or a merchant:
 -- {company: false, options: []}. THIS READ PRICES (a fleet's is world.best_sales and the trips back): ask it when the sheet opens and
 -- no sooner than ask_s after, never on a timer. Writes nothing.
 declare

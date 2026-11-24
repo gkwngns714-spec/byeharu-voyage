@@ -3751,7 +3751,8 @@ export type WorkerActionsView =
       options: WorkerAction[]
       /** Her door is shut for every option (dark, a route, the party out, a haul waiting): no option is served. */
       closed: { code: string; sentence: string } | null
-      /** The read's budget ran out before every option was priced. */
+      /** Single runs past the first eight were left out (by count, in a stable order; never by the clock). The Best run, Bring home,
+       *  Trade nearby and land jobs are never left out. A read that took too long answers `closed` E_SLOW instead. */
       cut: boolean
       at?: string | null
       ms: number
