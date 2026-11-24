@@ -6,12 +6,12 @@
 --   A different digest: 0495 refuses at the push (its hunk count), nothing changes.
 --   sea_places_free >= 1 (the self-assert's scene stands on a SEA_PLACE with no purse, share or flow; 0 = it refuses, nothing changes).
 -- THE LOAD THE SWITCH WOULD ADD, read here so the lead can state it before lighting (this file adds none while dark):
---   harbours = purse rows (H); load.pairs = holder-and-harbour pairs (P), by players and merchants; holders = distinct houses.
---   Lit, one tick an hour writes H purse-row updates + up to P ledger rows + P treasury_flows + 2 P stats_live_deltas + P purse
---   updates: at most (H + 5 P) / 60 rows a minute. coupon_hour_max = what an hour would pay if every city's 24 hours covered it
---   (round(paid x works_coupon_day / 24) a pair, before 0148's multiplier). accrued_sum = old `accrued`, collected as today.
--- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, world_config by key, the catalog, port_treasury (one row a harbour),
---   city_shares (one pass), players by id for the holders. No function that writes is called. ROLLBACK: nothing (read only).
+--   load.pairs_players = P (player-and-harbour pairs; read 2026-11-24 20:57 UTC: 1) held by load.players = N; pairs_merchants are NOT
+--   paid hourly (read: 3,656) and get no new row. Lit, an hour writes P share-row updates + N ledger rows + N purse updates + N + P
+--   stats_live_deltas rows: about 3 N + 2 P. P = 1: 5 rows an hour. P = 100: 500 rows an hour (8 a minute, in the :37 run).
+--   coupon_hour_max_players = what an hour pays out at most (round(paid x works_coupon_day / 24) a pair, before 0148's multiplier).
+-- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, world_config by key, the catalog, city_shares (one pass), players by
+--   id for the holders. No function that writes is called. ROLLBACK: nothing (read only).
 begin transaction read only;
 select json_build_object(
   'at', now(),
@@ -26,7 +26,7 @@ select json_build_object(
   'new_fns', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                where n.nspname = 'public' and p.proname in ('dividend_hourly_on', 'real_hour', 'city_coupon_hour')),
   'new_columns', (select count(*) from information_schema.columns c
-                   where c.table_schema = 'public' and c.table_name = 'port_treasury' and c.column_name in ('profit_hours', 'coupon_hour', 'coupon_owed')),
+                   where c.table_schema = 'public' and c.table_name = 'city_shares' and c.column_name in ('drip_left', 'drip_hour', 'drip_at')),
   'bodies', (select json_object_agg(p.proname, md5(replace(pg_get_functiondef(p.oid), E'\r', '')))
                from pg_proc p join pg_namespace n on n.oid = p.pronamespace
               where n.nspname = 'public' and p.proname in ('tick_city', 'city_coupons')),
@@ -35,12 +35,12 @@ select json_build_object(
                          and not exists (select 1 from public.port_treasury t where t.port_id = q.id)
                          and not exists (select 1 from public.city_shares s where s.port_id = q.id)
                          and not exists (select 1 from public.treasury_flows f where f.port_id = q.id)),
-  'harbours', (select count(*) from public.port_treasury),
   'load', (select json_build_object(
              'pairs', count(*), 'pairs_players', count(*) filter (where not x.is_npc), 'pairs_merchants', count(*) filter (where x.is_npc),
-             'holders', count(distinct x.player_id), 'paid_sum', coalesce(sum(x.paid), 0), 'accrued_sum', coalesce(sum(x.accrued), 0),
-             'pairs_under_one_coin', count(*) filter (where round(x.paid * (select (c.value #>> '{}')::numeric from public.world_config c where c.key = 'works_coupon_day') / 24) < 1),
-             'coupon_hour_max', coalesce(sum(round(x.paid * (select (c.value #>> '{}')::numeric from public.world_config c where c.key = 'works_coupon_day') / 24)), 0))
+             'players', count(distinct x.player_id) filter (where not x.is_npc),
+             'paid_sum_players', coalesce(sum(x.paid) filter (where not x.is_npc), 0),
+             'accrued_sum_players', coalesce(sum(x.accrued) filter (where not x.is_npc), 0),
+             'coupon_hour_max_players', coalesce(sum(round(x.paid * (select (c.value #>> '{}')::numeric from public.world_config c where c.key = 'works_coupon_day') / 24)) filter (where not x.is_npc), 0))
              from (select s.port_id, s.player_id, pl.is_npc, sum(s.paid) as paid, sum(s.accrued) as accrued
                      from public.city_shares s join public.players pl on pl.id = s.player_id group by 1, 2, 3) x)
 );
