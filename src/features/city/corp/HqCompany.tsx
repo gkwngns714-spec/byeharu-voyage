@@ -45,8 +45,8 @@ export function HqCompany({ port }: { port: SnapshotPort | null }) {
   // NOTHING HERE MOVES BY ITSELF (2026-11-25). Best moves, the Storage and the Ledger are FIXED SHAPES: the same boxes before their read,
   // after it, and whatever it says. Three blocks cannot be: a choice at sea, the news from away and the country race are there only
   // when something happened or a switch is lit, which only their own read knows. Those hold the room they had last time while that
-  // read is asked (HeldRoom.tsx); so does the worker list, for the rows only the Land's read knows. `asking` is the first answer still
-  // on the wire, never the silent re-ask.
+  // read is asked (HeldRoom.tsx). The worker list is a fixed shape too: its rows are counted from the world before its reads answer
+  // (WorkerList.tsx). `asking` is the first answer still on the wire, never the silent re-ask.
   const asking = (r: { view: unknown; loading: boolean }) => r.view === null && r.loading
   return (
     <div className="flex flex-col gap-6" data-testid="hq-company">

@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { HeldRoom, SheetSection, Skeleton } from '../../../components/ui'
+import { SheetSection, Skeleton } from '../../../components/ui'
 import { openHq } from '../../../app/hqPlace'
 import { useShellState } from '../../../app/shellState'
 import { useCommandDraft } from '../../../domain/order'
 import { formatInt } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { useWorld } from '../../../live/worldStore'
-import { WorkerRow } from './WorkerRow'
+import { FixableRow } from './WorkerFix'
 import { sortWorkers, useWorkers, type WorkerRow as Row } from './workerRows'
 
 // THE ONE WORKER LIST (docs/design/hq-corp-2026-11-24.md A2, C1; slice H1; the owner, 2026-11-24: *"it is like madevor's rs3 jagex game
@@ -14,6 +14,7 @@ import { sortWorkers, useWorkers, type WorkerRow as Row } from './workerRows'
 // on one action with its bar; the idle ones first, with Assign.
 // THE ORDER IS SET WHEN THE PAGE OPENS (idle, then stopped, then working) and never under the pointer: a worker who changes state
 // keeps her place, and a new one joins at the foot. The list waits for its reads, so it is ordered once, on what is true.
+// 0499: a worker whose job stopped or waits on a code that one press mends wears that press (WorkerFix.tsx): Repair, Assign, Storage.
 // A press: an idle worker's opens the one Assign sheet; any other opens her sheet (her action, Change, Stop). While her kind of work
 // is dark on this server, a fleet's press opens her own sheet (cargo, route, orders), which works today.
 
@@ -21,8 +22,14 @@ export function WorkerList() {
   const t = useT()
   const { nowMs } = useShellState()
   const { rows, ready, names } = useWorkers()
-  // her fleets are known with the world: each is a worker, so the waiting list is as many rows as she has fleets
+  // HOW MANY ROWS THERE WILL BE IS KNOWN BEFORE THE READS ANSWER (2026-11-25, the owner's law: nothing on a page moves by itself): a row
+  // for each of her fleets (the world's own read), and one for her Land party when the world serves the Land's switch lit
+  // (`config.land_enabled`, in the snapshot) and she has a company. So the waiting list is exactly that many skeleton rows, each in
+  // the row's own fixed height, and the answer fills them in place. It was one skeleton row, then every row: on a first visit with
+  // the Land lit the list grew by the party's row (112 px) and pushed Best moves, the Storage and the plates down.
   const fleets = useWorld((s) => s.fleets.length)
+  const party = useWorld((s) => s.snapshot?.config.land_enabled === true && s.player !== null)
+  const expected = fleets + (party ? 1 : 0)
   const selectFleet = useCommandDraft((s) => s.selectFleet)
   const [order, setOrder] = useState<readonly string[]>([])
 
@@ -40,14 +47,11 @@ export function WorkerList() {
   }
 
   if (ready && rows.length === 0) return null
-  // A LAND PARTY OR AN ESTATE is a row only the Land's read knows of, so the list can be longer than her fleets: that room is held from
-  // the last time (HeldRoom.tsx; nothing fixed can know it).
   return (
-    <HeldRoom name="hq-workers" asking={!ready}>
     <SheetSection heading={t('corp.workers')} trailing={ready ? <span className="text-t-caption tabular-nums text-ink-faint">{formatInt(rows.length)}</span> : undefined} data-testid="corp-workers">
       {!ready ? (
-        <ul className="flex flex-col gap-2" aria-hidden="true">
-          {Array.from({ length: Math.max(1, fleets) }, (_, i) => (
+        <ul className="flex flex-col gap-2" aria-hidden="true" data-testid="corp-worker-wait">
+          {Array.from({ length: Math.max(1, expected) }, (_, i) => (
             <li key={i}>
               <Skeleton className="h-[104px] w-full lg:h-[72px]" />
             </li>
@@ -57,12 +61,11 @@ export function WorkerList() {
         <ul className="flex flex-col gap-2" data-testid="corp-worker-list">
           {list.map((r) => (
             <li key={r.id}>
-              <WorkerRow row={r} names={names} nowMs={nowMs} onPress={press} />
+              <FixableRow row={r} names={names} nowMs={nowMs} onPress={press} />
             </li>
           ))}
         </ul>
       )}
     </SheetSection>
-    </HeldRoom>
   )
 }

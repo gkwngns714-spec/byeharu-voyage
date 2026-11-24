@@ -28,6 +28,22 @@ export const PARTY = 'party'
 
 export type WorkerState = 'idle' | 'stopped' | 'working'
 
+/** WHAT MENDS A JOB THAT STOPPED OR WAITS ON A CODE, AS ONE PRESS (0499): the yard's repair (her flagship cannot sail), the Inn's
+ *  hire of the hands she lacks (short of crew), a new assignment (a leg beyond her reach), Storage (the home shed is full). A code with no such press has none; the code itself is
+ *  never printed. THE ONE TABLE: her row, her sheet and While away read it. */
+export type WorkerFix = 'repair' | 'hire' | 'assign' | 'storage'
+
+export function fixOf(code: string | null | undefined): WorkerFix | null {
+  return code === 'E_FLAGSHIP_DISABLED' ? 'repair' : code === 'E_CREW_SHORT' ? 'hire' : code === 'E_LEG_TOO_FAR' ? 'assign' : code === 'E_SHED_FULL' ? 'storage' : null
+}
+
+/** The code a job stopped on, or waits on (0499: `last.wait` carries the server's code while she waits for her repair or her crew). */
+export function jobCode(job: Pick<FleetJobRow, 'state' | 'paused' | 'last'>): string | null {
+  if (job.state === 'stopped') return job.paused
+  const w = job.last?.wait
+  return job.state === 'waiting' && w !== undefined && w.startsWith('E_') ? w : null
+}
+
 /** What a worker is doing, as data: the row and the sheets say it with `actionWord`. */
 export type WorkerAction =
   | { kind: 'none' }
@@ -71,8 +87,11 @@ export interface WorkerRow {
   hull: string | null
   /** The first captain seated in her ships, served (0157). */
   captain: { code: string; name: string; grade: string } | null
-  /** Why a stopped job stopped, in the server's words. */
+  /** Why a stopped job stopped (0499: or waits on a code), in the server's words. */
   why: string | null
+  /** The one press that mends it (`fixOf`), or null. A repair or a hire is offered only while she lies docked (the yard and the Inn
+   *  take her there). */
+  fix: WorkerFix | null
 }
 
 export type LitLand = Extract<LandView, { company: true }>
@@ -96,6 +115,10 @@ function fleetRow(f: FleetView, jobs: LitJobs | null): WorkerRow {
   }
   if (job) {
     const p = job.params
+    const code = jobCode(job)
+    // a repair or a hire is pressed where she lies docked; in the yard (or at sea) there is no press
+    const press = fixOf(code)
+    const fix = (press === 'repair' || press === 'hire') && f.status !== 'DOCKED' ? null : press
     const action: WorkerAction =
       job.kind === 'best'
         ? { kind: 'best' }
@@ -116,14 +139,16 @@ function fleetRow(f: FleetView, jobs: LitJobs | null): WorkerRow {
         { key: 'earned', value: job.earned },
       ],
       // the server's sentence, else its code's plain words (dict/codes.ts); never the code itself
-      why: job.state === 'stopped' ? (job.last?.sentence ?? (job.paused ? translateMaybe('en', 'codes', job.paused) : null)) : null,
+      // a stop says why; a wait on a code says why while its press stands (in the yard the sentence is already answered)
+      why: job.state === 'stopped' || fix ? (job.last?.sentence ?? (code ? translateMaybe('en', 'codes', code) : null)) : null,
+      fix,
     }
   }
   // no standing job: where she is, by the one where-rule (domain/fleet `fleetSignal`)
   const signal = fleetSignal(f)
   const state: WorkerState = signal === 'stuck' ? 'stopped' : signal === 'sailing' || f.queue.length > 0 ? 'working' : 'idle'
   const action: WorkerAction = signal === 'sailing' ? { kind: 'sail', to: v?.to ?? null } : state === 'working' ? { kind: 'orders' } : { kind: 'none' }
-  return { ...base, state, waiting: false, action, figures: [], tally: [], why: null }
+  return { ...base, state, waiting: false, action, figures: [], tally: [], why: null, fix: null }
 }
 
 function partyRow(land: LitLand): WorkerRow {
@@ -154,6 +179,8 @@ function partyRow(land: LitLand): WorkerRow {
     hull: null,
     captain: null,
     why: null,
+    // a haul that waits for room in the home shed (world.land: `waiting`, `found_waiting`)
+    fix: !out && (p.waiting > 0 || Object.keys(p.found_waiting).length > 0) ? 'storage' : null,
   }
 }
 

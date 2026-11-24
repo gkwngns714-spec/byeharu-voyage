@@ -111,7 +111,7 @@ test('HQ: the hall read lands two seconds late and nothing goes up when the load
   expect(moves.map(sayMove), 'a box on HQ moved by itself when the loading meter left').toEqual([])
 })
 
-// A BLOCK THAT IS THERE ONLY WHEN SOMETHING HAPPENED (a choice at sea, news from away, the country race, a worker the Land adds) cannot
+// A BLOCK THAT IS THERE ONLY WHEN SOMETHING HAPPENED (a choice at sea, news from away, the country race) cannot
 // be a fixed shape: only its read knows whether it is there. It holds the room it had last time (src/components/ui/HeldRoom.tsx). The
 // first visit on a glass has nothing to hold and is not judged here; every visit after it is: the page is opened, left to settle, opened again with
 // the same read late, and what stands under the block must stand still from its first frame.
@@ -186,6 +186,23 @@ test('HQ, the board lit: Best moves is three slots of one height whether the lat
     await context.close()
   }
   expect(heights.one, 'Best moves is one height with one card and with many').toBe(heights.many)
+})
+
+// THE WORKER LIST IS AS MANY ROWS AS THE WORLD ALREADY SAYS: her fleets, and her Land party when the Land's switch is lit. PR #862's
+// second run: on a first visit the list waited as one row and the party's row landed 321 ms later, 112 px. Judged on a FIRST visit
+// (nothing remembered), with the Land's read late.
+test('HQ, the Land lit, a first visit: the Land read lands late and the party row fills a place that was already there', async ({ page }) => {
+  test.setTimeout(600_000)
+  await page.setViewportSize(PHONE)
+  await serveHqLit(page, { late: ['world.land'] })
+  await watchBoxes(page, { workers: '[data-testid="corp-workers"]', board: '[data-testid="hq-board"]', plate: '[data-plate-mark]' }, '[data-testid="hq-company"]')
+  await page.goto('city')
+  await ready(page)
+  expect(await page.evaluate(() => Object.keys(window.localStorage).filter((k) => k.startsWith('bv:room:')).length), 'this is not a first visit').toBe(0)
+  await expect(page.getByTestId('corp-worker-list').locator('> li')).toHaveCount(2, { timeout: 180_000 })
+  const { moves, seen } = await movesOf(page)
+  for (const mark of ['workers#0', 'board#0', 'plate#0']) expect(seen, `the watch saw no ${mark}`).toContain(mark)
+  expect(moves.map(sayMove), 'a box on HQ moved by itself when the Land read landed').toEqual([])
 })
 
 // THE STORAGE stood up when the third of its reads had answered. It is in the first frame now, a skeleton until then.
