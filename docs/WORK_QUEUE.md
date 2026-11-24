@@ -5,6 +5,8 @@
 This block is the current state. The hand-off blocks further down (2026-11-13 and older) are history.
 
 
+**UPDATE 2026-11-24: THE REMASTER (row 382): docs/design/remaster-2026-11-24.md is the one order of work. Phase 1: #850, 0492 #854, 0493 `rate-why` (building), 0494 `job-by-harbours` (row 381).**
+
 **UPDATE 2026-11-24 (new PC): row 378 CIVILIZATION LAYER researched + designed (docs/design/civ-layer-2026-11-24.md). #850 merged with main (conflict in drive.market resolved), #854 updated; both in CI. H1 `hq-corp` and H2 `hq-bridge-rank` building on #850.** 
 
 **HAND-OFF 2026-11-24 ~08:20 UTC (owner: "wrap it up, git push all, so that i can continue on a different pc"). PROD HEAD 0491, nothing half-deployed, no builder left running. START HERE.**
