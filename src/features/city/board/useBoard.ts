@@ -3,7 +3,7 @@ import { useShellState } from '../../../app/shellState'
 import { fleetCargoByCode, voyageEtaMs, whereabouts } from '../../../domain/fleet'
 import { perHourOf, rankMoves, REQUEST_FLOOR_S, type Move } from '../../../domain/hq'
 import { routeOfFleet } from '../../../domain/route'
-import { worldReport, type BestSale, type BestSales, type FleetView, type HqBoardView, type HqMove, type Report, type SnapshotPort, type TradeRequest } from '../../../lib/rpc'
+import { worldReport, type BestSale, type BestSales, type FleetView, type HqBoardView, type HqMove, type HqRate, type Report, type SnapshotPort, type TradeRequest } from '../../../lib/rpc'
 import { useLevelGate } from '../../../live/levelGate'
 import { useBestSales } from '../../../live/useDesk'
 import { useHqBoard } from '../../../live/useHqBoard'
@@ -69,6 +69,8 @@ export interface Board {
   purse: number | null
   /** Today's net per hour (world.report('day') over the hours since 00:00 UTC); lit (0480), her last 24 hours over 24; null until read. */
   perHour: number | null
+  /** 0493: the served rate with its lines (why the figure is what it is); null on v1's board or before it is read. */
+  rate: HqRate | null
   /** 0480: the moves, the rate, what is next and the threats are the server's (world.hq_board lit). */
   served: boolean
   next: Clock | null
@@ -257,9 +259,9 @@ export function useBoard(cityPort: SnapshotPort | null): Board {
     const what = n ? SERVED_NEXT[n.what] : null
     const servedNext: Clock | null =
       n && what ? { key: `served:${n.what}`, atMs: Date.parse(n.at), what, name: n.what === 'training' ? (lesson?.name ?? '') : (n.name ?? '') } : null
-    return { fleets, moves: served, purse, perHour: lit.rate?.per_hour ?? null, next: servedNext, threats: lit.threats, served: true }
+    return { fleets, moves: served, purse, perHour: lit.rate?.per_hour ?? null, rate: lit.rate, next: servedNext, threats: lit.threats, served: true }
   }
-  return { fleets, moves: rankMoves(moves), purse, perHour, next, threats, served: false }
+  return { fleets, moves: rankMoves(moves), purse, perHour, rate: null, next, threats, served: false }
 }
 
 /** The served board, when it is lit for her company; else null (dark, signed out, a merchant, unread). */
