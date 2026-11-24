@@ -2,7 +2,7 @@ import { Clip, Hint, Icon, Skeleton, goodIcon } from '../../../components/ui'
 import { fleetCargoByCode, paidPerTun } from '../../../domain/fleet'
 import { PortFlag } from '../../../live/PortFlag'
 import { useGoodBoard, usePriceWhy } from '../../../live/useDesk'
-import { useTradeDryRun } from '../../../live/useTrade'
+import { useSaleEstimate } from '../../../live/useSaleEstimate'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatDaysReal, formatInt, formatPriceDelta, formatPriceFigure } from '../../../lib/format'
 import type { BoardSellRow, FleetView } from '../../../lib/rpc'
@@ -96,7 +96,7 @@ function CargoGood({
   const here = hereRow && hereBid.view ? hereBid.view.bid : null
   // 0490: HERE'S PROFIT is the sale's own dry run (cmd.do_sell of all she carries of it, rolled back): its `trip_net`, the one profit
   // the SOLD event then tells, tax, wages and the dock fee of her call counted. Asked only where she lies and the city buys it.
-  const hereSale = useTradeDryRun(fleet, 'sell', docked && hereRow ? code : null, docked && hereRow ? units : 0)
+  const hereSale = useSaleEstimate(fleet, 'sell', docked && hereRow ? code : null, docked && hereRow ? units : 0)
   const paid = paidPerTun(fleet, code)
   const none = b !== null && best.length === 0 && here === null && !hereBid.loading
   return (
