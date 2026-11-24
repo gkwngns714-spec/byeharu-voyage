@@ -3737,7 +3737,8 @@ export interface WorkerRow {
   progress: WorkerProgress | null
   stop: { code: string; sentence: string | null } | null
   /** 0497: why a job that is NOT stopped waits, and when it is asked again (low: the run's quote leaves no profit now). Absent before 0497. */
-  /** 0499: code E_FLAGSHIP_DISABLED: her flagship cannot sail; the job waits for her repair and goes on by itself. */
+  /** 0499: code E_FLAGSHIP_DISABLED (her flagship cannot sail) or E_CREW_SHORT (a ship lacks hands, where crew can be hired): the job
+   *  waits for her repair or her hire and goes on by itself. */
   wait?: { code: string; sentence: string; retry_at: string } | null
   runs: number
   /** Whole runs of hers the `runs` basis was read from (0: not enough yet). */

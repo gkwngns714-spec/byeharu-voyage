@@ -12,6 +12,8 @@
 -- @pass FS_PURSE    an empty purse cannot pay the yard (E_INSUFFICIENT_FUNDS, the price in its figures), nothing is mended, she still waits; REPAIR TO a small per cent is cheaper
 -- @pass FS_REPAIR   the yard's quote (cmd.preview) is the price cmd.issue 'REPAIR' takes; in the yard she is not asked; out of it the very next run starts her, harbour by harbour, one run
 -- @pass FS_STOPPED  a job ALREADY stopped on E_FLAGSHIP_DISABLED (prod's row) is not asked while she is wrecked and goes on at the first run after her repair
+-- @pass FS_CREW     short of crew (the same class): where crew can be hired her job WAITS with E_CREW_SHORT ("Crew 7 / 8"), nothing issued; the Inn's quote (cmd.preview 'HIRE n') is the price cmd.issue takes; manned, the very next run starts her
+-- @pass FS_NO_HANDS short of crew where no crew can be hired (the quay has no hands: the hire door's own E_CREW_POOL) her job STOPS on E_CREW_SHORT with nothing issued, is not asked while she is short, and goes on once manned
 -- @pass FS_ONE_RULE voyage.sail_refusal and public.fleet_unfit give one answer, wrecked and fit; a dead flagship beside a live escort is unfit too
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -163,6 +165,66 @@ begin
     raise exception 'FS_STOPPED: the stopped job did not go on after her repair: % / %', to_jsonb(v_j), left(v_r::text, 300);
   end if;
   raise notice 'PASS: FS_STOPPED — stopped on the code: not asked while wrecked (her row: stop); repaired: the next run starts her, runs %', v_j.runs;
+
+  -- FS_CREW: docked at ISL, fit, one hand short of what her flagship needs; hands on the quay
+  update public.orders set status = 'cancelled' where fleet_id = v_fa and status in ('pending', 'active');
+  update public.voyages set status = 'ARRIVED' where fleet_id = v_fa and status = 'SAILING';
+  update public.fleets set status = 'DOCKED', port_id = v_isl, ready_at = null where id = v_fa;
+  update public.ports set crew_pool = 50 where id = v_isl;
+  update public.ships s set crew = c.crew_required - 1 from public.ship_classes c where c.id = s.class_id and s.fleet_id = v_fa;
+  v_n := (select count(*) from public.orders o where o.fleet_id = v_fa);
+  call public.tick_fleet_jobs(false);
+  select * into v_j from public.fleet_jobs j where j.fleet_id = v_fa;
+  v_w := (select w from jsonb_array_elements(world.workers()->'workers') w where w->>'fleet' = v_fa::text);
+  if v_j.paused_reason is not null or v_j.runs <> 2 or v_j.last->>'wait' is distinct from 'E_CREW_SHORT' or v_j.last->>'sentence' not like 'Crew % / %'
+     or (select count(*) from public.orders o where o.fleet_id = v_fa) <> v_n
+     or v_w->>'state' is distinct from 'waiting' or v_w #>> '{wait,code}' is distinct from 'E_CREW_SHORT' or v_w->'stop' <> 'null'::jsonb
+     or voyage.sail_refusal(v_fa, null, null, 0) is distinct from public.fleet_unfit(v_fa) then
+    raise exception 'FS_CREW: short of crew, her job did not wait with nothing issued: % / %', to_jsonb(v_j), v_w;
+  end if;
+  v_q := cmd.preview(v_fa, 'HIRE 1');
+  v_cost := (v_q #>> '{estimate,cost}')::bigint;
+  v_purse := (select ducats from public.players where id = v_a);
+  v_r := cmd.issue(v_fa, 'HIRE 1', null, null);
+  if (v_q->>'ok')::boolean is not true or v_cost is null or (v_r->>'ok')::boolean is not true
+     or v_purse - (select ducats from public.players where id = v_a) <> v_cost or public.fleet_unfit(v_fa) is not null then
+    raise exception 'FS_CREW: the Inn did not man her at the quoted price %: % / %', v_cost, v_q, left(v_r::text, 300);
+  end if;
+  call public.tick_fleet_jobs(false);
+  select * into v_j from public.fleet_jobs j where j.fleet_id = v_fa;
+  if v_j.paused_reason is not null or v_j.runs <> 3 or (select f.status from public.fleets f where f.id = v_fa) <> 'SAILING' then
+    raise exception 'FS_CREW: manned, she did not go on at the next run: %', to_jsonb(v_j);
+  end if;
+  raise notice 'PASS: FS_CREW — waits "%" (%), no order; HIRE 1 quote % = paid %; manned, the next run starts her, runs %', v_w #>> '{wait,sentence}', v_w #>> '{wait,code}', v_cost, v_cost, v_j.runs;
+
+  -- FS_NO_HANDS: the same, and the quay has no hands
+  update public.orders set status = 'cancelled' where fleet_id = v_fa and status in ('pending', 'active');
+  update public.voyages set status = 'ARRIVED' where fleet_id = v_fa and status = 'SAILING';
+  update public.fleets set status = 'DOCKED', port_id = v_isl, ready_at = null where id = v_fa;
+  update public.ports set crew_pool = 0 where id = v_isl;
+  update public.ships s set crew = c.crew_required - 1 from public.ship_classes c where c.id = s.class_id and s.fleet_id = v_fa;
+  v_n := (select count(*) from public.orders o where o.fleet_id = v_fa);
+  call public.tick_fleet_jobs(false);
+  select * into v_j from public.fleet_jobs j where j.fleet_id = v_fa;
+  v_w := (select w from jsonb_array_elements(world.workers()->'workers') w where w->>'fleet' = v_fa::text);
+  v_q := cmd.preview(v_fa, 'HIRE 1');
+  if v_j.paused_reason is distinct from 'E_CREW_SHORT' or v_j.runs <> 3 or (select count(*) from public.orders o where o.fleet_id = v_fa) <> v_n
+     or v_w->>'state' is distinct from 'stopped' or v_w #>> '{stop,code}' is distinct from 'E_CREW_SHORT' or v_w #>> '{stop,sentence}' not like 'Crew % / %'
+     or v_q->>'error_code' is distinct from 'E_CREW_POOL' or public.port_hires(v_isl) then
+    raise exception 'FS_NO_HANDS: with no hands on the quay her job did not stop with nothing issued: % / % / %', to_jsonb(v_j), v_w, v_q;
+  end if;
+  call public.tick_fleet_jobs(false);
+  if (select jsonb_array_length(r.receipt->'steps') from public.fleet_job_runs r where r.at = now()) <> 0 then
+    raise exception 'FS_NO_HANDS: a job stopped for want of crew was asked while she is short';
+  end if;
+  update public.ports set crew_pool = 50 where id = v_isl;
+  v_r := cmd.issue(v_fa, 'HIRE 1', null, null);
+  call public.tick_fleet_jobs(false);
+  select * into v_j from public.fleet_jobs j where j.fleet_id = v_fa;
+  if (v_r->>'ok')::boolean is not true or v_j.paused_reason is not null or v_j.runs <> 4 or (select f.status from public.fleets f where f.id = v_fa) <> 'SAILING' then
+    raise exception 'FS_NO_HANDS: manned, the stopped job did not go on: % / %', to_jsonb(v_j), left(v_r::text, 300);
+  end if;
+  raise notice 'PASS: FS_NO_HANDS — no hands: stopped on % ("%"), the hire door %; not asked while short; manned: runs %', v_w #>> '{stop,code}', v_w #>> '{stop,sentence}', v_q->>'error_code', v_j.runs;
 
   -- FS_ONE_RULE
   update public.orders set status = 'cancelled' where fleet_id = v_fa and status in ('pending', 'active');

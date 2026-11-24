@@ -7,23 +7,32 @@
 --      first was refused when it ran (voyage.sail_refusal), cmd.release_failed cancelled the rest, and the next plan read that
 --      failed order and stopped the job. A stop on that code waited for the player for ever.
 --   B. that tick took 10,659 ms (its plan 3,055 ms) against 40-120 ms.
+--   C. (the lead, 25 Nov) a job stopped on E_CREW_SHORT ("Crew 7 / 8" after a raid) is the same class: the sail's other gate that
+--      no harbour between mends. She waits where crew can be hired, and goes on once manned.
 --   Dev log docs/dev-log/2026-11-25-fit-to-sail.md. Reproduced locally to the letter before the hunks (this file's own scene).
 --
 -- WHAT:
---   public.fleet_unfit(fleet)     THE ONE FITNESS RULE, lifted whole out of voyage.sail_refusal: her flagship's hull at 0 or under (or no
---                                 flagship): cmd.refusal('E_FLAGSHIP_DISABLED', 'the flagship is not fit to sail'); else null. A fleet
---                                 the one state rule calls wrecked (public.fleet_state_of: no hull above 0) is always unfit by it: her
---                                 flagship is one of her hulls. STABLE, server only.
---   voyage.sail_refusal           (1 hunk) asks public.fleet_unfit where it read her flagship itself: the same gate, in the same
---                                 place, with the same answer. So the sail, the job tick and the job door ask ONE rule.
+--   public.fleet_unfit(fleet)     THE ONE FITNESS RULE, lifted whole out of voyage.sail_refusal, its two gates in their order: a ship
+--                                 short of the crew she needs: cmd.refusal('E_CREW_SHORT', ...), which reads "Crew 7 / 8" (the crew
+--                                 figures); her flagship's hull at 0 or under (or no flagship): cmd.refusal('E_FLAGSHIP_DISABLED',
+--                                 'the flagship is not fit to sail'); else null. A fleet the one state rule calls wrecked
+--                                 (public.fleet_state_of: no hull above 0) is always unfit by it: her flagship is one of her hulls.
+--                                 STABLE, server only.
+--   voyage.sail_refusal           (1 hunk) asks public.fleet_unfit where it counted her crew and read her flagship itself: the same
+--                                 gates, in the same place and order, with the same answers. So the sail, the job tick and the job
+--                                 door ask ONE rule.
+--   public.port_hires(port)       CAN CREW BE HIRED AT THIS PORT? Hands on its quay (crew_pool above 0): the fact cmd.do_hire refuses
+--                                 E_CREW_POOL by, lifted; cmd.do_hire (1 hunk) asks it here. STABLE, server only.
 --   public.fleet_job_plan         (1 hunk) a docked, idle fleet that is not fit is NOT PLANNED: {wait: unfit, code, sentence}. No
---                                 course is read, no leg judged, no line issued, no run counted.
---   public.fleet_job_note         (2 hunks) that wait is written on her job: last {wait: E_FLAGSHIP_DISABLED, sentence}, asked again
---                                 10 minutes on; the job is NOT stopped. And a job stopped on E_FLAGSHIP_DISABLED that is asked
---                                 again (she is fit now) has its stop and its failed plan lifted, whatever the new plan says.
---   public.fleet_jobs_due         (1 hunk) a job that waits for her repair is due at the first run after it (not 10 minutes later);
---                                 a job ALREADY STOPPED on E_FLAGSHIP_DISABLED is due once she is fit. Neither is asked while she
---                                 is not: one flagship row read a job a run.
+--                                 course is read, no leg judged, no line issued, no run counted. Short of crew where no crew can
+--                                 be hired (public.port_hires), she cannot mend it where she lies: the job STOPS on E_CREW_SHORT,
+--                                 with nothing issued, and goes on once she is manned.
+--   public.fleet_job_note         (2 hunks) that wait is written on her job: last {wait: <the code>, sentence}, asked again 10 minutes
+--                                 on; the job is NOT stopped. And a job stopped on E_FLAGSHIP_DISABLED or E_CREW_SHORT that is
+--                                 asked again (she is fit now) has its stop and its failed plan lifted, whatever the new plan says.
+--   public.fleet_jobs_due         (1 hunk) a job that waits for her repair or her crew is due at the first run after it (not 10
+--                                 minutes later); a job ALREADY STOPPED on either code is due once she is fit. Neither is asked
+--                                 while she is not: her ships' crew and her flagship read, a job a run.
 --   public.fleet_job_set_for      (1 hunk) the door refuses a new job for her with the sail's own code and sentence.
 --   public.fleet_job_open         (1 hunk) says how long the quay kept the open waiting (a transaction's own setting).
 --   public.tick_fleet_jobs        (6 hunks) THE RECEIPT NAMES ITS PARTS: a step carries collect_ms (a land job's collect, inside
@@ -31,36 +40,38 @@
 --                                 quay, inside open_ms as before) beside plan_ms and open_ms. Nothing else in the tick moves.
 --   world.workers                 NOT HUNKED: her row already serves `wait` from the job's own `last` and next_at (0497), so it reads
 --                                 wait {code: E_FLAGSHIP_DISABLED, sentence, retry_at}; a job stopped on that code reads `stop` as before.
--- THE HUNKS (13; each once in the live body, each reverses): voyage.sail_refusal x1, fleet_job_plan x1, fleet_job_note x2,
---   fleet_jobs_due x1, fleet_job_set_for x1, fleet_job_open x1, tick_fleet_jobs x6. NEW: public.fleet_unfit.
+-- THE HUNKS (14; each once in the live body, each reverses): voyage.sail_refusal x1, cmd.do_hire x1, fleet_job_plan x1,
+--   fleet_job_note x2, fleet_jobs_due x1, fleet_job_set_for x1, fleet_job_open x1, tick_fleet_jobs x6. NEW: public.fleet_unfit,
+--   public.port_hires.
 -- THE TICK'S COST. The reported tick could NOT be reproduced: the same scene on the chain's world (PGlite) is 45-95 ms, cold plans
 --   too (scripts/ops/harness/fit-to-sail/profile-tick.mjs; the dev log has the parts). After this file a fleet that cannot sail costs
 --   one flagship read and one small write in 10 minutes. Where prod's ten seconds went is not known here: the receipt's new stamps
 --   say it at the next slow tick. No line is split across ticks: nothing measured says the lines are the cost.
--- NOT CHANGED: every knob and switch; cmd.issue_lines, cmd.do_sail, cmd.do_repair, public.tow_for; the repair's price; any table,
+-- NOT CHANGED: every knob and switch; cmd.issue_lines, cmd.do_sail, cmd.do_repair, public.tow_for; the repair's and the crew's price; any table,
 --   column or cron job; world.workers and every client read's shape (a receipt step gains three keys).
 -- ROWS: no new row kind. A wrecked fleet's job no longer writes its plan's orders (seven SAILs in the report) nor counts a run.
 -- budget: no table, no cron job, no autovacuum or fillfactor change.
--- LOCKS: CREATE OR REPLACE x7 by hunks (six functions, one procedure), CREATE FUNCTION x1. TIME: about a second. BUDGET:
+-- LOCKS: CREATE OR REPLACE x8 by hunks (seven functions, one procedure), CREATE FUNCTION x2. TIME: about a second. BUDGET:
 --   statement_timeout 60 s, lock_timeout 5 s; fails above 45 s.
--- ROLLBACK (forward, owner only): a migration reversing the thirteen hunks (OLD texts below verbatim) and dropping the function. QUICK:
+-- ROLLBACK (forward, owner only): a migration reversing the fourteen hunks (OLD texts below verbatim) and dropping the two functions. QUICK:
 --   none of its own; fleet_jobs_enabled false stops every job, as before.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants, volatility, definer, search path and
 --   owner unmoved; no knob moved; the new function STABLE and server only. THE SCENE (rolled back), before the hunks and after: a
 --   healthy fleet's plan is the same lines to the letter; the wrecked fleet's tick before is the report (runs 1, a SAIL failed, then
 --   stopped for ever); after it waits with the code, nothing issued, no run counted, her row says wait, the door refuses, and she
 --   sails by herself at the first run after her hull is mended. A job already stopped on the code is left alone while she is wrecked
---   and goes on once she is fit. The sail's refusal reads as it did.
+--   and goes on once she is fit. The sail's refusal reads as it did. SHORT OF CREW: where crew can be hired she waits with
+--   E_CREW_SHORT; where none can she stops on it with nothing issued; manned, she sails at the next run; the door refuses her.
 -- news: this file posts its own UPDATE row (public.news_update('0499', ...)).
 -- VERSION: 0499 (after 0498 `near-round`).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
 declare
-  c_hunked constant text[] := array['voyage.sail_refusal(uuid,uuid,jsonb,numeric,jsonb)', 'public.fleet_job_plan(uuid)', 'public.fleet_job_note(uuid,jsonb)',
+  c_hunked constant text[] := array['voyage.sail_refusal(uuid,uuid,jsonb,numeric,jsonb)', 'cmd.do_hire(uuid,jsonb)', 'public.fleet_job_plan(uuid)', 'public.fleet_job_note(uuid,jsonb)',
                                     'public.fleet_jobs_due()', 'public.fleet_job_set_for(uuid,uuid,text,jsonb)', 'public.fleet_job_open(uuid,jsonb)',
                                     'public.tick_fleet_jobs(boolean)'];
-  c_new    constant text[] := array['public.fleet_unfit(uuid)'];
+  c_new    constant text[] := array['public.fleet_unfit(uuid)', 'public.port_hires(uuid)'];
   c_ua     constant uuid := '00000000-0499-4000-8000-0000000000a1';
   v_t0        timestamptz := clock_timestamp();
   v_h         record;
@@ -197,18 +208,55 @@ $body$
   execute $f$
 create function public.fleet_unfit(p_fleet uuid)
 returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $body$
+-- 0499: THE ONE FITNESS RULE: IS THIS FLEET NOT FIT TO SAIL? The two gates of voyage.sail_refusal (0007, 0047, 0050) that no harbour
+-- between mends, lifted whole and in their order; the sail asks them here now. (1) A ship with fewer crew than she needs: the sail's
+-- own refusal {code: E_CREW_SHORT, sentence, figures: the crew aboard those ships and what they need}. (2) Her flagship's hull at 0 or
+-- under, or no flagship at all: {code: E_FLAGSHIP_DISABLED, sentence}. Else null. A fleet public.fleet_state_of calls wrecked (no hull
+-- above 0) is unfit by it: her flagship is one of her hulls (one a fleet: ships_one_flagship_per_fleet). Read by voyage.sail_refusal
+-- (the SAIL), public.fleet_job_plan (the tick), public.fleet_jobs_due (who is asked), public.fleet_job_note and
+-- public.fleet_job_set_for (the job door). Her ships by their fleet index. Writes nothing.
+declare
+  v_short int;
+  v_crew  numeric;
+  v_full  numeric;
+  v_flag  numeric;
+begin
+  -- the same predicate 0047 counted by; the two sums are the figures for the very ships it counts
+  select count(*), coalesce(sum(s.crew), 0), coalesce(sum(c.crew_required), 0)
+    into v_short, v_crew, v_full
+    from public.ships s join public.ship_classes c on c.id = s.class_id
+   where s.fleet_id = p_fleet and s.crew < c.crew_required;
+  if v_short > 0 then
+    return cmd.refusal('E_CREW_SHORT', format('%s ship(s) are short of crew', v_short),
+                       cmd.figures(v_crew, v_full, 'crew'));
+  end if;
+
+  select coalesce(durability, 0) into v_flag from public.ships where fleet_id = p_fleet and is_flagship;
+  if coalesce(v_flag, 0) <= 0 then
+    return cmd.refusal('E_FLAGSHIP_DISABLED', 'the flagship is not fit to sail');
+  end if;
+  return null;
+end
+$body$
+  $f$;
+
+  execute $f$
+create function public.port_hires(p_port uuid)
+returns boolean
 language sql
 stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0499: THE ONE FITNESS RULE: IS THIS FLEET NOT FIT TO SAIL? Lifted whole out of voyage.sail_refusal (0007, 0050), which asks it here
-  -- now: her flagship's hull at 0 or under, or no flagship at all: the sail's own refusal {code: E_FLAGSHIP_DISABLED, sentence}; else
-  -- null. A fleet public.fleet_state_of calls wrecked (no hull above 0) is unfit by it: her flagship is one of her hulls (one a fleet:
-  -- ships_one_flagship_per_fleet). Read by voyage.sail_refusal (the SAIL), public.fleet_job_plan (the tick), public.fleet_jobs_due (who
-  -- is asked), public.fleet_job_note and public.fleet_job_set_for (the job door). One row by an index. Writes nothing.
-  select case when coalesce((select s.durability from public.ships s where s.fleet_id = p_fleet and s.is_flagship), 0) <= 0
-              then cmd.refusal('E_FLAGSHIP_DISABLED', 'the flagship is not fit to sail') end
+  -- 0499: CAN CREW BE HIRED AT THIS PORT? Hands on its quay (ports.crew_pool above 0): the fact cmd.do_hire refuses E_CREW_POOL by
+  -- ("no crew to be had in this port"), lifted; cmd.do_hire asks it here now. Read by public.fleet_job_plan: short of crew where
+  -- this is true she waits for her hire; where it is not her job stops. False for no such port.
+  select coalesce((select p.crew_pool > 0 from public.ports p where p.id = p_port), false)
 $body$
   $f$;
 
@@ -221,15 +269,29 @@ $body$
   create temp table hunks_0499 (fn text, ord int, old text, new text) on commit drop;
   insert into hunks_0499 values
   ('voyage.sail_refusal(uuid,uuid,jsonb,numeric,jsonb)', 1,
-$h$  select coalesce(durability, 0) into v_flag from public.ships where fleet_id = p_fleet and is_flagship;
+$h$  -- the same predicate 0047 counted by; the two sums are the figures for the very ships it counts
+  select count(*), coalesce(sum(s.crew), 0), coalesce(sum(c.crew_required), 0)
+    into v_short, v_crew, v_full
+    from public.ships s join public.ship_classes c on c.id = s.class_id
+   where s.fleet_id = p_fleet and s.crew < c.crew_required;
+  if v_short > 0 then
+    return cmd.refusal('E_CREW_SHORT', format('%s ship(s) are short of crew', v_short),
+                       cmd.figures(v_crew, v_full, 'crew'));
+  end if;
+
+  select coalesce(durability, 0) into v_flag from public.ships where fleet_id = p_fleet and is_flagship;
   if coalesce(v_flag, 0) <= 0 then
     return cmd.refusal('E_FLAGSHIP_DISABLED', 'the flagship is not fit to sail');
   end if;$h$,
-$h$  -- 0499: THE ONE FITNESS RULE (public.fleet_unfit: her flagship's hull, as this line read it itself); the job tick and the job door ask it too
+$h$  -- 0499: THE ONE FITNESS RULE (public.fleet_unfit: her crew, then her flagship's hull, as these lines read them themselves); the
+  -- job tick and the job door ask it too
   v_gate := public.fleet_unfit(p_fleet);
   if v_gate is not null then
     return v_gate;
   end if;$h$),
+  ('cmd.do_hire(uuid,jsonb)', 1,
+$h$  if v_pool <= 0 and v_urg = v_count then$h$,
+$h$  if not public.port_hires(f.port_id) and v_urg = v_count then   -- 0499: the one reading of "crew can be hired here"$h$),
   ('public.fleet_job_plan(uuid)', 1,
 $h$    return jsonb_build_object('wait', 'busy');
   end if;$h$,
@@ -239,22 +301,27 @@ $h$    return jsonb_build_object('wait', 'busy');
   -- issued, no run counted. She WAITS with the sail's code and sentence (public.fleet_job_note) and goes on by herself once mended.
   v_s := public.fleet_unfit(p_fleet);
   if v_s is not null then
+    -- short of crew where none can be hired (public.port_hires): she cannot mend it where she lies, so the job stops on the code
+    -- (nothing issued); public.fleet_jobs_due asks it again once she is manned
+    if v_s->>'code' = 'E_CREW_SHORT' and not public.port_hires(f.port_id) then
+      return jsonb_build_object('pause', v_s->>'code', 'sentence', v_s->>'sentence');
+    end if;
     return jsonb_build_object('wait', 'unfit', 'code', v_s->>'code', 'sentence', v_s->>'sentence');
   end if;$h$),
   ('public.fleet_job_note(uuid,jsonb)', 1,
 $h$begin
   if p_plan ? 'pause' then$h$,
 $h$begin
-  -- 0499: a job stopped because her flagship was not fit, asked again now that she is (public.fleet_jobs_due asks it only then): the
-  -- stop is lifted, and the plan that failed on it is forgotten, whatever this plan says
+  -- 0499: a job stopped because she was not fit to sail (her flagship, her crew), asked again now that she is (public.fleet_jobs_due
+  -- asks it only then): the stop is lifted, and the plan that failed on it is forgotten, whatever this plan says
   update public.fleet_jobs set paused_reason = null, last_plan = null
-   where fleet_id = p_fleet and paused_reason = 'E_FLAGSHIP_DISABLED' and public.fleet_unfit(p_fleet) is null;
+   where fleet_id = p_fleet and paused_reason in ('E_FLAGSHIP_DISABLED', 'E_CREW_SHORT') and public.fleet_unfit(p_fleet) is null;
   if p_plan ? 'pause' then$h$),
   ('public.fleet_job_note(uuid,jsonb)', 2,
 $h$  elsif p_plan->>'wait' in ('nothing', 'unpriced', 'identity') then$h$,
 $h$  elsif p_plan->>'wait' = 'unfit' then
     -- 0499: she cannot sail: the job WAITS with the sail's code and sentence, asked again 10 minutes on, or at the first run after
-    -- her repair (public.fleet_jobs_due); it is not stopped
+    -- her repair or her hire (public.fleet_jobs_due); it is not stopped
     update public.fleet_jobs
        set next_at = now() + interval '10 minutes',
            last = jsonb_build_object('at', now(), 'wait', coalesce(p_plan->>'code', 'E_FLAGSHIP_DISABLED'), 'sentence', p_plan->>'sentence')
@@ -264,11 +331,11 @@ $h$  elsif p_plan->>'wait' = 'unfit' then
 $h$              and coalesce((j.last->>'at')::timestamptz, j.since) <= now() - interval '10 minutes'))
      and (j.next_at is null or j.next_at <= now())$h$,
 $h$              and coalesce((j.last->>'at')::timestamptz, j.since) <= now() - interval '10 minutes')
-          -- 0499: a job stopped because her flagship was not fit goes on once she is (public.fleet_unfit); never asked while she is not
-          or (j.paused_reason = 'E_FLAGSHIP_DISABLED' and public.fleet_unfit(j.fleet_id) is null))
+          -- 0499: a job stopped because she was not fit to sail goes on once she is (public.fleet_unfit); never asked while she is not
+          or (j.paused_reason in ('E_FLAGSHIP_DISABLED', 'E_CREW_SHORT') and public.fleet_unfit(j.fleet_id) is null))
      and (j.next_at is null or j.next_at <= now()
-          -- 0499: and a job that waits for her repair is asked at the first run after it
-          or (j.paused_reason is null and j.last->>'wait' = 'E_FLAGSHIP_DISABLED' and public.fleet_unfit(j.fleet_id) is null))$h$),
+          -- 0499: and a job that waits for her repair or her crew is asked at the first run after it
+          or (j.paused_reason is null and j.last->>'wait' in ('E_FLAGSHIP_DISABLED', 'E_CREW_SHORT') and public.fleet_unfit(j.fleet_id) is null))$h$),
   ('public.fleet_job_set_for(uuid,uuid,text,jsonb)', 1,
 $h$    perform cmd.refuse('E_NO_SUCH_FLEET', 'that fleet is not yours');
   end if;$h$,
@@ -277,7 +344,7 @@ $h$    perform cmd.refuse('E_NO_SUCH_FLEET', 'that fleet is not yours');
   -- 0499: no job is set for a fleet that cannot sail: the sail's own code and sentence (public.fleet_unfit)
   v_s := public.fleet_unfit(p_fleet);
   if v_s is not null then
-    perform cmd.refuse(v_s->>'code', v_s->>'sentence');
+    perform cmd.refuse(v_s);
   end if;$h$),
   ('public.fleet_job_open(uuid,jsonb)', 1,
 $h$  v_r      jsonb;
@@ -370,9 +437,9 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
   if exists (select 1 from unnest(c_new) u(q)
               where has_function_privilege('authenticated', u.q::regprocedure, 'execute') or has_function_privilege('anon', u.q::regprocedure, 'execute')
                  or has_function_privilege('service_role', u.q::regprocedure, 'execute'))
-     or (select count(*) from pg_proc p where p.oid = any (array(select u.q::regprocedure::oid from unnest(c_new) u(q))) and p.provolatile = 's') <> 1
+     or (select count(*) from pg_proc p where p.oid = any (array(select u.q::regprocedure::oid from unnest(c_new) u(q))) and p.provolatile = 's') <> 2
      or (select count(*) from public.client_write_grants()) <> 0 then
-    raise exception '0499 self-assert FAIL: the new function is reachable by a client or service_role, or is not STABLE';
+    raise exception '0499 self-assert FAIL: a new function is reachable by a client or service_role, or is not STABLE';
   end if;
 
   -- ── 6. THE PROBES ──
@@ -469,7 +536,51 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
     if (v_r->>'ok')::boolean is not true then
       raise exception '0499 self-assert FAIL: the door refused a fit fleet: %', v_r;
     end if;
-    v_note := v_note || '; a job already stopped on the code is not asked while she is wrecked, is lifted by any plan once mended, and starts at the next run; the receipt carries collect_ms and quay_ms; the door takes a fit fleet';
+    -- (c) SHORT OF CREW (the same class). Her job set, she docked at ISL, one hand short on every ship.
+    update public.ports set crew_pool = 50 where id = v_isl;
+    update public.ships s set crew = c.crew_required - 1 from public.ship_classes c where c.id = s.class_id and s.fleet_id = v_fa;
+    if voyage.sail_refusal(v_fa, null, null, 0) is distinct from public.fleet_unfit(v_fa) or public.fleet_unfit(v_fa)->>'code' is distinct from 'E_CREW_SHORT'
+       or public.fleet_unfit(v_fa)->'figures' is null then
+      raise exception '0499 self-assert FAIL: short of crew, the sail and the rule do not give the one answer: % / %', voyage.sail_refusal(v_fa, null, null, 0), public.fleet_unfit(v_fa);
+    end if;
+    v_n := (select count(*) from public.orders o where o.fleet_id = v_fa);
+    call public.tick_fleet_jobs(false);
+    if (select j.paused_reason is not null or j.last->>'wait' is distinct from 'E_CREW_SHORT' or j.last->>'sentence' not like 'Crew % / %'
+               or j.next_at is null or j.runs <> 0 from public.fleet_jobs j where j.fleet_id = v_fa)
+       or (select count(*) from public.orders o where o.fleet_id = v_fa) <> v_n
+       or (select w #>> '{wait,code}' from jsonb_array_elements(world.workers()->'workers') w where w->>'fleet' = v_fa::text) is distinct from 'E_CREW_SHORT' then
+      raise exception '0499 self-assert FAIL: short of crew where crew can be hired, her job did not wait with nothing issued: %', (select to_jsonb(j) from public.fleet_jobs j where j.fleet_id = v_fa);
+    end if;
+    v_r := cmd.set_fleet_job(v_fa, 'best', '{}'::jsonb);
+    if v_r->>'error_code' is distinct from 'E_CREW_SHORT' or v_r->'figures' is null then
+      raise exception '0499 self-assert FAIL: the door did not refuse a fleet short of crew: %', v_r;
+    end if;
+    -- no hands on the quay: asked again, the job stops on the code, nothing issued; the hire door says the same of this port
+    update public.ports set crew_pool = 0 where id = v_isl;
+    update public.fleet_jobs set next_at = null where fleet_id = v_fa;
+    call public.tick_fleet_jobs(false);
+    if (select j.paused_reason is distinct from 'E_CREW_SHORT' or j.runs <> 0 from public.fleet_jobs j where j.fleet_id = v_fa)
+       or (select count(*) from public.orders o where o.fleet_id = v_fa) <> v_n
+       or public.port_hires(v_isl) or cmd.preview(v_fa, 'HIRE 1')->>'error_code' is distinct from 'E_CREW_POOL' then
+      raise exception '0499 self-assert FAIL: short of crew where none can be hired, her job did not stop with nothing issued: % / %',
+        (select to_jsonb(j) from public.fleet_jobs j where j.fleet_id = v_fa), cmd.preview(v_fa, 'HIRE 1');
+    end if;
+    call public.tick_fleet_jobs(false);
+    if (select jsonb_array_length(r.receipt->'steps') from public.fleet_job_runs r where r.at = now()) <> 0 then
+      raise exception '0499 self-assert FAIL: a job stopped for want of crew was asked while she is short';
+    end if;
+    -- manned (the Inn's own write: crew back to what she needs): the very next run starts her
+    update public.ports set crew_pool = 50 where id = v_isl;
+    if not public.port_hires(v_isl) or (cmd.preview(v_fa, 'HIRE 1')->>'ok')::boolean is not true then
+      raise exception '0499 self-assert FAIL: the hire door refuses a quay with hands: %', cmd.preview(v_fa, 'HIRE 1');
+    end if;
+    update public.ships s set crew = c.crew_required from public.ship_classes c where c.id = s.class_id and s.fleet_id = v_fa;
+    call public.tick_fleet_jobs(false);
+    if (select j.paused_reason is not null or j.runs <> 1 from public.fleet_jobs j where j.fleet_id = v_fa)
+       or (select f.status from public.fleets f where f.id = v_fa) <> 'SAILING' then
+      raise exception '0499 self-assert FAIL: manned, she did not go on at the next run: %', (select to_jsonb(j) from public.fleet_jobs j where j.fleet_id = v_fa);
+    end if;
+    v_note := v_note || '; a job already stopped on the code is not asked while she is wrecked, is lifted by any plan once mended, and starts at the next run; the receipt carries collect_ms and quay_ms; the door takes a fit fleet; short of crew: waits E_CREW_SHORT where crew can be hired, stops where none can, the door refuses, manned she sails at the next run';
     raise exception using errcode = 'ZX499', message = 'PROBE_ROLLBACK_0499';
   exception when sqlstate 'ZX499' then
     v_lived := true;
@@ -487,6 +598,6 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0499 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0499 self-assert ok: FIT TO SAIL. % hunks once and reversing; no other function moved; the hunked bodies'' grants and volatility unmoved; no knob moved; one new function STABLE and server only. Probes (rolled back): %. % ms.',
+  raise notice '0499 self-assert ok: FIT TO SAIL. % hunks once and reversing; no other function moved; the hunked bodies'' grants and volatility unmoved; no knob moved; two new functions STABLE and server only. Probes (rolled back): %. % ms.',
     (select count(*) from hunks_0499), v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;

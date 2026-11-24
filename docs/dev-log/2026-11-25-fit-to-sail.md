@@ -21,6 +21,21 @@ One company, one fleet docked at Island of Mozambique (towed there after a ranso
 - Local, before the hunks (`profile-tick.mjs --wreck`): tick 1 `started 1`, runs 1, orders 7 (1 failed `E_FLAGSHIP_DISABLED`, 6
   cancelled); tick 2 `stopped 1`, the job stopped on `E_FLAGSHIP_DISABLED`. The report.
 
+## C: short of crew is the same class (the lead, 25 Nov: "Crew 7 / 8" after a raid)
+
+- The sail has two gates that no harbour between mends: her crew, then her flagship. `public.fleet_unfit` is both, lifted whole and
+  in their order; `voyage.sail_refusal` asks it for both (one hunk). Its answer for crew is the sail's own: `E_CREW_SHORT`, "Crew 7 /
+  8", with the figures.
+- **Where crew can be hired she WAITS** (`last.wait = E_CREW_SHORT`), nothing issued, no run; manned, the next run starts her.
+- **"Where crew can be hired"** is `public.port_hires(port)`: hands on the quay (`crew_pool` above 0). That is the fact
+  `cmd.do_hire` refuses `E_CREW_POOL` by, lifted; the hire door asks it there now (one hunk). No building is asked: the hire door
+  asks for none.
+- **Where none can be hired her job STOPS** on `E_CREW_SHORT` (nothing issued): she cannot mend it where she lies and cannot sail
+  to where she could. It goes on once she is manned (a quay's pool is never refilled by a tick: 0097's note).
+- A job already stopped on `E_CREW_SHORT` (the reported one) goes on at the first run after she is manned, as for the flagship.
+- The door refuses a new job for her, with the figures.
+- The Inn's price (`public.crew_hire_cost`): one hand at Island of Mozambique for a starter Barca is 100 coin (local).
+
 ## The fix (one rule, no second one)
 
 - **`public.fleet_unfit(fleet)`**: the sail's own flagship gate, lifted whole out of `voyage.sail_refusal`, which now asks it (one
@@ -38,7 +53,7 @@ One company, one fleet docked at Island of Mozambique (towed there after a ranso
 - **`world.workers`:** not hunked. Her row already serves `wait` from the job's `last` and `next_at` (0497): it reads
   `wait {code: E_FLAGSHIP_DISABLED, sentence, retry_at}`, state `waiting`, `worker_state` wrecked. A job stopped on the code keeps
   `stop {code, sentence}`.
-- Thirteen hunks over seven bodies, one new STABLE server-only function.
+- Fourteen hunks over eight bodies, two new STABLE server-only functions (with C above).
 
 ## What a wrecked company must do today (read in the bodies; proof 202 plays it)
 
@@ -94,9 +109,9 @@ One company, one fleet docked at Island of Mozambique (towed there after a ranso
 
 ## Checked
 
-- 0499's self-assert on the snapshot at 0498: passed (385 ms). The scene before and after: a healthy fleet's plan identical
+- 0499's self-assert on the snapshot at 0498: passed (434 ms). The scene before and after: a healthy fleet's plan identical
   (`33139d1d`, the seven SAILs); the sail's refusal reads as it did.
-- Proof 202: 7/7. Proofs 150, 183, 184, 185, 186, 195, 197, 199, 200, 201: all pass with 0499 (run one at a time through
+- Proof 202: 9/9 (FS_CREW, FS_NO_HANDS added). Proofs 150, 183, 184, 185, 186, 195, 197, 199, 200, 201: all pass with 0499 (run one at a time through
   `hq-figures/q.mjs`, which writes no snapshot and prunes nothing).
 - `tsc -b`, eslint, `db.budget`, `news.lint`: see the commit.
 - The before / after reads: `scripts/ops/harness/fit-to-sail/before-0499.sql`, `after-0499.sql` (their selects run on the local
@@ -108,11 +123,27 @@ One company, one fleet docked at Island of Mozambique (towed there after a ranso
   after her repair.
 - The wait is asked again every 10 minutes while she is unfit (a constant, as 0494's); mended, at the next 2-minute run.
 - The door refuses every kind of job for an unfit fleet, a land job too.
-- Crew short (`E_CREW_SHORT`), the sail's other gate that a harbour between does not mend, is left as it is: not reported.
+- Short of crew where no crew can be hired, the job stops (it does not wait): nothing she can press where she lies mends it.
+
+## The two `duplication.spec` reds in this worktree (diagnosed; not this slice's)
+
+- `no raw palette literal`: `src/features/city/board/RateWhy.tsx:145`, `bg-black`. `no class recipe is hand-written twice`:
+  `RateWhy.tsx:165` repeats `components/ui/Detail.tsx:150`'s close-press recipe.
+- Both lines came in with b0247734, the `rate-why` BRANCH's own commit of 0493, which this stack (`workers-read` ->
+  `jobs-never-lose` -> `near-round`) is built on. Main's 0493 is the squash 664fa466 (#856), whose `RateWhy.tsx` has neither
+  (the PR fixed them before it merged), and b0247734 is not an ancestor of main.
+- So they are red on every branch of this stack and green on main; they go when the stack is rebased onto main. Nothing in 0499
+  touches a screen.
+
+## Driven (the client half, `fit-client`, with this migration in its world)
+
+Headless, 390 x 844 and 1440 x 900, a lit local world, the founding company with a wrecked fleet and an undermanned one, a Best job
+each: `C:\Users\gkwng\dev\fit-shots\` (the drive itself is `fit-drive.spec.ts` there; it is not a CI spec: the client branch
+has no 0499 in its image).
 
 ## Not verified
 
 - Prod: nothing was read. Whether Island of Mozambique has a shipyard on prod (it has in the chain's world, and a tow ends at one).
-- `vite build` and `tests/rpc.surface.spec.ts` were not run: a build re-applies this chain through the shared snapshot cache and
-  prunes the other worktrees' snapshots, which the brief forbids.
+- `vite build` and `tests/rpc.surface.spec.ts` were not run in THIS worktree (a build prunes the shared snapshot cache). The
+  client worktree built this chain against a private copy of the cache: the browser image applies 0496-0499 and their self-asserts.
 - The ten seconds (above).
