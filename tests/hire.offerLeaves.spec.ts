@@ -9,7 +9,7 @@ import { serveHqLit } from './hqLit.fixture'
 // Every face that offers a captain for hire, pressed in the local world, and the offer gone after the server's yes:
 //   · the Inn (PortInn's room: the City page's Inn, the Office's City face and the map's city panel mount the same face). world.inn serves
 //     everybody in the room with `signed`; a guest you keep is drawn no more. Before this, her tile stayed, muted.
-//   · HQ's crew card, dark (the v1 board): its press opens the Inn; hired there, the card leaves (her fleet has a captain now).
+//   · the Inn's room on HQ: hired there, HQ's crew card leaves too (her fleet has a captain now).
 //   · HQ's crew card, served (0480 lit): its press hires her. Before this, world.hq_board was never asked again (a hire moves no fleet's
 //     version, the board's question), so the card stayed.
 // The owner's UI law: nothing above the room moves, and nothing scrolls sideways.
@@ -22,16 +22,18 @@ const sideScroll = (page: Page) =>
     return over || document.documentElement.scrollWidth > window.innerWidth
   })
 
-test('HQ crew card (dark) → the Inn → hire: her tile leaves the room, and the crew card leaves HQ', async ({ page, request, baseURL }) => {
+test('the Inn on HQ → hire: her tile leaves the room, and the crew card leaves HQ', async ({ page, request, baseURL }) => {
   test.setTimeout(600_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+  await serveHqLit(page, { served: true })
   await page.goto('city')
   // The room turns over on the quarter hour (0119): a press across the edge is refused E_NOT_IN_THE_ROOM (captains.roster.spec.ts).
   await ready(page, { quietMs: 60_000 })
   await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: 180_000 })
   const crewCard = page.locator('[data-testid="hq-move"][data-kind="crew"]')
   await expect(crewCard, 'a fresh company has a fleet with no captain: HQ offers to hire one').toHaveCount(1, { timeout: 180_000 })
-  await crewCard.click()
+  await page.getByTestId('city-building-inn').click()
+  await page.getByTestId('city-inn-captains').click()
 
   const guests = page.locator('[data-testid^="guest-"]:not([data-testid="guest-job-figure"])')
   await expect(guests.first(), 'the Inn seats no captain — nobody to hire').toBeVisible({ timeout: 120_000 })

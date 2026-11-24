@@ -97,15 +97,8 @@ for (const size of SIZES)
         await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 120_000 })
         await expect(page.getByTestId('city-office-city'), 'HQ still draws the City door').toHaveCount(0)
 
-        // FROM THE BOARD: a trade card, a hire card, a fleet row
-        await page.getByTestId('hq-moves').scrollIntoViewIfNeeded()
-        const trade = page.locator('[data-testid="hq-move"][data-kind="trade"]').first()
-        await expect(trade, 'no trade card on the board').toBeVisible({ timeout: 120_000 })
-        await inPlace(page, 'trade-card', trade, page.getByTestId('good-detail'), size)
-        const hire = page.locator('[data-testid="hq-move"][data-kind="crew"]').first()
-        await expect(hire, 'no hire card on the board').toBeVisible()
-        await inPlace(page, 'hire-card', hire, page.getByTestId('hq-sheet-inn'), size)
-        await inPlace(page, 'fleet-row', page.getByTestId('hq-fleet-press').first(), page.getByTestId('hq-sheet-fleet'), size)
+        // FROM THE WORKER LIST: a fleet's row (the standing jobs dark in this world, so her press is her own sheet). A served card commits its move at the press and opens nothing (hire.offerLeaves, hq.board); a dark board has no cards.
+        await inPlace(page, 'fleet-row', page.locator('[data-testid="corp-worker"][data-kind="fleet"]').first(), page.getByTestId('hq-sheet-fleet'), size)
 
         // THE DOORS: Invest and Report
         await inPlace(page, 'invest', page.getByTestId('city-office-invest'), page.getByTestId('hq-sheet-invest'), size)
@@ -125,9 +118,9 @@ for (const size of SIZES)
           if (plate === 'port') await inPlace(page, 'port-yard', page.getByTestId('city-port-yard'), page.getByTestId('city-port-yard-page'), size)
           if (plate === 'inn') await inPlace(page, 'inn-crew', page.getByTestId('city-inn-crew'), page.getByTestId('city-inn-page'), size)
         }
-        // with a plate open (the inn), a board card's sheet leaves it open
+        // with a plate open (the inn), a fleet row's sheet leaves it open
         await expect(page.getByTestId('city-building-inn')).toHaveAttribute('aria-pressed', 'true')
-        await inPlace(page, 'trade-card-on-inn', trade, page.getByTestId('good-detail'), size)
+        await inPlace(page, 'fleet-row-on-inn', page.locator('[data-testid="corp-worker"][data-kind="fleet"]').first(), page.getByTestId('hq-sheet-fleet'), size)
         await expect(page.getByTestId('city-building-inn')).toHaveAttribute('aria-pressed', 'true')
 
         // A NAVIGATION OVER A SHEET lands where it was pressed and stays there: the sheet takes no step back on its way out, and its

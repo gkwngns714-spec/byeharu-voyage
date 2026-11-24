@@ -4,7 +4,7 @@ import { Button, DetailPage, Field, IconDisc, Note, Row, SheetSection } from '..
 import { cmdMoveShip } from '../../lib/rpc'
 import type { FleetView, Refusal } from '../../lib/rpc'
 import { yardHref } from '../../live/cityFaces'
-import { companyRoom, lockedSteps, roomStepWord, useBuyRoom, useHouseRoom, type CompanyRoom } from '../../live/houseRoom'
+import { companyRoom, lockedSteps, roomStepWord, useBuyRoom, useHouseRoom, useHouseRoomRead, type CompanyRoom } from '../../live/houseRoom'
 import { useWorld } from '../../live/worldStore'
 import { useShipMoves } from './useShipMoves'
 import { formatDucats, formatInt } from '../../lib/format'
@@ -33,7 +33,14 @@ import { properName, useT } from '../../lib/i18n'
 // New fleet page stood 8 px in from the line above it.
 export function NewFleet({ open, onOpen }: { open: boolean; onOpen: () => void }) {
   const t = useT()
-  const room = companyRoom(useHouseRoom())
+  const read = useHouseRoomRead()
+  const room = companyRoom(read.view)
+  // THE ROW'S ROOM IS HELD WHILE THE ROOM IS ASKED (2026-11-25, "nothing on a page moves by itself"). The row drew nothing until `world.house_room` answered, then
+  // stood up INSIDE the fleets' card: the card grew by the row (52 px) and everything under it went down, a moment after the fleets were on the glass. The same row
+  // now stands from the first frame, muted and with no press; the answer gives it its press (lit) or its "Not open yet" (dark), in place.
+  if (!room && read.loading) {
+    return <Row mark={<NewMark tone="muted" />} label={t('fleets.moveNew')} tone="muted" hairline={false} data-testid="fleet-new-wait" />
+  }
   if (!room) return null
   if (!room.on) {
     return (

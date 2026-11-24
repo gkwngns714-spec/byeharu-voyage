@@ -29,6 +29,7 @@ import { doneWords, type TradeDone } from '../features/command/buysell/tradeDone
 import { TradeToast } from '../features/command/buysell/TradeToast'
 import { useDeskPlan } from '../features/command/plans/planDraft'
 import { useTripBoard } from '../features/command/plans/useTripBoard'
+import { AssignSheet, WorkerSheet } from '../features/city/corp/AssignSheet'
 import { askOfParams, HQ_ASK_FIELDS, openHq, useHqPlace, type HqAsk } from './hqPlace'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -45,6 +46,8 @@ import { askOfParams, HQ_ASK_FIELDS, openHq, useHqPlace, type HqAsk } from './hq
 //   trade             THE trade sheet (TradePanel), composed by its props: Buy / Sell where she lies, Sail & buy / Sail & sell
 //                     elsewhere, and a best sale's trip (bought here, sold there) at the units the card was priced for;
 //   fleet             her cargo and where it sells (CargoBest), her route (RouteFold), her orders (Queue).
+//   assign / worker   H1 (docs/design/hq-corp-2026-11-24.md C3): the one Assign sheet for a worker, and a worker's own sheet
+//                     (features/city/corp/AssignSheet.tsx).
 // Each is a layer (useBackLayer): its back arrow, Escape and the browser's back close it, and HQ under it is as it was.
 
 /** The desk's parts, one under the other: a face of the desk read in a sheet. */
@@ -60,7 +63,7 @@ const stack: DeskLayout = (p) => (
 
 /** A sheet's identity: a new ask is a new sheet, mounted afresh. */
 function askKey(a: HqAsk): string {
-  return [a.sheet, 'port' in a ? a.port : '', 'fleet' in a ? (a.fleet ?? '') : '', 'good' in a ? `${a.good}:${a.side}` : '', 'hull' in a ? (a.hull ?? '') : ''].join('|')
+  return [a.sheet, 'port' in a ? a.port : '', 'fleet' in a ? (a.fleet ?? '') : '', a.sheet === 'trade' ? `${a.good}:${a.side}` : '', 'hull' in a ? (a.hull ?? '') : '', 'worker' in a ? a.worker : ''].join('|')
 }
 
 /** The packed column a page's content stands in (CityFace's own measure). */
@@ -142,6 +145,10 @@ function AskSheet({ ask, onClose, onDone }: { ask: HqAsk; onClose: () => void; o
       return port && named ? <TradeSheet ask={ask} fleet={named} onClose={onClose} onDone={onDone} /> : null
     case 'fleet':
       return named ? <FleetSheet fleet={named} route={ask.route ?? false} onClose={onClose} /> : null
+    case 'assign':
+      return <AssignSheet ask={ask} onClose={onClose} />
+    case 'worker':
+      return <WorkerSheet worker={ask.worker} onClose={onClose} />
   }
 }
 

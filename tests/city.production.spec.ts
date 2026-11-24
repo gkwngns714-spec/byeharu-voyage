@@ -150,6 +150,9 @@ test('Production on a phone: one column under a fixed control, and a press moves
   await expect(face).toBeVisible({ timeout: 60_000 })
   const control = face.getByRole('tablist', { name: 'Production', exact: true })
   await expect(control.getByRole('tab')).toHaveText(['Storage', 'Cargo', 'Recipes'])
+  // on the glass first: HQ is taller than a phone, and a press on a control off the glass scrolls the page to it (that is the scroll, not a re-flow)
+  await control.scrollIntoViewIfNeeded()
+  await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 60_000 })
   const before = await control.boundingBox()
   const only = { Storage: 'production-storage', Cargo: 'production-cargo', Recipes: 'production-recipes' } as const
   for (const [word, id] of Object.entries(only)) {
