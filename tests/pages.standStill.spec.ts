@@ -198,7 +198,9 @@ test('HQ, the Land lit, a first visit: the Land read lands late and the party ro
   await watchBoxes(page, { workers: '[data-testid="corp-workers"]', board: '[data-testid="hq-board"]', plate: '[data-plate-mark]' }, '[data-testid="hq-company"]')
   await page.goto('city')
   await ready(page)
-  expect(await page.evaluate(() => Object.keys(window.localStorage).filter((k) => k.startsWith('bv:room:')).length), 'this is not a first visit').toBe(0)
+  // a first visit, and nothing remembered for the list in any case: it is not a held room
+  expect(await page.evaluate(() => Object.keys(window.localStorage).filter((k) => k.includes('hq-workers')).length), 'the worker list remembers a height').toBe(0)
+  await expect(page.locator('[data-held-room="hq-workers"]')).toHaveCount(0)
   await expect(page.getByTestId('corp-worker-list').locator('> li')).toHaveCount(2, { timeout: 180_000 })
   const { moves, seen } = await movesOf(page)
   for (const mark of ['workers#0', 'board#0', 'plate#0']) expect(seen, `the watch saw no ${mark}`).toContain(mark)
