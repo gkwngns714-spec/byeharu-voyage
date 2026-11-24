@@ -309,7 +309,6 @@ test.describe('a go-to link opens nothing (no trade history, no other panel)', (
     const lb = (await lisbon.boundingBox())!
     await page.mouse.click(lb.x + lb.width / 2, lb.y + lb.height / 2)
     await expect(page.getByTestId('map-place-name')).toBeVisible()
-    await page.getByTestId('map-detail-tray').getByRole('tab', { name: 'Port' }).click()
     // Open her by the row's far end, clear of the name (itself a link).
     const row = page.getByTestId('merchant-row').first()
     await row.waitFor({ timeout: 60_000 })
