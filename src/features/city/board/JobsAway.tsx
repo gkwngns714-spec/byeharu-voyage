@@ -5,6 +5,8 @@ import type { FleetJobsReport, SeaChoice } from '../../../lib/rpc'
 import { SEA_KIND_ICON, SEA_KIND_WORD, seaOptionWord } from '../../../live/seaChoiceOf'
 import { seenAwayReport, useJobEdits } from '../../../live/useAwayReport'
 import { useWorld } from '../../../live/worldStore'
+import { WorkerFixButton } from '../corp/WorkerFix'
+import { fixOf, jobCode } from '../corp/workerRows'
 import { JOB_ICON, JOB_STATE_TONE, JOB_STATE_WORD, JOB_KIND_WORD } from './jobMarks'
 
 // 0481 (docs/design/hq-command-2026-11-23.md v2, "She comes back to a report and re-plans"): WHILE YOU WERE AWAY. One line a job: her
@@ -18,6 +20,8 @@ import { JOB_ICON, JOB_STATE_TONE, JOB_STATE_WORD, JOB_KIND_WORD } from './jobMa
 // A STOPPED JOB SAYS WHY IN PLAIN WORDS, NEVER ITS CODE (owner row 381: the chip read "E_LEG_TOO_FAR"). The chip is the code's short
 // label (dict/codes.ts `lab_<code>`: "Range") and the code's sentence stands under her name ("Leg too far."). A code with no label
 // reads "Stopped"; one with no sentence adds no line. The code itself is only the row's `data-code`.
+// 0499: A STOPPED JOB WHOSE CODE ONE PRESS MENDS HAS THAT PRESS under its sentence (corp/WorkerFix.tsx; the table is workerRows.ts
+// `fixOf`): Repair at the server's price, Assign, Storage. Else none.
 
 /** A code's entry in dict/codes.ts, in her language, else its English one; null when the code has none. */
 function codeWord(locale: Locale, name: string): string | null {
@@ -64,6 +68,11 @@ export function JobsAway({ report, sea = [] }: { report: Extract<FleetJobsReport
               {why && (
                 <span className="break-words pl-8 text-t-caption text-ink-muted" data-testid="hq-away-why">
                   {why}
+                </span>
+              )}
+              {j.state === 'stopped' && fixOf(jobCode(j)) && (
+                <span className="flex flex-col items-start gap-2 pl-8 pt-1" data-testid="hq-away-fix">
+                  <WorkerFixButton fix={fixOf(jobCode(j))} worker={j.fleet} />
                 </span>
               )}
             </li>

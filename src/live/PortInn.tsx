@@ -18,6 +18,7 @@ import { OrderCheck } from './orderCheck'
 import { StepQuestion } from './StepQuestion'
 import { useShellState } from '../app/shellState'
 import { useStepOrder, type StepVerb } from './useStepOrder'
+import type { RepairQuote } from './PortShipyard'
 import { fleetCrew } from '../domain/fleet'
 import { useCrewCost } from './useCrewCost'
 import { useInn } from './useInn'
@@ -127,6 +128,21 @@ function whereFrom(guest: InnGuest, ports: readonly SnapshotPort[] | undefined):
   ) : (
     home
   )
+}
+
+const noop = () => {}
+
+/** THE HANDS SHE LACKS, HIRED IN ONE PRESS (0499; HQ's worker row, her sheet and While away, for a job that waits on E_CREW_SHORT): the
+ *  same act as this face's stepper (useStepOrder: `cmd.preview` of `HIRE n`, then `cmd.issue`), with n the hands still needed to
+ *  sail her (domain/fleet `fleetCrew().short`, the served crew against the served complement). The Inn keeps the act
+ *  (tests/verbHomes.spec.ts); the caller draws the press from the quote it is handed. */
+export function HireNow({ fleet, children }: { fleet: FleetView; children: (quote: RepairQuote) => ReactNode }) {
+  const short = fleetCrew(fleet).short
+  const given = useMemo(() => ({ count: String(short) }), [short])
+  const step = useStepOrder(fleet, 'HIRE', short > 0, noop, given)
+  const c = step.check
+  const cost = c.status === 'ok' && typeof c.result.estimate?.cost === 'number' ? c.result.estimate.cost : null
+  return <>{children({ cost, refusal: c.status === 'refused' ? c.refusal : null, busy: step.issuing, send: step.send, none: short <= 0 })}</>
 }
 
 export function PortInn({
