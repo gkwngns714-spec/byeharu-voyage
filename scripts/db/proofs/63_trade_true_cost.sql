@@ -73,6 +73,13 @@ declare
   v_walk   bigint;     -- this leg's stores, as the board walked them
   v_legs_t text := '';
 begin
+  -- THE SEA IS CALMED for this transaction (hazard_p_max 0, as proofs 04, 11, 157 and 184): a voyage's days are rolled on its own id, new
+  -- every run, and a storm, a calm or a raid on a leg moves her days, her stores, her hold or her crew (about one sea-day in 70 meets
+  -- something; with a raid on every day this proof went red, 2026-11-25). What is proved here is not the weather.
+  update public.world_config set value = to_jsonb(0) where key = 'hazard_p_max';
+  if public.wc_num('hazard_p_max') <> 0 then
+    raise exception 'PROOF 63: the sea was not calmed (hazard_p_max %)', public.wc_num('hazard_p_max');
+  end if;
   -- the closed economy with the city purses lit: dock fees and port time are in force for this transaction only
   update public.world_config set value = 'true'::jsonb where key in ('economy_closed', 'city_treasury_enabled');
   v_lis := (select h.id from public.ports h where h.code = 'LIS' and h.kind = 'HARBOUR');
