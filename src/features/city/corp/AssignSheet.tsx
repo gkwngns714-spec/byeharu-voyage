@@ -15,6 +15,7 @@ import { litRoles, useShipRoles } from '../../../live/useShipRoles'
 import { usePortMarket } from '../../../live/usePortMarket'
 import { useWorld } from '../../../live/worldStore'
 import { RoleControl } from '../board/RoleControl'
+import { WorkerFixButton } from './WorkerFix'
 import { PARTY, actionWord, figureWord, stateWord, useWorkers, type ActionNames, type LitLand, type WorkerRow } from './workerRows'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -589,6 +590,12 @@ export function WorkerSheet({ worker, onClose }: { worker: string; onClose: () =
             <Note tone="danger" data-testid="corp-sheet-why">
               {row.why}
             </Note>
+          )}
+          {/* 0499: the one press that mends it (Repair at the server's price, Storage); a leg too far is mended by Change, below */}
+          {row.fix !== null && row.fix !== 'assign' && (
+            <div className="mt-2 flex flex-col gap-2">
+              <WorkerFixButton fix={row.fix} worker={worker} className="w-full" />
+            </div>
           )}
           <div className="mt-2 min-h-6">
             {refusal && (

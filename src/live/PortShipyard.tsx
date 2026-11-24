@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Figure, Note, Row } from '../components/ui'
 import { StepQuestion } from './StepQuestion'
 import { useStepOrder } from './useStepOrder'
 import { worstHullFraction, wornFittings } from '../domain/fleet'
 import { formatInt, formatPct } from '../lib/format'
-import type { FleetView, SnapshotPort } from '../lib/rpc'
+import type { FleetView, Refusal, SnapshotPort } from '../lib/rpc'
 import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -32,6 +32,34 @@ import { useT } from '../lib/i18n'
 // "the fittings this house keeps in THIS city" outside `world.workstation` (which stands only
 // where a workstation does); that read is the next slice's, and it is a migration.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** A whole repair: the grammar's own default, said out loud so the line is the one the tray sends. */
+const WHOLE: Record<string, string> = Object.freeze({ to_pct: '100' })
+
+/** A mending press, quoted (the yard's whole repair; the Inn's hire of the hands she lacks, live/PortInn.tsx `HireNow`): the
+ *  server's price for the day (null until it has answered, or when it refused), its own sentence when it refuses (a purse too small,
+ *  no yard here, no hands on the quay), the one press that pays it, and `none` when nothing is to mend. */
+export interface RepairQuote {
+  cost: number | null
+  refusal: Refusal | null
+  busy: boolean
+  send: () => void
+  none: boolean
+}
+
+const noop = () => {}
+
+/** THE WHOLE REPAIR AS ONE PRESS (0499; HQ's worker row, her sheet and While away, for a job that waits on E_FLAGSHIP_DISABLED): the
+ *  same act as the tray's (useStepOrder: `cmd.preview` of the exact line, then `cmd.issue`), with no stepper. The Shipyard keeps
+ *  the act (tests/verbHomes.spec.ts); the caller draws the press from the quote it is handed. */
+export function RepairNow({ fleet, children }: { fleet: FleetView; children: (quote: RepairQuote) => ReactNode }) {
+  const step = useStepOrder(fleet, 'REPAIR', true, noop, WHOLE)
+  const c = step.check
+  const cost = c.status === 'ok' && typeof c.result.estimate?.cost === 'number' ? c.result.estimate.cost : null
+  const refusal = c.status === 'refused' ? c.refusal : null
+  // "nothing aboard needs repair" (cmd.do_repair): mended since her job last spoke
+  return <>{children({ cost, refusal, busy: step.issuing, send: step.send, none: refusal?.code === 'E_UNAVAILABLE' })}</>
+}
 
 export function PortShipyard({
   port,
