@@ -2,7 +2,7 @@
 
 The owner, 2026-11-24: *"it is like tribal wars + madevor + eve + rs3 game. research thoroughly, income, maintanence, levels, and
 more will be made."* ("madevor" is Melvor Idle.) The same day: the HQ company, hourly dividends, everything as +/- coin an hour,
-levels gate land and sea and open fleets, captain slots and ships, skills cut maintenance, Rank cuts tax.
+levels gate land and sea and open fleets, crew slots (bought at a total level, section 4a) and ships, skills cut maintenance, Rank cuts tax.
 
 This file turns the research (`docs/research/games-2026-11-24/`) and **our own measured numbers** into the tables the builders of
 0492-0500 implement. The model and the slices are `docs/design/hq-corp-2026-11-24.md`; its section D now points here.
@@ -175,19 +175,19 @@ are ADDED. "Rank" is a `level_skills` row `rank` read from `public.title_level` 
 
 | Level | Opens (existing rows in plain text, **new rows in bold**) |
 |---|---|
-| Start | 1 fleet, 1 Barca, **2 captain slots**, **1 party**, **0 estates**, **sea and land tier 1**, home shed = the city's warehouse tier x 150 t |
+| Start | 1 fleet, 1 Barca, **1 crew slot** (more are bought: section 4a), **1 party**, **0 estates**, **sea and land tier 1**, home shed = the city's warehouse tier x 150 t |
 | Trading 2 / 7 / 11 / 15 / 19 | +1 route (0468 `trade_routes`; an assignment slot once 0493 folds routes in) |
 | Trading 3 / 6 | +1 fleet (`fleet_room_levels`); more fleets are bought (0354), up to `fleet_hard_max` 6 |
 | Trading 4 / 9 / 13 / 17 | +1 ship in each fleet (0468 `fleet_ships`) |
 | Trading 5, 8, 10, 12, 14, 16, 18, 20 | yard order fee -10 % each (0468 `yard_fee`) |
 | **Rank 2** | **+1 estate slot**; **+150 t home shed** |
-| **Rank 3** | **sea and land tier 2**; **+1 captain slot** (3); **estate tier 2** |
+| **Rank 3** | **sea and land tier 2**; **estate tier 2** |
 | **Rank 4** | **+150 t home shed** |
-| **Rank 5** | **sea and land tier 3**; **+1 captain slot** (4); **+1 estate slot** (2); **estate tier 3** |
+| **Rank 5** | **sea and land tier 3**; **+1 estate slot** (2); **estate tier 3** |
 | **Rank 6** | **+150 t home shed** |
-| **Rank 7** | **sea and land tier 4**; **+1 captain slot** (5); **estate tier 4** |
+| **Rank 7** | **sea and land tier 4**; **estate tier 4** |
 | **Rank 8** | **+1 estate slot** (3); **+150 t home shed** |
-| **Rank 9** | **sea and land tier 5**; **+1 captain slot** (6 = `fleet_hard_max`); **estate tier 5** |
+| **Rank 9** | **sea and land tier 5**; **estate tier 5** |
 | **Rank 10** | **+150 t home shed** (+750 t in all) |
 | Rank 2-11 | **profit tax -5 %, dock fee -3 % a step** (section 3) |
 | **Mining 20 / 50** | **+1 party** (2, then 3) |
@@ -196,7 +196,7 @@ are ADDED. "Rank" is a `level_skills` row `rank` read from `public.title_level` 
 | Supplies / Weather / Shipbuilding / Craft / Requests / Routes / Investment / Evasion | the 0417 and 0453 perks, unchanged |
 | Academy skills | which hull classes the yard builds for her (unchanged: they already open hulls, docs/LEVELS.md section 1) |
 
-New `level_perks` rows: `captain_slots` (rank, count), `party_slots` (mining, count), `estate_slots` (rank, count), `estate_tier`
+New `level_perks` rows: `party_slots` (mining, count), `estate_slots` (rank, count), `estate_tier`
 (rank, count), `area_tier` (rank, count), `shed_room` (rank, count of 150 t), `tax_rank` and `dock_rank` (rank, pct_less), `upkeep`
 (shipbuilding, pct_less), `estate_repair` (mining, pct_less). Each new cap is first raised to the most any company holds on prod at
 deploy (no one loses a captain or a party).
@@ -206,6 +206,48 @@ deploy (no one loses a captain or a party).
 most 6 fleets. TW: the warehouse grows each level (TW lines 80-93).
 
 ---
+
+## 4a. Crew slots: bought at a total level, with gold and Reputation
+
+The owner, 2026-11-24: *"crew slot will be open when total level hits, with gold, reputation rquirement"*. This **replaces** the
+captain-slot rows that stood on Rank (hq-corp A2.6).
+
+**The rule.** The next slot opens when three things are met, and the player then buys it with one press.
+- **Total level:** `public.total_level(player)`, the sum of the company's levels: the eleven sea levels plus every lit land skill. It
+  is 12 at founding.
+- **Gold:** paid to the home city (`pay_city`, kind `CREW_SLOT`).
+- **Reputation:** spent through `public.reputation_credit`, as captain skills spend it (0355).
+
+The data is one table, `public.crew_slot_steps`. The switch is `crew_slots_enabled` (0497).
+
+**The ladder.** Every row is OWNER'S: default, reversible.
+
+| Slot | Total level | Gold | Reputation (spent) | Reached by a steady player | Gold against income at that stage (section 1) |
+|---|---|---|---|---|---|
+| 1 | start | 0 | 0 | founding | |
+| 2 | 16 | 5,000 | 50 | ~10-20 min | ~0.5 h of ~10,000 /h |
+| 3 | 30 | 20,000 | 250 | ~1-1.5 h | ~1 h |
+| 4 | 45 | 60,000 | 600 | ~4-6 h | ~2 h of ~30,000 /h |
+| 5 | 65 | 150,000 | 1,200 | ~1 day | ~2 h of ~75,000 /h |
+| 6 | 90 | 400,000 | 2,500 | ~3 days | ~2 h of ~200,000 /h |
+| 7 | 120 | 1,000,000 | 5,000 | ~1 week | ~2 h of ~450,000 /h |
+| 8 | 160 | 2,500,000 | 10,000 | ~2-3 weeks | ~5 h |
+
+**Where the timings come from:**
+- **Total level:** section 0's paces. Trading L3 in ~6 min, L5 in 48 min, L10 in 4 h. Mining L10 in 27 min, L30 in ~3.5 h, L50 in
+  ~17 h. Exploration +1 every few new harbours early. Granted levels are at most 300 xp a day.
+- **Reputation:** from the 0352 rules. A sale gives profit / 250 (at most 120), so a near run gives ~15 and trade gives ~90 /h. Each
+  level crossed gives 10 x the level. A new harbour gives 25. The capped kinds stop at `rep_day_cap` 600 a real day. That makes about
+  250-400 in the first hour, and at most ~600 a day after, plus the level rewards.
+- **Reputation is a sink with two uses:** captain skills and slots. Choosing between them is a real choice.
+
+**The other rules:**
+- **One cap:** the bought count caps how many workers (fleets with work, parties, estates) run at once.
+  - Fleet room's fleet purchase (`cmd.buy_room('fleet')`, 0354, kind `SLOT`, destroyed) folds into it. The new price is moved to a city,
+    not destroyed.
+  - `fleet_hard_max` 6, ships-per-fleet room, `party_slots` and `estate_slots` stay as bounds per kind.
+- **No one loses a worker:** at deploy each company's count starts at no less than the workers it holds, and no less than the most any
+  company holds.
 
 ## 5. Area tiers, sea and land
 
@@ -396,9 +438,10 @@ all, against 1-3 % for every new line together. That matches EVE, where the tran
 ## 11. Offline
 
 **Rule.** Everything is the server's, so it runs while the player is away: fleet jobs sail, estates and parties produce, dividends,
-upkeep and wages are charged each hour. Melvor's cap (MI line 179): **24 hours**.
+upkeep and wages are charged each hour. **The cap is ONE existing knob, `land_away_hours` (12 today)**, read as the away cap by
+parties, estates and the fleet job tick (hq-corp A2.5). Melvor's figure is 24 hours (MI line 179); raising the knob is the owner's.
 
-| Item | While away | After 24 h with no sign-in |
+| Item | While away | After the away cap (`land_away_hours`) with no sign-in |
 |---|---|---|
 | Fleet jobs | run | the current run finishes, then the job waits (no new run) |
 | Estates, land repeat | produce, up to the shed's room | pause |
