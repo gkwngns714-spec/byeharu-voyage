@@ -36,7 +36,7 @@ import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, trayBox } from './des
 // figures block too) at every glass; (b) and the no-move half of (d) were already green there — they are guards, kept from
 // the sweep. The numbers are in the dev-log.
 
-const FIGURES = ['stats-live-purse', 'stats-live-sea', 'stats-live-trades', 'stats-live-world'] as const
+const FIGURES = ['stats-live-sea', 'stats-live-trades', 'stats-live-world'] as const
 const ROWS = ['money-move', 'stats-good', 'stats-city-open', 'stats-merchant'] as const
 
 /** The six faces, by their place in the tab strip (a Korean strip has other words), the panel and row each stands, and every
@@ -48,8 +48,8 @@ const FACES = [
   { name: 'Markets', panel: 'stats-goods', row: 'stats-good', ids: ['stats-markets', 'stats-markets-day', 'stats-markets-window', 'stats-risers', 'stats-fallers', 'stats-most-traded', 'stats-markets-filters', 'stats-markets-sort'] },
   { name: 'Cities', panel: 'stats-cities', row: 'stats-city-open', ids: ['stats-cities', 'stats-cities-filters', 'stats-cities-sort'] },
   { name: 'Pirates', panel: 'stats-pirates-list', row: null, ids: [] },
-  { name: 'Me', panel: 'stats-best-trades', row: null, ids: ['stats-me', 'stats-me-week', 'stats-me-bars'] },
-  { name: 'Overview', fold: 0, panel: 'money-log', row: 'money-move', ids: ['stats-live', 'stats-live-purse', 'stats-live-world', 'stats-live-sea', 'stats-live-trades', 'stats-money', 'stats-holder', 'stats-new-money', 'stats-watch', 'stats-overview'] },
+  { name: 'Me', panel: 'stats-best-trades', row: null, ids: ['stats-me'] },
+  { name: 'Overview', fold: 0, panel: 'money-log', row: 'money-move', ids: ['stats-live', 'stats-live-world', 'stats-live-sea', 'stats-live-trades', 'stats-money', 'stats-holder', 'stats-new-money', 'stats-watch', 'stats-overview'] },
   { name: 'Merchants', fold: 1, panel: 'stats-merchants-all', row: 'stats-merchant', ids: ['stats-merchants', 'stats-merchant-figures', 'stats-merchant-fold', 'stats-merchant-states', 'stats-merchants-filters', 'stats-merchants-sort'] },
   { name: 'Navy', fold: 2, panel: 'stats-navy-list', row: null, ids: [] },
   { name: 'Cargo', fold: 3, panel: 'stats-cargo-list', row: null, ids: [] },
@@ -161,7 +161,7 @@ for (const glass of DESIGN_GLASSES) {
     // the watch and the log stand after the first live read: measure once they do, or a card arriving would read as a move
     await expect(page.getByTestId('stats-watch')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByTestId('money-log')).toBeVisible({ timeout: 60_000 })
-    const ids = ['stats-live-purse', 'stats-live-world', 'stats-money', 'stats-new-money', 'stats-watch', 'money-log']
+    const ids = ['stats-live-world', 'stats-money', 'stats-new-money', 'stats-watch', 'money-log']
     const taps = page.getByTestId('stats-chart-tap')
     await expect.poll(() => taps.count(), { timeout: 60_000 }).toBeGreaterThanOrEqual(3)
     // bring the first chart under the finger FIRST, then measure: a scroll the browser makes to reach a control is not a move

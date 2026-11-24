@@ -11,7 +11,7 @@ import { PHONE, closeDetail, reachable, ready } from './appReady.fixture'
 // "I want stats to be in real time, by seconds updated"): the RIGHT NOW band stands on every face with the
 // figures the world's own beat carries, and the rollup's figures are drawn as charts — a stacked bar for the
 // composition, bars from a zero line for each count, ranked bars for which of these is big. Pinned below:
-// the band is there with its purse, the band survives a change of face, and the Overview draws a chart.
+// the band is there (no purse in it: S8), the band survives a change of face, and the Overview draws a chart.
 //
 // LIVE TO THE SECOND (0224, owner row 200): the band's world money and its trades since the count come from
 // world.stats_now(), asked every second while the tab is open (statsLive.ts). Pinned: they are figures, not dashes.
@@ -42,9 +42,9 @@ for (const vp of [PHONE, WIDE]) {
     // holders stand there, each with its own line, and nothing is pressed to read them.
     await expect(page.getByTestId('stats-holder')).toHaveCount(4)
     await expect(page.getByTestId('stats-updated')).toContainText(/Updated \d\d:\d\d:\d\d/)
-    // RIGHT NOW: the live band, with a purse that is a figure and not a dash — and the world's live figures (0224)
+    // RIGHT NOW: the live band — the world's live figures (0224); YOUR purse is the top bar's, not a Stats figure (simplify S8)
     await expect(page.getByTestId('stats-live')).toBeVisible()
-    await expect(page.getByTestId('stats-live-purse')).toContainText(/\d/)
+    await expect(page.getByTestId('stats-live-purse')).toHaveCount(0)
     await expect(page.getByTestId('stats-live-world')).toContainText(/\d/, { timeout: 30_000 })
     await expect(page.getByTestId('stats-live-trades')).toContainText(/\d/)
     // the economy watch (0229, docs/CLOSED_ECONOMY.md §7), from the live read
@@ -80,9 +80,12 @@ for (const vp of [PHONE, WIDE]) {
 
     await page.getByRole('tab', { name: 'Me', exact: true }).click()
     await expect(page.getByTestId('stats-me')).toBeVisible({ timeout: 60_000 })
-    await expect(page.getByTestId('stats-me-bars')).toBeVisible()
-    // the live band belongs to the TAB, not to a face: it is still there on the fifth one
-    await expect(page.getByTestId('stats-live-purse')).toContainText(/\d/)
+    // Me keeps what only Me has (the money record, the best sales); the week's profit is the Report's (simplify S8)
+    await expect(page.getByTestId('stats-best-trades')).toBeVisible()
+    await expect(page.getByTestId('stats-me-week')).toHaveCount(0)
+    // the live band belongs to the TAB, not to a face: it is still there on the fifth one, and it prints no purse
+    await expect(page.getByTestId('stats-live')).toBeVisible()
+    await expect(page.getByTestId('stats-live-purse')).toHaveCount(0)
     await noSidewaysScroll(page)
   })
 }
