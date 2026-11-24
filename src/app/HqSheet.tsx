@@ -96,13 +96,13 @@ export function HqSheet() {
 
   return (
     <>
-      {ask && <Sheet key={askKey(ask)} ask={ask} onClose={close} onDone={done} />}
+      {ask && <AskSheet key={askKey(ask)} ask={ask} onClose={close} onDone={done} />}
       <TradeToast text={toast} onGone={clearToast} />
     </>
   )
 }
 
-function Sheet({ ask, onClose, onDone }: { ask: HqAsk; onClose: () => void; onDone: (d: TradeDone) => void }) {
+function AskSheet({ ask, onClose, onDone }: { ask: HqAsk; onClose: () => void; onDone: (d: TradeDone) => void }) {
   const t = useT()
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
