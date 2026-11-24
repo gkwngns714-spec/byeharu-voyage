@@ -3,6 +3,7 @@ import { passageLines, passageOf, shutByReach, type PlanLeg } from '../src/domai
 import type { RouteLeg } from '../src/lib/rpc'
 import { ready, reachable, WORLD_BOOT_MS } from './appReady.fixture'
 import { koreanDescribe } from './korean.paused'
+import { serveSteadySea, STEADY_TIME_COMPRESSION, STORM_SCENE } from './steadySea.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A FAR CITY IS SENT IN ONE PRESS — the owner, 2026-11-13:
@@ -21,8 +22,11 @@ import { koreanDescribe } from './korean.paused'
 //   2. DRIVEN, 390 px, English: a far city's row names its stops, a time and a price (Supplies, Wages and Dock fee, each
 //      its own figure as Trade names them, and their Total; world.trip_cost, 0360); ONE press sends her, and she is under
 //      way TO THAT CITY (which she can only be if every SAIL of the chain is queued behind the leg she is on). THEN THE
-//      TRIP IS WAITED OUT (about nine minutes): she arrives within a stated tolerance of the time shown, and the purse
-//      fell by the supplies and dock fees shown. A trip with nonzero supplies, dock fees and port time is sailed on the
+//      TRIP IS WAITED OUT (about eight minutes): she arrives within a stated tolerance of the time shown, and the purse
+//      fell by the supplies and dock fees shown. THE WORLD OF THIS DRIVE IS tests/steadySea.fixture.ts: the built image with no
+//      weather on any day (hazard_p_max 0) and the clock at 960 through its one door (public.clock_set), so the trip sailed is the
+//      trip quoted and the wait is a fifth of the shipped clock's 37 minutes. A storm on a leg (36 sim-hours, which no quote can
+//      know) made this drive red on main, run 45402237343; STEADY_SEA_STORM=1 puts one back on the first leg and shows it. A trip with nonzero supplies, dock fees and port time is sailed on the
 //      server in scripts/db/proofs/62_trip_cost.sql, where the economy can be closed for one transaction.
 //   3. DRIVEN, 320 px, Korean: the same row holds the glass (no sideways scroll), and a city no chain reaches says so.
 //
@@ -170,6 +174,8 @@ test.describe('a far city, driven on a phone (390 px, English)', () => {
   test('the row says the stops, the whole time and the price; one press sends her there, and she arrives when and for what it said',async ({ page, request, baseURL }) => {
     const began = Date.now()
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run build && npm run preview\` and re-run`)
+    // THE STEADY SEA, AT 960 (tests/steadySea.fixture.ts): no storm or calm lengthens a leg, and a voyage-day is 90 real seconds
+    await serveSteadySea(page)
     await openWorldChart(page)
     const far = await findChain(page, FAR)
     expect(far, `none of ${FAR.join(' ')} is reached through harbours between — the far send is not planned`).not.toBeNull()
@@ -199,8 +205,10 @@ test.describe('a far city, driven on a phone (390 px, English)', () => {
     // THE TIME SHOWN, as the real wait the app prints beside the days (the calls on the way counted, 0360)
     const shownMs = Number(await row.getByTestId('map-send-passage').getAttribute('data-real-ms'))
     expect(shownMs).toBeGreaterThan(60_000)
-    // 0413 (a game day is one real hour): the shortest chained trip is ~35 real minutes, past the describe's 30. The test's clock is
-    // what it has run so far, the wait for her arrival below, and five minutes for the rest.
+    // The shortest chained trip is ~37 real minutes at the shipped clock (0413) and a fifth of that at this world's 960
+    // (`STEADY_TIME_COMPRESSION`); the figure is the server's either way. The test's clock is what it has run so far, the wait for
+    // her arrival below, and five minutes for the rest.
+    expect(shownMs, `the row's real time is not a trip at ${STEADY_TIME_COMPRESSION}: the steady world was not the one served`).toBeLessThan(900_000)
     test.setTimeout(Math.max(test.info().timeout, Date.now() - began + shownMs * 1.15 + 120_000 + 300_000))
     const purse = async () => Number((await page.getByTestId('purse').innerText()).replace(/[^\d.-]/g, ''))
     const purseBefore = await purse()
@@ -226,7 +234,10 @@ test.describe('a far city, driven on a phone (390 px, English)', () => {
     // own clock). Late: the larger of 45 s and 15 %. In this tab an arrival is settled by the next read of the world
     // (every few seconds) and the next SAIL leaves at that read, a few seconds a call; prod's arrivals job runs every
     // second (0242). A SEA DELAY (a calm or a storm lengthens a leg; the figure cannot know it) lands past that bound:
-    // the drive then fails and names it, so a delay is never read as a pass and never silently skipped.
+    // the drive then fails and names it, so a delay is never read as a pass and never silently skipped. THIS WORLD HAS NONE
+    // (steadySea.fixture.ts), so a late arrival here is the game's own; the storm scene (STEADY_SEA_STORM=1) is the one exception,
+    // and it is meant to fail here.
+    if (STORM_SCENE) console.log('auto-route drive: THE STORM SCENE, one storm on the first leg; a late arrival is expected')
     await expect(note, 'she did not arrive at the far city on one press').toHaveText('here', { timeout: shownMs * 1.15 + 120_000 })
     const tookMs = Date.now() - sentAt
     const late = Math.max(45_000, shownMs * 0.15)

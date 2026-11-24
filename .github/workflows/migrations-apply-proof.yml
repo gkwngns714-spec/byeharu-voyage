@@ -810,6 +810,49 @@ jobs:
           path: ${{ runner.temp }}/sbsnap
           key: ${{ steps.keep.outputs.key }}
 
+      # THE HOURLY DIVIDEND UNDER TWO SESSIONS (0495; scripts/ci/dividend-race.sh). PGlite has one session,
+      # so two money paths could only be read there: a holder whose row another session holds when the
+      # hour runs (she is skipped, the hour is written against her and paid with her next), and two
+      # sessions running the same hour at once (one payment). This is the only place they are run.
+      #   * ONLY WHEN THE FUNCTIONS EXIST: a chain with no migration that creates public.city_coupon_hour
+      #     skips here, before anything is started; the script asks the database the same question.
+      #   * AFTER THE SNAPSHOT IS KEPT, ON PURPOSE: two sessions see each other's rows only when they are
+      #     committed, so this test commits (probe houses, one purse at a SEA_PLACE, ledger rows, three
+      #     knobs lit and put back). Nothing of that may reach a kept snapshot, so it runs once the
+      #     snapshot is tarred and saved, on a stack that the next step throws away. The keep step stops
+      #     the stack, so where it ran (main; a PR from zero) the same volume is booted again first:
+      #     no migration is applied by that boot. An ordinary PR skips the keep step and pays no boot.
+      #   * It changes nothing about which snapshot is chosen, kept or restored, nor when a run applies
+      #     from zero. A red here is a red run whose snapshot (the chain, green above) is already kept.
+      - name: The hourly dividend under two sessions (real PostgreSQL; after the snapshot is kept, on the stack about to be thrown away)
+        if: success()
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          if ! grep -qs 'create function public.city_coupon_hour' supabase/migrations/*.sql; then
+            echo "skipped: no migration in this chain creates public.city_coupon_hour"; exit 0
+          fi
+          if [ -n "${{ steps.keep.outputs.key }}" ]; then
+            echo "the keep step stopped the stack; booting its volume again (no migration is applied)"
+            timeout 600 supabase start
+          fi
+          supabase status -o env > /tmp/sbenv-race
+          set -a; . /tmp/sbenv-race; set +a
+          : "${DB_URL:?DB_URL (disposable stack) required}"
+          out="$(bash scripts/ci/dividend-race.sh 2>&1)" || {
+            echo "$out"; echo "::error title=Dividend race failed::scripts/ci/dividend-race.sh exited non-zero"; exit 1;
+          }
+          echo "$out"
+          # Green is not "exit 0": it is every named marker printed (or the script's own SKIPPED line).
+          if echo "$out" | grep -q '^DIVIDEND_RACE SKIPPED'; then exit 0; fi
+          for marker in DIVIDEND_RACE_SKIPPED_HOLDER_OWED \
+                        DIVIDEND_RACE_OWED_HOUR_PAID_ONCE \
+                        DIVIDEND_RACE_SAME_HOUR_PAYS_ONCE; do
+            echo "$out" | grep -q "^PASS: $marker" \
+              || { echo "::error title=Missing PASS marker::$marker"; exit 1; }
+          done
+          echo "All 3 dividend-race PASS markers present, on real PostgreSQL, two sessions."
+
       - name: Stop disposable stack (always)
         if: always()
         run: supabase stop --no-backup || true
