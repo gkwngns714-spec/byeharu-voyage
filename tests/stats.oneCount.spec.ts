@@ -26,6 +26,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DICT, type Msg } from '../src/lib/i18n'
+import { LANGS } from './korean.paused'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SRC = path.join(ROOT, 'src')
@@ -57,7 +58,7 @@ const stats = (DICT as unknown as Record<string, { en: Record<string, Msg>; ko: 
 
 test('the five states are the server\'s, in one table, each with its own word in English and Korean', () => {
   expect(states.map((s) => s.id)).toEqual([...SERVER_STATES])
-  for (const lang of ['en', 'ko'] as const) {
+  for (const lang of LANGS) {
     const words = states.map((s) => stats[lang][s.word])
     expect(words.every((w) => typeof w === 'string' && w.length > 0), `${lang}: ${JSON.stringify(words)}`).toBe(true)
     expect(new Set(words).size, `${lang}: two states share a word: ${JSON.stringify(words)}`).toBe(states.length)

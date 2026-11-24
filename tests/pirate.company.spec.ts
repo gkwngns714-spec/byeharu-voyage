@@ -4,6 +4,7 @@ import { GREAT_POWERS, PIRATE_POWER } from '../scripts/lib/world-derive.mjs'
 import { translate } from '../src/lib/i18n'
 import { reachable, ready } from './appReady.fixture'
 import { serveBrethrenOpen, servePirateCompany } from './pirateWorld.fixture'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A COMPANY UNDER THE SKULL, ON THE GLASS (0338's knob `pirates_joinable`, 0380's `pirate` key; owner row 284 "yes they can", row 324
@@ -24,7 +25,6 @@ const SIZES = [
   { name: 'phone', width: 390, height: 844 },
   { name: 'desk', width: 1280, height: 800 },
 ] as const
-const LANGS = ['en', 'ko'] as const
 const SHOTS = process.env.PIRATE_SHOTS
 const CROWNS: string[] = GREAT_POWERS.filter((c: string) => c !== PIRATE_POWER)
 

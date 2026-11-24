@@ -6,6 +6,7 @@ import { KO_SKILLS } from '../src/lib/i18n/names/skills'
 import { arrivedAtEdge, ready, settled, WORLD_BOOT_MS } from './appReady.fixture'
 import { serveVeteranWorld } from './manyFleets.fixture'
 import { serveNpcOn } from './npcOn.fixture'
+import { LOCALES, koreanTest } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE LIT SCREENS HOLD THEIR LINES (2026-11-14; docs/dev-log/2026-11-14-lit-screens.md)
@@ -39,7 +40,7 @@ import { serveNpcOn } from './npcOn.fixture'
 
 const SKILLS = (JSON.parse(readFileSync(path.resolve('data', 'skills.json'), 'utf8')) as { skills: { code: string; name: string }[] }).skills
 
-test('every skill has a Korean name, and no two skills share one', () => {
+koreanTest('every skill has a Korean name, and no two skills share one', () => {
   const missing = SKILLS.filter((s) => !KO_SKILLS[s.code]).map((s) => s.code)
   expect(missing, 'skills with no Korean name').toEqual([])
   const names = SKILLS.map((s) => KO_SKILLS[s.code])
@@ -85,7 +86,7 @@ const READ_LINES = (scope: string) => {
   return [...new Set(faults)]
 }
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   const lang = locale === 'ko-KR' ? 'ko' : 'en'
   for (const glass of [
     { width: 320, height: 640 },

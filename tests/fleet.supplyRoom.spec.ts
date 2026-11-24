@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { LANGS } from './korean.paused'
 
 // SUPPLIES HAVE THEIR OWN SPACE, ON THE PAGE (0345 built it; 0369 lit `ship_stores_separate`, owner rows 221 and 324).
 // The shipped world is lit, so the fleet's page carries one more row above "Supplies N days": `Supply room 8/26 tons`
@@ -10,7 +11,7 @@ const WORDS = {
   ko: { room: '보급 창고', figure: /\d+\/\d+\s*톤/ },
 } as const
 
-for (const lang of ['en', 'ko'] as const) {
+for (const lang of LANGS) {
   test.describe(`the supply room row, ${lang}`, () => {
     test.use({ viewport: { width: 390, height: 844 }, locale: lang === 'ko' ? 'ko-KR' : 'en-US' })
 

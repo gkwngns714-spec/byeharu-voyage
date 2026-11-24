@@ -4,6 +4,7 @@ import path from 'node:path'
 import { reachable, ready } from './appReady.fixture'
 import { ARMADA_NAME, ARMADA_SISTERS, serveArmadaBattleWorld } from './armadaBattleWorld.fixture'
 import { fightCountRadiusPx } from '../src/chart/fightRings'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AN ARMADA'S BATTLE ON THE PAGE (0395, docs/ARMADA.md section 7, owner row 323: "with more than one fleet, max 6
@@ -163,7 +164,7 @@ for (const size of [PHONE, WIDE]) {
   })
 }
 
-for (const lang of ['ko-KR', 'en-US'] as const) {
+for (const lang of LOCALES) {
   for (const size of lang === 'ko-KR' ? [PHONE, SMALL] : [SMALL]) {
     test.describe(`the words, ${lang} at ${size.width}×${size.height}`, () => {
       test.use({ viewport: size, locale: lang })

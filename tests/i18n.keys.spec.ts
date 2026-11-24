@@ -16,13 +16,11 @@ const texts = (m: Msg): string[] => (typeof m === 'string' ? [m] : [m.one, m.oth
 const holes = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((x) => x[1]).sort()
 const sections = Object.entries(DICT as unknown as Record<string, { en: Record<string, Msg>; ko: Record<string, Msg> }>)
 
-test('every dictionary has the same keys in English and in Korean', () => {
+test('no Korean entry has no English one (a missing Korean entry is allowed: docs/KOREAN_LATER.md)', () => {
   expect(sections.length).toBeGreaterThan(0)
   const bad: string[] = []
   for (const [name, d] of sections) {
-    const en = Object.keys(d.en).sort()
     const ko = Object.keys(d.ko).sort()
-    for (const k of en) if (!(k in d.ko)) bad.push(`${name}.${k}: no Korean entry`)
     for (const k of ko) if (!(k in d.en)) bad.push(`${name}.${k}: Korean entry with no English one`)
   }
   expect(bad, bad.join('\n')).toEqual([])
@@ -55,6 +53,19 @@ test('a string is read in the asked language, filled, and plural-picked', () => 
   expect(translate('en', 'common.close')).toBe('Close')
   expect(translate('ko', 'common.close')).toBe('닫기')
   expect(translateMaybe('ko', 'common', 'no-such-entry')).toBeNull()
+})
+
+test('a key with no Korean entry reads its English text under ko', () => {
+  // A real key is added to the live English half for the length of the test and taken away again,
+  // so the real `translate` is what answers; no stored key lacks Korean today.
+  const common = (DICT as unknown as Record<string, { en: Record<string, Msg> }>)['common']!.en
+  common['zzNoKorean'] = 'English only {n}'
+  try {
+    expect(translate('ko', 'common.zzNoKorean' as never, { n: 3 })).toBe('English only 3')
+    expect(translate('en', 'common.zzNoKorean' as never, { n: 3 })).toBe('English only 3')
+  } finally {
+    delete common['zzNoKorean']
+  }
 })
 
 test('a proper noun is Korean where the map has it and the served name where it does not', () => {

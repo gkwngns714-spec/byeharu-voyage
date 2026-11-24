@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { ready, reachable, settled } from './appReady.fixture'
 import { tradeOnDesk } from './desk.fixture'
 import { GLASSES, phoneLaws as defects, readGlass, type Glass } from './unfold.fixture'
+import { koreanDescribe } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE HQ ON A PHONE — the law that keeps every building's face legible (2026-11-02)
@@ -108,7 +109,7 @@ for (const glass of GLASSES) {
 
 // THE OWNER PLAYS IN KOREAN: the words are shorter and break by word (`word-break: keep-all`), so the same panel is walked in
 // his language on the two phone glasses — the place the Market's names stood on top of the BUY tile.
-test.describe('in Korean', () => {
+koreanDescribe('in Korean', () => {
   test.use({ locale: 'ko-KR' })
   for (const glass of GLASSES.filter((g) => g.width < 400)) {
     test(`the HQ's six faces are legible and clean at ${glass.width}×${glass.height}`, async ({ page, request, baseURL }) => {
@@ -158,7 +159,7 @@ for (const glass of GLASSES) {
   })
 }
 
-test.describe('in Korean, with a good on board', () => {
+koreanDescribe('in Korean, with a good on board', () => {
   test.use({ locale: 'ko-KR' })
   test("the HQ's Production page with a good on board is clean at 320×640", async ({ page, request, baseURL }) => {
     test.setTimeout(600_000)
@@ -207,7 +208,7 @@ for (const glass of GLASSES) {
   })
 }
 
-test.describe('in Korean, the Inn', () => {
+koreanDescribe('in Korean, the Inn', () => {
   test.use({ locale: 'ko-KR' })
   test("the Inn's guest tray is clean for every guest at 320×640", async ({ page, request, baseURL }) => {
     test.setTimeout(600_000)

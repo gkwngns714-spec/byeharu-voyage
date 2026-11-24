@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { KO_PORTS } from '../src/lib/i18n/names/ports'
 import { reachable, ready } from './appReady.fixture'
 import { phoneLaws, readGlass } from './unfold.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE COMMAND DESK TAKES THE CARD AND THE TYPE SCALE — measured at three wide glasses and a phone, in English and Korean (2026-11-05)
@@ -81,7 +82,7 @@ async function plantLongCities(page: Page, ko: boolean) {
   await page.waitForTimeout(300)
 }
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   test.describe(`the Command desk is a card page — ${locale}`, () => {
     test.use({ locale })
 

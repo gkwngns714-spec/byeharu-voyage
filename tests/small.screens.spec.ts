@@ -5,6 +5,7 @@ import { KO_GOODS } from '../src/lib/i18n/names/goods'
 import { KO_PORTS } from '../src/lib/i18n/names/ports'
 import { ready, settled } from './appReady.fixture'
 import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE SMALL SCREENS' LEFTOVERS, MEASURED (2026-11-13; docs/dev-log/2026-11-13-small-screens.md)
@@ -102,7 +103,7 @@ const linesOf = (el: Locator) =>
     return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size
   })
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   const ko = locale === 'ko-KR'
 
   test.describe(`small screens — ${locale} at 320×640`, () => {
@@ -234,7 +235,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
   }
 }
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   for (const glass of [
     { width: 1280, height: 800 },
     { width: 1440, height: 900 },

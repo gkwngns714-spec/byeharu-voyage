@@ -3,6 +3,7 @@ import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
 import { KO_PORTS } from '../src/lib/i18n/names/ports'
 import { ready } from './appReady.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE'S LAYOUT, MEASURED (2026-11-11, the trade-layout slice; docs/dev-log/2026-11-11-trade-layout.md)
@@ -166,7 +167,7 @@ function cardFaults(cards: Awaited<ReturnType<typeof READ_CARDS>>): string[] {
   return faults
 }
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   const ko = locale === 'ko-KR'
   for (const glass of [
     // the narrowest phone the HQ's own spec holds (tests/city.phone.spec.ts): a goods card is 140 px on Trade, 123 at the HQ

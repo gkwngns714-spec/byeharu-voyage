@@ -10,6 +10,7 @@ import { translate } from '../src/lib/i18n'
 import type { FightCard, FightSide } from '../src/lib/rpc'
 import { BATTLE_JOIN_REFUSALS } from '../src/lib/rpc/battleJoin'
 import { fleetsInFight, joinOffers, joinRefusalKey, joinSides, type JoinFleet } from '../src/live/battle/joinOffers'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TICK COMBAT ON THE MAP (docs/design/tick-combat.md 8, 9.4; the owner: "every ship currently in a fight is drawn red";
@@ -188,7 +189,7 @@ test('every refusal of cmd.battle_join has its own short word, in English and Ko
   const words = { en: new Set<string>(), ko: new Set<string>() }
   for (const code of BATTLE_JOIN_REFUSALS) {
     expect(joinRefusalKey(code)).toBe(`join.${code}`)
-    for (const locale of ['en', 'ko'] as const) {
+    for (const locale of LANGS) {
       const word = translate(locale, joinRefusalKey(code))
       expect(word, `${locale} ${code}`).not.toBe(joinRefusalKey(code))
       expect(word.split(/\s+/).length, `${locale} ${code}: "${word}" is one or two words`).toBeLessThanOrEqual(2)
@@ -204,6 +205,6 @@ test('every refusal of cmd.battle_join has its own short word, in English and Ko
   expect(joinRefusalKey('E_SOMETHING_NEW')).toBe('join.E_OTHER')
   expect(translate('en', 'join.E_OTHER')).toBe('Refused')
   for (const k of ['join.join', 'join.joined', 'join.watch', 'join.vs'] as const) {
-    for (const locale of ['en', 'ko'] as const) expect(translate(locale, k).split(/\s+/).length).toBeLessThanOrEqual(2)
+    for (const locale of LANGS) expect(translate(locale, k).split(/\s+/).length).toBeLessThanOrEqual(2)
   }
 })

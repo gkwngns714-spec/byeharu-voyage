@@ -3,6 +3,7 @@ import { reachable, ready } from './appReady.fixture'
 import { phoneLaws, readGlass } from './unfold.fixture'
 import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, settled } from './design.fixture'
 import { serveVeteranWorld, VETERAN_HULLS } from './manyFleets.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // FLEETS IS A PAGE — the owner's design order, measured with a veteran's eight fleets at five glasses, in English and Korean (2026-11-04)
@@ -55,7 +56,7 @@ async function open(page: Page, glass: { width: number; height: number }) {
   await page.waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, undefined, { timeout: 120_000 }).catch(() => {})
 }
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   test.describe(`Fleets is a page — ${locale}`, () => {
     test.use({ locale })
 

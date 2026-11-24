@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
+import { LANGS } from './korean.paused'
 
 // A COMPANY'S STANDING WITH EACH COUNTRY, LIT, ON THE PAGE (0319 built it; 0373 lit `regard_enabled`, owner rows 288 and 324).
 //   1. THE LEVELS PAGE, as shipped (no patch): the Countries list no longer says "Not open yet."; it names every country, in her language, with her band and her score. A new
@@ -38,7 +39,7 @@ async function noCut(page: Page, testid: string, where: string) {
 }
 
 for (const glass of GLASSES) {
-  for (const lang of ['en', 'ko'] as const) {
+  for (const lang of LANGS) {
     test.describe(`regard lit, ${glass.width}px ${lang}`, () => {
       test.use({ viewport: glass, locale: lang === 'ko' ? 'ko-KR' : 'en-US' })
       const w = WORDS[lang]

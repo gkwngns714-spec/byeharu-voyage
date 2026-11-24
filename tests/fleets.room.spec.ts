@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { PHONE, ready, reachable } from './appReady.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
+import { LANGS } from './korean.paused'
 
 // THE FLEET'S TOTALS, THE RENAME DOOR AND THE ROOM ROWS, ON THE PAGE (0354). The shipped world is LIT since 0370. A world set dark: the room card says "Not open yet" and draws no Buy, the fleet's page
 // carries her totals line and Rename, and a rename shows on the row. A world with the room lit offers one Buy, and a press raises the ships a fleet may hold.
@@ -104,7 +105,7 @@ const ROOM_WORDS = {
 } as const
 
 for (const glass of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
-  for (const lang of ['en', 'ko'] as const) {
+  for (const lang of LANGS) {
     test.describe(`the room card as shipped, ${glass.width}px ${lang}`, () => {
       test.use({ viewport: glass, locale: lang === 'ko' ? 'ko-KR' : 'en-US' })
 

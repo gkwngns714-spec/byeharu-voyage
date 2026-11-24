@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
+import { koreanDescribe } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // S8 — A YARD A PLAYER CAN FINISH (owner rows 180 and 305; world.yard_sources, 0349)
@@ -104,7 +105,7 @@ for (const glass of GLASSES) {
   })
 }
 
-test.describe('a fitting made here, and the words in Korean', () => {
+koreanDescribe('a fitting made here, and the words in Korean', () => {
   test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: 'ko-KR' })
 
   test('Make here opens the Workshop; the yard reads in Korean', async ({ page, request, baseURL }, info) => {

@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { tradeDict } from '../src/lib/i18n/dict/trade'
+import { translate } from '../src/lib/i18n'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // REQUESTS A SHIP CAN CARRY (migration 0466, dark behind hold_requests_enabled; docs/dev-log/2026-11-22-ship-requests.md)
@@ -13,8 +15,8 @@ import { tradeDict } from '../src/lib/i18n/dict/trade'
 
 test('the hold job words stand in both tongues, 1-2 plain words', () => {
   for (const key of ['holdJob', 'holdPays'] as const) {
-    for (const lang of ['en', 'ko'] as const) {
-      const w = tradeDict[lang][key]
+    for (const lang of LANGS) {
+      const w = translate(lang, `trade.${key}`)
       expect(w, `no ${lang} word ${key}`).toBeTruthy()
       expect(w.replace('{total}', '').trim().split(/\s+/).length, `${lang} ${key} is more than two words: ${w}`).toBeLessThanOrEqual(2)
     }
@@ -35,8 +37,8 @@ test('the board prints the served total for a hold job and adds nothing itself',
 // both served on the row (`from`); the client measures no distance and times no voyage of its own.
 test('a hold job names its harbour in both tongues, and prints the served time', () => {
   for (const key of ['holdFrom', 'holdFromCity'] as const) {
-    for (const lang of ['en', 'ko'] as const) {
-      const w = tradeDict[lang][key]
+    for (const lang of LANGS) {
+      const w = translate(lang, `trade.${key}`)
       expect(w, `no ${lang} word ${key}`).toContain('{city}')
       const bare = w.replace('{city}', '').replace('{time}', '').replace('·', '').trim().split(/\s+/).filter(Boolean)
       expect(bare.length, `${lang} ${key} is more than two words: ${w}`).toBeLessThanOrEqual(2)

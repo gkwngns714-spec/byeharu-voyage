@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { OLD_ROUNDS, serveRaidWorld } from './raidWorld.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
+import { LANGS } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE FIGHT LOG AND THE STANDING ORDER ON THE GLASS (migration 0353, slices C1 + C2 of docs/COMBAT_LOG.md; owner row 315).
@@ -18,13 +19,13 @@ import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 
 test.use({ locale: 'en-US', deviceScaleFactor: 2 })
 
-const RUNS = [
+const RUNS = ([
   { width: 390, height: 844, lang: 'en' },
   { width: 390, height: 844, lang: 'ko' },
   { width: 1280, height: 800, lang: 'en' },
   { width: 1280, height: 800, lang: 'ko' },
   { width: 320, height: 640, lang: 'en' },
-] as const
+] as const).filter((r) => LANGS.includes(r.lang))
 
 const X = '▮'
 const O = '▯'

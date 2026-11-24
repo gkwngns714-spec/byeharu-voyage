@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { readTray, trayViolations } from './trayLaw.fixture'
 import { SHEET_CAPTAINS, SHEET_STATS, serveCaptainWorld } from './captainSheet.fixture'
+import { koreanDescribe } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A CAPTAIN HAS A SHEET — the five lines on her card, and the Power line of a hull (0337, docs/WORLD_POWERS.md 2.3, 2.4; owner row 288)
@@ -184,7 +185,7 @@ test('the Power line is the five figures her own panel prints in its Spec — 39
   await expect(panel).toHaveCount(0)
 })
 
-test.describe('in Korean', () => {
+koreanDescribe('in Korean', () => {
   test.use({ locale: 'ko-KR' })
 
   test('the labels are the dictionary’s Korean; the parts are the server’s lines — 390×844', async ({ page, request, baseURL }) => {

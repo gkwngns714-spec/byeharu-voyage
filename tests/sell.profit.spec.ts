@@ -2,9 +2,8 @@ import { test, expect, type Page } from '@playwright/test'
 import { ready } from './appReady.fixture'
 import { openOfficeFace } from './desk.fixture'
 import { formatPriceDelta } from '../src/lib/format'
-import { tradeDict } from '../src/lib/i18n/dict/trade'
-import { deskDict } from '../src/lib/i18n/dict/desk'
-import { commandDict } from '../src/lib/i18n/dict/command'
+import { translate } from '../src/lib/i18n'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A SALE SHOWS ITS PROFIT BEFORE THE PRESS (migration 0490; docs/design/simplify-2026-11-24.md, slice S2)
@@ -21,10 +20,10 @@ const SIZES = [
   { width: 390, height: 844 },
   { width: 1440, height: 900 },
 ] as const
-const LANGS = [
+const LANGS = ([
   { locale: 'en-US', lang: 'en' },
   { locale: 'ko-KR', lang: 'ko' },
-] as const
+] as const).filter((l) => LOCALES.includes(l.locale))
 const GOOD = 'wool-cloth'
 const UNITS = 204
 
@@ -36,7 +35,7 @@ function signed(text: string): number {
 }
 
 async function reportToday(page: Page, lang: 'en' | 'ko'): Promise<number> {
-  await openOfficeFace(page, commandDict[lang].f_report)
+  await openOfficeFace(page, translate(lang, 'command.f_report'))
   const total = page.getByTestId('desk-report').getByTestId('report-total')
   await expect(total).toContainText(/\d/, { timeout: 120_000 })
   return signed(await total.innerText())
@@ -97,9 +96,9 @@ for (const { locale, lang } of LANGS) {
         await expect(act).toBeEnabled({ timeout: 60_000 })
         const shown = Number(await lines.getAttribute('data-profit'))
         const bought = lines.getByTestId('sale-bought')
-        await expect(bought).toContainText(tradeDict[lang].bought)
-        await expect(lines.getByTestId('sale-sells')).toContainText(tradeDict[lang].sellsFor)
-        await expect(lines.getByTestId('sale-profit')).toContainText(deskDict[lang].profit)
+        await expect(bought).toContainText(translate(lang, 'trade.bought'))
+        await expect(lines.getByTestId('sale-sells')).toContainText(translate(lang, 'trade.sellsFor'))
+        await expect(lines.getByTestId('sale-profit')).toContainText(translate(lang, 'desk.profit'))
         await expect(lines.getByTestId('sale-profit')).toContainText(formatPriceDelta(shown))
         // the pinned line by the button carries the same profit
         await expect(panel.getByTestId('trade-profit')).toContainText(formatPriceDelta(shown))

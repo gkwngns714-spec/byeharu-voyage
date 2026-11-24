@@ -8,6 +8,7 @@ import { KO_HULLS } from '../src/lib/i18n/names/realms'
 import { openDetail, ready, settled } from './appReady.fixture'
 import { serveVeteranWorld, VETERAN_FLEETS } from './manyFleets.fixture'
 import { openCityPanel } from './openCity.fixture'
+import { LOCALES } from './korean.paused'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A NAME IS PRINTED WHOLE (2026-11-11, the full-names slice; docs/dev-log/2026-11-11-full-names.md)
@@ -329,7 +330,7 @@ const GLASSES = [{ width: 390, height: 844 }, { width: 1280, height: 800 }, ...(
 
 const quiet = (page: Page) => page.waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, undefined, { timeout: 120_000 }).catch(() => {})
 
-for (const locale of ['en-US', 'ko-KR'] as const) {
+for (const locale of LOCALES) {
   const ko = locale === 'ko-KR'
   for (const glass of GLASSES) {
     test.describe(`names are whole — ${locale} at ${glass.width}×${glass.height}`, () => {
