@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
-import { TRADE_ON_DESK } from '../src/live/tradeOnDeskKnob'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DRIVE AUDIT, 2026-11-08 — THE MARKET, DRIVEN AS THE OWNER WOULD
@@ -105,134 +104,47 @@ test('Market: a capital lists 10 goods, every quay 4 to 10, and the Requests doo
   await shot(page, 'market-porto-1280@2x')
 })
 
-// ── ROW 257: THE CHART FOLLOWS THE GOOD; BUY LISTS THE GOODS; A PRESS OPENS NO PAGE ──────────────
-for (const size of [WIDE, PHONE]) {
-  if (!TRADE_ON_DESK) test(`Market @${size.width}: the chart follows the pressed good, a buy completes in the panel, SELL then lists the cargo, no page pops up`, async ({ page, request, baseURL }) => {
-    // X1 (src/live/tradeOnDesk.ts): the Market's own tray and basket are not reached while TRADE_ON_DESK stands (the law below, X1's)
-    await openCity(page, request, baseURL, size)
-    const purseBefore = (await page.getByTestId('purse').innerText()).replace(/\s+/g, ' ')
-    await openMarket(page)
-    const names = await buyRows(page)
-    expect(names.length).toBeGreaterThanOrEqual(2)
-    const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]')
-    const chartGood = page.getByTestId('city-market-chart-good')
-
-    // press the SECOND good's buy cell: the chart follows it, the tray opens IN THE PANEL (no DetailPage, no Tray overlay)
-    await rows.nth(1).getByRole('button', { name: /^buy/i }).first().click()
-    await expect(chartGood).toHaveText(names[1], { timeout: 30_000 })
-    await expect(page.locator('[data-detail-page]')).toHaveCount(0)
-    await expect(page.locator('[data-tray-mode="sheet"], [data-tray-mode="side"]')).toHaveCount(0)
-    const tray = page.getByTestId('trade-tray')
-    await expect(tray).toBeVisible({ timeout: 30_000 })
-    const inPanel = await page.evaluate(() => {
-      const panel = document.querySelector('[data-testid="city-face-panel"]')
-      const tray = document.querySelector('[data-testid="trade-tray"]')
-      return !!panel && !!tray && panel.contains(tray)
-    })
-    expect(inPanel, 'the trade tray stands outside the Market panel').toBe(true)
-    // what the owner sees while the tray stands: are the goods still listed beneath BUY?
-    const goodsWhileTray = await rows.count()
-    console.log(`@${size.width}: goods rows still listed while the tray is open: ${goodsWhileTray}`)
-    await shot(page, `market-tray-${size.width}@2x`)
-
-    // buy one unit and read what changed
-    const send = page.getByTestId('trade-tray-send')
-    await expect(send).toBeEnabled({ timeout: 60_000 })
-    console.log(`@${size.width}: ${(await send.innerText()).replace(/\s+/g, ' ')}`)
-    await send.click()
-    await expect(tray).toHaveCount(0, { timeout: 60_000 })
-    await expect
-      .poll(async () => (await page.getByTestId('purse').innerText()).replace(/\s+/g, ' '), { timeout: 30_000 })
-      .not.toBe(purseBefore)
-    console.log(`@${size.width}: purse ${purseBefore} → ${(await page.getByTestId('purse').innerText()).replace(/\s+/g, ' ')}`)
-
-    // the list is back beneath BUY; the FIRST good's press moves the chart to it
-    await expect(rows.first()).toBeVisible({ timeout: 30_000 })
-    await rows.nth(0).getByRole('button', { name: /^buy/i }).first().click()
-    await expect(chartGood).toHaveText(names[0], { timeout: 30_000 })
-    await expect(page.getByTestId('trade-tray')).toBeVisible({ timeout: 30_000 })
-    // the tray's own close returns to the list
-    const close = page.locator('[data-testid="trade-tray"] [data-testid="tray-close"], [data-testid="trade-tray"] button[aria-label]').first()
-    if (await close.count()) await close.click()
-    else await page.keyboard.press('Escape')
-
-    // SELL lists the cargo: the good just bought, and nothing else
-    await page.getByRole('tab', { name: /^(Sell|판매)$/ }).click()
-    await expect(page.getByTestId('city-market-sell')).toBeVisible({ timeout: 30_000 })
-    const sellRows = page.locator('[data-testid="city-market-sell"] [data-testid="trade-good"]')
-    await expect(sellRows).toHaveCount(1, { timeout: 30_000 })
-    await expect(sellRows.first()).toContainText(names[1])
-    await shot(page, `market-sell-${size.width}@2x`)
-
-    // the Basket is a line in the panel, never a sheet over the doors
-    await page.getByRole('tab', { name: /^(Buy|구매)$/ }).click()
-    await page.getByTestId('city-market-basket').click()
-    await expect(page.getByTestId('city-basket')).toBeVisible()
-    await expect(page.locator('[data-detail-page], [data-tray-mode="sheet"]')).toHaveCount(0)
-    await page.getByTestId('city-basket-back').click()
-    await expect(page.getByTestId('city-market-buy')).toBeVisible()
-  })
-}
-
-// ── X1 (2026-11-23, src/live/tradeOnDesk.ts; the visual overhaul's slice 3): ONE PLACE TO TRADE ─────────────────────────────────
-// The Market keeps its reading (the goods, the chart), stands no basket row, and its Buy opens the Trade desk on this city and that
-// good, docked, with the panel up on Buy.
-for (const size of [WIDE, PHONE]) {
-  if (TRADE_ON_DESK) test(`Market @${size.width}: no basket, and a Buy opens the Trade desk on that good (X1)`, async ({ page, request, baseURL }) => {
-    await openCity(page, request, baseURL, size)
-    await openMarket(page)
-    expect((await buyRows(page)).length).toBeGreaterThanOrEqual(2)
-    await expect(page.getByTestId('city-market-basket'), 'the Market still stands its own basket').toHaveCount(0)
-    const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]')
-    const code = await rows.nth(1).getAttribute('data-good')
-    await rows.nth(1).getByRole('button', { name: /^buy/i }).first().click()
-    await expect(page).toHaveURL(/\/command$/, { timeout: 30_000 })
-    await expect(page.getByTestId('trade-board')).toHaveAttribute('data-docked', 'true', { timeout: 60_000 })
-    await expect(page.locator(`[data-testid="trade-good"][data-good="${code}"]`), 'the desk did not open on the good pressed').toHaveClass(/ring-1/, { timeout: 60_000 })
-    await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'buy', { timeout: 60_000 })
-    await shot(page, `market-x1-desk-${size.width}@2x`)
-  })
-}
-
-// ── ROW 76, THE PHONE: THE BUTTON SAYS WHAT YOU PAY ──────────────────────────────────────────────
-// O7 of the drive audit read "Buy 10 units" at 390 where 1280 read "Buy 10 units · 5,748 🪙". The sum is the server's own for the
-// quantity (the dry run, src/live/useTrade.ts: a 200 ms settle plus the wire), and it reaches the phone too: replayed at both widths
-// (2026-11-08) the button carried it ~250 ms after it went live; the audit read it 300 ms plus one screenshot after the tray opened,
-// and the phone's screenshot was the faster one. THE LAW: a phone's button carries the sum once it is served, and it FITS — never
-// cut, on the 44-px reach floor, inside its panel. In both languages.
-const FIX = 'docs/dev-log/2026-11-08-axis-map-load-words'
-for (const locale of ['en-US', 'ko-KR'] as const) {
-  test.describe(`in ${locale}`, () => {
-    test.use({ locale })
-    if (!TRADE_ON_DESK) test('Market @390: the send button carries the sum once the price is served, and it fits (row 76, O7)', async ({ page, request, baseURL }) => {
-      await openCity(page, request, baseURL, PHONE)
-      await openMarket(page)
-      const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]')
-      await expect(rows.nth(1)).toBeVisible({ timeout: 30_000 })
-      await rows.nth(1).locator('button:enabled').first().click()
-      const send = page.getByTestId('trade-tray-send')
-      await expect(send).toBeEnabled({ timeout: 60_000 })
-      const live = Date.now()
-      await expect(send, 'the sum never reached the phone\'s button').toContainText('🪙', { timeout: 60_000 })
-      const text = (await send.innerText()).replace(/\s+/g, ' ')
-      console.log(`@390 ${locale}: "${text}" — the sum landed ${Date.now() - live} ms after the button went live`)
-      await send.scrollIntoViewIfNeeded()
-      await shot(page, `market-tray-send-390-${locale === 'ko-KR' ? 'ko' : 'en'}@2x`, FIX)
-      const fit = await send.evaluate((el) => {
-        const r = el.getBoundingClientRect()
-        const panel = el.closest('[data-testid="city-face-panel"]')?.getBoundingClientRect()
-        return {
-          height: r.height,
-          inside: !!panel && r.left >= panel.left - 1 && r.right <= panel.right + 1,
-          cut: el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1,
-        }
+// ── ROW 257 + S1 (2026-11-24, simplify; src/features/city/HqSheet.tsx): ONE TRADE SHEET, IN PLACE ──────────────────────────────
+// The Market keeps its reading (the goods, the chart) and stands no basket of its own. A Buy pressed on a good moves the chart to it
+// and opens THE trade sheet over HQ on this city and that good, docked, on Buy — the URL stays HQ's (the owner, 2026-11-24: *"i can
+// make trade in HQ, or trade in trade tab. it routes to trade tab"*). Its ✕, Escape and the browser's back close it, and the Market
+// is as it was. In both languages: the sum is served beside the one button, and the button fits (row 76, O7).
+for (const size of [WIDE, PHONE])
+  for (const locale of ['en-US', 'ko-KR'] as const)
+    test.describe(`in ${locale}`, () => {
+      test.use({ locale })
+      test(`Market @${size.width}: no basket, and a Buy opens the trade sheet over HQ on that good, the URL unmoved (S1)`, async ({ page, request, baseURL }) => {
+        await openCity(page, request, baseURL, size)
+        await openMarket(page)
+        expect((await buyRows(page)).length).toBeGreaterThanOrEqual(2)
+        await expect(page.getByTestId('city-market-basket'), 'the Market still stands its own basket').toHaveCount(0)
+        const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]')
+        const name = await rows.nth(1).getByTestId('trade-good-name').evaluate((e) => (e.firstChild?.textContent ?? '').trim())
+        const url = page.url()
+        await rows.nth(1).getByRole('button', { name: /^(buy|사기)/i }).first().click()
+        const sheet = page.getByTestId('good-detail')
+        await expect(sheet).toBeVisible({ timeout: 60_000 })
+        expect(page.url(), 'the Buy left HQ').toBe(url)
+        await expect(page.getByTestId('city-market-chart-good')).toHaveText(name, { timeout: 30_000 })
+        const act = page.getByTestId('trade-act')
+        await expect(act).toHaveAttribute('data-act', 'buy', { timeout: 60_000 })
+        await expect(act).toBeEnabled({ timeout: 60_000 })
+        await expect(page.getByTestId('good-detail-total'), 'the sum never reached the sheet').toContainText(/\d/, { timeout: 60_000 })
+        const fit = await act.evaluate((el) => {
+          const r = el.getBoundingClientRect()
+          return { height: r.height, inside: r.left >= -1 && r.right <= window.innerWidth + 1, cut: el.scrollWidth > el.clientWidth + 1 }
+        })
+        expect(fit.height, 'the button is under the 44-px reach floor').toBeGreaterThanOrEqual(44)
+        expect(fit.inside, 'the button stands off the glass').toBe(true)
+        expect(fit.cut, "the button's words are cut").toBe(false)
+        await shot(page, `market-sheet-${size.width}-${locale === 'ko-KR' ? 'ko' : 'en'}@2x`)
+        // Escape closes it; the Market stands as it was, on HQ
+        await page.keyboard.press('Escape')
+        await expect(sheet).toHaveCount(0)
+        await expect(page.getByTestId('city-market-buy')).toBeVisible()
+        expect(page.url()).toBe(url)
       })
-      expect(fit.height, 'the button is under the 44-px reach floor').toBeGreaterThanOrEqual(44)
-      expect(fit.inside, 'the button stands outside its panel').toBe(true)
-      expect(fit.cut, 'the button\'s words are cut').toBe(false)
     })
-  })
-}
 
 // ── ROW 302: THE PRODUCTION PAGE'S CARGO COLUMN ──────────────────────────────────────────────────
 // WHAT THE DRIVE FOUND (2026-11-08, the audit's D4) on a fresh company: the cargo bar read "4 / 180 tons" and the column under

@@ -18,22 +18,15 @@
 import { expect, type Page } from '@playwright/test'
 import { settled, WORLD_BOOT_MS } from './appReady.fixture'
 
-/** THE OFFICE'S FACE, opened the way a player opens it (2026-11-16: City, Invest and Report left the Trade desk for the Office;
- *  2026-11-23, the visual overhaul's slice 2: the Office cell left the bar and its faces are HQ's doors): the HQ cell, the door,
- *  then the face in the Office's strip. Works from any screen with the nav. A HQ with no harbour in hand draws no doors; the
- *  route itself is then the way in (in place, as the router would take it, never a reload). */
+/** THE OFFICE'S FACE (2026-11-16: City, Invest and Report left the Trade desk for the Office; 2026-11-24, simplify S1: HQ's City door
+ *  is gone — HQ is the city, and Invest and Report open as sheets over HQ). The Office stands only on its route until S4 removes it, so
+ *  the route is the way in (in place, as the router would take it, never a reload); then the face in the Office's strip. */
 export async function openOfficeFace(page: Page, face: string | RegExp): Promise<void> {
-  if (!new URL(page.url()).pathname.endsWith('/office')) {
-    await page.locator('a[href$="/city"]:visible').first().click()
-    const door = page.getByTestId('city-office-city')
-    await page.locator('[data-testid="city-office-city"], [data-testid="city-nocity"]').first().waitFor({ timeout: WORLD_BOOT_MS })
-    if ((await door.count()) > 0) await door.click()
-    else
-      await page.evaluate(() => {
-        history.pushState({}, '', `${location.pathname.replace(/\/[^/]*$/, '')}/office`)
-        dispatchEvent(new PopStateEvent('popstate'))
-      })
-  }
+  if (!new URL(page.url()).pathname.endsWith('/office'))
+    await page.evaluate(() => {
+      history.pushState({}, '', `${location.pathname.replace(/\/[^/]*$/, '')}/office`)
+      dispatchEvent(new PopStateEvent('popstate'))
+    })
   const office = page.getByTestId('office')
   await expect(office).toBeVisible({ timeout: WORLD_BOOT_MS })
   await office.getByRole('tablist').first().getByRole('tab', typeof face === 'string' ? { name: face, exact: true } : { name: face }).click()
@@ -47,13 +40,16 @@ export async function openCityFace(page: Page): Promise<void> {
   await expect(city, "the quay's fair read has not landed").toHaveAttribute('data-fair-loaded', '', { timeout: WORLD_BOOT_MS })
 }
 
-/** X1 (src/live/tradeOnDesk.ts, the visual overhaul's slice 3): a Buy or Sell pressed on the HQ Market or on Office > City > Market
- *  opens the Trade desk on that city, that good and that side. This waits for the desk's panel and runs the trade there (`n` units),
- *  the press a player makes: the count, the one big button, the toast. */
+/** THE TRADE SHEET, IN PLACE (2026-11-24, simplify S1; src/features/city/HqSheet.tsx): a Buy or Sell pressed on the HQ Market or on
+ *  Office > City > Market opens THE trade sheet over the page it was pressed on, on that city, that good and that side — the URL does
+ *  not move. This waits for the sheet and runs the trade there (`n` units), the press a player makes: the count, the one big button,
+ *  the toast. The sheet stays open after a trade where she lies; the browser's back (or its ✕, or Escape) closes it.
+ *  (The name is X1's, kept so S3's specs read it unchanged until S3 renames it.) */
 export async function tradeOnDesk(page: Page, n = 1): Promise<void> {
-  await expect(page).toHaveURL(/\/command$/, { timeout: 30_000 })
+  const before = page.url()
   const figure = page.getByTestId('good-detail').getByTestId('stepper-figure')
   await expect(figure).toBeVisible({ timeout: 60_000 })
+  expect(page.url(), 'the Buy / Sell press left the page it was pressed on').toBe(before)
   await figure.fill(String(n))
   await figure.press('Enter')
   await expect(page.getByTestId('trade-act')).toBeEnabled({ timeout: 60_000 })

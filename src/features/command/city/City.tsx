@@ -14,7 +14,8 @@ import { PortPrices } from '../../../live/PortPrices'
 import { PortShipyard } from '../../../live/PortShipyard'
 import { PortTown } from '../../../live/PortTown'
 import { PortTrade } from '../../../live/PortTrade'
-import { TRADE_ON_DESK, useOpenOnDesk } from '../../../live/tradeOnDesk'
+import { HqSheet } from '../../city/HqSheet'
+import { openHq } from '../../city/hqPlace'
 import { PortWorkstation } from '../../../live/PortWorkstation'
 import { PortYard } from '../../../live/PortYard'
 import { TowNote } from '../../../live/TowNote'
@@ -54,7 +55,6 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
   const face = useOfficeView((s) => s.cityFace)
   const setFace = useOfficeView((s) => s.setCityFace)
   const gate = useLevelGate()
-  const openOnDesk = useOpenOnDesk()
 
   const where = whereabouts(fleet)
   const code = fleetPortCode(fleet)
@@ -180,8 +180,8 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
               goods={quay.market.goods}
               fleet={fleet}
               port={port}
-              // X1 (live/tradeOnDesk.ts): a price pressed opens the Trade desk; supplies, Requests and the reading stay here
-              onTrade={TRADE_ON_DESK ? (good, side) => openOnDesk(good.code, port.code, side, fleet.id) : undefined}
+              // 2026-11-24 (simplify S1): a price pressed opens THE trade sheet over this page (features/city/HqSheet.tsx), never another tab
+              onTrade={(good, side) => openHq({ sheet: 'trade', port: port.code, fleet: fleet.id, good: good.code, side })}
             />
           ) : (
             <PortPrices goods={quay.market.goods} port={port} reader={fleet} />
@@ -205,6 +205,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
         {shown.id === 'academy' && <PortAcademy />}
         {shown.id === 'gear' && <PortGear fleet={acting} />}
         </ScrollPane>
+        <HqSheet />
       </div>
     ),
   })
