@@ -421,14 +421,15 @@ test('0351: the cap authority\'s bisect is its walk, on fixed cases (public.flee
   expect(pairs).toBe(77 * (await db.pg.query(`select 1 from public.port_goods pg where pg.port_id = $1 and public.port_offers($1, pg.good_id)`, [lisbon])).rows.length)
   for (const b of ['hold', 'purse', 'stock', 'daily cap']) expect([...bounds], `no case was bound by ${b}`).toContain(b)
   expect(exact, 'no case answered a count that costs her whole purse exactly').toBeGreaterThan(0)
-  // who asks the cap authority: the tray's door, BUY ALL's count, a fleet lying at a quay on the routes read, and the best sales
+  // who asks the cap authority: the tray's door, BUY ALL's count, a fleet lying at a quay on the routes read, the best sales, and
+  // (0492) a bring-home job's BUY when the home warehouse holds less than her hold (public.fleet_job_ends)
   const callers = (
     await db.pg.query<{ fn: string }>(
       `select n.nspname || '.' || p.proname as fn from pg_proc p join pg_namespace n on n.oid = p.pronamespace
         where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%fleet_buy_capacity(%' and p.oid <> 'public.fleet_buy_capacity(uuid,uuid)'::regprocedure order by 1`,
     )
   ).rows.map((r) => r.fn)
-  expect(callers).toEqual(['cmd.resolve_qty', 'world.best_sales', 'world.buy_capacity', 'world.trade_routes'])
+  expect(callers).toEqual(['cmd.resolve_qty', 'public.fleet_job_ends', 'world.best_sales', 'world.buy_capacity', 'world.trade_routes'])
 })
 
 test('her cargo reads as cargo, beside the goods bought here, and is the Sail & sell row', async () => {
