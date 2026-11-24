@@ -78,3 +78,14 @@ a catalog fact, so the check lives where the catalog is.
 ## Prod, after
 
 Read with `after-0489.sql` after the deploy; the figures are in the PR's comment and the WORK_QUEUE line.
+
+## Proof 169 on this PR (not 0489's)
+
+`pglite-gate (the rest)` failed twice (run 45299732427, first run and one diagnostic re-run) at proof 169 SR_SIZE pass 1, receipt
+`{hold 0, tried 0, failed 0, note null}`: the wind job's hold step posted nothing at Lisbon. A hold job is drawn from
+(harbour, game day, seq) (`public.hold_request_post`, `voyage.rng`); on CI's world, game day 623238 (2026-11-24 00:00-04:00 UTC)
+draws Lisbon a lot under `hold_request_units_min`. Main ran proof 169 green on game day 623237 (21:38 UTC). The local world draws
+differently (Lisbon posts 1+1 on game days 623232-623244 locally), so the CI day could not be shown locally. The same dice met 0466's
+frozen self-assert (#839, `src/lib/db/frozenAsserts.ts`). Proof 169 now runs at the first harbour, LIS first, whose two hold
+jobs post today (tried in a rolled-back block), as #839 did for the self-assert. Locally: 9/9 at LIS, and 9/9 with LIS excluded
+(it ran at ACC), so the other-harbour path is proven.
