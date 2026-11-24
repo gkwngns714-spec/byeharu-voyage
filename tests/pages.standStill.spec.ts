@@ -64,7 +64,8 @@ test('From here at 1280: a harbour name that turns onto two lines keeps the prof
   await serveWorldImage(
     page,
     await patchedWorldImage('long-harbour-names', async (pg) => {
-      await pg.exec(`update public.ports set name = name || ' de Barrameda'`)
+      // (H3, 2026-11-25: on HQ's Market plate a tile is wider than it was in the desk's left pane, so the name is made long enough to turn there)
+      await pg.exec(`update public.ports set name = name || ' de Barrameda de la Frontera'`)
     }),
   )
   // H3 (2026-11-25): From here stands on HQ's Market plate (the Trade desk is gone); at this width it is the same stacked list

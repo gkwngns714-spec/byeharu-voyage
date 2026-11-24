@@ -332,7 +332,7 @@ function SaleBlock({
         )}
         {/* the flag and the name stand together; in a card too narrow for both (산타크루스데테네리페 is 130 px, a 158-px card
             has 142 inside) the name takes the next line whole rather than being cut */}
-        <span className={`max-w-full leading-[1.125rem] [&>*:first-child]:mr-1 [&>*:first-child]:inline-flex [&>*:first-child]:align-middle ${KEEP_WORDS_CLASS}`} data-testid="best-sale-city">
+        <span className={`max-w-full leading-[1.125rem] [&>*:first-child]:mr-1 [&>*:first-child]:inline-flex [&>*:first-child]:align-top ${KEEP_WORDS_CLASS}`} data-testid="best-sale-city">
           <PortFlag code={sale.port} /> <span data-testid="best-sale-city-name">{city}</span>
         </span>
         <span className={tail}>

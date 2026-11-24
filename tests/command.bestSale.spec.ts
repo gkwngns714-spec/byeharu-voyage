@@ -45,19 +45,17 @@ for (const size of SIZES) {
       // city after city until the served board called some line a loss. In today's world nearly every line pays whatever she
       // holds; the one that sometimes did not (salted tuna at Gibraltar) flipped between two runs minutes apart as the hour's price
       // moved, so the step passed or failed by the clock. The world is now served with ONE good that loses by construction:
-      // ${LOSER} is scarce where she lies (its quay nearly empty, so its ask stands at the top of its range) and glutted in every
-      // other harbour (quays ten times over their target, the glut term at its most, so every bid stands at its floor). The client
-      // is not touched by this: it prints the served `pays`, and the steps below are the spec's own.
+      // ${LOSER}'s authored price (public.port_goods.affinity, the first of the four things a price is made of, 0.25 to 3) is set
+      // to its most where she lies and to its least in every other harbour, so its ask here stands many times over any bid for it.
+      // Stock and glut are left alone: the world works them back toward their rest as it wakes. The client is not touched by
+      // this: it prints the served `pays`, and the steps below are the spec's own.
       await serveWorldImage(
         page,
         await patchedWorldImage('one-losing-good', async (pg) => {
           await pg.exec(`
-            update public.port_goods pg set stock = round(pg.stock_target * 0.02, 2), glut = 0
+            update public.port_goods pg set affinity = case when p.code = 'LIS' then 3 else 0.25 end
               from public.goods g, public.ports p
-             where g.id = pg.good_id and p.id = pg.port_id and g.code = '${LOSER}' and p.code = 'LIS';
-            update public.port_goods pg set stock = round(pg.stock_target * 10, 2), glut = 0.9
-              from public.goods g, public.ports p
-             where g.id = pg.good_id and p.id = pg.port_id and g.code = '${LOSER}' and p.code <> 'LIS';
+             where g.id = pg.good_id and p.id = pg.port_id and g.code = '${LOSER}';
           `)
         }),
       )
