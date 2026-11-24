@@ -1,4 +1,4 @@
-import { Bar, Icon, SheetSection, goodIcon } from '../../../components/ui'
+import { Bar, HeldRoom, Icon, SheetSection, goodIcon } from '../../../components/ui'
 import { formatInt, formatOfTotal, tonsWord } from '../../../lib/format'
 import { properName, useT } from '../../../lib/i18n'
 import type { SnapshotPort } from '../../../lib/rpc'
@@ -16,21 +16,33 @@ import { useCorpLand } from './workerRows'
 /** How many goods stand as marks. */
 const TOP = 8
 
-/** Her home city, or null while no served read names it. */
-function useHome(port: SnapshotPort): SnapshotPort | null {
+/** Her home city, or null while no served read names it; `asking` while the read that would name it has not answered yet. */
+function useHome(port: SnapshotPort): { home: SnapshotPort | null; asking: boolean } {
   const portByCode = useWorld((s) => s.portByCode)
-  const { land } = useCorpLand()
+  const { land, loading } = useCorpLand()
   const here = useMarketRequests(land ? null : port.id)
-  if (land) return portByCode[land.home.port] ?? null
-  return here.view?.home ? port : null
+  if (land) return { home: portByCode[land.home.port] ?? null, asking: false }
+  return { home: here.view?.home ? port : null, asking: loading || (here.view === null && here.loading) }
 }
 
+type Shed = NonNullable<ReturnType<typeof useStorage>['view']>
+
+/** The area holds the room it had last time while its reads are asked (HeldRoom.tsx): it stands over the Ledger and the city's plates,
+ *  and drawn when its third read landed it pushed them down (2026-11-25). */
 export function WarehouseArea({ port }: { port: SnapshotPort }) {
+  const { home, asking } = useHome(port)
+  const read = useStorage(home?.id ?? null, null)
+  const shed = read.view
+  return (
+    <HeldRoom name="hq-storage" asking={asking || (home !== null && shed === null && read.loading)}>
+      {home && shed && shed.tier !== null && <ShedArea home={home} shed={shed} />}
+    </HeldRoom>
+  )
+}
+
+function ShedArea({ home, shed }: { home: SnapshotPort; shed: Shed }) {
   const t = useT()
   const goods = useWorld((s) => s.goodByCode)
-  const home = useHome(port)
-  const shed = useStorage(home?.id ?? null, null).view
-  if (!home || !shed || shed.tier === null) return null
   const stored = [...shed.stored].filter((g) => g.qty > 0).sort((a, b) => (b.tuns ?? 0) - (a.tuns ?? 0))
   return (
     <SheetSection

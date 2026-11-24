@@ -1,4 +1,4 @@
-import { Bar, SheetSection } from '../../../components/ui'
+import { Bar, HeldRoom, SheetSection } from '../../../components/ui'
 import { openHq } from '../../../app/hqPlace'
 import { formatDucatsDelta } from '../../../lib/format'
 import { translateMaybe, useLocale, useT, type TKey } from '../../../lib/i18n'
@@ -36,7 +36,8 @@ interface Line {
   amount: number
 }
 
-export function LedgerArea({ rate }: { rate: HqRate | null }) {
+/** `asking`: the board's first answer is still on the wire (the rate comes with it), so the area holds the room it had last time (HeldRoom.tsx). */
+export function LedgerArea({ rate, asking = false }: { rate: HqRate | null; asking?: boolean }) {
   const t = useT()
   const locale = useLocale()
   // a rate line's word is the dictionary's own entry for its code (`hq.rate<Code>`, the entries RateWhy.tsx reads); a line the server
@@ -45,8 +46,9 @@ export function LedgerArea({ rate }: { rate: HqRate | null }) {
   const company = useWorld((s) => s.player?.id ?? null)
   const hourly = rate?.lines ?? null
   // today's Report only while the server serves no lines (a second window beside the strip's would say the same money twice)
-  const report = useServedRead<Report>(company && rate && !hourly ? 'report:day' : null, () => worldReport('day')).view
-  if (!hourly && !report) return null
+  const read = useServedRead<Report>(company && rate && !hourly ? 'report:day' : null, () => worldReport('day'))
+  const report = read.view
+  if (!hourly && !report) return <HeldRoom name="hq-ledger" asking={asking || read.loading} />
   const lines: Line[] = hourly
     ? hourly.filter((l) => !l.one_time && l.per_hour !== 0).map((l) => ({ id: l.line, word: lineWord(l.line), amount: l.per_hour }))
     : (report?.sections ?? []).filter((s) => s.ducats !== 0).map((s) => ({ id: s.id, word: t(SECTION_WORD[s.id]), amount: s.ducats }))
@@ -54,6 +56,7 @@ export function LedgerArea({ rate }: { rate: HqRate | null }) {
   const drawn = lines.length > 1 ? lines : []
   const top = Math.max(1, ...lines.map((l) => Math.abs(l.amount)))
   return (
+    <HeldRoom name="hq-ledger" asking={false}>
     <SheetSection
       heading={t('corp.ledger')}
       trailing={<span className="text-t-caption text-ink-muted">{t(hourly ? 'corp.hourly' : 'corp.today')}</span>}
@@ -77,5 +80,6 @@ export function LedgerArea({ rate }: { rate: HqRate | null }) {
         <span className="self-end text-t-label text-accent">{t('corp.report')}</span>
       </button>
     </SheetSection>
+    </HeldRoom>
   )
 }
