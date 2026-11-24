@@ -1,0 +1,96 @@
+import { Bar, Countdown, Icon, KEEP_WORDS_CLASS, Portrait } from '../../../components/ui'
+import { useT } from '../../../lib/i18n'
+import { ShipPicture } from '../../../live/ShipPicture'
+import { actionWord, figureWord, stateWord, type ActionNames, type WorkerRow as Row } from './workerRows'
+
+// ONE WORKER, ONE ROW, ONE FIXED HEIGHT (docs/design/hq-corp-2026-11-24.md C1, C2; slice H1): her picture (her ship with her
+// captain's face, or the party's pick), her name, her action in a few words, a progress bar to the next completion with its clock,
+// the served figures there are today, and her state. The whole row is ONE press: an idle worker's opens Assign (the gold edge, "you
+// may act"); any other opens her sheet. The row is the same height idle, working and stopped, so a press never re-flows the list.
+// NO PER-HOUR FIGURE: coin an hour and XP an hour arrive with 0495's `world.workers()`.
+
+/** The row's height, on a phone and from `lg`: every state's. */
+const HEIGHT = 'h-[104px] lg:h-[72px]'
+
+const TONE = { idle: 'var(--color-accent)', stopped: 'var(--color-danger)', working: 'var(--color-info)' } as const
+const DOT = { idle: 'bg-accent', stopped: 'bg-danger', working: 'bg-success' } as const
+
+/** Where the bar stands between its two served stamps, 0 to 100. */
+function fillOf(bar: Row['bar'], nowMs: number): number {
+  if (!bar) return 0
+  return Math.max(0, Math.min(100, ((nowMs - bar.fromMs) / (bar.toMs - bar.fromMs)) * 100))
+}
+
+export function WorkerRow({ row, names, nowMs, onPress }: { row: Row; names: ActionNames; nowMs: number; onPress: (row: Row) => void }) {
+  const t = useT()
+  const idle = row.state === 'idle'
+  const act = idle && row.assignable
+  const name = row.name ?? t('corp.party')
+  const state = t(stateWord(row))
+  return (
+    <button
+      type="button"
+      onClick={() => onPress(row)}
+      className={`flex w-full flex-col justify-center gap-2 rounded-tile bg-surface px-3 text-left transition hover:bg-surface-2 lg:flex-row lg:items-center lg:gap-4 ${HEIGHT} ${idle ? 'ring-1 ring-inset ring-accent' : ''}`}
+      data-testid="corp-worker"
+      data-worker={row.id}
+      data-kind={row.kind}
+      data-state={row.state}
+      data-action={row.action.kind}
+    >
+      <span className="flex min-w-0 items-center gap-3 lg:w-[28rem] lg:shrink-0">
+        <span className="relative flex shrink-0">
+          {row.kind === 'fleet' ? (
+            <ShipPicture code={row.hull} tone={TONE[row.state]} />
+          ) : (
+            <span className="flex h-10 w-14 items-center justify-center rounded-chip bg-surface-2 text-accent">
+              <Icon name="pick" size={24} />
+            </span>
+          )}
+          {row.captain && (
+            <span className="absolute -bottom-1 -right-1" title={row.captain.name} data-testid="corp-worker-captain">
+              <Portrait role={null} tint="var(--color-surface-2)" seed={row.captain.code} grade={row.captain.grade} size={22} />
+            </span>
+          )}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className={`${KEEP_WORDS_CLASS} text-t-body font-medium leading-tight text-ink`} data-testid="corp-worker-name">
+            {name}
+          </span>
+          <span className="break-words text-t-caption leading-tight text-ink-muted" data-testid="corp-worker-action">
+            {actionWord(row.action, t, names)}
+          </span>
+        </span>
+        {act ? (
+          <span className="flex min-h-11 shrink-0 items-center rounded-control bg-accent px-4 text-t-body font-medium text-bg" data-testid="corp-worker-assign">
+            {t('corp.assign')}
+          </span>
+        ) : (
+          <span className="flex min-h-11 shrink-0 items-center gap-1.5 text-t-caption text-ink-muted" data-testid="corp-worker-state">
+            <span className={`h-2 w-2 rounded-full ${row.waiting ? 'bg-ink-faint' : DOT[row.state]}`} aria-hidden="true" />
+            {state}
+          </span>
+        )}
+      </span>
+      {/* the bar's line stands in every state, empty or not, so the row is one height */}
+      <span className="flex min-h-5 min-w-0 items-center gap-3 lg:flex-1">
+        <span className="min-w-0 flex-1" data-testid="corp-worker-bar" data-on={row.bar !== null} data-fill={fillOf(row.bar, nowMs).toFixed(2)}>
+          <Bar pct={fillOf(row.bar, nowMs)} tone={row.state === 'stopped' ? 'danger' : 'accent'} label={name} />
+        </span>
+        <span className="w-14 shrink-0 text-right text-t-caption tabular-nums text-ink-muted" data-testid="corp-worker-clock">
+          {row.bar && <Countdown untilMs={row.bar.toMs} nowMs={nowMs} />}
+        </span>
+        <span className="flex shrink-0 items-center justify-end gap-3 text-t-caption tabular-nums text-ink lg:w-44" data-testid="corp-worker-figures">
+          {row.figures.map((f) => {
+            const w = figureWord(f)
+            return (
+              <span key={f.key} title={t(w.word)} aria-label={`${t(w.word)} ${w.text}`} data-figure={f.key} className={f.key === 'earned' ? (f.value < 0 ? 'text-danger' : 'text-success') : ''}>
+                {f.key === 'xp' ? `${w.text} ${t('corp.xp')}` : w.text}
+              </span>
+            )
+          })}
+        </span>
+      </span>
+    </button>
+  )
+}
