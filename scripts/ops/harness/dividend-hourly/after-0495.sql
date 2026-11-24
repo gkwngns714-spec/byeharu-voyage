@@ -1,12 +1,13 @@
 -- 0495 DIVIDENDS ARE PAID EVERY HOUR, AFTER; ALSO THE 30-MINUTE LIT CHECK. A PROD CHECK: read-only, ONE statement. The gate first.
 --   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/dividend-hourly/after-0495.sql
 -- Expect, AS DEPLOYED (dark): head 20260818000495; switch false; new_fns 3, client_reach false (none callable by public, anon,
---   authenticated or service_role); new_columns 2; bodies = the chain's world at 0495: tick_city 6c53de13b5b7a60006a34943a14ba01d,
---   city_coupons 6498d838a4f6211157a5124edb8cce7b, city_coupon_hour 800ff4b371e8f44bd45ef21b836e9260,
+--   authenticated or service_role); new_columns 3; bodies = the chain's world at 0495: tick_city 6c53de13b5b7a60006a34943a14ba01d,
+--   city_coupons 6498d838a4f6211157a5124edb8cce7b, city_coupon_hour 69922196a5258f4130b46bb3001f29ca,
 --   dividend_hourly_on 0de43cb4426162829bce8db689e2a032, real_hour d146b7f9014a5e849fe0aa2383b7ec17;
---   hourly_state: stamped 0, rings 0 (dark writes neither column); dividend_2h: ledger rows as before (arrivals that collect).
+--   hourly_state: stamped 0, rings 0, owed_houses 0 (dark writes none of the columns); dividend_2h: ledger rows as before (arrivals that collect).
 -- LIT (read after the first :37 run that follows the owner lighting dividend_hourly_enabled, and again 30 minutes later):
 --   hourly_state.stamped = harbours and newest_hour = `hour` (every harbour's hour closed); rings = harbours;
+--   owed_houses small and not growing (a holder skipped mid-trade, paid at the next run), owed_hours_max under 23;
 --   dividend_2h: ledger rows about load.pairs of before-0495.sql an hour at most, each <= round(paid x works_coupon_day x 1.5 / 24);
 --   flows_waiting: DIVIDEND flows not yet rolled (the last hour's) = -(the ledger's hourly pays of that hour); purses_under_reserve
 --   no higher than before the switch; city_job: the last runs of the cron job byeharu-voyage:city, all succeeded, seconds as before
@@ -34,7 +35,7 @@ select json_build_object(
                      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                     where n.nspname = 'public' and p.proname in ('dividend_hourly_on', 'real_hour', 'city_coupon_hour')),
   'new_columns', (select count(*) from information_schema.columns c
-                   where c.table_schema = 'public' and c.table_name = 'port_treasury' and c.column_name in ('profit_hours', 'coupon_hour')),
+                   where c.table_schema = 'public' and c.table_name = 'port_treasury' and c.column_name in ('profit_hours', 'coupon_hour', 'coupon_owed')),
   'bodies', (select json_object_agg(p.proname, md5(replace(pg_get_functiondef(p.oid), E'\r', '')))
                from pg_proc p join pg_namespace n on n.oid = p.pronamespace
               where n.nspname = 'public' and p.proname in ('tick_city', 'city_coupons', 'city_coupon_hour', 'dividend_hourly_on', 'real_hour')),
@@ -42,6 +43,8 @@ select json_build_object(
   'hourly_state', (select json_build_object('stamped', count(*) filter (where t.coupon_hour <> 0), 'newest_hour', max(t.coupon_hour),
                                             'oldest_hour', min(t.coupon_hour) filter (where t.coupon_hour <> 0),
                                             'rings', count(*) filter (where cardinality(t.profit_hours) = 24),
+                                            'owed_houses', coalesce(sum((select count(*) from jsonb_object_keys(t.coupon_owed))), 0),
+                                            'owed_hours_max', max((select max(e.value::int) from jsonb_each_text(t.coupon_owed) e)),
                                             'cities_in_profit_24h', count(*) filter (where (select coalesce(sum(v), 0) from unnest(t.profit_hours) v) >= 24),
                                             'cities_at_a_loss_24h', count(*) filter (where (select coalesce(sum(v), 0) from unnest(t.profit_hours) v) < 0))
                      from public.port_treasury t),

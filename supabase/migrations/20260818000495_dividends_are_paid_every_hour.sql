@@ -32,9 +32,19 @@
 -- CLOSED ECONOMY: every coin a holder gets leaves that city's purse in the same act (public.city_pays: treasury_post(-pay), then
 --   credit(+pay)); nothing is minted. The self-assert checks purse + holders to the coin in every scene; proof 198 checks the world's sum.
 -- LOCK ORDER (0122: the house first, the harbour second, everywhere): the hour locks the holders' rows FIRST and never waits for one
---   (FOR UPDATE SKIP LOCKED, the tick's own rule: "never waits"), then the harbour. A holder whose row is held at that instant (she is
---   mid-trade) is not paid that hour; her part stays in the city; nothing is carried. No lock at all is taken at a harbour with no holder
+--   (FOR UPDATE SKIP LOCKED, the tick's own rule: "never waits"), then the harbour. No lock at all is taken at a harbour with no holder
 --   or with nothing to pay.
+-- A SKIPPED HOLDER DOES NOT LOSE THE HOUR. A holder whose row is held at that instant (she is mid-trade) is not paid in that run; the
+--   hour is written against her on the purse row (port_treasury.coupon_owed, {house: hours}; written without touching any row of
+--   hers, so it cannot wait on her either) and her due at the next run is (1 + hours owed) x her hourly coupon, still inside that
+--   run's limits (the surplus, the trailing profit / 24, pro rata). At most 23 hours are kept for a house, so the most a run can owe her
+--   is 24 hours' coupon: an outage cannot build an unbounded lump. Paid, her entry goes. An hour the CITY could not pay (no profit,
+--   no surplus) is still not owed to anyone, as 0312 decided: only the hours she was skipped in are carried.
+--   NOT THE STAMP ON city_shares (accrued_day): it is a game-day number the daily form reads, and writing it would need her share rows,
+--   which her own buy or collection holds at exactly the instant she is skipped.
+-- TWICE IN ONE HOUR IS IMPOSSIBLE: the run takes the purse row FOR UPDATE, reads coupon_hour under that lock and returns when the hour
+--   is already closed; it closes the hour (coupon_hour) before it pays, in the same transaction. A second caller waits for the row,
+--   then finds the hour closed.
 -- DARK (dividend_hourly_enabled false, as deployed): BYTE-IDENTICAL. tick_city's loop reads the same rows in the same order (the added
 --   test is `or (false and ...)`); city_coupons reads the switch and falls through to its old lines. The self-assert runs one daily
 --   coupon scene before the hunks and again after them, dark, and compares every figure, row and flow.
@@ -42,16 +52,17 @@
 --   1. The 24 hours live on the purse row (two columns), not in a new table: no new row, bounded by construction at 24 slots a harbour.
 --   2. One credit a holder a harbour an hour (her kinds there are summed first): one ledger row, not one a kind.
 --   3. A holder is paid from her first hour (no part-hour pro rata; at most one hour's coupon, 0.075 %, for a buy made a minute before :37).
---   4. A locked holder misses the hour rather than making the tick wait (see LOCK ORDER).
+--   4. A locked holder is paid at the next run, not waited for (see A SKIPPED HOLDER); at most 23 owed hours are kept.
 --   5. No event and no news line for a paid hour: the ledger row (kind DIVIDEND) is what Holdings (world.holdings `paid`) and the Ledger's
 --      Dividends line (public.company_rate_for, 0493) already read. No client change.
 -- THE HUNKS (2; each once in the live body, each reverses): public.tick_city x1, public.city_coupons x1.
 -- NEW: public.dividend_hourly_on() (the switch), public.real_hour(at) (the hour's number, beside 0312's public.real_day),
 --   public.city_coupon_hour(port, at) (the rule). All server only (public, anon, authenticated, service_role revoked).
---   port_treasury.profit_hours bigint[] default '{}', port_treasury.coupon_hour int default 0. One knob: dividend_hourly_enabled false.
+--   port_treasury.profit_hours bigint[] default '{}', coupon_hour int default 0, coupon_owed jsonb default '{}'. One knob:
+--   dividend_hourly_enabled false.
 -- NOT CHANGED: works_coupon_day and every other knob and switch; public.coupon_day_of, public.collect_coupons, public.city_pays,
 --   public.invest_for, public.city_surplus, public.flow_is_profit, world.holdings; the cron job (still '37 * * * *'); any client read.
--- ROWS. Dark: none (the two columns keep their defaults; nothing writes them).
+-- ROWS. Dark: none (the three columns keep their defaults; nothing writes them).
 --   Lit, an hour (H = harbours with a purse, 254 in the chain's world; P = holder-and-harbour pairs paid that hour):
 --     port_treasury      H row updates (the ring; today the same rows are already updated once an hour by step 3, and once a day by the coupon)
 --     ledger             P rows (kind DIVIDEND; today: one a holder a harbour at each ARRIVAL that collects)
@@ -65,12 +76,12 @@
 -- retention: none, bounded by 24 slots a harbour in port_treasury.profit_hours (a column of the one-row-a-harbour purse; no table is made).
 -- THE TICK'S COST (local, PGlite, proof 198 prints it): dark, step 6 is one switch read more an hour. Lit, step 6 is one
 --   public.city_coupon_hour a harbour an hour (a row read, 24 slots summed, one row update), plus one public.city_pays a pair paid.
--- LOCKS: ALTER TABLE public.port_treasury ADD COLUMN x2 with constant defaults (no rewrite; ACCESS EXCLUSIVE for an instant),
+-- LOCKS: ALTER TABLE public.port_treasury ADD COLUMN x3 with constant defaults (no rewrite; ACCESS EXCLUSIVE for an instant),
 --   CREATE OR REPLACE x2 by hunks, CREATE FUNCTION x3, one knob. Deploy away from minute :37. TIME: about a second. BUDGET:
 --   statement_timeout 45 s, lock_timeout 5 s; fails above 30 s.
 -- ROLLBACK (forward, owner only): QUICK, dividend_hourly_enabled false: the next tick pays the daily way again, into `accrued`; what was
 --   paid stays paid. FULL: scripts/ops/harness/dividend-hourly/rollback-0495.sql (a draft: reverses the two hunks, drops the three
---   functions, the two columns and the knob).
+--   functions, the three columns and the knob).
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants, volatility, definer, search path and
 --   owner unmoved; no other knob moved and the switch false; the three new functions server only. THE PROBES (rolled back by raised
 --   sentinels; no role is changed; ISOLATED FROM REAL ROWS: the scene's city is a SEA_PLACE, where no house can invest
@@ -80,7 +91,11 @@
 --   hour straight to a purse that has no fleet, and 0 when the city lost over the 24 hours; one credit for two kinds; the same hour
 --   twice pays once; the next hour pays again from the ring; the profit limit, the surplus limit, a losing hour inside a winning day,
 --   a ring gone stale, a gap of missed hours, rate 0; old `accrued` untouched by the hour and still collected by
---   public.collect_coupons; in every scene the purse fell by exactly what the holders rose (no coin minted).
+--   public.collect_coupons; in every scene the purse fell by exactly what the holders rose (no coin minted). THE CARRY, driven
+--   directly (the scene writes the owed hours a skipped run would have written: one session cannot hold a row against itself, so the
+--   SKIP LOCKED branch itself is not executed here or in proof 198): one owed hour pays two hours' coupon and clears; under a tight
+--   limit it is shared pro rata; 99 owed hours count as 23; a city with nothing to pay keeps them owed; a house that holds no share
+--   there any more is dropped; and the same hour run again pays nothing and moves no entry.
 --   Proof 198 runs the REAL public.tick_city over the whole world, a holder who bought through public.invest_for and owns no fleet.
 -- VERSION: 0495 = 0494 + 1 (the stack 0492, 0493, 0494 is not on prod yet; the lead deploys in number order).
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -112,7 +127,7 @@ begin
   if exists (select 1 from public.world_config where key = 'dividend_hourly_enabled') or to_regprocedure(c_new[1]) is not null
      or to_regprocedure(c_new[2]) is not null or to_regprocedure(c_new[3]) is not null
      or exists (select 1 from information_schema.columns c where c.table_schema = 'public' and c.table_name = 'port_treasury'
-                                                              and c.column_name in ('profit_hours', 'coupon_hour')) then
+                                                              and c.column_name in ('profit_hours', 'coupon_hour', 'coupon_owed')) then
     raise exception '0495 refuses: it has been applied once';
   end if;
   if exists (select 1 from unnest(c_hunked || array['public.coupon_day_of(uuid,uuid,numeric)', 'public.city_pays(uuid,uuid,text,bigint,uuid)',
@@ -189,7 +204,10 @@ begin
   if v_lit then
     update public.port_treasury t
        set coupon_hour = case when p ? 'ago' then v_hour - (p->>'ago')::int else 0 end,
-           profit_hours = case when p ? 'ring' then array_fill((p->>'ring')::bigint, array[24]) else '{}'::bigint[] end
+           profit_hours = case when p ? 'ring' then array_fill((p->>'ring')::bigint, array[24]) else '{}'::bigint[] end,
+           -- the hours a skipped run would have written against a (and, `gone`, against a house that holds nothing here)
+           coupon_owed = case when p ? 'owed' then jsonb_build_object(v_a::text, (p->>'owed')::int) else '{}'::jsonb end
+                         || case when p ? 'gone' then jsonb_build_object(gen_random_uuid()::text, 5) else '{}'::jsonb end
      where t.port_id = v_port;
   end if;
 
@@ -214,7 +232,7 @@ begin
   return jsonb_build_object(
     'digest', jsonb_build_object(
       'r', v_r, 'again', v_again, 'money', v_mid,
-      'row', v_row - 'port_id' - 'updated_at' - 'rolled_at' - 'seeded_at' - 'profit_hours' - 'coupon_hour' - 'coupon_day'
+      'row', v_row - 'port_id' - 'updated_at' - 'rolled_at' - 'seeded_at' - 'profit_hours' - 'coupon_hour' - 'coupon_owed' - 'coupon_day'
              || jsonb_build_object('coupon_day', (v_row->>'coupon_day')::int - v_rday),
       'shares', v_shares,
       'flows', (select coalesce(jsonb_agg(jsonb_build_array(f.kind, f.ducats, case f.player_id when v_a then 'a' when v_b then 'b' end) order by f.id), '[]'::jsonb)
@@ -226,6 +244,7 @@ begin
       'next', v_next, 'collected', v_coll,
       'hour', (v_row->>'coupon_hour')::int - v_hour,
       'ring', v_row->'profit_hours',
+      'owed_a', v_row->'coupon_owed'->(v_a::text), 'owed_n', (select count(*) from jsonb_object_keys(coalesce(v_row->'coupon_owed', '{}'::jsonb))),
       'a_end', (select pl.ducats from public.players pl where pl.id = v_a),
       'a_owed', (select cs.accrued from public.city_shares cs where cs.port_id = v_port and cs.player_id = v_a),
       'fleets', (select count(*) from public.fleets fl where fl.player_id in (v_a, v_b))));
@@ -251,11 +270,14 @@ $body$
   -- ── 4. THE BOOK: the trailing 24 hours, on the purse row ──
   alter table public.port_treasury
     add column profit_hours bigint[] not null default '{}'::bigint[],
-    add column coupon_hour int not null default 0;
+    add column coupon_hour int not null default 0,
+    add column coupon_owed jsonb not null default '{}'::jsonb;
   comment on column public.port_treasury.profit_hours is
     '0495: the city''s own net (public.flow_is_profit) by real hour, a ring of 24 slots (slot = public.real_hour mod 24, 1-based), written only by public.city_coupon_hour while dividend_hourly_enabled is lit. Its sum is the profit over the trailing 24 hours.';
   comment on column public.port_treasury.coupon_hour is
     '0495: the real hour (public.real_hour) of its last hourly coupon; 0 = never.';
+  comment on column public.port_treasury.coupon_owed is
+    '0495: {house id: hours}: the hourly coupons a holder was not paid because her row was held when the hour ran (public.city_coupon_hour skips her, never waits). Paid with her next coupon, then removed. At most 23 hours a house.';
 
   -- ── 5. THE RULES ──
   execute $f$
@@ -295,8 +317,11 @@ as $body$
 --   2. each holder's due is 1/24 of her day's coupon on all she paid here (public.coupon_day_of, the rule's one home);
 --   3. the city pays the least of what is due, what it holds above its reserve, and that trailing profit / 24, pro rata;
 --   4. each holder is paid straight to her purse by public.city_pays (kind DIVIDEND): the coin leaves this city's purse, none is minted.
--- The shortfall is not owed and nothing is carried. city_shares is not written: old `accrued` waits for public.collect_coupons as before.
--- LOCK ORDER (0122): the holders' rows first, never waited for (SKIP LOCKED: a holder mid-trade misses this hour), then the harbour.
+-- What the CITY cannot pay is not owed and not carried. city_shares is not written: old `accrued` waits for public.collect_coupons as before.
+-- LOCK ORDER (0122): the holders' rows first, never waited for (SKIP LOCKED), then the harbour. A holder skipped that way does not lose
+-- the hour: it is written against her in port_treasury.coupon_owed (the purse row this run already holds; no row of hers is touched)
+-- and her next due is (1 + hours owed) hourly coupons, inside that run's limits; at most 23 hours are kept. ONCE AN HOUR: the purse row
+-- is read FOR UPDATE and the hour is closed before anything is paid, so a second run of the same hour finds it closed.
 -- Answers {paid, due, cap, profit_24h}.
 declare
   v_hour   int := public.real_hour(p_now);
@@ -306,6 +331,8 @@ declare
   v_trail  bigint;
   v_cap    bigint;
   v_free   uuid[] := '{}'::uuid[];
+  v_owed   jsonb;
+  v_keep   jsonb := '{}'::jsonb;
   v_pay    bigint := 0;
   v_due    bigint := 0;
   r        record;
@@ -313,7 +340,7 @@ begin
   if not public.city_treasury_on() then
     return jsonb_build_object('paid', 0, 'due', 0);   -- dark purses: public.city_pays would credit from nothing
   end if;
-  select t.coupon_hour, t.profit, t.profit_hours into v_last, v_profit, v_ring
+  select t.coupon_hour, t.profit, t.profit_hours, t.coupon_owed into v_last, v_profit, v_ring, v_owed
     from public.port_treasury t where t.port_id = p_port for update;
   if v_last is null or v_last >= v_hour then
     return jsonb_build_object('paid', 0, 'due', 0);   -- no purse, or this hour is paid
@@ -340,29 +367,39 @@ begin
   -- 2-4. the dues, the payable and each holder's part, in one statement (the daily form's own split, by holder)
   for r in
     with d as (
-      select s.player_id, round(public.coupon_day_of(p_port, s.player_id, sum(s.paid)) / 24)::bigint as due
-        from public.city_shares s where s.port_id = p_port
-       group by s.player_id
+      select o.player_id, o.owed, round(public.coupon_day_of(p_port, o.player_id, o.paid) / 24 * (1 + o.owed))::bigint as due
+        from (select s.player_id, sum(s.paid) as paid,
+                     least(23, greatest(0, coalesce((v_owed->>(s.player_id::text))::int, 0))) as owed   -- the hours she was skipped in
+                from public.city_shares s where s.port_id = p_port
+               group by s.player_id) o
     ), t as (
       select coalesce(sum(d.due), 0)::bigint as total,
              least(coalesce(sum(d.due), 0), v_cap,
                    case when v_cap > 0 then greatest(0, public.city_surplus(p_port)) else 0 end)::bigint as payable
         from d
     ), a as (
-      select d.player_id, d.due,
+      select d.player_id, d.owed, d.due,
              case when t.total > 0 then
                round(sum(d.due) over w * t.payable::numeric / t.total)
                - round((sum(d.due) over w - d.due) * t.payable::numeric / t.total) else 0 end::bigint as pay
         from d cross join t window w as (order by d.due, d.player_id)
     )
-    select a.player_id, a.due, a.pay from a order by a.player_id
+    select a.player_id, a.owed, a.due, a.pay from a order by a.player_id
   loop
     v_due := v_due + r.due;
     if r.pay > 0 and r.player_id = any (v_free) then
-      perform public.city_pays(p_port, r.player_id, 'DIVIDEND', r.pay, null);
+      perform public.city_pays(p_port, r.player_id, 'DIVIDEND', r.pay, null);   -- her owed hours are in r.pay: her entry is not kept
       v_pay := v_pay + r.pay;
+    elsif r.pay > 0 then
+      v_keep := v_keep || jsonb_build_object(r.player_id::text, least(23, r.owed + 1));   -- skipped: this hour is owed to her too
+    elsif r.owed > 0 then
+      v_keep := v_keep || jsonb_build_object(r.player_id::text, r.owed);   -- the city paid nothing this hour: what she is owed stands
     end if;
   end loop;
+  -- the owed hours as this run leaves them (a house that holds nothing here any more is dropped); written only when they moved
+  if v_keep is distinct from v_owed then
+    update public.port_treasury t set coupon_owed = v_keep where t.port_id = p_port;
+  end if;
   return jsonb_build_object('paid', v_pay, 'due', v_due, 'cap', v_cap, 'profit_24h', v_trail);
 end
 $body$
@@ -447,7 +484,7 @@ $h$);
      or (select p.provolatile from pg_proc p where p.oid = c_new[2]::regprocedure) <> 'i' then
     raise exception '0495 self-assert FAIL: a new function is reachable by a client or service_role, or the switch is not STABLE, or the hour is not IMMUTABLE';
   end if;
-  if exists (select 1 from public.port_treasury t where t.coupon_hour <> 0 or t.profit_hours <> '{}'::bigint[]) then
+  if exists (select 1 from public.port_treasury t where t.coupon_hour <> 0 or t.profit_hours <> '{}'::bigint[] or t.coupon_owed <> '{}'::jsonb) then
     raise exception '0495 self-assert FAIL: a purse row was born with hourly state';
   end if;
 
@@ -473,7 +510,12 @@ $h$);
     ('loss',    '{"lit": true, "purse": 10000000, "profit": -500}'),                                         -- a loss
     ('lostday', '{"lit": true, "purse": 10000000, "profit": 2000, "ago": 1, "ring": -100}'),                 -- this hour earned, the 24 hours lost: 0
     ('poor',    '{"lit": true, "purse": 1400, "profit": 100000}'),                                           -- the surplus (400 above the reserve) is the limit
-    ('knob0',   '{"lit": true, "purse": 10000000, "profit": 100000, "rate": 0}')
+    ('knob0',   '{"lit": true, "purse": 10000000, "profit": 100000, "rate": 0}'),
+    -- THE CARRY (the owed hours a skipped run would have written, driven directly)
+    ('owed',    '{"lit": true, "purse": 10000000, "profit": 100000, "owed": 1, "gone": true}'),              -- a was skipped once: two hours' coupon now
+    ('owedcap', '{"lit": true, "purse": 10000000, "profit": 12000, "owed": 1}'),                             -- the same under the 500 limit: pro rata
+    ('owedmax', '{"lit": true, "purse": 10000000, "profit": 100000, "owed": 99}'),                           -- 99 owed hours count as 23
+    ('owednil', '{"lit": true, "purse": 10000000, "profit": -500, "owed": 2, "gone": true}')                 -- the city pays nothing: still owed
   ) v(name, p) loop
     begin
       raise exception using errcode = 'ZX495', message = pg_temp.scene_0495(s.p)::text;
@@ -547,10 +589,36 @@ $h$);
     raise exception '0495 self-assert FAIL: rate 0 paid: %', v_all #> '{knob0,digest,r}';
   end if;
 
+  -- THE CARRY. One owed hour: a is due 2 x 346 and paid it, her entry and the departed house's are gone, and the same hour again paid nothing.
+  if v_all #> '{owed,digest,r}' is distinct from '{"paid": 1592, "due": 1592, "cap": 4166, "profit_24h": 100000}'::jsonb
+     or v_all #>> '{owed,digest,money,a}' <> '692' or v_all #>> '{owed,digest,money,b}' <> '900'
+     or (v_all #>> '{owed,hourly,owed_n}')::int <> 0 or (v_all #>> '{owed,digest,again,paid}')::bigint <> 0
+     or v_all #> '{owed,digest,ledger}' is distinct from '[["a","DIVIDEND",692,692],["b","DIVIDEND",900,900]]'::jsonb then
+    raise exception '0495 self-assert FAIL: a skipped hour was not paid with the next one, once: %', left((v_all->'owed')::text, 900);
+  end if;
+  -- under a tight limit the owed hour is inside it: 500 paid of 1,592 due, a 217 and b 283
+  if v_all #> '{owedcap,digest,r}' is distinct from '{"paid": 500, "due": 1592, "cap": 500, "profit_24h": 12000}'::jsonb
+     or v_all #>> '{owedcap,digest,money,a}' <> '217' or v_all #>> '{owedcap,digest,money,b}' <> '283' or (v_all #>> '{owedcap,hourly,owed_n}')::int <> 0 then
+    raise exception '0495 self-assert FAIL: an owed hour broke the hour''s limit, or was not shared pro rata: %', left((v_all->'owedcap')::text, 900);
+  end if;
+  -- the bound: 99 owed hours are 23, so a is due 24 hours' coupon (8,305) and the run still pays no more than its limit (4,166)
+  if v_all #> '{owedmax,digest,r}' is distinct from '{"paid": 4166, "due": 9205, "cap": 4166, "profit_24h": 100000}'::jsonb
+     or v_all #>> '{owedmax,digest,money,a}' <> '3759' or v_all #>> '{owedmax,digest,money,b}' <> '407' then
+    raise exception '0495 self-assert FAIL: the owed hours are not bounded at 23: %', left((v_all->'owedmax')::text, 900);
+  end if;
+  -- a city with nothing to pay: nobody is paid, her 2 hours stand (the departed house is dropped), and the same hour again moves nothing
+  if (v_all #>> '{owednil,digest,r,paid}')::bigint <> 0 or (v_all #>> '{owednil,digest,r,due}')::bigint <> 3 * 346 + 900
+     or v_all #>> '{owednil,hourly,owed_a}' <> '2' or (v_all #>> '{owednil,hourly,owed_n}')::int <> 1 then
+    raise exception '0495 self-assert FAIL: owed hours did not stand through an hour the city could not pay: %', left((v_all->'owednil')::text, 900);
+  end if;
+  if exists (select 1 from jsonb_each(v_all) k where k.key not like 'owed%' and (k.value #>> '{hourly,owed_n}')::int <> 0) then
+    raise exception '0495 self-assert FAIL: an hour with nobody skipped wrote owed hours';
+  end if;
+
   -- ── 10. NOTHING OF THE PROBE SURVIVES; the switch is dark ──
   if exists (select 1 from public.players p where p.company_name like 'Probe 0495 %')
      or exists (select 1 from public.port_treasury t join public.ports q on q.id = t.port_id where q.kind = 'SEA_PLACE')
-     or exists (select 1 from public.port_treasury t where t.coupon_hour <> 0 or t.profit_hours <> '{}'::bigint[])
+     or exists (select 1 from public.port_treasury t where t.coupon_hour <> 0 or t.profit_hours <> '{}'::bigint[] or t.coupon_owed <> '{}'::jsonb)
      or public.dividend_hourly_on()
      or (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, ''), ',' order by c.key))
            from public.world_config c where c.key <> 'dividend_hourly_enabled') <> v_cfg_before then
@@ -559,7 +627,7 @@ $h$);
   if clock_timestamp() - v_t0 > interval '30 seconds' then
     raise exception '0495 self-assert FAIL: the file took % (budget 30 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0495 self-assert ok: DIVIDENDS ARE PAID EVERY HOUR (dark). 2 hunks once and reversing (tick_city, city_coupons); no other function moved; the hunked bodies'' grants and settings unmoved; three new functions server only; one knob, dividend_hourly_enabled false; port_treasury.profit_hours and coupon_hour. DARK IDENTICAL: the daily scene paid % d. into `accrued` before and after, every row and flow equal, no hourly state. LIT, on a probe with no fleet: 461,384 d. paid 346 d. an hour to the purse (b: one credit of 900 for two works), the same hour twice paid once, the next hour paid again from the 24 hours, old accrued 555 untouched then collected; trailing profit 12,000 -> 500 paid of 1,246 due (139 / 361); a losing hour in a winning day 500; a stale ring 100; two missed hours 1,000; a loss and a lost day 0; surplus 400 -> 400; rate 0 -> 0; in every scene the purse fell by what the holders rose. % ms.',
+  raise notice '0495 self-assert ok: DIVIDENDS ARE PAID EVERY HOUR (dark). 2 hunks once and reversing (tick_city, city_coupons); no other function moved; the hunked bodies'' grants and settings unmoved; three new functions server only; one knob, dividend_hourly_enabled false; port_treasury.profit_hours, coupon_hour and coupon_owed. DARK IDENTICAL: the daily scene paid % d. into `accrued` before and after, every row and flow equal, no hourly state. LIT, on a probe with no fleet: 461,384 d. paid 346 d. an hour to the purse (b: one credit of 900 for two works), the same hour twice paid once, the next hour paid again from the 24 hours, old accrued 555 untouched then collected; trailing profit 12,000 -> 500 paid of 1,246 due (139 / 361); a losing hour in a winning day 500; a stale ring 100; two missed hours 1,000; a loss and a lost day 0; surplus 400 -> 400; rate 0 -> 0. THE CARRY (owed hours driven directly; one session cannot skip its own lock): one owed hour paid 692 (2 x 346) and cleared; under the 500 limit 217 / 283; 99 owed hours counted as 23 (due 8,305, paid inside the 4,166 limit); a city with nothing to pay kept 2 hours owed; the same hour again paid nothing. In every scene the purse fell by what the holders rose. % ms.',
     v_d0 #>> '{digest,r,paid}', round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0495;
   drop table pre_0495;

@@ -2,7 +2,7 @@
 -- "-- news: none" and deploy it as any migration (owner only). THE QUICK ROLLBACK NEEDS NO FILE: dividend_hourly_enabled false (owner);
 -- the next tick pays the daily way again, into `accrued`. This draft is the full reversal: it reverses 0495's two hunks
 -- (public.tick_city, public.city_coupons), drops public.city_coupon_hour, public.real_hour and public.dividend_hourly_on, drops
--- port_treasury.profit_hours and coupon_hour, and deletes the knob. What was paid stays paid (the ledger is never rewritten).
+-- port_treasury.profit_hours, coupon_hour and coupon_owed (hours still owed to a skipped holder are dropped with it), and deletes the knob. What was paid stays paid (the ledger is never rewritten).
 -- Each hunk's NEW text must occur once in the live body (else it refuses: a later file re-cut the same lines and this draft is stale).
 -- Proof 198 must be withdrawn with the same PR.
 -- LOCAL PGlite WORLD ONLY while it carries this line (scripts/ops/harness/README.md): it writes. The first statement refuses a real server.
@@ -52,9 +52,9 @@ $h$);
   drop function public.city_coupon_hour(uuid, timestamptz);
   drop function public.real_hour(timestamptz);
   drop function public.dividend_hourly_on();
-  alter table public.port_treasury drop column profit_hours, drop column coupon_hour;
+  alter table public.port_treasury drop column profit_hours, drop column coupon_hour, drop column coupon_owed;
   delete from public.world_config where key = 'dividend_hourly_enabled';
-  raise notice '0495 rollback ok: public.tick_city % and public.city_coupons % are their bodies of before 0495; three functions, two columns and the knob are gone',
+  raise notice '0495 rollback ok: public.tick_city % and public.city_coupons % are their bodies of before 0495; three functions, three columns and the knob are gone',
     md5(replace(pg_get_functiondef('public.tick_city(timestamp with time zone)'::regprocedure), E'\r', '')),
     md5(replace(pg_get_functiondef('public.city_coupons(uuid,timestamp with time zone)'::regprocedure), E'\r', ''));
 end $r$;

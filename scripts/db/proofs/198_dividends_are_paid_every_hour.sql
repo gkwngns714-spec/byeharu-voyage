@@ -10,7 +10,10 @@
 -- @pass DH_DARK       dark (as deployed): a real tick pays no purse, writes no DIVIDEND ledger row and no hourly state
 -- @pass DH_NO_FLEET   lit: the house with no fleet is paid 1/24 of her day's coupon (public.coupon_day_of) straight to her purse by the tick
 -- @pass DH_OWNER      lit: 461,384 d. of shares earn 346 d. an hour where the city's 24 hours cover it, and 0 where the city lost
--- @pass DH_ONCE       a second tick in the same real hour pays nothing
+-- @pass DH_ONCE       a second tick in the same real hour pays nothing, and neither does the rule called again by itself
+-- @pass DH_CARRY      a holder the hour skipped (her row was held) is paid that hour with the next: an owed hour on the purse row makes
+--                     the real tick pay her two hours' coupon, once, and clears it. The owed hour is written here by the proof: one
+--                     session cannot hold a row against itself, so the SKIP LOCKED branch itself is not run by this proof
 -- @pass DH_TRAILING   the next hour, with no profit of its own, pays again from the trailing 24 hours; after a loss bigger than the
 --                     24 hours' profit that city pays 0 and the others go on
 -- @pass DH_CLOSED     no coin is minted: what left the cities as DIVIDEND flows is what the ledger credited the holders, is the
@@ -157,10 +160,11 @@ begin
 
   v_r1b := public.tick_city(v_now);
   if (v_r1b->>'coupons_paid')::bigint <> 0 or v_r1b->'errors' <> '{}'::jsonb
+     or (public.city_coupons(v_h2, v_now)->>'paid')::bigint <> 0 or (public.city_coupon_hour(v_h2, v_now)->>'paid')::bigint <> 0
      or (select pl.ducats from public.players pl where pl.id = v_own) <> 346 then
     raise exception 'PROOF 198 FAIL: a second tick in the same hour paid: %', v_r1b;
   end if;
-  raise notice 'PASS: DH_ONCE - the same hour again: coupons_paid %', v_r1b->>'coupons_paid';
+  raise notice 'PASS: DH_ONCE - the same hour again: coupons_paid %; the rule called again by itself paid 0', v_r1b->>'coupons_paid';
 
   -- the next hour: nothing earned in it; then Lisbon loses 300,000 d. (more than its 24 hours earned)
   v_r2 := public.tick_city(v_now + interval '1 hour');
@@ -178,14 +182,27 @@ begin
   raise notice 'PASS: DH_TRAILING - hour 2 earned nothing and paid % d. from the 24 hours; after Lisbon lost 300,000 d. hour 3 paid % d. (Lisbon 0, the other city 346)',
     v_r2->>'coupons_paid', v_r3->>'coupons_paid';
 
+  -- THE CARRY: the hour before skipped her (written as the skipped run writes it); the real tick pays 2 x 346, once, and clears it
+  update public.port_treasury t set coupon_owed = jsonb_build_object(v_own::text, 1) where t.port_id = v_h2;
+  v_r3 := public.tick_city(v_now + interval '3 hours');
+  v_r2 := public.tick_city(v_now + interval '3 hours');
+  if v_r3->'errors' <> '{}'::jsonb or (v_r3->>'coupons_paid')::bigint <> 692 or (v_r2->>'coupons_paid')::bigint <> 0
+     or (select pl.ducats from public.players pl where pl.id = v_own) <> 5 * 346
+     or (select t.coupon_owed from public.port_treasury t where t.port_id = v_h2) <> '{}'::jsonb
+     or exists (select 1 from public.port_treasury t where t.coupon_owed <> '{}'::jsonb) then
+    raise exception 'PROOF 198 FAIL: the owed hour was not paid once with the next: % then %', v_r3, v_r2;
+  end if;
+  raise notice 'PASS: DH_CARRY - one owed hour: the tick paid her % d. (2 x 346), the same hour again %, and nothing is owed any more',
+    v_r3->>'coupons_paid', v_r2->>'coupons_paid';
+
   if (select cs.accrued from public.city_shares cs where cs.port_id = v_h2 and cs.player_id = v_own) <> 555 then
     raise exception 'PROOF 198 FAIL: old accrued was touched by the hour';
   end if;
   v_x := public.collect_coupons(v_own, v_h2, null);
-  if v_x <> 555 or (select pl.ducats from public.players pl where pl.id = v_own) <> 3 * 346 + 555 then
+  if v_x <> 555 or (select pl.ducats from public.players pl where pl.id = v_own) <> 5 * 346 + 555 then
     raise exception 'PROOF 198 FAIL: old accrued was touched by the hour, or is no longer collected';
   end if;
-  raise notice 'PASS: DH_ACCRUED - three lit hours left 555 d. set aside as it was; public.collect_coupons then paid it (purse %)', 3 * 346 + 555;
+  raise notice 'PASS: DH_ACCRUED - four lit hours left 555 d. set aside as it was; public.collect_coupons then paid it (purse %)', 5 * 346 + 555;
 
   raise notice 'PASS: DH_COST - no error in any tick. Step 6 ms (PGlite): dark % of %, lit % of %, lit same hour again % of %. One lit hour here: % ledger rows, % stats_live_deltas rows, % DIVIDEND flows, % purse rows of the ring',
     v_r0 #>> '{ms,coupons}', v_r0 #>> '{ms,total}', v_r1 #>> '{ms,coupons}', v_r1 #>> '{ms,total}', v_r1b #>> '{ms,coupons}', v_r1b #>> '{ms,total}',

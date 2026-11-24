@@ -38,11 +38,17 @@ No production read was run for this slice.
 
 ## Decided by default (the owner may reverse)
 
-1. The 24 hours live on the purse row (two columns), not in a new table: no new rows.
+1. The 24 hours and the owed hours live on the purse row (three columns), not in a new table: no new rows.
 2. One credit a holder a harbour an hour (her works there are summed): one ledger row, not one a work.
 3. A holder is paid from her first hour: no part-hour pro rata.
-4. Lock order is the house first, then the harbour (0122). The hour never waits for a holder's row (SKIP LOCKED): a holder who is
-   mid-trade at that instant misses that hour, and her part stays in the city.
+4. Lock order is the house first, then the harbour (0122). The hour never waits for a holder's row (SKIP LOCKED). A holder who is
+   mid-trade at that instant is not paid in that run, **and does not lose the hour**: it is written against her on the purse row
+   (`port_treasury.coupon_owed`, `{house: hours}`) and her next due is (1 + hours owed) hourly coupons, inside that run's limits
+   (surplus, trailing profit / 24, pro rata). At most 23 owed hours are kept, so an outage cannot build an unbounded lump.
+   An hour the city could not pay is still owed to nobody (0312).
+   - Not the stamp on `city_shares` (`accrued_day`): it is a game-day number the daily form reads, and writing it needs her share
+     rows, which her own buy or collection holds at exactly the instant she is skipped. The purse row is already held by the run.
+   - Twice in one hour is impossible: the purse row is read FOR UPDATE and the hour is closed before anything is paid.
 5. No event and no news for a paid hour. Holdings (`world.holdings` `paid`) and the Ledger's Dividends line (`company_rate_for`, 0493)
    already read ledger kind DIVIDEND, so no client change and no new word.
 6. If the switch goes dark again the daily form resumes; its first day pays at most one day's coupon from the profit since the last
@@ -54,7 +60,7 @@ H = harbours with a purse (254 in the chain's world). P = holder-and-harbour pai
 
 | table | dark | lit, an hour |
 |---|---|---|
-| port_treasury | as today | H row updates (the ring) |
+| port_treasury | as today | H row updates (the ring), plus one for a harbour whose owed hours moved |
 | ledger | as today | P rows (DIVIDEND) |
 | treasury_flows | as today | P rows, rolled into the daybook by the next hour |
 | stats_live_deltas | as today | 2 P rows |
@@ -63,15 +69,19 @@ H = harbours with a purse (254 in the chain's world). P = holder-and-harbour pai
 
 At most (H + 5 P) / 60 rows a minute, in one run at :37. Nothing while dark.
 
-The tick, local PGlite, 254 harbours, 2 pairs (proof 198's notice): step 6 dark **0 ms**, lit **58 ms**, the same hour again 0 ms;
-the whole tick 204 -> 262 ms. Not measured on real PostgreSQL or with prod's number of pairs.
+The tick, local PGlite, 254 harbours, 2 pairs (proof 198's notice, three runs): step 6 dark **0-1 ms**, lit **58-94 ms**, the same
+hour again 0-1 ms (204 -> 262 ms for the whole tick in the first run). Not measured on real PostgreSQL or with prod's number of pairs.
 
 ## Verified
 
-- 0495's self-assert (172 ms local): hunks once and reversing; no other function, knob or grant moved; three new functions server
+- 0495's self-assert (185 ms local): hunks once and reversing; no other function, knob or grant moved; three new functions server
   only (public, anon, authenticated, service_role); DARK IDENTICAL (one daily scene before and after: every figure, row and flow
-  equal, no hourly state); nine lit scenes on a probe that stands on a SEA_PLACE (no real purse, holder or lock touched).
-- Proof 198, 8 markers: the REAL `tick_city` over the whole world; a house with no fleet buys through `public.invest_for` and is paid
+  equal, no hourly state); thirteen lit scenes on a probe that stands on a SEA_PLACE (no real purse, holder or lock touched).
+  The carry in four of them, DRIVEN DIRECTLY (the scene writes the owed hours a skipped run would write): one owed hour pays
+  2 x 346 = 692 and clears; under a 500 limit 217 / 283; 99 owed hours count as 23; a city with nothing to pay keeps them owed.
+- Twice in one hour: every scene runs the hour a second time (0 paid, no entry moved); proof 198 runs the real tick twice in the
+  hour and calls the rule again by itself (0 paid).
+- Proof 198, 9 markers (DH_CARRY: the real tick pays an owed hour once and clears it): the REAL `tick_city` over the whole world; a house with no fleet buys through `public.invest_for` and is paid
   by the tick; 461,384 d. -> 346 d. and 0 d.; once an hour; the trailing 24 hours; the world's sum unchanged; old `accrued`.
 - Proof 22 (0312's daily coupon) still 8/8 with 0495 applied, dark.
 - `rollback-0495.sql` run locally: both bodies return to their md5 of before 0495.
@@ -80,5 +90,8 @@ the whole tick 204 -> 262 ms. Not measured on real PostgreSQL or with prod's num
 ## Not verified
 
 - Nothing on production (no read was run): prod's `tick_city` / `city_coupons` digests, the number of pairs, the tick's real cost.
-- The SKIP LOCKED branch (a holder's row held by another session): PGlite is one session.
+- The SKIP LOCKED branch itself (a holder's row held by a SECOND session, and the lines that write her owed hour): the proof
+  harness is PGlite, one session, and this machine has no PostgreSQL or Docker. What reads and pays an owed hour is proved; what
+  writes it is read, not run. A two-session check on real PostgreSQL is still to do.
+- A second session running the same hour at the same time (it waits on the purse row, then finds the hour closed): same reason.
 - Real PostgreSQL: CI's disposable chain.
