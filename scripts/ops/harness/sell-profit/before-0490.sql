@@ -2,7 +2,7 @@
 --   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/sell-profit/before-0490.sql
 -- Expect: head 20260818000489; h1..h4 each 1 (each hunk's OLD text occurs once in the live cmd.do_sell: 0490's self-assert refuses
 --   otherwise); applied false (no v_trip yet); client_exec false (no client may call cmd.do_sell directly).
--- Reads: supabase_migrations.schema_migrations, pg_proc (pg_get_functiondef is STABLE). Nothing is written. ROLLBACK: nothing.
+-- Reads: supabase_migrations.schema_migrations, pg_proc (pg_get_functiondef is STABLE). Nothing is written. ROLLBACK: nothing (ends with rollback).
 begin transaction read only;
 with d as (select replace(pg_get_functiondef('cmd.do_sell(uuid,jsonb)'::regprocedure), E'\r', '') as def),
 o(n, old) as (values
@@ -15,3 +15,4 @@ select (select max(version) from supabase_migrations.schema_migrations) as head,
        bool_or(position('v_trip' in d.def) > 0) as applied,
        has_function_privilege('authenticated', 'cmd.do_sell(uuid,jsonb)', 'execute') or has_function_privilege('anon', 'cmd.do_sell(uuid,jsonb)', 'execute') as client_exec
   from d cross join o;
+rollback;
