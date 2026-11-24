@@ -12,6 +12,8 @@ export const corpDict = defineDict({
     stop: 'Stop',
     repair: 'Repair',
     repairFor: 'Repair {n}',
+    hire: 'Hire crew',
+    hireFor: 'Hire crew {n}',
     ship: 'Ship',
     idle: 'Idle',
     working: 'Working',

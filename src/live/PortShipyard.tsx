@@ -36,13 +36,15 @@ import { useT } from '../lib/i18n'
 /** A whole repair: the grammar's own default, said out loud so the line is the one the tray sends. */
 const WHOLE: Record<string, string> = Object.freeze({ to_pct: '100' })
 
-/** The whole repair, quoted: the server's price for the day (null until it has answered, or when it refused), its own sentence when
- *  it refuses (a purse too small, no yard here), and the one press that pays it. */
+/** A mending press, quoted (the yard's whole repair; the Inn's hire of the hands she lacks, live/PortInn.tsx `HireNow`): the
+ *  server's price for the day (null until it has answered, or when it refused), its own sentence when it refuses (a purse too small,
+ *  no yard here, no hands on the quay), the one press that pays it, and `none` when nothing is to mend. */
 export interface RepairQuote {
   cost: number | null
   refusal: Refusal | null
   busy: boolean
   send: () => void
+  none: boolean
 }
 
 const noop = () => {}
@@ -54,7 +56,9 @@ export function RepairNow({ fleet, children }: { fleet: FleetView; children: (qu
   const step = useStepOrder(fleet, 'REPAIR', true, noop, WHOLE)
   const c = step.check
   const cost = c.status === 'ok' && typeof c.result.estimate?.cost === 'number' ? c.result.estimate.cost : null
-  return <>{children({ cost, refusal: c.status === 'refused' ? c.refusal : null, busy: step.issuing, send: step.send })}</>
+  const refusal = c.status === 'refused' ? c.refusal : null
+  // "nothing aboard needs repair" (cmd.do_repair): mended since her job last spoke
+  return <>{children({ cost, refusal, busy: step.issuing, send: step.send, none: refusal?.code === 'E_UNAVAILABLE' })}</>
 }
 
 export function PortShipyard({
