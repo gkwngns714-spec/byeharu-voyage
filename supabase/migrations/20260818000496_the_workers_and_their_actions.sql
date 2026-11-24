@@ -11,7 +11,13 @@
 --                              the served stamps of her progress, and coin / experience / items an hour (public.workers_for).
 --   world.actions(worker)      CLIENT READ. The options of one worker (`id` of a workers() row: fleet:<uuid> | party:<n>) in the same
 --                              shape, ONLY what the server would take (public.sea_actions_for, public.land_actions_for).
---   public.action_shape        THE ONE SHAPE (A2.1) and the one place per_hour, xp_per_hour and items_per_hour are worked out. IMMUTABLE.
+--   public.action_shape        THE ONE SHAPE (A2.1) and the one place per_hour, xp_per_hour and items_per_hour of ONE completion are worked out. IMMUTABLE.
+--   public.run_day             A REPEATING RUN OVER ONE GAME DAY, by the server's own rules: the day's allowance at both ends
+--                              (world.daily_cap_remaining), the stock on the buying quay, the game day's length, and every run after the
+--                              first priced into the press of the runs before it (world.quote over the day's units: the quay's own walk).
+--   public.action_over_day     the one place a repeating run's per_hour, xp_per_hour and items_per_hour are worked out: its day's coin,
+--                              experience and units over its day's seconds. IMMUTABLE.
+--   public.fleet_job_tick_s    the fleet-jobs job's period (0481: every 2 minutes), in seconds. IMMUTABLE.
 --   public.job_trip            a job's legs (public.fleet_job_sails, 0494: THE authority) priced by world.trip_cost (0360).
 --   public.away_parties_for    the away report's land rows; public.away_report_for serves them as `parties` (ONE hunk; every key kept).
 --   public.client_rpc_entry_points gains the two reads (ONE hunk).
@@ -24,6 +30,16 @@
 --           units a bring-home BUY takes, the home shed's room). A SEA RUN'S INTERVAL IS THE WHOLE CYCLE: the card's seconds out, the
 --           dock turn there (world.trip_stop_seconds), the sail back and the turn at home. The Best run alone is one way (it does not
 --           come back: its next run starts where it sold), and says so (`returns` false).
+--           THE WAIT FOR THE JOB TICK IS IN THE INTERVAL. A job's fleet lying idle in port is started by public.tick_fleet_jobs, which
+--           runs every public.fleet_job_tick_s() seconds: half of that on average each time she waits. A run there and back waits
+--           twice (at the sale's harbour, then at home), the Best run once.
+-- A REPEATING RUN'S PER HOUR IS ITS DAY'S, NOT ITS FIRST RUN'S (measured 2026-11-25, scripts/ops/harness/hq-figures/measure-repeat.mjs:
+--   the first run's net over its interval read +537,909 an hour for quicksilver Lisbon - Setubal; played through the real tick the
+--   second run already lost coin, and the day's allowance at Setubal stopped her in the fourth). A fixed run there and back, and a
+--   bring-home, carry `day` {runs, coin, seconds, stop} (public.run_day) and their per_hour, xp_per_hour and items_per_hour are that
+--   day's (public.action_over_day). `net`, `interval_s`, `inputs` and `outputs` stay ONE run's (the first: what Once would do).
+--   NOT COUNTED, SAID: the days after (stock returns toward its mark at the harbour's restock rate a game day, so a quay she empties
+--   every day pays less the next); the part run after the last whole one; what other traders do to the same quays.
 --   land    public.land_terms, the terms Send freezes.
 --   WHAT THE QUOTES DO NOT SERVE, SAID: a card carries no split of its tax, wages, stores and dock fee on the way out (only
 --   world.good_board's full row does, a second's work a good), so `cost.total` is the sale less the buy less the net, and the sail
@@ -36,7 +52,9 @@
 -- A RUNNING WORKER'S FIGURES, AND THEIR BASIS (the field `basis` on every action):
 --   runs    her own completed runs: her fleet's ledger rows since the job was set (24 hours at most), from her first BUY to her
 --           last, when at least 3 BUYs lie there (two whole runs or more)
---   quote   an option (world.actions); in world.workers, a Best run under way (the card its plan took, kept on the job)
+--   quote   an option (world.actions); in world.workers, a Best run under way (the card its plan took, kept on the job). THE BEST RUN
+--           CARRIES NO per_hour (null), as an option and under way: each run is another sale from another harbour, so its rate is her
+--           own runs' (basis runs) or nothing
 --   terms   a land job: the terms frozen at Send
 --   none    not priced yet (a fixed job before two whole runs): null figures. world.workers asks no quote; world.actions serves the
 --           same id with its quote while she lies at the job's buy harbour.
@@ -50,12 +68,12 @@
 -- HOW OFTEN A CLIENT MAY ASK (served as ask_s): world.workers no more than once in 60 s a client, and once after a command of hers or
 --   when a served stamp passes; world.actions only when the Assign sheet opens, no more than once in 300 s a worker, NEVER on a timer.
 --   Prod is the smallest size: neither read belongs on a beat or a poll.
--- LOCKS: CREATE FUNCTION x8; CREATE OR REPLACE x2 by hunks. TIME: a few seconds. BUDGET: statement_timeout 60 s, lock_timeout 5 s;
+-- LOCKS: CREATE FUNCTION x11; CREATE OR REPLACE x2 by hunks. TIME: a few seconds. BUDGET: statement_timeout 60 s, lock_timeout 5 s;
 --   fails above 45 s.
--- ROLLBACK (forward): a migration reversing the two hunks (OLD texts below verbatim) and dropping the eight functions; the client
+-- ROLLBACK (forward): a migration reversing the two hunks (OLD texts below verbatim) and dropping the eleven functions; the client
 --   reads `parties` as optional and the worker list falls back to world.away_report.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants, volatility, definer, search path and
---   owner unmoved; no world_config row moved; the six cores server only (public, anon, authenticated, service_role), the two reads for
+--   owner unmoved; no world_config row moved; the nine cores server only (public, anon, authenticated, service_role), the two reads for
 --   authenticated alone and in the registry; the shape IMMUTABLE, the rest STABLE. THE PROBE (rolled back by a raised sentinel; it reads
 --   and counts only its own company's rows, starts no voyage and buys nothing): dark, the lists and the closed doors; lit, a fleet's
 --   options at home and in a second harbour, each figure against the quote it came from, EVERY option set through cmd.set_fleet_job
@@ -70,7 +88,9 @@ declare
   c_hunked constant text[] := array['public.away_report_for(uuid)', 'public.client_rpc_entry_points()'];
   c_cores  constant text[] := array['public.action_shape(text,text,text,integer,numeric,jsonb,jsonb,jsonb,jsonb,numeric,text,jsonb)',
                                     'public.job_trip(uuid,uuid,text[],boolean)', 'public.sea_actions_for(uuid,uuid)',
-                                    'public.land_actions_for(uuid,integer)', 'public.workers_for(uuid)', 'public.away_parties_for(uuid)'];
+                                    'public.land_actions_for(uuid,integer)', 'public.workers_for(uuid)', 'public.away_parties_for(uuid)',
+                                    'public.run_day(uuid,uuid,uuid,uuid,uuid,numeric,numeric,numeric,numeric,numeric)',
+                                    'public.action_over_day(jsonb,jsonb,numeric,numeric)', 'public.fleet_job_tick_s()'];
   c_doors  constant text[] := array['world.workers()', 'world.actions(text)'];
   c_uid    constant uuid := '00000000-0496-4000-8000-000000000001';
   v_t0        timestamptz := clock_timestamp();
@@ -170,6 +190,153 @@ $body$
   $f$;
 
   execute $f$
+create function public.fleet_job_tick_s()
+returns numeric
+language sql
+immutable
+set search_path = public, pg_temp
+as $body$
+  -- 0496: THE FLEET-JOBS JOB'S PERIOD, in seconds (0481: pg_cron byeharu-voyage:fleet-jobs, '*/2 * * * *'). A job's fleet lying idle in
+  -- port waits for its next run: half of this on average. A change of that schedule changes this line.
+  select 120::numeric
+$body$
+  $f$;
+
+  execute $f$
+create function public.action_over_day(p_action jsonb, p_day jsonb, p_xp numeric, p_items numeric)
+returns jsonb
+language plpgsql
+immutable
+set search_path = public, pg_temp
+as $body$
+-- 0496: A REPEATING RUN'S FIGURES ARE ITS DAY'S. p_action is the run in the one shape (public.action_shape: its net, interval, inputs
+-- and outputs are ONE run's); p_day is public.run_day's answer {runs, coin, seconds, stop}; p_xp and p_items the experience and the
+-- units those runs bring. The three derived figures are worked out here alone for a repeating run: per_hour = the day's coin x 3600 /
+-- the day's seconds, and the same for experience and units. The day rides beside them as `day`. Reads nothing.
+declare
+  v_s numeric := (p_day->>'seconds')::numeric;
+begin
+  if p_day is null or coalesce(v_s, 0) <= 0 then
+    return p_action;
+  end if;
+  return p_action || jsonb_build_object(
+    'per_hour', round((p_day->>'coin')::numeric * 3600 / v_s),
+    'xp_per_hour', round(coalesce(p_xp, 0) * 3600 / v_s),
+    'items_per_hour', round(coalesce(p_items, 0) * 3600 / v_s, 2),
+    'day', jsonb_build_object('runs', (p_day->>'runs')::numeric, 'coin', round((p_day->>'coin')::numeric), 'seconds', round(v_s), 'stop', p_day->>'stop'));
+end
+$body$
+  $f$;
+
+  execute $f$
+create function public.run_day(p_player uuid, p_fleet uuid, p_buy uuid, p_sell uuid, p_good uuid, p_units numeric, p_interval numeric,
+                               p_cost numeric, p_gross numeric, p_net numeric)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $body$
+-- 0496: ONE RUN, REPEATED OVER ONE GAME DAY, BY THE SERVER'S OWN RULES. p_units of p_good bought at p_buy and sold at p_sell (null: a
+-- bring-home, stored), a run lasting p_interval seconds; the first run buys for p_cost, sells for p_gross and leaves p_net after
+-- every cost. {runs, coin, seconds, stop, traded}:
+--   runs     the whole runs of p_units she makes in a game day: what the day's allowance takes at BOTH ends
+--            (world.daily_cap_remaining, the authority the BUY and the SELL read), what the buying quay holds, and what the day's
+--            length (game_day_seconds) has time for; never under one
+--   stop     allowance (the day's allowance or the quay's stock stops her before the day is out) | time
+--   seconds  the runs' time; stopped by the allowance, the whole day (it returns at the day's turn)
+--   coin     what those runs leave. EVERY RUN AFTER THE FIRST IS PRICED INTO THE PRESS OF THE RUNS BEFORE IT: the quay walks its shelves
+--            (world.quote), so the buys of n runs cost what ONE buy of n x p_units costs, and the sales bring what one sale of them
+--            brings. THE MARK A SALE LEAVES (cmd.do_sell: port_goods.glut, by public.press_after's rule) is on every sale after the
+--            first: while the quote does not walk the press itself (public.price_impact_lit dark), the day's sales are scaled by the
+--            mean of (1 - the mark before each sale) over (1 - the mark now). Each run pays the first run's costs but the profit tax
+--            (the dock fees, wages, stores and the sail back); the profit tax (public.profit_tax) is charged on the runs that still
+--            gain, their margins falling evenly from the first.
+--   traded   the coin bought and sold (what Trading counts)
+-- A RUN SET TO REPEAT IS NOT STOPPED BY A LOSS (public.fleet_job_plan buys and sells ALL each time), so the losing runs are counted.
+-- No estimate of its own: the allowance, the stock, the quote and the tax are the server's. Writes nothing.
+declare
+  v_day    numeric := greatest(coalesce(public.wc_num('game_day_seconds'), 0), 1);
+  v_allow  numeric;
+  v_ntime  numeric;
+  v_nall   numeric;
+  v_n      numeric;
+  v_stop   text;
+  v_buy    numeric;
+  v_sale   numeric;
+  v_got    numeric;
+  v_m1     numeric := p_gross - p_cost;                 -- the first run's margin
+  v_tax1   numeric;
+  v_fixed  numeric;
+  v_d      numeric;
+  v_k      numeric;
+  v_gain   numeric;
+  v_coin   numeric;
+  v_g0     numeric;
+  v_tgt    numeric;
+  v_w      numeric;
+begin
+  if coalesce(p_units, 0) <= 0 or coalesce(p_interval, 0) <= 0 then
+    return null;
+  end if;
+  v_allow := least(world.daily_cap_remaining(p_player, p_buy, p_good),
+                   (select pg.stock from public.port_goods pg where pg.port_id = p_buy and pg.good_id = p_good),
+                   case when p_sell is not null then world.daily_cap_remaining(p_player, p_sell, p_good) end);
+  v_ntime := greatest(1, floor(v_day / p_interval));
+  v_nall := floor(coalesce(v_allow, 0) / p_units);
+  v_n := greatest(1, least(v_ntime, v_nall));
+  v_stop := case when v_nall < v_ntime then 'allowance' else 'time' end;
+  if v_n > 1 then
+    select q.units, q.total into v_got, v_buy from world.quote(p_buy, p_good, v_n * p_units, 'buy', null, p_fleet) q;
+    if coalesce(v_got, 0) < v_n * p_units then   -- the quay ran out inside the walk: the whole runs it holds
+      v_n := greatest(1, floor(coalesce(v_got, 0) / p_units));
+      v_stop := 'allowance';
+      if v_n > 1 then
+        select q.total into v_buy from world.quote(p_buy, p_good, v_n * p_units, 'buy', null, p_fleet) q;
+      end if;
+    end if;
+  end if;
+  if v_n > 1 and p_sell is not null then
+    select q.units, q.total into v_got, v_sale from world.quote(p_sell, p_good, v_n * p_units, 'sell', null, p_fleet) q;
+    if v_sale is null or coalesce(v_got, 0) < v_n * p_units then
+      v_n := 1;
+    elsif not public.price_impact_lit() then
+      -- the mark of the sales before each sale (the quote above read the mark as it stands for all of them)
+      select pg.glut, pg.stock_target into v_g0, v_tgt from public.port_goods pg where pg.port_id = p_sell and pg.good_id = p_good;
+      if v_g0 is not null and v_g0 < 1 then
+        select avg(1 - public.press_after(v_g0, (i - 1) * p_units, v_tgt, 'sell', public.wc_num('glut_per_depth'), public.wc_num('glut_max')))
+               / (1 - v_g0)
+          into v_w from generate_series(1, v_n::int) i;
+        v_sale := floor(v_sale * coalesce(v_w, 1));
+      end if;
+    end if;
+  end if;
+  if v_n <= 1 then
+    v_coin := p_net;
+    v_buy := p_cost;
+    v_sale := p_gross;
+  elsif p_sell is null then
+    -- a bring-home: the buys, and the trip of each run (p_net is -(buy + trip))
+    v_coin := -v_buy + v_n * (p_net + p_cost);
+    v_sale := 0;
+  else
+    v_tax1 := coalesce(public.profit_tax(p_sell, v_m1, p_player), 0);
+    v_fixed := greatest(v_m1 - p_net - v_tax1, 0);     -- a run's costs but the profit tax: dock fees, wages, stores, the sail back
+    -- the runs that still gain: the margins fall evenly from the first to the day's whole (v_sale - v_buy)
+    v_d := 2 * (v_n * v_m1 - (v_sale - v_buy)) / (v_n * (v_n - 1));
+    v_k := case when v_m1 <= 0 then 0 when v_d <= 0 then v_n else least(v_n, floor(v_m1 / v_d) + 1) end;
+    v_gain := case when v_d <= 0 then v_sale - v_buy else v_k * v_m1 - v_d * v_k * (v_k - 1) / 2 end;
+    v_coin := (v_sale - v_buy) - v_n * v_fixed - coalesce(public.profit_tax(p_sell, greatest(v_gain, 0), p_player), 0);
+  end if;
+  return jsonb_build_object(
+    'runs', v_n, 'coin', round(v_coin), 'stop', v_stop,
+    'seconds', round(case when v_stop = 'allowance' then greatest(v_day, v_n * p_interval) else v_n * p_interval end),
+    'traded', round(coalesce(v_buy, 0) + coalesce(v_sale, 0)));
+end
+$body$
+  $f$;
+
+  execute $f$
 create function public.job_trip(p_fleet uuid, p_from uuid, p_codes text[], p_cost boolean)
 returns jsonb
 language plpgsql
@@ -240,12 +407,16 @@ as $body$
 --   public.fleet_job_end / _ends       bring home (0492): the home harbour, the shed's room; public.fleet_buy_capacity: the units and cost
 -- THE OPTIONS:
 --   sea:best                 the Best run (job best): priced as the card the job's plan would take first now (the plan's own order);
---                            one way, a sale ends it (returns false): interval = the card's seconds + the dock turn
+--                            one way, a sale ends it (returns false): interval = the card's seconds + the dock turn + one wait for the
+--                            job tick (half of public.fleet_job_tick_s). net and interval_s are that one sale's; NO per_hour is served
+--                            (null): the next run is another sale from another harbour
 --   sea:fixed:G:A:B:sell     buy G where she lies, sell at B, sail back: the c_top best cards. interval = the WHOLE cycle: the card's
---                            seconds out + the turn at B + the sail back (world.trip_cost) + the turn at A. net = the card's profit less
---                            the sail back's wages, stores and dock fees
+--                            seconds out + the turn at B + the sail back (world.trip_cost) + the turn at A + two waits for the job tick
+--                            (public.fleet_job_tick_s). net = the card's profit less the sail back's wages, stores and dock fees.
+--                            ITS PER HOUR IS ITS DAY'S (`day`: public.run_day, public.action_over_day), not the first run's
 --   sea:fixed:G:A:H:store    buy G where she lies, STORE it at home, sail back (lit assign_home_enabled, docked, not at home): the units
---                            and cost the BUY line would take (the home shed's room binds, public.fleet_job_ends); net = -(buy + trip)
+--                            and cost the BUY line would take (the home shed's room binds, public.fleet_job_ends); net = -(buy + trip);
+--                            the two waits and the day as above
 -- NOT OFFERED: a run whose way out or back the leg judge shuts (range, stores, no course); a bring-home the door refuses (no home, no
 -- warehouse, bought at home) or the shed stops (E_SHED_FULL). A read; world.best_sales reads the CALLER, so asked for anyone else: closed.
 declare
@@ -258,6 +429,10 @@ declare
   v_lead   numeric := 0;
   v_docked boolean := false;
   v_turn   numeric := world.trip_stop_seconds();
+  v_tick   numeric := public.fleet_job_tick_s();
+  v_int    numeric;
+  v_nm     numeric;
+  v_day    jsonb;
   v_tr     record;
   v_ex     record;
   v_bs     jsonb;
@@ -336,13 +511,16 @@ begin
     v_gross := (select q.total from world.quote(v_dest, v_gid, c.units, 'sell', null, p_fleet) q);
     continue when v_gross is null;
     if v_best is null then
-      v_best := public.action_shape('sea:best', 'sea', 'trading', 1, c.secs + v_turn,
+      v_best := public.action_shape('sea:best', 'sea', 'trading', 1, c.secs + v_turn + v_tick / 2,
         jsonb_build_object('coin', c.cost), jsonb_build_object('coin', v_gross),
         jsonb_build_array(jsonb_build_object('skill', 'trading', 'xp', floor((c.cost + v_gross) / v_tr.per * v_tr.xp)),
                           jsonb_build_object('skill', 'exploration', 'xp', floor((v_t->'out'->>'nm')::numeric / v_ex.per * v_ex.xp))),
         jsonb_build_object('total', round(v_gross - c.cost - c.profit)), c.profit, 'quote',
         jsonb_build_object('job', jsonb_build_object('kind', 'best', 'params', '{}'::jsonb), 'good', c.good, 'buy', v_code, 'sell', c.port,
-                           'end', 'sell', 'units', c.units, 'returns', false, 'varies', true));
+                           'end', 'sell', 'units', c.units, 'returns', false, 'varies', true,
+                           -- NO RATE FOR THE BEST RUN: each run takes its own sale from a new harbour, so one card over its seconds is
+                           -- not what an hour brings (measured: ten Best runs made 1.5 % of it). Her own runs give it (basis runs).
+                           'per_hour', null, 'xp_per_hour', null, 'items_per_hour', null));
     end if;
     continue when c.basis = 'on_board' or v_n >= c_top;
     if not (v_t ? 'back') then
@@ -356,18 +534,21 @@ begin
     continue when v_t->'back' ? 'shut';
     v_n := v_n + 1;
     v_back := (v_t->'back'->>'total')::numeric;
-    v_fixed := v_fixed || jsonb_build_array(public.action_shape(
-      format('sea:fixed:%s:%s:%s:sell', c.good, v_code, c.port), 'sea', 'trading', 1,
-      c.secs + v_turn + (v_t->'back'->>'seconds')::numeric + v_turn,
+    v_int := c.secs + v_turn + (v_t->'back'->>'seconds')::numeric + v_turn + v_tick;
+    v_nm := (v_t->'out'->>'nm')::numeric + (v_t->'back'->>'nm')::numeric;
+    v_day := public.run_day(p_player, p_fleet, v_at, v_dest, v_gid, c.units, v_int, c.cost, v_gross, c.profit - v_back);
+    v_fixed := v_fixed || jsonb_build_array(public.action_over_day(public.action_shape(
+      format('sea:fixed:%s:%s:%s:sell', c.good, v_code, c.port), 'sea', 'trading', 1, v_int,
       jsonb_build_object('coin', c.cost), jsonb_build_object('coin', v_gross),
       jsonb_build_array(jsonb_build_object('skill', 'trading', 'xp', floor((c.cost + v_gross) / v_tr.per * v_tr.xp)),
-                        jsonb_build_object('skill', 'exploration',
-                                           'xp', floor(((v_t->'out'->>'nm')::numeric + (v_t->'back'->>'nm')::numeric) / v_ex.per * v_ex.xp))),
+                        jsonb_build_object('skill', 'exploration', 'xp', floor(v_nm / v_ex.per * v_ex.xp))),
       jsonb_build_object('total', round(v_gross - c.cost - c.profit + v_back),
                          'back', jsonb_build_object('wages', v_t->'back'->'wages', 'stores', v_t->'back'->'stores', 'dock_fee', v_t->'back'->'dock_fee')),
       c.profit - v_back, 'quote',
       jsonb_build_object('job', jsonb_build_object('kind', 'fixed', 'params', jsonb_build_object('good', c.good, 'buy', v_code, 'sell', c.port)),
-                         'good', c.good, 'buy', v_code, 'sell', c.port, 'end', 'sell', 'units', c.units, 'returns', true, 'varies', false)));
+                         'good', c.good, 'buy', v_code, 'sell', c.port, 'end', 'sell', 'units', c.units, 'returns', true, 'varies', false)),
+      v_day,
+      floor((v_day->>'traded')::numeric / v_tr.per * v_tr.xp) + floor((v_day->>'runs')::numeric * v_nm / v_ex.per * v_ex.xp), 0));
   end loop;
 
   -- BRING HOME (0492): what the door's own judge takes (public.fleet_job_end), the trip there and back, the BUY line's units
@@ -403,9 +584,10 @@ begin
             v_cost := (v_cap->>'est_total')::numeric;
           end if;
           continue when coalesce(v_units, 0) < 1 or v_cost is null;
-          v_store := v_store || jsonb_build_array(public.action_shape(
-            format('sea:fixed:%s:%s:%s:store', c.code, v_code, v_home), 'sea', 'trading', 1,
-            (v_t->>'seconds')::numeric + v_turn,
+          v_int := (v_t->>'seconds')::numeric + v_turn + v_tick;
+          v_day := public.run_day(p_player, p_fleet, v_at, null, c.id, v_units, v_int, v_cost, 0, -(v_cost + (v_t->>'total')::numeric));
+          v_store := v_store || jsonb_build_array(public.action_over_day(public.action_shape(
+            format('sea:fixed:%s:%s:%s:store', c.code, v_code, v_home), 'sea', 'trading', 1, v_int,
             jsonb_build_object('coin', v_cost),
             jsonb_build_object('coin', 0, 'items', jsonb_build_array(jsonb_build_object('good', c.code, 'units', v_units, 'basis', round(v_cost / v_units, 2)))),
             jsonb_build_array(jsonb_build_object('skill', 'trading', 'xp', floor(v_cost / v_tr.per * v_tr.xp)),
@@ -413,7 +595,10 @@ begin
             jsonb_build_object('total', round((v_t->>'total')::numeric), 'wages', v_t->'wages', 'stores', v_t->'stores', 'dock_fee', v_t->'dock_fee'),
             -(v_cost + (v_t->>'total')::numeric), 'quote',
             jsonb_build_object('job', jsonb_build_object('kind', 'fixed', 'params', jsonb_build_object('good', c.code, 'buy', v_code, 'end', 'store')),
-                               'good', c.code, 'buy', v_code, 'sell', v_home, 'end', 'store', 'units', v_units, 'returns', true, 'varies', false)));
+                               'good', c.code, 'buy', v_code, 'sell', v_home, 'end', 'store', 'units', v_units, 'returns', true, 'varies', false)),
+            v_day,
+            floor((v_day->>'traded')::numeric / v_tr.per * v_tr.xp) + floor((v_day->>'runs')::numeric * (v_t->>'nm')::numeric / v_ex.per * v_ex.xp),
+            (v_day->>'runs')::numeric * v_units));
         end loop;
       end if;
     end if;
@@ -527,7 +712,8 @@ as $body$
 --                          only, when at least c_enough BUYs lie there (so two whole runs or more). interval_s, per_hour: those rows;
 --                          xp: Trading on what was bought and sold and Exploration on the miles sailed in them; items: what a
 --                          bring-home job STORED in them (her events)
---                   quote  a Best run under way: the card its plan took (fleet_jobs.last: profit, seconds), one way
+--                   quote  a Best run under way: the card its plan took (fleet_jobs.last: profit, seconds), one way, with its one
+--                          wait for the job tick (half of public.fleet_job_tick_s): that sale's net and seconds, and NO per_hour (null)
 --                   terms  a land job: the terms frozen at Send (public.land_terms' answer, kept on the party)
 --                   none   nothing has priced it yet (a fixed job before two whole runs): the figures are null; world.actions quotes it
 --   progress      the served stamps a bar is drawn between: {from, to, leg, ...}. Sea: the voyage's departed_at and due_at (eta when
@@ -628,8 +814,10 @@ begin
                             jsonb_build_object('skill', 'exploration', 'xp', round(v_nm / v_ex.per * v_ex.xp / v_cyc, 1))),
           null, r.coin / v_cyc, 'runs', v_more);
       elsif r.jkind = 'best' and (r.last->>'ok')::boolean and jsonb_typeof(r.last->'profit') = 'number' and jsonb_typeof(r.last->'seconds') = 'number' then
-        v_act := public.action_shape(v_id, 'sea', 'trading', 1, (r.last->>'seconds')::numeric + v_turn, null, null, null, null,
-                                     (r.last->>'profit')::numeric, 'quote', v_more);
+        v_act := public.action_shape(v_id, 'sea', 'trading', 1, (r.last->>'seconds')::numeric + v_turn + public.fleet_job_tick_s() / 2, null, null, null, null,
+                                     (r.last->>'profit')::numeric, 'quote',
+                                     -- one sale's net and seconds, and no rate: the next run is another sale (public.sea_actions_for)
+                                     v_more || jsonb_build_object('per_hour', null, 'xp_per_hour', null, 'items_per_hour', null));
       else
         v_act := public.action_shape(v_id, 'sea', 'trading', 1, null, null, null, null, null, null, 'none', v_more);
       end if;
@@ -876,8 +1064,9 @@ $h$      ('world',       'away_report',           ''),
      or exists (select 1 from unnest(c_doors) u(q)
                  where not has_function_privilege('authenticated', u.q::regprocedure, 'execute') or has_function_privilege('anon', u.q::regprocedure, 'execute')
                     or has_function_privilege('service_role', u.q::regprocedure, 'execute'))
-     or (select p.provolatile from pg_proc p where p.oid = c_cores[1]::regprocedure) <> 'i'
-     or (select count(*) from pg_proc p where p.oid = any (array(select u.q::regprocedure::oid from unnest(c_cores[2:] || c_doors) u(q))) and p.provolatile = 's') <> 7
+     or (select count(*) from pg_proc p where p.oid = any (array[c_cores[1]::regprocedure::oid, c_cores[8]::regprocedure::oid, c_cores[9]::regprocedure::oid])
+                                          and p.provolatile = 'i') <> 3
+     or (select count(*) from pg_proc p where p.oid = any (array(select u.q::regprocedure::oid from unnest(c_cores[2:7] || c_doors) u(q))) and p.provolatile = 's') <> 8
      or (select count(*) from public.client_rpc_entry_points() e
           where (e.schema_name, e.function_name, e.arg_types) in (('world', 'workers', ''), ('world', 'actions', 'text'))
             and e.fn is not null and has_function_privilege('authenticated', e.fn, 'execute')) <> 2
@@ -926,9 +1115,19 @@ $h$      ('world',       'away_report',           ''),
        or exists (select 1 from jsonb_array_elements(v_a->'options') e where e->>'end' = 'store')
        or exists (select 1 from jsonb_array_elements(v_a->'options') e
                    where jsonb_typeof(e->'interval_s') = 'number'
-                     and abs((e->>'per_hour')::numeric - (e->>'net')::numeric * 3600 / (e->>'interval_s')::numeric)
-                         > 2 + abs((e->>'per_hour')::numeric) * 0.02) then
-      raise exception '0496 self-assert FAIL: at home the options are not the Best run first and runs, or a per hour is not net over interval: %', left(v_a::text, 1500);
+                     and case when e ? 'day'
+                              -- a repeating run: its day's coin over its day's seconds; the day is whole runs, and one run a day is that run
+                              then (e->>'per_hour')::numeric <> round((e #>> '{day,coin}')::numeric * 3600 / (e #>> '{day,seconds}')::numeric)
+                                   or (e #>> '{day,runs}')::numeric < 1 or (e #>> '{day,runs}')::numeric <> floor((e #>> '{day,runs}')::numeric)
+                                   or e #>> '{day,stop}' not in ('allowance', 'time')
+                                   or (e #>> '{day,seconds}')::numeric < (e #>> '{day,runs}')::numeric * (e->>'interval_s')::numeric - 1
+                                   or ((e #>> '{day,runs}')::numeric = 1 and (e #>> '{day,coin}')::numeric <> (e->>'net')::numeric)
+                                   -- no run after the first is priced above it: a day never reads better than its first run repeated
+                                   or (e #>> '{day,coin}')::numeric > (e #>> '{day,runs}')::numeric * (e->>'net')::numeric + 1
+                              else abs((e->>'per_hour')::numeric - (e->>'net')::numeric * 3600 / (e->>'interval_s')::numeric)
+                                   > 2 + abs((e->>'per_hour')::numeric) * 0.02 end)
+       or exists (select 1 from jsonb_array_elements(v_a->'options') e where (e->>'id' like 'sea:fixed:%') is distinct from (e ? 'day')) then
+      raise exception '0496 self-assert FAIL: at home the options are not the Best run first and runs, a per hour is not net over interval, or a run''s per hour is not its day''s: %', left(v_a::text, 1500);
     end if;
     for v_e in select e from jsonb_array_elements(v_a->'options') e loop
       if v_e->>'id' like 'sea:fixed:%' then
@@ -938,7 +1137,7 @@ $h$      ('world',       'away_report',           ''),
         if v_c is null or v_tb ? 'shut'
            or public.fleet_job_sails(v_fl, v_lis, array[v_e->>'sell']) ? 'missing'
            or (v_e #>> '{inputs,coin}')::numeric <> round((v_c->>'cost')::numeric) or (v_e->>'units')::numeric <> (v_c->>'units')::numeric
-           or (v_e->>'interval_s')::numeric <> round((v_c->>'seconds')::numeric + v_turn + (v_tb->>'seconds')::numeric + v_turn)
+           or (v_e->>'interval_s')::numeric <> round((v_c->>'seconds')::numeric + v_turn + (v_tb->>'seconds')::numeric + v_turn + public.fleet_job_tick_s())
            or (v_e->>'net')::numeric <> round((v_c->>'profit')::numeric - (v_tb->>'total')::numeric)
            or (v_e #>> '{cost,back,wages}')::numeric <> (v_tb->>'wages')::numeric
            or (v_e->>'returns')::boolean is not true or v_e->>'basis' <> 'quote' then
@@ -970,8 +1169,10 @@ $h$      ('world',       'away_report',           ''),
           if v_e->>'sell' <> v_home or v_e->>'buy' <> v_xc or v_e #> '{job,params}' <> jsonb_build_object('good', v_e->>'good', 'buy', v_xc, 'end', 'store')
              or (v_e #>> '{outputs,items,0,units}')::numeric < 1 or v_e #>> '{outputs,items,0,good}' <> v_e->>'good'
              or (v_e->>'net')::numeric <> -round((v_e #>> '{inputs,coin}')::numeric + (v_tb->>'total')::numeric)
-             or (v_e->>'interval_s')::numeric <> round((v_tb->>'seconds')::numeric + v_turn)
-             or (v_e->>'items_per_hour')::numeric <= 0 then
+             or (v_e->>'interval_s')::numeric <> round((v_tb->>'seconds')::numeric + v_turn + public.fleet_job_tick_s())
+             or (v_e->>'items_per_hour')::numeric <= 0 or not (v_e ? 'day')
+             or (v_e->>'items_per_hour')::numeric
+                  <> round((v_e #>> '{day,runs}')::numeric * (v_e #>> '{outputs,items,0,units}')::numeric * 3600 / (v_e #>> '{day,seconds}')::numeric, 2) then
             raise exception '0496 self-assert FAIL: a bring-home is not its buy and its trip home and back: % / trip %', v_e, v_tb;
           end if;
           v_store := v_store + 1;
@@ -1075,6 +1276,6 @@ $h$      ('world',       'away_report',           ''),
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0496 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0496 self-assert ok: THE WORKERS AND THEIR ACTIONS. Two hunks once and reversing; eight new functions (two client reads, six cores server only); grants and volatility unmoved; no other function or knob moved. Probe (rolled back; % options set through the doors, none refused): %. % ms.',
+  raise notice '0496 self-assert ok: THE WORKERS AND THEIR ACTIONS. Two hunks once and reversing; eleven new functions (two client reads, nine cores server only); grants and volatility unmoved; no other function or knob moved. Probe (rolled back; % options set through the doors, none refused): %. % ms.',
     v_set, v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;

@@ -4,6 +4,10 @@ The owner: *"it is like madevor's rs3 jagex game idle game, but instead of doing
 Plan: `docs/design/hq-corp-2026-11-24.md` A2.1, A2.2, A2.5, B3 and the slice `0495 rate-ledger`. This is its read half, minus
 `world.company_rate`, which 0493 built. Server only: the HQ worker list (H1) hooks the two reads up afterwards.
 
+**2026-11-25, before its deploy:** a repeating run's `per_hour` is now its DAY'S, the tick's wait is in `interval_s`, and the Best
+run carries no rate (three more functions). The measurements and the rule: `docs/dev-log/2026-11-25-per-hour-honest.md`. Where the
+text below says otherwise, that file is right.
+
 ## Server (0496; no switch, no coin, no table, no cron; nothing written)
 
 - `world.workers()`: client read. One row for each of her fleets, then her land party.

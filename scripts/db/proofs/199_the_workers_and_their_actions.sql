@@ -7,7 +7,7 @@
 --   through the doors without starting a voyage. This proof plays a run through the real tick, shortens her reach, and stops a party
 --   at the away cap. Rolled back by proof.mjs. (199: 198 is left free for 0495.)
 --
--- @pass WR_SHAPE   every option of a fleet and of a party carries the whole shape (A2.1), its ids are distinct, per hour = net over the interval
+-- @pass WR_SHAPE   every option of a fleet and of a party carries the whole shape (A2.1), its ids are distinct, per hour = net over the interval (a repeating run: its day's coin over its day's seconds; the Best run: none)
 -- @pass WR_DOOR    every option served, at home and in a second harbour, is taken by cmd.set_fleet_job; a party's by cmd.land_send
 -- @pass WR_CYCLE   a run there and back lasts longer than the same card one way (the Best run), by its sail back and a dock turn, and earns less by the sail back's cost
 -- @pass WR_RANGE   with her reach shortened no run is offered past it: the far trip is shut by the leg judge, and what is still offered is still taken
@@ -75,14 +75,20 @@ begin
           <> jsonb_array_length(v_o->'options') + jsonb_array_length(v_l->'options')
      or exists (select 1 from jsonb_array_elements((v_o->'options') || (v_l->'options')) e
                  where e->>'basis' <> 'quote' or jsonb_typeof(e->'interval_s') <> 'number' or (e->>'interval_s')::numeric <= 0
-                    or abs((e->>'per_hour')::numeric - (e->>'net')::numeric * 3600 / (e->>'interval_s')::numeric) > 2 + abs((e->>'per_hour')::numeric) * 0.02
+                    -- a run that repeats (`day`): its day's coin over its day's seconds, never above its first run repeated; the Best
+                    -- run: no rate; any other: net over the interval
+                    or case when e ? 'day' then (e->>'per_hour')::numeric <> round((e #>> '{day,coin}')::numeric * 3600 / (e #>> '{day,seconds}')::numeric)
+                                                or (e #>> '{day,runs}')::numeric < 1
+                                                or (e #>> '{day,coin}')::numeric > (e #>> '{day,runs}')::numeric * (e->>'net')::numeric + 1
+                            when e->>'id' = 'sea:best' then jsonb_typeof(e->'per_hour') <> 'null'
+                            else abs((e->>'per_hour')::numeric - (e->>'net')::numeric * 3600 / (e->>'interval_s')::numeric) > 2 + abs((e->>'per_hour')::numeric) * 0.02 end
                     or jsonb_typeof(e->'xp') <> 'array' or jsonb_typeof(e #> '{inputs,items}') <> 'array' or jsonb_typeof(e #> '{outputs,items}') <> 'array')
      or exists (select 1 from jsonb_array_elements(v_o->'options') e where e->>'kind' <> 'sea' or not (e ? 'job'))
      or exists (select 1 from jsonb_array_elements(v_l->'options') e where e->>'kind' not in ('gather', 'make') or not (e ? 'action')
                                                                          or (e #>> '{outputs,items,0,units}')::numeric < 1) then
     raise exception 'WR_SHAPE: an option is not in the one shape: % / %', left(v_o::text, 1200), left(v_l::text, 600);
   end if;
-  raise notice 'PASS: WR_SHAPE — % sea options at % and % land jobs, each with the % keys of the shape, distinct ids, per hour = net over the interval',
+  raise notice 'PASS: WR_SHAPE — % sea options at % and % land jobs, each with the % keys of the shape, distinct ids, per hour = net over the interval (a repeating run: its day; the Best run: none)',
     jsonb_array_length(v_o->'options'), v_home, jsonb_array_length(v_l->'options'), cardinality(c_keys);
 
   -- ── WR_CYCLE: the Best run's card, one way, against the same card there and back ──
