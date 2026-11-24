@@ -109,8 +109,12 @@ export function useBoard(cityPort: SnapshotPort | null): Board {
   // until she lies in port): one of them acting asks it again; the market's edge is useHqBoard's own.
   // 0485: a hull's role set here moves no fleet's version, so its press count is part of the question (the role card leaves, the yard's
   // next role moves)
+  // 2026-11-24 (owner: *"if i hire a captain by pressing a tab, that tab should then disappear"*): a hire seats her and moves no fleet's
+  // version either, so the captains she keeps (the roster the hire re-reads, worldStore.hireOfficer) are part of the question too: the
+  // crew card leaves at once
   const roleEdits = useRoleEdits((s) => s.edits)
-  const hq = useHqBoard(company, `${all.map((f) => (f.status === 'DOCKED' ? `${f.id}.${f.version}` : f.id)).join(',')}:${roleEdits}`)
+  const kept = useWorld((s) => (s.officers ? s.officers.officers.filter((o) => o.hired).length : -1))
+  const hq = useHqBoard(company, `${all.map((f) => (f.status === 'DOCKED' ? `${f.id}.${f.version}` : f.id)).join(',')}:${roleEdits}:${kept}`)
   const lit = litBoard(hq.view)
   // v1's reads only once the server has answered dark (or refused), and while it stays dark: never beside a lit board. A re-ask keeps the
   // last answer (useServedRead), so the dark board does not blink when a fleet acts.
