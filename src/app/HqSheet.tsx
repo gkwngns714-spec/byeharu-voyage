@@ -92,11 +92,7 @@ export function HqSheet() {
   // HQ left: nothing stands over it when it comes back
   useEffect(() => () => useHqPlace.getState().clear(), [])
 
-  const done = (d: TradeDone) => {
-    setToast(doneWords(t, d, (c) => portNameOf(portByCode, c)))
-    // a trip sent: she has left, the sheet goes; a trade where she lies keeps the sheet, for the next lot
-    if (d.sailTo !== null) close()
-  }
+  const done = (d: TradeDone) => setToast(doneWords(t, d, (c) => portNameOf(portByCode, c)))
 
   return (
     <>
@@ -238,7 +234,8 @@ function TradeSheet({
   onClose: () => void
   onDone: (d: TradeDone) => void
 }) {
-  useBackLayer(onClose)
+  // the tray's ✕ is the sheet's own back (useBackLayer.ts): the close comes on the step back, never beside it
+  const back = useBackLayer(onClose)
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
   const plan = useDeskPlan((s) => s.plan)
@@ -312,8 +309,12 @@ function TradeSheet({
         mode="docked"
         choices={choices}
         onChoose={choose}
-        onClose={onClose}
-        onDone={onDone}
+        onClose={back}
+        onDone={(d) => {
+          onDone(d)
+          // a trip sent: she has left, the sheet goes; a trade where she lies keeps the sheet, for the next lot
+          if (d.sailTo !== null) back()
+        }}
       />
     </div>
   )

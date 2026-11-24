@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE LAYERS THAT ANSWER "BACK" — every DetailPage and sheet in the game, one rule (2026-11-24, docs/design/simplify-2026-11-24.md S1)
@@ -7,12 +7,14 @@ import { useEffect, useRef } from 'react'
 // The owner, 2026-11-24: *"when i press HQ - city, a whole new tab shows up then i cannot go back to the previous page"*. A page
 // opened over a screen (a building's page on HQ, a ship's sheet, the trade sheet) is left ONE step at a time, the one opened last
 // first (2026-11-11, the Fleets page), and by every back there is:
-//   · its own back arrow (or ✕), and Escape: the layer closes, and the history entry it pushed is taken back;
-//   · the browser's back and a phone's back gesture: opening a layer pushes ONE history entry (same URL, so the screen under it
-//     never re-mounts and keeps its scroll); going back pops it and closes the top layer. Before this a phone's back left HQ.
-//
-// A layer that gives way to another in the same moment (a fleet's sheet replaced by her trade sheet) hands its entry over instead
-// of popping it, so the history never collects dead entries. React's StrictMode re-mount takes the same path.
+//   · opening a layer puts ONE step on the browser's history (same URL, so the screen under it never re-mounts and keeps its scroll);
+//   · the browser's back and a phone's back gesture take that step: the top layer closes;
+//   · its own back arrow (or ✕) and Escape take the same step, at the press (the `back` this hook returns), so the close IS the
+//     browser's back and nothing is left to undo later.
+// A layer that goes away for any other reason — a route change, a press inside it that navigates, its owner dropping it — takes NO
+// step: a step taken then would land after the navigation that follows and bounce it (a link pressed, a tab, a goto). Instead:
+//   · a route change made while a layer's step is the current entry REPLACES that entry, so no dead step is left under the new page;
+//   · a layer opened on a dead step (its layer gone) takes that step over rather than adding one.
 
 interface Layer {
   token: string
@@ -21,20 +23,22 @@ interface Layer {
 
 /** Mounted layers, the one opened last on top. */
 const layers: Layer[] = []
-/** The history entries the layers pushed, oldest first; an entry whose layer has gone is popped on the next tick. */
+/** The history entries layers put down, oldest first (a token whose layer is gone is a dead step). */
 const entries: string[] = []
-let settle: number | null = null
 let serial = 0
-let listening = false
+/** This page load's own mark on its tokens: a step left in the history by an earlier load is never taken for one of this load's. */
+const LOAD = Math.random().toString(36).slice(2, 8)
+let armed = false
 
 const KEY = 'bvLayer'
-const current = (): string | null => {
-  const s = window.history.state as Record<string, unknown> | null
+const tokenOf = (state: unknown): string | null => {
+  const s = state as Record<string, unknown> | null
   return s && typeof s[KEY] === 'string' ? (s[KEY] as string) : null
 }
-const live = (token: string) => layers.some((l) => l.token === token)
+const current = () => tokenOf(window.history.state)
+const pathOf = (url: string | URL | null | undefined) => (url == null ? null : new URL(String(url), window.location.href).pathname)
 
-/** The browser's back: drop every entry past the one now shown, and close the layers whose entry is gone (top first). */
+/** The browser's back (or a layer's own, `back`): every step past the one now shown is gone; their layers close, top first. */
 function onPop() {
   const at = current()
   const i = at === null ? -1 : entries.indexOf(at)
@@ -42,39 +46,43 @@ function onPop() {
   for (let k = layers.length - 1; k >= 0; k--) if (!entries.includes(layers[k].token)) layers[k].close()
 }
 
-/** After a layer closed itself: pop the entries at the top whose layers have gone, in one step. */
-function popOrphans() {
-  settle = null
-  let n = 0
-  while (entries.length > n && !live(entries[entries.length - 1 - n])) n++
-  if (n === 0) return
-  // the route moved on (a press inside the layer navigated): the entries stand behind it; leave the history as it is
-  if (current() !== entries[entries.length - 1]) {
-    entries.length = 0
-    return
+/** Once: listen for the back, and make a route change over a layer's step replace that step (the router pushes; a step under a new
+ *  page would be a back that shows nothing). A push that keeps the path (a search change under the layer) stays a push. */
+function arm() {
+  if (armed) return
+  armed = true
+  window.addEventListener('popstate', onPop)
+  const push = window.history.pushState.bind(window.history)
+  window.history.pushState = (data: unknown, unused: string, url?: string | URL | null) => {
+    const at = current()
+    const to = pathOf(url)
+    if (at !== null && tokenOf(data) === null && to !== null && to !== window.location.pathname) {
+      if (entries.includes(at)) entries.splice(entries.indexOf(at))
+      window.history.replaceState(data, unused, url)
+      return
+    }
+    push(data, unused, url)
   }
-  entries.length -= n
-  window.history.go(-n)
 }
 
-/** This layer closes on its back arrow (the caller's), on Escape while it is the one opened last, and on the browser's back. */
-export function useBackLayer(onClose: () => void): void {
+/** This layer closes on the browser's back and on Escape while it is the one opened last. Returns `back`: what its own arrow (or ✕)
+ *  presses — the same step back, so the close comes through the one door. */
+export function useBackLayer(onClose: () => void): () => void {
   const close = useRef(onClose)
   useEffect(() => {
     close.current = onClose
   })
+  const token = useRef<string | null>(null)
   useEffect(() => {
-    if (!listening) {
-      window.addEventListener('popstate', onPop)
-      listening = true
-    }
-    const layer: Layer = { token: `L${++serial}`, close: () => close.current() }
+    arm()
+    const layer: Layer = { token: token.current ?? `${LOAD}-${++serial}`, close: () => close.current() }
+    token.current = layer.token
     layers.push(layer)
     const state = { ...((window.history.state as Record<string, unknown> | null) ?? {}), [KEY]: layer.token }
-    const top = entries[entries.length - 1]
-    if (top !== undefined && !live(top) && current() === top) {
-      // the entry of a layer that has just gone is this one's now
-      entries[entries.length - 1] = layer.token
+    const at = current()
+    if (at !== null && entries.includes(at) && !layers.some((l) => l !== layer && l.token === at)) {
+      // the current step is a dead one (or this layer's own, re-mounted): this layer takes it over
+      entries.splice(entries.indexOf(at), 1, layer.token)
       window.history.replaceState(state, '')
     } else {
       entries.push(layer.token)
@@ -82,14 +90,25 @@ export function useBackLayer(onClose: () => void): void {
     }
     const onKey = (e: KeyboardEvent) => {
       // one key, one layer: a layer leaves the list when React unmounts it, after every listener has heard this key
-      if (e.key === 'Escape' && layers[layers.length - 1] === layer) layer.close()
+      if (e.key === 'Escape' && layers[layers.length - 1] === layer) back(layer.token)
     }
     window.addEventListener('keydown', onKey)
     return () => {
       window.removeEventListener('keydown', onKey)
       const i = layers.indexOf(layer)
       if (i >= 0) layers.splice(i, 1)
-      if (entries.includes(layer.token) && settle === null) settle = window.setTimeout(popOrphans, 0)
+      // no step is taken here: a layer that goes without its own back press leaves a dead step, taken over or replaced later
     }
   }, [])
+  return useCallback(() => back(token.current), [])
+}
+
+/** A layer's own back: the step it put down, taken now (the close follows on the pop); a layer whose step is not the one shown
+ *  closes at once. */
+function back(token: string | null) {
+  if (token !== null && current() === token) {
+    window.history.back()
+    return
+  }
+  layers.find((l) => l.token === token)?.close()
 }
