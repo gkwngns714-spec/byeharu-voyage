@@ -53,6 +53,13 @@ declare
   v_st     numeric;
   v_st_max numeric := 0;
 begin
+  -- THE SEA IS CALMED for this transaction (hazard_p_max 0, as proofs 04, 11, 157 and 184): a voyage's days are rolled on its own id, new
+  -- every run, and a storm, a calm or a raid on a leg moves her days, her stores, her hold or her crew (about one sea-day in 70 meets
+  -- something; with a raid on every day this proof went red, 2026-11-25). What is proved here is not the weather.
+  update public.world_config set value = to_jsonb(0) where key = 'hazard_p_max';
+  if public.wc_num('hazard_p_max') <> 0 then
+    raise exception 'PROOF 70: the sea was not calmed (hazard_p_max %)', public.wc_num('hazard_p_max');
+  end if;
   -- AS THE CHAIN LEFT IT
   if (select c.value from public.world_config c where c.key = 'ship_stores_separate') is distinct from 'true'::jsonb or not public.ship_stores_separate()
      or (select count(*) from public.world_news w where w.key = 'update:0369') <> 1 then

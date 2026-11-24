@@ -67,6 +67,8 @@ declare
   v_prev  numeric;
   v_n     int := 0;
   v_low   int := 0;
+  v_skip  int := 0;
+  cand    record;
   r       record;
 begin
   -- ── THE SCENE (proof 136's), with levels lit and the merchant's hull worked up ──
@@ -89,37 +91,57 @@ begin
   select p.lat, p.lon into v_lat, v_lon from voyage.fleet_point(v_pf, t0) p;
   update public.voyages v set status = 'ABORTED' where v.status = 'SAILING';
   update public.fleets f set status = 'DOCKED', port_id = coalesce(f.port_id, v_hub), lat = null, lon = null, busy_until = null where f.status in ('SAILING', 'ANCHORED');
-  select nf.fleet_id into v_m
-    from public.npc_fleets nf join public.fleets f on f.id = nf.fleet_id join public.players pl on pl.id = f.player_id
-   where pl.nation_id is distinct from public.pirate_nation() and exists (select 1 from public.ships s where s.fleet_id = nf.fleet_id and s.durability > 0)
-   order by nf.fleet_id limit 1;
-  select s.id into v_ms from public.ships s where s.fleet_id = v_m order by s.is_flagship desc, s.created_at, s.id limit 1;
-
-  -- ── BS_FIGHTS: what a level already does in a fight, read before and after she is worked up ──
-  delete from public.ship_xp sx where sx.ship_id = v_ms;
-  v_x := world.ship_stats(v_ms);
-  v_acc1 := (v_x ->> 'accuracy')::numeric;
-  insert into public.ship_xp (ship_id, xp) values (v_ms, public.level_points(4));
-  if public.ship_level(v_ms) <> 4 then
-    raise exception 'PROOF 152 FAIL: a hull with the points of level 4 reads level %', public.ship_level(v_ms);
-  end if;
-  v_acc4 := (world.ship_stats(v_ms) ->> 'accuracy')::numeric;
-  if v_acc4 <> v_acc1 + 3 * public.wc_num('ship_level_accuracy_per_level')
-     or (world.ship_stats(v_ms) ->> 'sighting')::numeric <> (v_x ->> 'sighting')::numeric + 3 * public.wc_num('ship_level_sighting_per_level') then
-    raise exception 'PROOF 152 FAIL: level 4 does not give her 3 levels of accuracy and sighting: accuracy % -> %', v_acc1, v_acc4;
-  end if;
-  raise notice 'PASS: BS_FIGHTS — level 1 -> 4: accuracy % -> % (+% a level), sighting +% a level: her level is in her to-hit already', v_acc1, v_acc4,
-    public.wc_num('ship_level_accuracy_per_level'), public.wc_num('ship_level_sighting_per_level');
-
-  perform pg_temp.lie_152(v_m, v_lat + 1, v_lon);   -- sixty miles north
   v_hp := public.new_house(v_uid, 'Casa Ficha 152', 'PRT', 'LIS', 'Ficha 152', 'galion', 'Ficha 152', null, false);   -- a reader (her ship stays in port)
 
-  -- ── BS_SHEET ──
-  v_r := public.tick_pirates(t0);
-  select b.* into v_b from public.battles b join public.battle_sides s on s.battle_id = b.id and s.fleet_id = v_m and s.side = 'DEFENDER';
-  if v_b.id is null or v_b.kind <> 'RAID' or v_b.ticks is null then
-    raise exception 'PROOF 152 FAIL: the job did not raid the merchant tick by tick: %', v_r;
+  -- Every world numbers its merchants anew (a fleet's id is random) and every raid rolls its own dice (the battle's id is the fight's seed):
+  -- a merchant with the better lookout may see the pirates first and slip away at the open, a fight of no tick that serves no chance to run
+  -- on (PR #861's run, 2026-11-24: the carrack that world numbered first slipped; on one world a carrack slips about one raid in four). That
+  -- is the fight, rightly; this proof reads a fight that was fought. So the scene is played on merchants in turn, by id: one that slips is
+  -- undone whole (the block's savepoint) and the next is raided, until a raid is fought past its open. None in twenty-five is a red.
+  for cand in select nf.fleet_id
+             from public.npc_fleets nf join public.fleets f on f.id = nf.fleet_id join public.players pl on pl.id = f.player_id
+            where pl.nation_id is distinct from public.pirate_nation() and exists (select 1 from public.ships s where s.fleet_id = nf.fleet_id and s.durability > 0)
+            order by nf.fleet_id limit 25 loop
+    begin
+      v_m := cand.fleet_id;
+      select s.id into v_ms from public.ships s where s.fleet_id = v_m order by s.is_flagship desc, s.created_at, s.id limit 1;
+
+      -- ── BS_FIGHTS: what a level already does in a fight, read before and after she is worked up ──
+      delete from public.ship_xp sx where sx.ship_id = v_ms;
+      v_x := world.ship_stats(v_ms);
+      v_acc1 := (v_x ->> 'accuracy')::numeric;
+      insert into public.ship_xp (ship_id, xp) values (v_ms, public.level_points(4));
+      if public.ship_level(v_ms) <> 4 then
+        raise exception 'PROOF 152 FAIL: a hull with the points of level 4 reads level %', public.ship_level(v_ms);
+      end if;
+      v_acc4 := (world.ship_stats(v_ms) ->> 'accuracy')::numeric;
+      if v_acc4 <> v_acc1 + 3 * public.wc_num('ship_level_accuracy_per_level')
+         or (world.ship_stats(v_ms) ->> 'sighting')::numeric <> (v_x ->> 'sighting')::numeric + 3 * public.wc_num('ship_level_sighting_per_level') then
+        raise exception 'PROOF 152 FAIL: level 4 does not give her 3 levels of accuracy and sighting: accuracy % -> %', v_acc1, v_acc4;
+      end if;
+
+      perform pg_temp.lie_152(v_m, v_lat + 1, v_lon);   -- sixty miles north
+
+      -- ── BS_SHEET ──
+      v_r := public.tick_pirates(t0);
+      select b.* into v_b from public.battles b join public.battle_sides s on s.battle_id = b.id and s.fleet_id = v_m and s.side = 'DEFENDER';
+      if v_b.id is null or v_b.kind <> 'RAID' or v_b.ticks is null then
+        raise exception 'PROOF 152 FAIL: the job did not raid the merchant tick by tick: %', v_r;
+      end if;
+      if coalesce((v_b.ticks #>> '{r,slipped}')::boolean, false) and (v_b.ticks ->> 'n')::int = 0 then
+        raise exception 'she slipped away at the open' using errcode = 'PR152';
+      end if;
+      exit;
+    exception when sqlstate 'PR152' then
+      v_b := null;
+      v_skip := v_skip + 1;
+    end;
+  end loop;
+  if v_b.id is null then
+    raise exception 'PROOF 152 FAIL: % merchant(s) raided in turn, every one slipped away at the open', v_skip;
   end if;
+  raise notice 'PASS: BS_FIGHTS — level 1 -> 4: accuracy % -> % (+% a level), sighting +% a level: her level is in her to-hit already (% merchant(s) before her slipped away at the open)', v_acc1, v_acc4,
+    public.wc_num('ship_level_accuracy_per_level'), public.wc_num('ship_level_sighting_per_level'), v_skip;
   v_tl := v_b.ticks;
   for r in select h, k from (select h, 'a' as k from jsonb_array_elements(v_b.sheet -> 'a') h union all select h, 'b' from jsonb_array_elements(v_b.sheet -> 'b') h) z loop
     v_n := v_n + 1;
