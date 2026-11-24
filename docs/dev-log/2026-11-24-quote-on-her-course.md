@@ -77,6 +77,19 @@ re-measures a sample live every run: a later `sea_courses` write without the gen
   compares the figure to a tenth. Found by CI's pglite-gate (the rest) on #852's first run; 1 of 165 files red, fixed, 9/9 locally.
 - Courses, raster and roadsteads are not touched: proof 148 (straits) and the no-land audit unchanged (outputs below).
 
-## Prod (filled at deploy)
+## Prod
 
-(before-0491, deploy, after-0491, 30-minute after-check)
+- **Before** (05:10 UTC, head 0490, read only): every digest equals the chain's world (courses, reaches_hh, reaches_rest, haul 159,766
+  rows, job_course, matrix); `sea_courses_enabled` true. Gate green: beat 161 ms mean, 781 MB, 0 io waits. Baseline (the after-check file
+  read before): best_sales LIS 1,605 ms not cut, 962 fleets at sea, fleet-jobs 14 runs / 0 failed, contracts 14 / 0.
+- **Deploy** (`bv-deploy.sh 852`, 05:28 UTC): push landed, head 20260818000491, merged. Gate before 133 ms mean / 227 p95; after
+  136 / 229; 781 MB. The clock stop cancelled the 05:28 `arrivals` and `waiting-asks` runs ("job canceled", as at every deploy; 0490's
+  did the same at 05:01).
+- **After** (05:29): head 0491; digests = the local after (reaches_hh 8e418cd6..., haul 18630752..., job_course 40599d42..., matrix
+  79fcbc8e...), courses and sea-place cells unmoved, `guard` 0 (every market row's haul = world.haul_rows()), matrix kept. best_sales
+  1,631 ms not cut, beat 143 ms.
+- **30-minute after-check** (05:59): beat 135 ms, 782 MB, 0 io waits; best_sales 1,648 ms not cut (before 1,605); 960 at sea (before
+  962); in the 30 minutes after against the 30 before: SELL 425 rows / 19.99 M against 370 / 22.18 M, BUY 342 / 23.00 M against 353 /
+  19.00 M, PORT_FEE 1,161 against 1,110, WAGES 367 against 318; fleet-jobs 15 runs / 0 failed (max 204 ms), contracts 15 / 0 (max
+  2,864 ms; its rollback line in 0483 is 5,000); no cron run failed after the deploy (the three "not succeeded" at 05:59 were still
+  running at the read). Stays.
