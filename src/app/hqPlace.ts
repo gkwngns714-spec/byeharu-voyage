@@ -18,6 +18,8 @@ export type HqAsk =
   | { sheet: 'invest' }
   /** Profit by section, Today / Week / All (features/command/report/Report.tsx). */
   | { sheet: 'report' }
+  /** Every move the board serves, with its filters (features/city/board/HqBoard.tsx): Best moves' More. */
+  | { sheet: 'moves' }
   /** A city's building yard (port CODE), a hull's sheet open when one is named. */
   | { sheet: 'yard'; port: string; hull?: string }
   /** A city's inn, for her fleet lying there. */
@@ -64,7 +66,7 @@ export function openHq(ask: HqAsk): void {
 /** The URL fields a link carries, by the ask's own field (`best` is not one: a link names the good and the side). The sheet's city
  *  rides as `at`, since `port` is HQ's own city. */
 const FIELDS = { sheet: 'sheet', port: 'at', fleet: 'fleet', good: 'good', side: 'side', hull: 'hull', route: 'route', worker: 'worker', buy: 'buy', sell: 'sell' } as const
-const SHEETS: readonly HqAsk['sheet'][] = ['invest', 'report', 'yard', 'inn', 'requests', 'trade', 'fleet', 'assign', 'worker']
+const SHEETS: readonly HqAsk['sheet'][] = ['invest', 'report', 'moves', 'yard', 'inn', 'requests', 'trade', 'fleet', 'assign', 'worker']
 
 /** A link to HQ from another screen: on `port` (else the city in hand), the `place` plate open, and `ask`'s sheet over it. */
 export function hqHref({ port, place, ask }: { port?: string; place?: string; ask?: HqAsk } = {}): string {
@@ -89,6 +91,7 @@ export function askOfParams(p: URLSearchParams): HqAsk | null {
   switch (sheet) {
     case 'invest':
     case 'report':
+    case 'moves':
       return { sheet }
     case 'yard':
       return port ? { sheet, port, hull: p.get('hull') ?? undefined } : null

@@ -20,6 +20,7 @@ import type { DeskLayout } from '../features/command/DeskFrame'
 import { useYardAsk } from '../features/command/officeView'
 import { Invest } from '../features/command/invest/Invest'
 import { Report } from '../features/command/report/Report'
+import { AllMoves } from '../features/city/board/HqBoard'
 import { Queue } from '../features/command/Queue'
 import { RouteFold } from '../features/command/RouteFold'
 import { CargoBest } from '../features/command/buysell/CargoBest'
@@ -129,6 +130,14 @@ function AskSheet({ ask, onClose, onDone }: { ask: HqAsk; onClose: () => void; o
       return (
         <DetailPage title={t('command.f_report')} onClose={onClose} data-testid="hq-sheet-report">
           <Report layout={stack} />
+        </DetailPage>
+      )
+    case 'moves':
+      return (
+        <DetailPage title={t('hq.moves')} onClose={onClose} data-testid="hq-sheet-moves">
+          <PageBody>
+            <AllMoves />
+          </PageBody>
         </DetailPage>
       )
     case 'yard':

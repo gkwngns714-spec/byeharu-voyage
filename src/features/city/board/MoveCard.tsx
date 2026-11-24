@@ -41,10 +41,14 @@ export function MoveCard({
   move,
   onPress,
   inline = false,
+  slot = false,
 }: {
   move: Move<MoveData>
   onPress: (m: MoveData) => void
   inline?: boolean
+  /** The card stands in one of Best moves' three slots of one height (HqBoard.tsx): its tile fills the slot, and a refusal lies over
+   *  the tile's foot instead of under it, so nothing on HQ grows. */
+  slot?: boolean
 }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
@@ -110,13 +114,13 @@ export function MoveCard({
   const nextRole = s.kind === 'yard' ? (s.role ?? null) : null
 
   return (
-    <div className="flex min-w-0 flex-col gap-1">
+    <div className={slot ? 'relative h-full min-w-0' : 'flex min-w-0 flex-col gap-1'}>
       <button
         type="button"
         onClick={() => onPress(d)}
         disabled={pending}
         aria-busy={pending || undefined}
-        className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-tile p-3 text-left disabled:opacity-60 ${tileToneClass(inline)}`}
+        className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-tile p-3 text-left disabled:opacity-60 ${slot ? 'min-h-full content-start' : ''} ${tileToneClass(inline)}`}
         data-testid="hq-move"
         data-kind={move.kind}
         data-served="true"
@@ -215,9 +219,11 @@ export function MoveCard({
         </span>
       </button>
       {refusal && (
-        <Note tone="danger" code={refusal.code} figures={refusal.figures} sea={refusal.sea} data-testid="hq-move-refusal">
+        <div className={slot ? 'pointer-events-none absolute inset-x-0 bottom-0' : undefined}>
+          <Note tone="danger" code={refusal.code} figures={refusal.figures} sea={refusal.sea} data-testid="hq-move-refusal">
           {refusal.sentence}
         </Note>
+        </div>
       )}
     </div>
   )

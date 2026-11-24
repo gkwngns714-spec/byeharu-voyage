@@ -42,8 +42,11 @@ export function HqCompany({ port }: { port: SnapshotPort | null }) {
   // 0486: her choices at sea (world.sea_choices; dark: null, and nothing of them is drawn)
   const seaRead = useSeaChoices()
   const sea = litSea(seaRead.view)
-  // NOTHING HERE MOVES BY ITSELF (2026-11-25): the four blocks below whose height only their own read knows each hold the room they had
-  // last time while that read is asked (HeldRoom.tsx). `asking` is the first answer still on the wire, never the silent re-ask.
+  // NOTHING HERE MOVES BY ITSELF (2026-11-25). Best moves, the Storage and the Ledger are FIXED SHAPES: the same boxes before their read,
+  // after it, and whatever it says. Three blocks cannot be: a choice at sea, the news from away and the country race are there only
+  // when something happened or a switch is lit, which only their own read knows. Those hold the room they had last time while that
+  // read is asked (HeldRoom.tsx); so does the worker list, for the rows only the Land's read knows. `asking` is the first answer still
+  // on the wire, never the silent re-ask.
   const asking = (r: { view: unknown; loading: boolean }) => r.view === null && r.loading
   return (
     <div className="flex flex-col gap-6" data-testid="hq-company">
@@ -56,9 +59,7 @@ export function HqCompany({ port }: { port: SnapshotPort | null }) {
         {away && <JobsAway report={away} sea={sea?.recent ?? []} />}
       </HeldRoom>
       <WorkerList />
-      <HeldRoom name="hq-moves" asking={board.asking}>
-        <HqBoard board={board} />
-      </HeldRoom>
+      <HqBoard board={board} />
       {port && <WarehouseArea port={port} />}
       <LedgerArea rate={board.rate} asking={board.asking} />
       <HeldRoom name="hq-race" asking={asking(raceRead)}>
