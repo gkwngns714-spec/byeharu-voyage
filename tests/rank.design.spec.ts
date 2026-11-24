@@ -54,7 +54,7 @@ const ROWS = ['rank-row', 'rank-you', 'rank-country'] as const
  *  figure, its side blocks (in the side from 1,024, after the list below it — (e)), and what the old screen had by test id — still
  *  on the face (U3). */
 const FACES = [
-  { name: 'Captains', panel: 'rank-list', row: 'rank-row', figures: ['rank-place'], side: ['rank-standing', 'rank-leaders'], kept: ['rank-list', 'rank-you'] },
+  { name: 'Captains', panel: 'rank-list', row: 'rank-row', figures: ['rank-place'], side: ['rank-standing'], kept: ['rank-list', 'rank-you'] },
   { name: 'Countries', panel: 'rank-countries', row: 'rank-country', figures: ['rank-held'], side: ['rank-my-country', 'rank-held-bars'], kept: ['rank-countries', 'rank-country'] },
 ] as const
 
@@ -211,6 +211,11 @@ for (const glass of DESIGN_GLASSES) {
     const rows = page.getByTestId('rank-row')
     const total = await rows.count()
     expect(total, "the board's rows carry no id (rank-row)").toBeGreaterThan(0)
+    // EACH COMPANY ONCE (simplify S8): no Leaders card; the rows stand from the podium's fourth, so a place on the podium is no row
+    await expect(page.getByTestId('rank-leaders')).toHaveCount(0)
+    for (const place of await page.getByTestId('rank-podium-step').evaluateAll((els) => els.map((e) => e.getAttribute('data-place')))) {
+      expect(await rows.filter({ hasText: new RegExp(`^${place}\b`) }).count(), `place ${place} stands on the podium and again as a row`).toBe(0)
+    }
     const ids = ['rank-list', ...FACES[0].side]
 
     // Bring your line under the finger FIRST, then measure: a scroll the browser makes to reach a control is not a move.

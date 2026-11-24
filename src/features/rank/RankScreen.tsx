@@ -2,14 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Card,
   Figure,
-  Flag,
-  FlagSlot,
   Hint,
   Icon,
   ListPanel,
   Note,
   PageSplit,
-  RankBars,
   Row,
   Segmented,
   Sheet,
@@ -17,7 +14,6 @@ import {
   StackedBar,
   StatCell,
   Tray,
-  type RankRow,
   type StackedPart,
   type TrayDetent,
 } from '../../components/ui'
@@ -25,7 +21,7 @@ import { BoardRow, Pinned, Podium, type PodiumStep } from './Podium'
 import { formatInt, formatRelative } from '../../lib/format'
 import { worldHousesWeek, type PlayerHouse, type StandingsBoard } from '../../lib/rpc'
 import { HullCountry } from '../../live/HullCountry'
-import { nationNameOf, useWorld } from '../../live/worldStore'
+import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CountriesBoard } from './CountriesBoard'
 import { WeekBoard } from './WeekBoard'
@@ -45,8 +41,8 @@ import { tabWord } from '../../app/navTabs'
 // (docs/dev-log/2026-11-02-stats-design.md, Card.tsx) and the Codex and History followed: MAIN | SIDE from 1,024 px — MAIN
 // the board as ONE list card whose rows stand in as many columns as the main holds (the place as each row's mark, so two
 // columns still read as one ladder); the SIDE the tray's column, holding YOUR STANDING AS GRAPHICS (the place and the fame
-// at 24 px, the two fames the total is made of as one stacked bar, the ports and the companies as lines) and the LEADERS —
-// the first rows of the board as ranked bars. The page scrolls, never a list inside itself; nothing is pinned and nothing
+// at 24 px, the two fames the total is made of as one stacked bar, the ports and the companies as lines). The leaders are the podium, ONCE (2026-11-24,
+// simplify S8: the "Leaders" card and the list's repeat of the first three are gone). The page scrolls, never a list inside itself; nothing is pinned and nothing
 // follows the scroll. The numbers it was measured to are in docs/dev-log/2026-11-03-rank-design.md.
 //
 // YOUR LINE IS PINNED AT THE HEAD OF THE LIST (2026-11-23, the visual overhaul's slice 8): under the podium of the top three, lit,
@@ -66,8 +62,8 @@ import { tabWord } from '../../app/navTabs'
 // ONE CLOCK. Everything on this screen is the PHOTOGRAPH `public.standings` took (0025), and the title's trailing line says
 // how old it is, measured by the server (`age_seconds`), never by this browser's clock. Your own live record is PROFILE's.
 
-/** How many of the board's rows the Leaders board draws as bars. */
-const LEADERS = 5
+/** The podium's steps: the board's first three, once. The list under it stands from the fourth. */
+const PODIUM = 3
 
 export function RankScreen() {
   // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord). It read "Standings" while the rail said
@@ -199,7 +195,6 @@ function Board({
   house: PlayerHouse | null
 }) {
   const t = useT()
-  const nationByCode = useWorld((s) => s.nationByCode)
   const [open, setOpen] = useState<Line | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('closed')
 
@@ -233,7 +228,6 @@ function Board({
   }
 
   const mine = lines.mine
-  const flag = (code: string | null) => (code === null ? null : nationNameOf(nationByCode, code))
   const show = (line: Line) => {
     setOpen(line)
     setDetent('half')
@@ -261,7 +255,7 @@ function Board({
       data-testid={pinned ? 'rank-you' : 'rank-row'}
     />
   )
-  const podium: PodiumStep[] = leadersOf(lines.rows, 3).map((r) => ({
+  const podium: PodiumStep[] = leadersOf(lines.rows, PODIUM).map((r) => ({
     key: `${r.position}-${r.name}`,
     place: r.position,
     name: r.name,
@@ -279,19 +273,6 @@ function Board({
           { id: 'trade', label: t('rank.trade'), value: mine.trade_fame, tone: 'accent' },
           { id: 'exploration', label: t('rank.exploration'), value: mine.exploration_fame, tone: 'info' },
         ]
-  // the leaders' flags are pictures (their names the pictures' accessible names), not a caption line under each name
-  const leaders: RankRow[] = leadersOf(lines.rows, LEADERS).map((r) => ({
-    id: `${r.position}-${r.name}`,
-    label: (
-      <span className="flex min-w-0 items-center gap-2">
-        {r.nation === null ? <FlagSlot /> : <Flag code={r.nation} name={flag(r.nation) ?? r.nation} />}
-        <span className="min-w-0">{r.name}</span>
-      </span>
-    ),
-    value: r.total_fame,
-    tone: r.mine ? 'accent' : 'neutral',
-  }))
-
   return (
     <>
       <PageSplit
@@ -312,7 +293,8 @@ function Board({
             <Podium steps={podium} label={t('rank.podium')} />
             {/* YOUR LINE, PINNED AT THE HEAD OF THE LIST (slice 8), whether you placed or stand off the board's end */}
             {mine !== null ? <Pinned>{row(mine, true)}</Pinned> : <Row label={t('rank.notRanked')} tone="muted" hairline={false} />}
-            {lines.rows.map((r) => row(r))}
+            {/* EACH COMPANY ONCE: the podium holds the first three, the rows stand from the fourth (your line is pinned above, lit) */}
+            {lines.rows.slice(PODIUM).map((r) => row(r))}
           </ListPanel>
         }
         side={
@@ -343,9 +325,6 @@ function Board({
                   </div>
                 </>
               )}
-            </Card>
-            <Card title={t('rank.leaders')} data-testid="rank-leaders">
-              <RankBars rules={false} format={formatInt} empty={t('rank.empty')} rows={leaders} />
             </Card>
           </>
         }

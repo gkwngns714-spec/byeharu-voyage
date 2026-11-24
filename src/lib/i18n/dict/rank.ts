@@ -10,7 +10,6 @@ export const rankDict = defineDict({
     place: 'Place',
     fame: 'Fame',
     fameByKind: 'Fame by kind',
-    leaders: 'Leaders',
     // 2026-11-23 (slice 8): the top three's picture, and your place's count under its figure
     podium: 'Top three',
     podiumEmpty: 'No leader',
@@ -51,7 +50,6 @@ export const rankDict = defineDict({
     place: '등수',
     fame: '명성',
     fameByKind: '종류별 명성',
-    leaders: '선두',
     podium: '상위 3',
     podiumEmpty: '선두 없음',
     ofN: '{of}곳 중',
