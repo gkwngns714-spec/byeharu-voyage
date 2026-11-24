@@ -202,8 +202,9 @@ begin
     v_clean := v_clean and coalesce(v_voy.delay_hours, 0) = 0 and abs(v_w_now - (v_hulls->0->>'water')::numeric) < 0.002
                and (select s.crew from public.ships s where s.id = v_sh) = (v_hulls->0->>'crew')::numeric;   -- and no hand lost: the day's wage is by her crew
     v_days_ok := v_days_ok and voyage.total_days(v_voy.id) = v_days;
-    v_legs_t := v_legs_t || format('%sleg %s: stores %s, walked %s; settled %s d, walked %s d; crew %s, walked %s; speed %s, in port %s', case when k > 1 then '; ' end, k, v_paid, v_walk,
-      voyage.total_days(v_voy.id), v_days, (select s.crew from public.ships s where s.id = v_sh), v_hulls->0->>'crew', (select round((v.speed_profile ->> 0)::numeric, 3) from public.voyages v where v.id = v_voy.id), round(v_speed, 3));
+    v_legs_t := v_legs_t || format('%sleg %s: stores %s, walked %s; settled %s d, walked %s d; crew %s, walked %s; speed %s, in port %s; sailed %s nm, the board''s leg %s nm %s d', case when k > 1 then '; ' end, k, v_paid, v_walk,
+      voyage.total_days(v_voy.id), v_days, (select s.crew from public.ships s where s.id = v_sh), v_hulls->0->>'crew', (select round((v.speed_profile ->> 0)::numeric, 3) from public.voyages v where v.id = v_voy.id), round(v_speed, 3),
+      round(v_nm, 1), v_trip->'legs'->(k - 1)->>'nm', v_trip->'legs'->(k - 1)->>'days');
 
     if k < v_n then
       -- HER PORT TIME: still there a second before it is up, then the next SAIL leaves
