@@ -3589,7 +3589,157 @@ export interface FleetJobRow {
 export type FleetJobsReport =
   | { on: false }
   | { on: true; company: false }
-  | { on: true; company: true; jobs: FleetJobRow[]; since: string | null; runs: number; earned: number }
+  | {
+      on: true
+      company: true
+      jobs: FleetJobRow[]
+      since: string | null
+      runs: number
+      earned: number
+      /** 0496: her land parties with a job or a haul waiting (absent before 0496). */
+      parties?: AwayPartyRow[]
+    }
+
+/** 0496: one land party in the away report (`public.away_parties_for`): what came home while she was away and why it stands. */
+export interface AwayPartyRow {
+  /** The worker id `world.actions` takes: `party:<n>`. */
+  party: string
+  action: string | null
+  good: string | null
+  state: 'working' | 'waiting' | 'stopped'
+  phase: string | null
+  since: string | null
+  seen_at: string | null
+  /** Turns come home that no press has booked yet (Collect books them). */
+  turns_home: number
+  turns_booked: number
+  in_packs: number
+  waiting: number
+  xp_due: number
+  /** cap: the away cap; shed_full: a haul waits for room; done: its last trip is home. */
+  stop: 'cap' | 'shed_full' | 'done' | null
+  next_home_at: string | null
+}
+
+// ── 0496: THE WORKERS AND THEIR ACTIONS (docs/design/hq-corp-2026-11-24.md A2.1, B3) ─────────────────────────────
+// `world.workers()` is HQ's one list of who does what; `world.actions(worker)` is the Assign sheet's options. Every figure
+// is the server's: the client draws a row and the bar between two served stamps, and computes nothing.
+
+/** Where an action's figures come from: her own completed runs, a served quote, a land job's frozen terms, or nothing yet (nulls). */
+export type ActionBasis = 'runs' | 'quote' | 'terms' | 'none'
+
+/** Goods on one side of an action's completion. `basis`: the cost a unit is stored at (bring home). */
+export interface ActionItem {
+  good: string
+  units: number
+  basis?: number
+}
+
+/** THE ONE SHAPE of an action (`public.action_shape`): a sea run, a land job, a make job. */
+export interface WorkerAction {
+  /** sea:best | sea:fixed:<good>:<buy>:<sell>:<sell|store> | sea:haul:<yard> | land:<job>. A running action and its option share it. */
+  id: string
+  kind: 'sea' | 'gather' | 'make'
+  skill: string
+  /** The level it needs. */
+  level: number
+  /** One completion in real seconds. A sea run: the WHOLE cycle, the sail back and the dock turns in it. Null: not priced. */
+  interval_s: number | null
+  inputs: { coin: number; items: ActionItem[] }
+  outputs: { coin: number; items: ActionItem[] }
+  /** Experience a completion. */
+  xp: { skill: string; xp: number }[]
+  /** Sea: `total` (tax, wages, stores, dock fees, the sail back) and the sail back's parts. Empty ashore. */
+  cost: {
+    total?: number
+    wages?: number
+    stores?: number
+    dock_fee?: number
+    back?: { wages: number; stores: number; dock_fee: number }
+  }
+  /** Coin a completion, after every cost. */
+  net: number | null
+  per_hour: number | null
+  xp_per_hour: number | null
+  items_per_hour: number | null
+  basis: ActionBasis
+  /** Sea: what `cmd.set_fleet_job(fleet, job.kind, job.params)` takes. */
+  job?: { kind: FleetJobKind; params: Record<string, unknown> }
+  /** Land: what `cmd.land_send(action)` takes. */
+  action?: string
+  good?: string
+  buy?: string
+  sell?: string
+  end?: 'sell' | 'store'
+  units?: number
+  /** Sea: false for the Best run (one way: its next run starts where it sold). */
+  returns?: boolean
+  /** Sea: true for the Best run (each run picks its own sale; the figures are the sale it would take now). */
+  varies?: boolean
+  left?: number
+  have?: number
+  region?: string
+  home?: boolean
+  via?: string
+  over_cap?: boolean
+  crowd?: number
+  can?: number
+  last?: number
+}
+
+/** The served stamps a worker's bar is drawn between. */
+export interface WorkerProgress {
+  from: string | null
+  to: string | null
+  /** Sea: out | back | way | port. Land: the party's phase (out, march, digging, back, in, returning, home). */
+  leg: string
+  from_port?: string
+  to_port?: string
+  turns_home?: number
+  in_packs?: number
+}
+
+/** One worker: a fleet or a land party. */
+export interface WorkerRow {
+  /** fleet:<uuid> | party:<n>: what `world.actions` takes. */
+  id: string
+  kind: 'fleet' | 'party'
+  fleet?: string
+  name: string | null
+  at: string | null
+  state: 'idle' | 'working' | 'waiting' | 'stopped'
+  /** A fleet's one state (port, sea, battle, laid_up, wrecked); a party's phase. */
+  worker_state: string
+  action: WorkerAction | null
+  progress: WorkerProgress | null
+  stop: { code: string; sentence: string | null } | null
+  runs: number
+  /** Whole runs of hers the `runs` basis was read from (0: not enough yet). */
+  measured: number
+}
+
+/** `world.workers()` (0496). Ask no more than once in `ask_s` seconds, and once after a command or when a stamp passes. */
+export type WorkersView =
+  | { company: false; workers: [] }
+  | { company: true; now: string; ask_s: number; away_cap_hours: number; workers: WorkerRow[] }
+
+/** `world.actions(worker)` (0496): only what the server would take. Ask when the Assign sheet opens, never on a timer. */
+export type WorkerActionsView =
+  | { company: false; options: [] }
+  | {
+      company: true
+      worker: string
+      kind: 'fleet' | 'party' | null
+      now: string
+      ask_s: number
+      options: WorkerAction[]
+      /** Her door is shut for every option (dark, a route, the party out, a haul waiting): no option is served. */
+      closed: { code: string; sentence: string } | null
+      /** The read's budget ran out before every option was priced. */
+      cut: boolean
+      at?: string | null
+      ms: number
+    }
 
 /** `cmd.set_fleet_job` committed. */
 export interface FleetJobSet {
