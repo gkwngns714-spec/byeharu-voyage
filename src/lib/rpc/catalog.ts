@@ -465,6 +465,10 @@ const TABLE = {
   },
   cmdClearFleetJob: { schema: 'cmd', fn: 'clear_fleet_job', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdFleetJobsSeen: { schema: 'cmd', fn: 'fleet_jobs_seen', mutates: true, args: [] },
+  // 0496 (docs/design/hq-corp-2026-11-24.md A2.1, B3): HQ's worker list and one worker's options, each action in one served shape.
+  // Reads; no switch of their own. world.actions prices (the server's quotes): asked when the Assign sheet opens, never on a timer.
+  worldWorkers: { schema: 'world', fn: 'workers', args: [] },
+  worldActions: { schema: 'world', fn: 'actions', args: [{ name: 'p_worker', type: 'text' }] },
   // 0483 — COURIER CONTRACTS (dark: the doors E_NOT_IN_USE, the read {on: false})
   worldCourierContracts: { schema: 'world', fn: 'courier_contracts', args: [] },
   cmdTakeContract: {
