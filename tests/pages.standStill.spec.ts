@@ -115,8 +115,9 @@ test('HQ: the hall read lands two seconds late and nothing goes up when the load
   expect(moves.map(sayMove), 'a box on HQ moved by itself when the loading meter left').toEqual([])
 })
 
-// A BLOCK WHOSE HEIGHT ONLY ITS READ KNOWS HOLDS THE ROOM IT HAD LAST TIME (src/components/ui/HeldRoom.tsx). The first visit on a
-// glass has nothing to hold and is not judged here; every visit after it is: the page is opened, left to settle, opened again with
+// A BLOCK THAT IS THERE ONLY WHEN SOMETHING HAPPENED (a choice at sea, news from away, the country race, a worker the Land adds) cannot
+// be a fixed shape: only its read knows whether it is there. It holds the room it had last time (src/components/ui/HeldRoom.tsx). The
+// first visit on a glass has nothing to hold and is not judged here; every visit after it is: the page is opened, left to settle, opened again with
 // the same read late, and what stands under the block must stand still from its first frame.
 async function secondVisit(page: Page, settled: () => Promise<void>): Promise<void> {
   await page.goto('city')
@@ -127,20 +128,82 @@ async function secondVisit(page: Page, settled: () => Promise<void>): Promise<vo
   await settled()
 }
 
-test('HQ, the board lit: on a second visit Best moves, the Storage and the Ledger hold their room while the board read is late, and the plates under them stand still', async ({ page }) => {
+// BEST MOVES, THE STORAGE AND THE LEDGER ARE FIXED SHAPES (2026-11-25): the same boxes before their read, after it, and whatever it
+// says. Remembering the last height could not hold them: PR #862's run drew one card more than the visit before (company 1166 then
+// 1278 px). So this is judged on a FIRST visit, with the board late, in two worlds whose boards differ: every card the lit world
+// serves, and the same board cut to ONE card. Nothing may move in either, the two must be one height, and neither a filter nor More
+// may change it.
+const ONE_CARD = `
+  alter function world.hq_board() rename to hq_board__all;
+  create function world.hq_board() returns jsonb language sql as $one$
+    select case when b ? 'moves'
+             then jsonb_set(b, '{moves}', coalesce((select jsonb_agg(m order by i) from jsonb_array_elements(b -> 'moves') with ordinality t(m, i) where i <= 1), '[]'::jsonb))
+             else b end
+      from (select world.hq_board__all() as b) x
+  $one$;
+  grant execute on function world.hq_board() to authenticated;`
+
+test('HQ, the board lit: Best moves is three slots of one height whether the late board serves many cards or one, under any filter, and More opens over the page', async ({ browser, baseURL }) => {
+  test.setTimeout(900_000)
+  const heights: Record<string, number> = {}
+  for (const world of ['many', 'one'] as const) {
+    const context = await browser.newContext({ viewport: PHONE, baseURL })
+    const page = await context.newPage()
+    await page.addInitScript(() => window.localStorage.setItem('bv:welcome-seen', '1'))
+    await serveHqLit(page, { served: true, late: ['world.hq_board'], also: world === 'one' ? { name: 'one-card', sql: ONE_CARD } : undefined })
+    await watchBoxes(page, { company: '[data-testid="hq-company"]', board: '[data-testid="hq-board"]', plate: '[data-plate-mark]' }, '[data-testid="hq-company"]')
+    await page.goto('city')
+    await ready(page)
+    await expect(page.locator('[data-testid="hq-board"][data-source="served"]')).toBeVisible({ timeout: 180_000 })
+    await expect(page.locator('[data-testid="corp-ledger"]:not([data-state="asking"])')).toBeVisible({ timeout: 60_000 })
+    await expect(page.locator('[data-testid="corp-warehouse"]:not([data-state="asking"])')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('hq-move-slot')).toHaveCount(3)
+    const cards = await page.getByTestId('hq-moves').getByTestId('hq-move').count()
+    if (world === 'one') expect(cards, 'the cut board draws one card').toBe(1)
+    else expect(cards, 'the lit board draws three cards').toBe(3)
+    const boardHeight = async () => Math.round((await page.getByTestId('hq-board').boundingBox())!.height)
+    heights[world] = await boardHeight()
+
+    // A FILTER: each chip in turn, the height unmoved
+    const chips = page.getByTestId('hq-filters').locator('button:not([data-gave-way])')
+    for (let i = 0; i < (await chips.count()); i++) {
+      await chips.nth(i).click()
+      expect(await boardHeight(), `the filter ${await chips.nth(i).innerText()} changed Best moves' height`).toBe(heights[world])
+    }
+    await chips.first().click()
+
+    // MORE: every move, in a sheet over HQ; the page under it as it was
+    if (world === 'many') {
+      await page.getByTestId('hq-moves-more').click()
+      await expect(page.getByTestId('hq-sheet-moves')).toBeVisible()
+      expect(await page.getByTestId('hq-moves-all').getByTestId('hq-move').count(), 'the sheet holds more than the three').toBeGreaterThan(3)
+      expect(await boardHeight(), 'More changed the page under its sheet').toBe(heights[world])
+      await page.keyboard.press('Escape')
+      await expect(page.getByTestId('hq-sheet-moves')).toHaveCount(0)
+    } else {
+      await expect(page.getByTestId('hq-moves-more')).toBeDisabled()
+    }
+
+    const { moves, seen } = await movesOf(page)
+    expect(seen, 'the watch saw no plate').toContain('plate#0')
+    expect(moves.map(sayMove), `the board of ${world}: a box on HQ moved by itself`).toEqual([])
+    await context.close()
+  }
+  expect(heights.one, 'Best moves is one height with one card and with many').toBe(heights.many)
+})
+
+// THE STORAGE stood up when the third of its reads had answered. It is in the first frame now, a skeleton until then.
+test('HQ: the Land, requests and warehouse reads land late and the Storage, the Ledger and the plates stay where they stood', async ({ page }) => {
   test.setTimeout(600_000)
   await page.setViewportSize(PHONE)
-  await serveHqLit(page, { served: true, late: ['world.hq_board'] })
-  // the plates stand under the whole company block from the first frame: what Best moves, the Storage and the Ledger push, they show
-  await watchBoxes(page, { company: '[data-testid="hq-company"]', plate: '[data-plate-mark]' }, '[data-testid="hq-company"]')
-  await secondVisit(page, async () => {
-    await expect(page.locator('[data-testid="hq-board"][data-source="served"]')).toBeVisible({ timeout: 180_000 })
-    await expect(page.getByTestId('hq-moves')).toBeVisible()
-    await expect(page.getByTestId('corp-warehouse')).toBeVisible()
-  })
+  await serveLateWorld(page, ['world.land', 'world.requests', 'world.warehouse'], 1)
+  await watchBoxes(page, { storage: '[data-testid="corp-warehouse"]', ledger: '[data-testid="corp-ledger"]', plate: '[data-plate-mark]' }, '[data-testid="hq-company"]')
+  await page.goto('city')
+  await ready(page)
+  await expect(page.locator('[data-testid="corp-warehouse"][data-state="shed"]')).toBeVisible({ timeout: 180_000 })
   const { moves, seen } = await movesOf(page)
-  expect(seen, 'the watch saw no plate').toContain('plate#0')
-  expect(moves.map(sayMove), 'the company block or a plate under it moved by itself when the board read landed').toEqual([])
+  for (const mark of ['storage#0', 'ledger#0', 'plate#0']) expect(seen, `the watch saw no ${mark}`).toContain(mark)
+  expect(moves.map(sayMove), 'a box on HQ moved by itself when the Storage was read').toEqual([])
 })
 
 /** One choice open at sea and one lately settled, as `world.sea_choices` serves them (0486): the first draws a card over the workers,

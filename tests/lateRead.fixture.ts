@@ -24,25 +24,26 @@ export const STOOD_MS = 250
 /** Make `schema.fn` answer `seconds` late. Only a plain function returning jsonb, defined once, can be wrapped this way; anything else throws. */
 export async function makeLate(pg: PGlite, read: string, seconds: number): Promise<void> {
   const [schema, fn] = read.split('.')
-  const found = await pg.query<{ args: string; n: number; ok: boolean }>(
-    `select pg_get_function_arguments(p.oid) as args, p.pronargs::int as n,
+  const found = await pg.query<{ args: string; ident: string; n: number; ok: boolean }>(
+    `select pg_get_function_arguments(p.oid) as args, pg_get_function_identity_arguments(p.oid) as ident, p.pronargs::int as n,
             (p.prorettype = 'jsonb'::regtype and not p.proretset and p.prokind = 'f') as ok
        from pg_proc p join pg_namespace s on s.oid = p.pronamespace
       where s.nspname = $1 and p.proname = $2`,
     [schema, fn],
   )
   if (found.rows.length !== 1) throw new Error(`lateRead: ${read} has ${found.rows.length} definitions, expected one`)
-  const { args, n, ok } = found.rows[0]
+  // `args` carries the defaults (for the wrapper's own definition); `ident` names the function (for the rename and the grant)
+  const { args, ident, n, ok } = found.rows[0]
   if (!ok) throw new Error(`lateRead: ${read} is not a plain function returning jsonb`)
   const pass = Array.from({ length: n }, (_, i) => `$${i + 1}`).join(', ')
   await pg.exec(`
-    alter function ${schema}.${fn}(${args}) rename to ${fn}__now;
+    alter function ${schema}.${fn}(${ident}) rename to ${fn}__now;
     create function ${schema}.${fn}(${args}) returns jsonb language plpgsql as $late$
     begin
       perform pg_sleep(${seconds});
       return ${schema}.${fn}__now(${pass});
     end $late$;
-    grant execute on function ${schema}.${fn}(${args}) to authenticated;
+    grant execute on function ${schema}.${fn}(${ident}) to authenticated;
   `)
 }
 
