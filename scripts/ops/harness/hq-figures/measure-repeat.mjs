@@ -77,6 +77,12 @@ try {
       const net1 = after - before
       const last = (await one(`select j.last from public.fleet_jobs j where j.fleet_id = $1`, [f.id]))?.last
       runs.push({ n, net: net1, secs: out + turn + TICK_WAIT_S, out, back: 0 })
+      if (process.argv.includes('--ledger')) {
+        const ord = await db.query(`select o.raw_text, o.status, o.error_code, o.result->>'units' as units, o.result->>'total' as total from public.orders o where o.fleet_id = $1 and o.plan_id = (select j.last_plan from public.fleet_jobs j where j.fleet_id = $1) and o.verb in ('BUY', 'SELL') order by o.seq`, [f.id])
+        const aboard = await one(`select coalesce(sum((e.value)::numeric), 0) as q from public.ships s, jsonb_each_text(s.cargo) e where s.fleet_id = $1`, [f.id])
+        const cap = last?.to && last?.good ? await one(`select world.daily_cap_remaining($1, (select id from public.ports where code = $2), (select id from public.goods where code = $3)) as left, (select t.ducats from public.port_treasury t join public.ports p on p.id = t.port_id where p.code = $2) as city`, [a, last.to, last.good]) : null
+        console.log('    orders: ' + ord.rows.map((r) => `${r.raw_text} ${r.status}${r.error_code ? ' ' + r.error_code : ''} units ${r.units} total ${r.total}`).join(' | ') + `; aboard after ${aboard.q}; allowance left there ${cap?.left}; city purse ${cap?.city}`)
+      }
       console.log(`  run ${n}: net ${net1}, ${last?.good} ${last?.from} -> ${last?.to} (its card said ${last?.profit} in ${last?.seconds} s), sailed ${Math.round(out)} s`)
       continue
     }
