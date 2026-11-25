@@ -1,4 +1,6 @@
-# 2026-11-25 — `jobs-never-lose`: 0497 (dark: `jobs_wait_enabled`), proof 200
+# 2026-11-25 — `jobs-never-lose`: 0498 (dark: `jobs_wait_enabled`), proof 200
+
+**Renumbered 2026-11-25: this file was 0497 and is 0498.** 0497 is `a-wreck-can-sell` (urgent, off main); the stack moved up by one (jobs-never-lose 0498, near-round 0499, fit-to-sail 0500). The numbers below are the new ones; the measurements were taken under the old.
 
 Stacked on `workers-read` (0496). Server only. Nothing touched production; no knob but the new switch.
 
@@ -46,7 +48,7 @@ built for it.** Where it loses she sails one leg to a harbour where nothing pays
 days). Where it wins she makes 11 to 13 runs of 8 to 11 kinds. It never passes 5,000/h. A rotation that knew its way home, or looked
 two legs ahead, might do better; that is a design, not a parameter.
 
-## What 0497 does (lit; dark every body answers as before)
+## What 0498 does (lit; dark every body answers as before)
 
 - **A fixed job that sells waits instead of losing.** At its buy harbour `public.fleet_job_plan` asks `public.fleet_run_quote`: the
   units she can buy cut to what the sale's harbour takes, `world.quote` both ways, `public.profit_tax`, and the trip there and back
@@ -63,7 +65,7 @@ two legs ahead, might do better; that is a design, not a parameter.
 
 ## Checked
 
-- 0497's self-assert on the snapshot at 0496: passed (1.2 s). Proof 200: 9/9. Proofs 199, 184, 195, 197: 8/8, 7/7, 5/5, 7/7.
+- 0498's self-assert on the snapshot at 0496: passed (1.2 s). Proof 200: 9/9. Proofs 199, 184, 195, 197: 8/8, 7/7, 5/5, 7/7.
 - **The Osaka case (proof 200, JW_OSAKA):** the card said 328 armillary spheres and +555,918; Osaka takes 153 today; cut to 153
   units and +313,782; the Best plan's line is `BUY armillary-spheres 153`.
 - **Lit, through the real tick** (`measure-repeat.mjs --lit`), served against measured over the day:
@@ -78,11 +80,11 @@ two legs ahead, might do better; that is a design, not a parameter.
 
   The quote that made her wait said -441 where the run played dark had lost -425.
 - Cost: the board 395 ms dark, 542 ms lit (three cards; the fit stops adding the day after 400 ms); the cut of twelve cards 10 ms.
-- `tsc -b`, eslint, `vite build` (the browser image with 0497), `db.budget`, `news.lint`: passed.
+- `tsc -b`, eslint, `vite build` (the browser image with 0498), `db.budget`, `news.lint`: passed.
 
 ## Decided by default (the owner may reverse)
 
-- Everything in 0497 is behind the one switch, the board's new coin an hour too: the board is lit on prod, and its figure should not
+- Everything in 0498 is behind the one switch, the board's new coin an hour too: the board is lit on prod, and its figure should not
   move at a deploy.
 - A counted job (Once, N runs) waits too: a run at a loss is no better for being the only one.
 - "Nothing to buy now" and "the day's allowance is spent" are the same wait, each with its own sentence.
