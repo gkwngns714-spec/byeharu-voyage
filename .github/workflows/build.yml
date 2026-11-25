@@ -57,7 +57,7 @@ jobs:
     # a feature branch merges, misses by construction. The budget has to cover a miss, or the
     # publish fails on the one run that matters. 60 is the miss plus room, not a ceiling anybody
     # expects to approach.
-    timeout-minutes: 60
+    timeout-minutes: 150   # a from-zero world is 80 to 100 minutes (2026-11-25: the Actions cache had evicted every saved one)
     steps:
       - uses: actions/checkout@v4
         with:
