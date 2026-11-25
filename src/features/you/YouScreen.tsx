@@ -288,7 +288,7 @@ function TitleNext() {
       {/* what the title opens, only while sea limits are on (2026-11-23, finding 14) */}
       {next && v.title.seas_bite && next.opens.length > 0 && (
         <span className="block text-ink-muted" data-testid="levels-opens">
-          {t('command.lvOpens', { what: seasOpened(locale, next.opens) })}
+          <span title={seasOpened(locale, next.opens)}>{t('command.lvOpens', { what: t('command.lvSeas', { n: next.opens.length }) })}</span>
         </span>
       )}
     </span>

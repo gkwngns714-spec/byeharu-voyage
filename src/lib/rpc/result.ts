@@ -105,6 +105,9 @@ function readRawFigures(details: unknown): RefusalFigures | undefined {
   }
 }
 
+/** A server's sentence begins with a capital, however it was written ("her crew is from 8 to 20"). */
+export const sentenceCase = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
+
 /** `E_HOLD_FULL: the fleet has room for 5 tuns` → code and sentence, split once, here. */
 const RAISED_RE = /^(E_[A-Z0-9_]+):\s*([\s\S]*)$/
 
@@ -124,7 +127,7 @@ export function fromPayload<T>(payload: unknown): RpcResult<T> {
       code: typeof p.error_code === 'string' && p.error_code ? p.error_code : 'E_REFUSED',
       sentence:
         typeof p.error_message === 'string' && p.error_message
-          ? p.error_message
+          ? sentenceCase(p.error_message)
           : 'The server refused, without a reason.',
       fixes: Array.isArray(p.fixes) ? p.fixes.filter((f): f is string => typeof f === 'string') : [],
       figures: readFigures(p.figures),
@@ -167,7 +170,7 @@ export function fromError(err: unknown): Refusal {
   if (m) {
     return {
       code: m[1],
-      sentence: m[2].trim() || raw,
+      sentence: sentenceCase(m[2].trim() || raw),
       fixes: [],
       figures: readRawFigures(e.details),
       sea: readRawSeaWall(e.details) ?? undefined,

@@ -2259,7 +2259,7 @@ export interface PlayerHouse {
 export interface HqCard {
   at: string | null
   list: { slot: number; port: string; since: string }[]
-  next: { slot: number; total_level: number; ducats: number; reputation: number } | null
+  next: { slot: number; total_level: number | null; ducats: number | null; reputation: number | null } | null
 }
 
 /** 0509 — `public.restart_card`. `refusal` null: she may restart now; else why not, in the server's words. `nations`: codes. */

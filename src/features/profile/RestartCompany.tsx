@@ -30,7 +30,9 @@ function RestartPage({ name, card, onClose }: { name: string; card: RestartCard;
   const t = useT()
   const [confirm, setConfirm] = useState('')
   const [next, setNext] = useState('')
-  const [nation, setNation] = useState(card.nations[0] ?? '')
+  // her own country, where it is one a company may be founded in
+  const hers = useWorld((s) => s.player?.nation ?? null)
+  const [nation, setNation] = useState(hers !== null && card.nations.includes(hers) ? hers : (card.nations[0] ?? ''))
   const [busy, setBusy] = useState(false)
   const refresh = useWorld((s) => s.refresh)
   const authMode = useAuthStore((s) => s.mode)

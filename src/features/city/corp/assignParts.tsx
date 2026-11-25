@@ -27,7 +27,7 @@ export function ChoiceRow({ on, ...rest }: { on: boolean } & Omit<ComponentProps
 }
 
 /** A number she sets, under its word; empty sends nothing. */
-export function SettingBox({ word, value, onChange, mode = 'numeric', testid }: { word: ReactNode; value: string; onChange: (v: string) => void; mode?: 'numeric' | 'decimal'; testid: string }) {
+export function SettingBox({ word, value, onChange, mode = 'numeric', usual, testid }: { word: ReactNode; value: string; onChange: (v: string) => void; mode?: 'numeric' | 'decimal'; /** What the server does with an empty box, as served: shown in it, never sent. */ usual?: string; testid: string }) {
   return (
     <label className="flex min-w-0 flex-col gap-1 text-t-caption text-ink-muted">
       <span>{word}</span>
@@ -35,8 +35,9 @@ export function SettingBox({ word, value, onChange, mode = 'numeric', testid }: 
         inputMode={mode}
         autoComplete="off"
         value={value}
+        placeholder={usual}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-11 w-full min-w-0 rounded-control bg-surface px-3 text-base tabular-nums text-ink ring-1 ring-inset ring-edge focus:ring-accent"
+        className="min-h-11 w-full min-w-0 rounded-control bg-surface px-3 text-base tabular-nums text-ink placeholder:text-ink-faint ring-1 ring-inset ring-edge focus:ring-accent"
         data-testid={testid}
       />
     </label>

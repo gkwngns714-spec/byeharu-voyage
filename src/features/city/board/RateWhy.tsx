@@ -3,6 +3,7 @@ import { DetailPage, Icon } from '../../../components/ui'
 import { formatClock, formatDucatsDelta, formatInt, instantMs } from '../../../lib/format'
 import { useT, type TKey } from '../../../lib/i18n'
 import type { HqRate, HqRateCargo, HqRateLine } from '../../../lib/rpc'
+import { useWorkers } from '../corp/workerRows'
 import type { Board } from './useBoard'
 
 // THE RATE SAYS WHY (owner, 2026-11-24: "i am -19.649 / hour. it should say why"; then "why investing causes les money? wtf?").
@@ -53,7 +54,12 @@ export function RateWhy({ board }: { board: Board }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
+  const { rows } = useWorkers()
   if (board.perHour === null) return null
+  // A FRESH RUN HAS NO RATE YET: what she put into her first cargo is not an hourly loss. Said while the figure is under nought and
+  // every fleet at work is on her first runs (the server serves no rate for her: basis none).
+  const working = rows.filter((r) => r.kind === 'fleet' && r.state === 'working')
+  const fresh = board.perHour < 0 && working.length > 0 && working.every((r) => r.rates?.basis === 'none')
   const rate = board.rate
   const lines = rate?.lines
   if (!rate || !lines) {
@@ -87,8 +93,8 @@ export function RateWhy({ board }: { board: Board }) {
         data-per-hour={rate.per_hour}
         className="-mx-1 flex h-11 min-w-0 items-center gap-2 rounded-control px-1 text-left tabular-nums transition hover:bg-surface-2"
       >
-        <span className={`flex items-center gap-1 text-t-figure ${toneOf(rate.per_hour)}`} data-testid="hq-rate-figure">
-          {t('hq.perHour', { n: formatDucatsDelta(rate.per_hour) })}
+        <span className={`flex items-center gap-1 text-t-figure ${fresh ? 'text-ink-muted' : toneOf(rate.per_hour)}`} data-testid="hq-rate-figure" data-fresh={fresh}>
+          {fresh ? t('hq.measuring') : t('hq.perHour', { n: formatDucatsDelta(rate.per_hour) })}
           <Icon name="chevron" size={14} aria-hidden />
         </span>
         <span className="whitespace-nowrap text-t-caption text-ink-faint">{t('hq.rateLast')}</span>

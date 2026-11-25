@@ -19,6 +19,7 @@ import { useDeskPlan } from '../plans/planDraft'
 import { PlanVoyage } from '../plans/PlanVoyage'
 import { useTripGo } from '../plans/useTripGo'
 import type { useTripBoard } from '../plans/useTripBoard'
+import { BargainPress } from './BargainPress'
 import { DayChange } from './TradeBoard'
 import { dayLine } from '../../../domain/market'
 import type { TradeDone } from './tradeDone'
@@ -149,6 +150,7 @@ function Frame({
   choices = null,
   onChoose,
   units,
+  deal,
   sale,
   pair,
   total,
@@ -171,6 +173,8 @@ function Frame({
   sellAt?: string | null
   /** The units row: the stepper, or why there is none. */
   units: ReactNode
+  /** 0506, 0507: the bargain's press and the tax in a purchase, under the units (docked only). */
+  deal?: ReactNode
   /** 0490: a sale's lines (Bought, Sells for, the costs, Profit): above the units on a sale, under them on a buy-and-sell trip;
    *  before the chart either way. */
   sale?: ReactNode
@@ -223,13 +227,13 @@ function Frame({
               <span className="inline-flex items-baseline gap-1.5">
                 <span className="text-ink-muted">{t('trade.bought')}</span>
                 <span className="font-semibold tabular-nums text-ink" data-testid="sale-pair-bought">
-                  {pair.bought === null ? '—' : formatPriceFigure(pair.bought)}
+                  {pair.bought === null ? '—' : formatPrice(pair.bought)}
                 </span>
               </span>
               <span className="inline-flex items-baseline gap-1.5">
                 <span className="text-ink-muted">{t('trade.sellsFor')}</span>
                 <span className="font-semibold tabular-nums text-ink" data-testid="sale-pair-sells">
-                  {pair.sells === null ? '—' : formatPriceFigure(pair.sells)}
+                  {pair.sells === null ? '—' : formatPrice(pair.sells)}
                 </span>
               </span>
             </div>
@@ -240,7 +244,7 @@ function Frame({
             label={<span className="whitespace-nowrap">{total === null ? t('desk.total') : moneyWord(side === 'buy' ? 'cost' : 'total', total)}</span>}
             value={
               <span className="inline-flex items-baseline gap-2">
-                <Figure value={total === null ? '—' : moneyFigure(side === 'buy' ? 'cost' : 'total', total)} size="figure" tone={total === null ? 'faint' : total >= 0 ? 'success' : 'ink'} />
+                <Figure value={total === null ? '—' : moneyFigure(side === 'buy' ? 'cost' : 'total', total)} size="figure" tone={total === null ? 'faint' : profit !== undefined && profit !== null && profit > 0 ? 'success' : 'ink'} />
                 {profit !== undefined && (
                   <span className="inline-flex items-baseline gap-1" data-testid="trade-profit">
                     <span className="text-t-caption text-ink-muted">{t('desk.profit')}</span>
@@ -295,6 +299,7 @@ function Frame({
           and a sale's units are all she carries by default. Decided by default. A buy-and-sell trip keeps its units first. */}
       {side === 'sell' && sale}
       {units}
+      {deal}
       {side !== 'sell' && sale}
       <Chart name={good.name} trend={trend} portId={portId} goodId={good.good_id} />
       {extra}
@@ -416,7 +421,7 @@ function DockedAct({
       warn={side === 'buy' && noGain}
       total={chosen > 0 ? total : null}
       profit={side === 'sell' ? (act.previewLoading ? null : (sale?.trip_net ?? null)) : undefined}
-      pair={side === 'sell' ? { bought: sale?.basis ?? null, sells: sale?.avg_price ?? null } : undefined}
+      pair={side === 'sell' ? { bought: sale?.cost ?? null, sells: sale?.total ?? null } : undefined}
       units={
         ceiling > 0 ? (
           <div className="py-3">
@@ -443,13 +448,21 @@ function DockedAct({
           />
         )
       }
+      deal={
+        <>
+          {/* 0507: what of the cost is the city's tax, as the dry run counted it (nothing while it is 0) */}
+          {side === 'buy' && act.preview !== null && (act.preview.tax_total ?? 0) > 0 && (
+            <Row label={t('desk.taxIn')} value={<Figure value={formatPrice(act.preview.tax_total ?? 0)} tone={act.previewLoading ? 'faint' : 'ink'} />} data-testid="buy-tax" />
+          )}
+          {chosen > 0 && <BargainPress key={`${good.code}:${side}`} fleet={fleet.id} goodId={good.good_id} code={good.code} side={side} />}
+        </>
+      }
       sale={
         side === 'sell' && chosen > 0 ? (
             <SaleLines
               boughtEach={sale?.basis ?? null}
               cost={sale?.cost ?? null}
               sellEach={sale?.avg_price ?? null}
-              proceeds={sale?.total ?? null}
               tax={sale?.tax ?? null}
               wages={sale?.wages ?? null}
               dockFee={sale?.dock_fee ?? null}
@@ -562,7 +575,7 @@ function SailAct({
       onChoose={onChoose}
       total={mine ? total : null}
       profit={sells ? profit : undefined}
-      pair={sells ? { bought: side === 'sell' ? paidPerTun(fleet, good.code) : (go.buyRow?.price_each ?? null), sells: go.sellRow?.price_each ?? null } : undefined}
+      pair={sells ? { bought: go.sellRow?.cost ?? null, sells: go.sellRow?.proceeds ?? null } : undefined}
       sale={
         sells && mine ? (
           // 0490: the trip's sale, as the served sell row counts it (supplies on their own row below, as before)
@@ -570,7 +583,6 @@ function SailAct({
             boughtEach={side === 'sell' ? paidPerTun(fleet, good.code) : (go.buyRow?.price_each ?? null)}
             cost={go.sellRow?.cost ?? null}
             sellEach={go.sellRow?.price_each ?? null}
-            proceeds={go.sellRow?.proceeds ?? null}
             tax={go.sellRow?.profit_tax ?? null}
             wages={go.sellRow?.wages ?? null}
             dockFee={go.sellRow ? dockFeeOf(go.sellRow) : null}
@@ -697,7 +709,6 @@ function SaleLines({
   boughtEach,
   cost,
   sellEach,
-  proceeds,
   tax,
   wages,
   dockFee,
@@ -708,7 +719,6 @@ function SaleLines({
   boughtEach: number | null
   cost: number | null
   sellEach: number | null
-  proceeds: number | null
   tax: number | null
   wages: number | null
   dockFee: number | null
@@ -719,20 +729,16 @@ function SaleLines({
   dim?: boolean
 }) {
   const t = useT()
-  const pair = (each: number | null, sum: number | null) => (
-    <span className="inline-flex flex-wrap items-baseline justify-end gap-x-1.5 tabular-nums">
-      <span className="text-t-caption text-ink-muted">{each === null ? '—' : formatPriceFigure(each)}</span>
-      <Figure value={sum === null ? '—' : formatPrice(sum)} />
-    </span>
-  )
+  // ONE PLACE A FIGURE (2026-11-25): the sums (what it cost, what it sells for) ride with the button; here stand the two unit prices
+  const unit = (n: number | null) => <Figure value={n === null ? '—' : formatPriceFigure(n)} />
   const cut = (n: number | null, label: string, testid: string, note: string | null = null) =>
     n !== null && n !== 0 ? (
       <Row label={label} value={<Figure value={note ? `${formatPriceDelta(-n)} · ${note}` : formatPriceDelta(-n)} />} data-testid={testid} />
     ) : null
   return (
     <div className={`pb-1 transition-opacity ${dim ? 'opacity-60' : ''}`} data-testid="sale-lines" data-profit={profit ?? undefined}>
-      <Row label={t('trade.bought')} value={pair(boughtEach, cost)} data-testid="sale-bought" data-each={boughtEach ?? undefined} />
-      <Row label={t('trade.sellsFor')} value={pair(sellEach, proceeds)} data-testid="sale-sells" data-each={sellEach ?? undefined} />
+      <Row label={t('trade.boughtEach')} value={unit(boughtEach)} data-testid="sale-bought" data-each={boughtEach ?? undefined} />
+      <Row label={t('trade.sellsEach')} value={unit(sellEach)} data-testid="sale-sells" data-each={sellEach ?? undefined} />
       {cut(tax, t('desk.tax'), 'sale-tax')}
       {cut(wages, t('desk.wages'), 'sale-wages')}
       {cut(dockFee, t('desk.dockFee'), 'sale-dock', dockNote)}

@@ -213,7 +213,6 @@ export function PartyFace({ v }: { v: Lit }) {
                 <span className="text-t-label text-success">{t('land.owned')}</span>
               ) : (
                 <Button
-                  size="sm"
                   variant="secondary"
                   busy={busy === 'tool'}
                   disabled={busy !== null}
@@ -235,7 +234,6 @@ export function PartyFace({ v }: { v: Lit }) {
           value={
             v.packs.next ? (
               <Button
-                size="sm"
                 variant="secondary"
                 busy={busy === 'pack'}
                 disabled={busy !== null}

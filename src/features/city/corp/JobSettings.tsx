@@ -39,6 +39,7 @@ export function JobSettings({ draft, room, onChange, sells }: { draft: JobSettin
               value={draft[s.code] ?? ''}
               onChange={(v) => onChange({ ...draft, [s.code]: v })}
               mode="decimal"
+              usual={s.code === 'crew' && room.crew > 0 ? formatInt(room.crew) : t('corp.notSet')}
               testid={`corp-setting-${s.code}`}
             />
           ))}

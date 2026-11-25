@@ -6,6 +6,9 @@ export const hqDict = defineDict({
   en: {
     rank: 'Rank',
     cities: 'HQ cities',
+    measuring: 'Measuring',
+    nextHq: 'Next HQ',
+    nextHqAsks: 'Total level {level} · {rep} Reputation · {coin}',
     shown: 'Shown',
     show: 'Show',
     rankStep: 'Rank {n} / {of}',

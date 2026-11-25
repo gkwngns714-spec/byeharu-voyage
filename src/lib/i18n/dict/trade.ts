@@ -104,6 +104,8 @@ export const tradeDict = defineDict({
     fvPaid: 'Done +{ducats}',
     // 0490 (owner 2026-11-24, "the price i bought, the price i will get, how much profit"): the sell face's lines, before the press
     bought: 'Bought',
+    boughtEach: 'Paid each',
+    sellsEach: 'Sells each',
     sellsFor: 'Sells for',
   },
   ko: {

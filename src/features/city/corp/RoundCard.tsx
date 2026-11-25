@@ -38,8 +38,8 @@ export function RoundLog({ run }: { run: RoundRun }) {
             {l.won !== undefined && ` · ${t(l.won === 1 ? 'corp.won' : 'corp.lost')}`}
           </span>
           <span className="flex gap-3 text-ink-muted">
-            {l.hull !== undefined && <span>{`${t('corp.hull')} −${formatFixed(l.hull * 100, 1)}%`}</span>}
-            <span>{`${t('corp.crew')} −${formatInt(l.crew)}`}</span>
+            {l.hull !== undefined && l.hull >= 0.0005 && <span>{`${t('corp.hull')} −${formatFixed(l.hull * 100, 1)}%`}</span>}
+            {Math.round(l.crew) > 0 && <span>{`${t('corp.crew')} −${formatInt(l.crew)}`}</span>}
           </span>
         </li>
       ))}

@@ -3,9 +3,9 @@ import { create } from 'zustand'
 import { Bar, Button, Countdown, DetailPage, Figure, Icon, Note, Row, Segmented, Skeleton, Stepper, Tile, TileField, goodIcon } from '../../../components/ui'
 import { openHq, type HqAsk } from '../../../app/hqPlace'
 import { useShellState } from '../../../app/shellState'
-import { formatDucats, formatDucatsDelta, formatInt, formatRealShort, formatRelative, instantMs } from '../../../lib/format'
+import { formatDucats, formatDucatsDelta, formatInt, formatRealShort, formatRelative, instantMs, formatMiles } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
-import { cmdLandHome, cmdLandSend, type FleetJobParams, type FleetView, type Refusal, type WorkerAction as ServedAction } from '../../../lib/rpc'
+import { cmdLandHome, cmdLandSend, sentenceCase, type FleetJobParams, type FleetView, type Refusal, type WorkerAction as ServedAction } from '../../../lib/rpc'
 import { clearFleetJob, setFleetJob, useJobEdits } from '../../../live/useAwayReport'
 import { litRounds, useRounds } from '../../../live/useRounds'
 import { litRoles, useShipRoles } from '../../../live/useShipRoles'
@@ -15,7 +15,7 @@ import { RoleControl } from '../board/RoleControl'
 import { WorkerFixButton } from '../../../live/FixButton'
 import { JobSettings } from './JobSettings'
 import { draftOf, settingsOf, type JobSettingsDraft } from './settingsDraft'
-import { ChoiceRow, Foot, FootLine, Step } from './assignParts'
+import { ChoiceRow, FoldPress, Foot, FootLine, Step } from './assignParts'
 import { RoundAssign } from './RoundAssign'
 import { RoundCard } from './RoundCard'
 import { PARTY, actionWord, figureWord, rateWords, servedId, stateWord, useWorkers, type ActionNames, type WorkerRow } from './workerRows'
@@ -192,7 +192,12 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
   const [count, setCount] = useState(2)
   const end: End = loads.length > 0 ? endAsked : 'sell'
   const many: Runs = countOpen ? runsAsked : 'repeat'
-  const list = end === 'store' ? loads : runs
+  const all = end === 'store' ? loads : runs
+  // A RUN THAT LOSES is listed only when asked for (or when a card named it)
+  const losers = all.filter((o) => (o.per_hour ?? o.net ?? 0) < 0)
+  const [lossAsked, setLoss] = useState(false)
+  const withLoss = lossAsked || losers.some((o) => o.id === picked)
+  const list = withLoss ? all : all.filter((o) => !losers.includes(o))
   const option = mode === 'fixed' ? (list.find((o) => o.id === picked) ?? null) : null
 
   // the run a card filled in may stand far down the list: it is brought into view once, when the list first stands
@@ -309,6 +314,7 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
                             <span className="min-w-0 break-words">{end === 'store' ? names.good(o.good ?? '') : `${names.good(o.good ?? '')} → ${names.port(o.sell ?? '')}`}</span>
                           </span>
                           <span className="flex shrink-0 items-center gap-3 text-t-caption tabular-nums">
+                            {losing && <span className="text-danger">{t('ui.loss')}</span>}
                             <span className="text-ink-muted">{timeOf(o)}</span>
                             {end === 'store' ? (
                               <span className="text-ink">{formatInt(o.units ?? 0)}</span>
@@ -320,6 +326,11 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
                       )
                     })}
                   </div>
+                )}
+                {losers.length > 0 && (
+                  <FoldPress open={withLoss} onToggle={() => setLoss(!lossAsked)} testid="corp-assign-losses">
+                    <span>{t(withLoss ? 'corp.hideLosses' : 'corp.showLosses', { n: formatInt(losers.length) })}</span>
+                  </FoldPress>
                 )}
               </Step>
               {countOpen && (
@@ -340,6 +351,13 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
               )}
               {room && <JobSettings draft={draft} room={room} onChange={setEdited} sells={end === 'sell'} />}
             </>
+          )}
+          {mode !== 'fixed' && (
+            <p className="mb-4 text-t-body text-ink-muted" data-testid="corp-assign-what">
+              {mode === 'near' && near
+                ? t('corp.nearWhat', { city: names.port(near.base ?? ''), miles: formatMiles(near.within ?? 0) })
+                : t(mode === 'best' ? 'corp.bestWhat' : 'corp.haulWhat')}
+            </p>
           )}
           <FleetRoles fleet={fleet.id} />
         </>
@@ -606,7 +624,7 @@ export function WorkerSheet({ worker, onClose }: { worker: string; onClose: () =
           {/* 0498, 0516: a job that waits (not stopped) says why, in the server's words */}
           {row.wait && !row.why && (
             <Note tone="neutral" data-testid="corp-sheet-wait" data-wait={row.wait.code}>
-              {row.wait.sentence}
+              {sentenceCase(row.wait.sentence)}
             </Note>
           )}
           {row.why && (

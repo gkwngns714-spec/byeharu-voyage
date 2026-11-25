@@ -66,7 +66,7 @@ const TONE: Record<LabelTone, string> = {
  * ITS OWN COMPONENT so that the two hundred harbour, water and region names on a sheet carry no
  * part of it. A name is one of these or the other for as long as it exists, so nothing swaps.
  */
-function FleetName({ label, unitsPerPx, sun }: { label: PlacedLabel; unitsPerPx: number; sun: LatLon }) {
+function FleetName({ label, unitsPerPx, sun }: { label: PlacedLabel; unitsPerPx: number; sun: LatLon | null }) {
   const riding = useRef<SVGGElement | null>(null)
   // `from` is where the MODEL drew her, which is what the planner placed this name against; `at` is
   // where she is drawn now. The move is the difference, the short way round the sheet (a correction
@@ -110,7 +110,7 @@ function sameName(a: NameProps, b: NameProps): boolean {
 interface NameProps {
   label: PlacedLabel
   unitsPerPx: number
-  sun: LatLon
+  sun: LatLon | null
   /** Set for a fleet's name only (`FleetName`): the group her glide moves. */
   riding?: RefObject<SVGGElement | null>
 }
@@ -240,7 +240,7 @@ export function LabelsLayer({
   labels: readonly PlacedLabel[]
   unitsPerPx: number
   /** Where the Sun is overhead (./sun.ts). */
-  sun: LatLon
+  sun: LatLon | null
 }) {
   const isGround = (l: PlacedLabel) => l.tone === 'sea' || l.tone === 'region' || l.tone === 'zone'
   const ground = labels.filter(isGround)

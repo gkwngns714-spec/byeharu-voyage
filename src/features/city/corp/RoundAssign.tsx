@@ -22,6 +22,8 @@ const num = (s: string | undefined): number | undefined => {
   const v = (s ?? '').trim().replaceAll(',', '')
   return v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined
 }
+/** A round's small figure: one decimal, and under a tenth it says so. */
+const small = (n: number): string => (n > 0 && n < 0.1 ? '< 0.1' : formatFixed(n, 1))
 const numbers = (d: Record<string, string>): Record<string, number> => Object.fromEntries(Object.entries(d).flatMap(([k, v]) => (num(v) === undefined ? [] : [[k, num(v)!]])))
 
 export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetView; kind: Kind; lit: LitRounds; names: ActionNames; onDone: () => void }) {
@@ -47,15 +49,17 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
     if (ok) onDone()
     else setTried(choice)
   }
-  const shut = !work ? t('corp.noWork') : !work.open ? t('corp.needsLevel', { n: formatInt(work.level) }) : seas.length === 0 ? t('corp.mustDock') : kind === 'combat' && terms !== null && terms.guns === 0 ? t('corp.noGuns') : null
+  const shut = !work ? t('corp.noWork') : !work.open ? t('corp.needsLevel', { n: formatInt(work.level) }) : seas.length === 0 ? t('corp.mustDock') : kind === 'combat' && terms !== null && terms.guns === 0 ? t('corp.needGuns') : null
   const cells: { word: TKey; text: string; key: string }[] = terms
     ? [
-        { key: 'food', word: 'corp.food', text: formatFixed(terms.food, 2) },
-        { key: 'water', word: 'corp.water', text: formatFixed(terms.water, 2) },
-        { key: 'crew', word: 'corp.crew', text: formatFixed(terms.crew, 2) },
-        ...(kind === 'combat' ? [{ key: 'ammo', word: 'corp.ammo' as TKey, text: formatFixed(terms.ammo ?? 0, 2) }, { key: 'hull', word: 'corp.hull' as TKey, text: `${formatFixed((terms.hull ?? 0) * 100, 1)}%` }] : []),
+        { key: 'food', word: 'corp.food', text: small(terms.food) },
+        { key: 'water', word: 'corp.water', text: small(terms.water) },
+        { key: 'crew', word: 'corp.crew', text: small(terms.crew) },
+        ...(kind === 'combat' ? [{ key: 'ammo', word: 'corp.ammo' as TKey, text: small(terms.ammo ?? 0) }, { key: 'hull', word: 'corp.hull' as TKey, text: `${formatFixed((terms.hull ?? 0) * 100, 1)}%` }] : []),
       ]
     : []
+  // an empty box is the server's own rule: its figure, where this quote serves it
+  const usualStop = (k: (typeof STOPS)[number]) => (terms === null ? undefined : k === 'crew' ? formatInt(terms.min) : k === 'days' ? formatInt(terms.days) : k === 'rounds' ? formatInt(terms.most) : t('corp.notSet'))
   return (
     <div data-testid="round-assign" data-kind={kind} data-work={work?.work} data-base={base ?? undefined}>
       {shut !== null && (
@@ -63,7 +67,7 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
           {shut}
         </Note>
       )}
-      {work?.open && seas.length > 0 && (
+      {work?.open && seas.length > 0 && !(kind === 'combat' && terms !== null && terms.guns === 0) && (
         <>
           <Step word={t('corp.sea')}>
             <div className="flex flex-col gap-1" data-testid="round-seas">
@@ -89,14 +93,14 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
           <Step word={t('corp.take')}>
             <div className="grid grid-cols-3 gap-2" data-testid="round-take-boxes">
               {TAKES.filter((k) => kind === 'combat' || k !== 'ammo').map((k) => (
-                <SettingBox key={k} word={t(TAKE_WORD[k])} value={take[k] ?? ''} onChange={(v) => setTake({ ...take, [k]: v })} testid={`round-take-${k}`} />
+                <SettingBox key={k} word={t(TAKE_WORD[k])} value={take[k] ?? ''} onChange={(v) => setTake({ ...take, [k]: v })} usual={k === 'crew' && terms ? formatInt(terms.crew0) : t('corp.notSet')} testid={`round-take-${k}`} />
               ))}
             </div>
           </Step>
           <Step word={t('corp.stopAt')}>
             <div className="grid grid-cols-2 gap-2" data-testid="round-stop-boxes">
               {STOPS.filter((k) => kind === 'combat' || k !== 'hull').map((k) => (
-                <SettingBox key={k} word={t(STOP_WORD[k])} value={stop[k] ?? ''} onChange={(v) => setStop({ ...stop, [k]: v })} testid={`round-stop-${k}`} />
+                <SettingBox key={k} word={t(STOP_WORD[k])} value={stop[k] ?? ''} onChange={(v) => setStop({ ...stop, [k]: v })} usual={usualStop(k)} testid={`round-stop-${k}`} />
               ))}
             </div>
           </Step>

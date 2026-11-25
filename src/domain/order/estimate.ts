@@ -48,6 +48,8 @@ export interface SaleEstimate {
   /** What today's open bargain took off THIS lot, in ducats — `world.quote`'s `haggle_saved`
    *  (0083), accumulated per step inside the same walk that priced it. 0 with no bargain. */
   haggle_saved: number | null
+  /** 0507: the tax inside a purchase's `total` (`world.quote`'s `tax_total`); null where none is served. */
+  tax_total: number | null
   /** 0122: the profit tax this sale pays its city (0 when none). */
   tax: number | null
   /** 0128 / 0474: what this sale pays her crew (public.wages_due, the rule pay_wages pays by). */
@@ -71,6 +73,7 @@ export function saleEstimate(estimate: Record<string, unknown> | undefined): Sal
     profit: num(estimate, 'profit'),
     avg_price: num(estimate, 'avg_price'),
     haggle_saved: num(estimate, 'haggle_saved'),
+    tax_total: num(estimate, 'tax_total'),
     tax: num(estimate, 'tax'),
     wages: num(estimate, 'wages'),
     dock_fee: num(estimate, 'dock_fee'),

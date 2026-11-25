@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Card, Icon, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, Skyline, skylineOf, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { ShellFrame } from '../../app/ShellFrame'
+import { SignTheBook } from '../found/SignTheBook'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
 import { useCommandDraft } from '../../domain/order'
 import { MarketLeft } from '../../live/MarketLeft'
@@ -207,11 +208,14 @@ export function CityScreen() {
   const code = explicit ?? hqAt ?? (draftPort ? fleetPortCode(draftPort) : null) ?? housePortCode(fleets)
   const port = code ? (portByCode[code] ?? null) : null
 
+  // A SIGNED-IN CAPTAIN WITH NO HOUSE gets the founding door here too (2026-11-25): this route stands outside AppShell, whose register
+  // gate it never met, so a new account that opened HQ saw an empty company and no way to found one.
+  const unfounded = phase === 'ready' && fleets.length === 0
   const gate = (body: ReactNode) => (
     <ShellStateContext.Provider value={shell}>
       {/* THE SHELL'S FRAME (2026-11-11, S9): the same status strip every tab has over the page, and the nav — a bar on a phone,
           the rail from `lg` — in its slot, named `city-rail`. Every state below draws inside it, so none is a dead end. */}
-      <ShellFrame data-world={phase} data-testid="city-screen" navTestId="city-rail">
+      <ShellFrame data-world={phase} data-testid="city-screen" navTestId="city-rail" nav={!unfounded}>
         {body}
       </ShellFrame>
     </ShellStateContext.Provider>
@@ -232,6 +236,12 @@ export function CityScreen() {
       </>,
     )
   }
+  if (unfounded)
+    return gate(
+      <main className="min-h-0 flex-1 overflow-hidden">
+        <SignTheBook />
+      </main>,
+    )
   if (phase !== 'ready')
     return gate(
       <>

@@ -164,6 +164,7 @@ export const commandDict = defineDict({
     lvTop: 'Top level',
     lvNextGift: 'Next +{n}',
     lvOpens: 'Opens: {what}',
+    lvSeas: '{n} seas',
     lvTitle: 'Title',
     lvTitleNext: 'Next: {name} · {tracks}',
     lvTitleTop: 'The highest title.',

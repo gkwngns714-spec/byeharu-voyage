@@ -126,6 +126,11 @@ export const deskDict = defineDict({
     good: 'Good',
     tradeHere: 'Trade here',
     bigMap: 'Big map',
+    // 0506, 0507: the bargain's line, and the tax inside a purchase
+    bargainTries: '{n} / {of} tries · {odds}',
+    bargainOff: '{n} off',
+    bargainUp: '{n} more',
+    taxIn: 'Tax included',
     // THE MIRRORED SCREEN (owner row 229)
     sailBuy: 'Sail & buy',
     sailSell: 'Sail & sell',

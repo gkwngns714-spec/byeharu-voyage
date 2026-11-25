@@ -169,7 +169,9 @@ export function daylightAt(at: LatLon, sun: LatLon): number {
  * so no layer can hold a second idea of what "night" is. (A `CSSProperties` type only — this file
  * stays pure and runs in plain Node.)
  */
-export function nightStyle(at: LatLon, sun: LatLon): CSSProperties {
+export function nightStyle(at: LatLon, sun: LatLon | null): CSSProperties {
+  // no Sun given (under the fog, 0526): the day's ink, dark on its pale halo, which reads on the black and the grey alike
+  if (sun === null) return { '--night': '0' } as CSSProperties
   return { '--night': (1 - daylightAt(at, sun)).toFixed(3) } as CSSProperties
 }
 

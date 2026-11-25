@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Button, DetailPage, Icon, KEEP_WORDS_CLASS, Row } from '../../components/ui'
 import { PortFlag } from '../../live/PortFlag'
 import { useWorld } from '../../live/worldStore'
+import { formatDucats, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import type { HqCard, SnapshotPort } from '../../lib/rpc'
 
@@ -19,7 +20,8 @@ export function HqCityName({ port, onOpen }: { port: SnapshotPort; onOpen: () =>
       {port.name}
     </span>
   )
-  if (!hq || hq.list.length === 0) return name
+  // one HQ and none to open (0512: what a step asks is the owner's to set; unset, the server serves none of its figures): the list would say only what the title does
+  if (!hq || hq.list.length === 0 || (hq.list.length === 1 && hq.next?.total_level == null)) return name
   return (
     <button
       type="button"
@@ -37,13 +39,14 @@ export function HqCityName({ port, onOpen }: { port: SnapshotPort; onOpen: () =>
 export function HqCitiesPage({ here, onClose }: { here: string; onClose: () => void }) {
   const t = useT()
   const list: HqCard['list'] = useWorld((s) => s.player?.hq?.list) ?? []
+  const next = useWorld((s) => (s.player?.hq?.next?.total_level == null ? null : s.player.hq.next))
   const [params, setParams] = useSearchParams()
   const portByCode = useWorld((s) => s.portByCode)
   const show = (code: string) => {
-    const next = new URLSearchParams(params)
-    next.set('port', code)
+    const to = new URLSearchParams(params)
+    to.set('port', code)
     onClose()
-    setParams(next)
+    setParams(to)
   }
   return (
     <DetailPage title={t('hq.cities')} onClose={onClose} data-testid="hq-cities-page">
@@ -56,7 +59,7 @@ export function HqCitiesPage({ here, onClose }: { here: string; onClose: () => v
               {portByCode[h.port]?.name ?? h.port}
             </span>
           }
-          hairline={i < list.length - 1}
+          hairline={i < list.length - 1 || next !== null}
           tone={h.port === here ? 'accent' : 'default'}
           value={
             h.port === here ? (
@@ -69,6 +72,11 @@ export function HqCitiesPage({ here, onClose }: { here: string; onClose: () => v
           }
         />
       ))}
+      {next && (
+        <Row label={t('hq.nextHq')} hairline={false} data-testid="hq-next">
+          <span className="block text-t-caption text-ink-muted">{t('hq.nextHqAsks', { level: formatInt(next.total_level ?? 0), rep: formatInt(next.reputation ?? 0), coin: formatDucats(next.ducats ?? 0) })}</span>
+        </Row>
+      )}
     </DetailPage>
   )
 }
