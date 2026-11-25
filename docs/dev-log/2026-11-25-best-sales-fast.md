@@ -67,3 +67,16 @@ Lisbon 316 ms on 18, 358 on 17; Colombo 225 / 263; Guayaquil 320 / 347. So the v
 `stages.sql`, Lisbon, old bodies, ms (18.3 / 17.5): cpu_float 400,000: 74 / 77; cpu_numeric 100,000: 19 / 28; cpu_power 4,500: 33 / 37; 3,000 calls: 18 / 18;
 2,540 port rows: 4 / 3. whole 310 then 304 / 346 then 336; the stages' sum 296 / 332 (within 3 %): origin 66 / 83, sells 192 / 199, capacity 14 / 20, legs 12 / 14,
 half 6, amounts 3 / 4, hulls 1 / 4, offered 2. In five goods' sells: 72 quotes 31 / 37, trips 31 / 34, dock 6 / 5, tax 6 / 3, mids 5, quay 3.
+
+## Prod's stages (12:34 UTC), what to expect, and the job tick (2026-11-25)
+
+- `in sells` is timed for FIVE of the ten goods: doubled, quotes 352 + trips 420 + mids 54, and quay, dock and tax over every harbour (about 145) are about 970
+  of the 997. The "unnamed 500" is that scale. Local `trips` for the five: 31 -> 12 ms with 0536; origin 66 -> 38; sells 195 -> 150.
+- EXPECTED PROD, scaling prod's stages by those ratios (an estimate): sells 997 -> about 770, origin 76 -> 44, the rest as it is: warm whole 1,374 -> about 1,110 ms.
+- SHARING THE WALKS of goods that weigh the same: 5 of 10 loads differ at 200,000 coin, 1 to 4 at 3,000,000 with a Barca-size hold, 7 to 10 at 5,000. After
+  0536 all ten walks are about 24 ms local (about 165 prod): sharing saves none to about 85 ms on prod (5 %). Not built.
+- THE TICK: 0536's header. On PGlite, session named pg_cron: none due, a call at second 1 took 0.0 s; one due, 25.8 s (ended at second 26); proof 242. That pg_cron's
+  sessions carry application_name `pg_cron` is `db-health/waits.sql`'s word, not read here: if it is another name the tick simply does not wait.
+- On batch 2's chain (0503-0509 and 0536): 508 reads, 0 differ; 187 -> 134 and 286 -> 228 ms.
+- `refusal.drive @1440` failed once in seven specs run together (repaired, her bar never on) and passed alone (1.7 m); @390 passed. Not explained: likely her one run
+  ended before the page looked (a tab has no second tick).

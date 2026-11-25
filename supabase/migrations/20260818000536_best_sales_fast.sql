@@ -11,11 +11,19 @@
 --                    stores_topup_of, stores_need_days_of, stores_cost_of, ship_speed_fill, trip_leg_of; the old names ask it.
 --   THE LEGS         every good unpacked 254 legs of 19 columns to price 15 of them (twice, and rebuilt them in the walk). Now the columns a harbour
 --                    is ranked by come as arrays (world.legs_rank, once a read), and the rest is read of the rows kept.
+--   THE JOB TICK OFF THE MINUTE'S CROWD (public.tick_fleet_jobs, 2 hunks; the cron job and its schedule are not touched). It starts at second 0
+--                    with every other job. Now, a job DUE and the session pg_cron's own (application_name), it commits and waits to second 25
+--                    before it plans (public.job_tick_wait_s), then reads what is due afresh. None due: it returns as before. By hand, in a proof,
+--                    in PGlite: no wait. WHILE IT WAITS it holds one connection (active, in pg_sleep); no lock and no row; it commits every
+--                    second, so no transaction and no snapshot of it is older than a second, and it is never idle in transaction. At most 25 s and
+--                    one run's work of the 120 between two runs; pg_cron does not start a run of a job while one of it runs.
+--   public.fleet_job_note         (1 hunk) 0504's `slow` / `unpriced` ask again after 60 s, not 90: written as late as second 30, 90 would miss
+--                    the due read at second 0 of the next run.
 -- NOT CHANGED: every knob and switch, every rule, every answer, every client read's shape; world.quote_priced and all a quote reads.
--- THE HUNKS (31; each once in the live body, each reverses). NEW: 10 functions, server only (the arithmetic ones are plain and immutable, so the planner
+-- THE HUNKS (34; each once in the live body, each reverses). NEW: 11 functions, server only (the arithmetic ones are plain and immutable, so the planner
 --   folds them in).
 -- ROWS: none. budget: no table, no cron job, no autovacuum or fillfactor change.
--- LOCKS: CREATE FUNCTION x10, CREATE OR REPLACE x9. BUDGET: statement_timeout 90 s, lock_timeout 5 s; fails above 60 s.
+-- LOCKS: CREATE FUNCTION x11, CREATE OR REPLACE x11. BUDGET: statement_timeout 90 s, lock_timeout 5 s; fails above 60 s.
 -- ROLLBACK (forward): a migration reversing the hunks and dropping the new functions.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the cut bodies' grants, volatility, definer, search path, settings and owner
 --   unmoved; no knob moved. THE PROBE (rolled back; its own company's rows), with what stood before kept under the session's own schema: the top-up, the
@@ -28,7 +36,8 @@
 
 do $m$
 declare
-  c_hunked constant text[] := array['public.stores_cost(uuid,numeric,numeric)',
+  c_hunked constant text[] := array['public.tick_fleet_jobs(boolean)', 'public.fleet_job_note(uuid,jsonb)',
+                                    'public.stores_cost(uuid,numeric,numeric)',
                                     'public.stores_topup(numeric,numeric,numeric,numeric,numeric,numeric)',
                                     'voyage.reach_passage(uuid,uuid,uuid,numeric)',
                                     'voyage.ship_speed_of(jsonb,numeric)',
@@ -37,7 +46,8 @@ declare
                                     'world.board_sell_memo(uuid,uuid,jsonb,jsonb)',
                                     'world.board_trips(uuid,jsonb,jsonb)',
                                     'world.trip_leg(jsonb,jsonb,numeric,boolean,numeric)'];
-  c_new    constant text[] := array['voyage.ship_speed_fill',
+  c_new    constant text[] := array['public.job_tick_wait_s',
+                                    'voyage.ship_speed_fill',
                                     'voyage.stores_need_days_of',
                                     'public.stores_topup_of',
                                     'world.trip_leg_of',
@@ -119,6 +129,15 @@ begin
   end loop;
 
   -- ── 2. THE NEW PIECES ──
+  execute $mk$
+create function public.job_tick_wait_s(p_second numeric, p_app text) returns numeric language sql immutable parallel safe as
+$f$
+  -- 0536: THE SECONDS THE FLEET-JOBS TICK WAITS BEFORE IT PLANS: to second 25 of the minute, for pg_cron's own session (its application_name)
+  -- alone; nothing for anyone else, and nothing past it
+  select case when p_app like 'pg_cron%' and p_second < 25 then 25 - p_second else 0 end
+$f$
+  $mk$;
+
   execute $mk$
 create function voyage.ship_speed_fill(p_k numeric, p_fill numeric, p_penalty numeric) returns numeric language sql immutable parallel safe as
 $f$ select round(p_k * (1 - p_penalty * p_fill), 4) $f$
@@ -294,6 +313,36 @@ end $body$
   -- ── 3. THE HUNKS (each OLD text once in the live body; each reverses) ──
   create temp table hunks_0536 (fn text, ord int, old text, new text) on commit drop;
   insert into hunks_0536 values
+  ('public.tick_fleet_jobs(boolean)', 1,
+$h$  v_steps   jsonb := '[]'::jsonb;
+begin
+$h$,
+$h$  v_steps   jsonb := '[]'::jsonb;
+  v_off     numeric;   -- 0536: the wait off the minute's crowd
+begin
+$h$),
+  ('public.tick_fleet_jobs(boolean)', 2,
+$h$  select array_agg(d.fleet_id order by d.turn, d.fleet_id), array_agg(d.player_id order by d.turn, d.fleet_id),
+$h$,
+$h$  -- 0536: OFF THE MINUTE'S CROWD: a job due, and this is pg_cron's session: wait to second 25 (public.job_tick_wait_s), a second at a time, each its
+  -- own transaction; then what is due is read afresh. By hand and in a proof: no wait
+  if p_commit and exists (select 1 from public.fleet_jobs_due()) then
+    commit;
+    for k in 1 .. 30 loop
+      v_off := public.job_tick_wait_s(extract(second from clock_timestamp()), current_setting('application_name', true));
+      exit when v_off <= 0;
+      perform pg_sleep(least(v_off, 1));
+      commit;
+    end loop;
+    v_t0 := clock_timestamp();
+  end if;
+  select array_agg(d.fleet_id order by d.turn, d.fleet_id), array_agg(d.player_id order by d.turn, d.fleet_id),
+$h$),
+  ('public.fleet_job_note(uuid,jsonb)', 1,
+$h$       set next_at = now() + interval '90 seconds',
+$h$,
+$h$       set next_at = now() + interval '60 seconds',   -- 0536: due at second 0 of the next run, however late in this one it is written
+$h$),
   ('public.stores_topup(numeric,numeric,numeric,numeric,numeric,numeric)', 1,
 $h$
 -- 0150: THE top-up of one hull's stores. p_room = her hold less her cargo (what water and food may
