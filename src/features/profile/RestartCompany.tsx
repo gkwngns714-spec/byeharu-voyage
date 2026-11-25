@@ -6,7 +6,7 @@ import { HullCountry } from '../../live/HullCountry'
 import { useWorld } from '../../live/worldStore'
 import { useAuthStore } from '../../store/authStore'
 import { useT } from '../../lib/i18n'
-import { COMPANY_NAME_MAX, companyNameToSend } from '../found/companyName'
+import { COMPANY_NAME_MAX, companyNameToSend } from '../../domain/company'
 
 // RESTART (0509; the owner, 2026-11-25: "I need a way to restart the game"). The player closes their own company and founds again: her name
 // typed to confirm, a new name, a country of Europe. The server decides all of it (`cmd.restart_company`) and its sentence is printed as it

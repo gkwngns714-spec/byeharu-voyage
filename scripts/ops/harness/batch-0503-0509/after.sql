@@ -36,7 +36,7 @@ select json_build_object(
                                 ('public.ledger_is_earning(text)', '3b3f45a46443e277ca684a697995fdfd'),
                                 ('world.tax_rate(uuid,uuid)', '9a9da687b6ad125df2f1bc9715d9382e'),
                                 ('public.fleet_job_note(uuid,jsonb)', 'cebb1b3f92469ece8498f18b461df352'),
-                                ('public.fleet_job_plan(uuid)', '6125ffd8b60f984a7f8d0b8598d4e64d'),
+                                ('public.fleet_job_plan(uuid)', '143bd56876d6186b510603f2d6a75287'),
                                 ('public.ship_stores_room(uuid,numeric)', 'c45f4e47330dc83982b98e05d81c2cc6'),
                                 ('world.trip_cost(uuid,jsonb)', 'fed0dd1624bc6ad474b953940e523a4d'),
                                 ('public.level_skills_card(uuid,jsonb)', '49b1006b9163ba8fad5cd59376b2af88'),
