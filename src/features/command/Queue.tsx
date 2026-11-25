@@ -1,8 +1,10 @@
 import { Button, Figure, Icon, Note, Row } from '../../components/ui'
-import { boundForLabel, fleetRefusedOrder, voyageEtaMs, whereabouts } from '../../domain/fleet'
+import { boundForLabel, fixOf, fleetNewRefusal, voyageEtaMs, whereabouts } from '../../domain/fleet'
 import { queuedOrderWords, refusalOfOrder } from '../../domain/order'
-import { formatCountdown, formatMiles } from '../../lib/format'
+import { formatCountdown, formatMiles, formatRelative, instantMs } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
+import { WorkerFixButton } from '../../live/FixButton'
+import { litAway, useAwayReport } from '../../live/useAwayReport'
 import { usePress } from '../../live/usePress'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, QueuedOrder } from '../../lib/rpc'
@@ -53,6 +55,12 @@ import { seaWallOf } from '../../lib/rpc'
 // each with the reason, and runs the rest. The refused row stays as a record until it is dismissed, so every
 // row, refused or live, has a ✕. The ✕ sends the row's POSITION in the served queue (1-based, what
 // cmd.cancel_at counts), never its seq: sending the seq is why the ✕ did nothing once a fleet had a history.
+//
+// THE NOTE IS FOR A REFUSAL THAT IS STILL NEWS (0499; the owner, 2026-11-24, read "Order 200 was refused: the flagship is not fit to
+// sail ... Gaivota is free" seven minutes after her repair and six hours after the order failed: the record was announced as news every
+// time her sheet opened). domain/fleet `fleetNewRefusal`: a refusal whose cause is mended, or that is older than her standing job,
+// is not announced; it stays below as a row with its time until it is dismissed. A fresh one names HER (never the order's number),
+// says why in the server's words, and carries the one press that mends it (live/FixButton.tsx: Repair, Hire crew).
 
 export function Queue({
   fleet,
@@ -80,8 +88,10 @@ export function Queue({
   const press = usePress()
 
   const orders = fleet.queue
-  // The refused row, read where the picker's "stuck" dot reads it (domain/fleet), so the two agree.
-  const failed = fleetRefusedOrder(fleet)
+  // her standing job's start, where the report serves one (0481): a refusal older than it is not news
+  const job = litAway(useAwayReport().view)?.jobs.find((j) => j.fleet === fleet.id) ?? null
+  // The refused row that is still news, read where the picker's "stuck" dot reads it (domain/fleet), so the two agree.
+  const failed = fleetNewRefusal(fleet, job ? instantMs(job.since) : null)
   const failedRefusal = failed ? refusalOfOrder(failed) : null
   const where = whereabouts(fleet)
   const eta = voyageEtaMs(fleet)
@@ -92,10 +102,16 @@ export function Queue({
   return (
     <>
       {failedRefusal && (
-        <Note tone="danger" code={failedRefusal.code} figures={failedRefusal.figures} sea={seaWallOf(failedRefusal)} data-testid="queue-halt">
-          Order {failed?.seq} was refused: {failedRefusal.sentence.replace(/\.$/, '')}. Anything that depended on it was cancelled;
-          {' '}{fleet.name} is free.
-        </Note>
+        <>
+          <Note tone="danger" code={failedRefusal.code} figures={failedRefusal.figures} sea={seaWallOf(failedRefusal)} data-testid="queue-halt">
+            {t('command.refusedNews', { fleet: fleet.name, why: failedRefusal.sentence.replace(/\.$/, '') })}
+          </Note>
+          {fixOf(failedRefusal.code) && (
+            <div className="mb-2 mt-2 flex flex-col gap-2" data-testid="queue-halt-fix">
+              <WorkerFixButton fix={fixOf(failedRefusal.code)} worker={fleet.id} className="w-full" />
+            </div>
+          )}
+        </>
       )}
 
       {fleet.voyage && where.kind === 'sailing' && (
@@ -162,6 +178,12 @@ export function Queue({
                 )
               }
             >
+              {/* a refused row is a record: when it was refused (0499 serves it), so an old one reads as old */}
+              {refused && order.at && instantMs(order.at) !== null && (
+                <span className="block text-t-caption text-ink-faint" data-testid="queue-refused-at">
+                  {formatRelative(instantMs(order.at)!, nowMs)}
+                </span>
+              )}
               {order.status === 'active' && due !== null && (
                 <span className="block text-t-caption text-accent">{t('command.arrivesIn', { t: due })}</span>
               )}
