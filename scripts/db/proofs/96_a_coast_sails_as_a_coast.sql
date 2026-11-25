@@ -74,7 +74,8 @@ begin
   v_pj := (v_r ->> 'player_id')::uuid;
   select id into v_fj from public.fleets where player_id = v_pj;
   select c.* into v_c from c96 c join public.sea_zones z on z.code = c.zb
-   where c.a = (select n.capital_port_code from public.nations n where n.code = 'JPN') and z.title_min = 7 and c.zb <> c.za order by c.b limit 1;
+   where c.a = (select n.capital_port_code from public.nations n where n.code = 'JPN') and z.title_min = (select z0.title_min from public.sea_zones z0 where z0.code = c.za)   -- 0510: her home's rung
+     and c.zb <> c.za order by c.b limit 1;
   if v_pj is null or v_c.a is null or public.fleet_wave(v_fj) <> 12 or public.title_level(v_pj) <> 1
      or public.sea_gate(v_pj, v_fj, v_c.to_port, v_c.course) is not null then
     raise exception 'PROOF 96 FAIL: a title-1 barca of Japan at % is refused the course to %: %', v_c.a, v_c.b, public.sea_gate(v_pj, v_fj, v_c.to_port, v_c.course);
