@@ -9,6 +9,7 @@ import { formatDate } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { tabWord } from '../../app/navTabs'
 import { properName, useLocale, useT } from '../../lib/i18n'
+import { RenameCompany } from './RenameCompany'
 
 // PROFILE (in Cabin) — docs/UI_DIRECTION.md §6:
 //
@@ -66,13 +67,13 @@ export function ProfileScreen() {
                 and its country and founding day quiet under it. */}
             <Card>
               {player ? (
-                <div data-testid="house-line" className="flex min-w-0 items-center gap-3">
+                <div data-testid="house-line" className="flex min-w-0 flex-wrap items-center gap-3">
                   {player.nation && (
                     <PlateDisc>
                       <HullCountry nation={player.nation} compact size="title" />
                     </PlateDisc>
                   )}
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-[1_1_10rem]">
                     <h2 className="text-t-card text-ink">
                       <Clip>{player.company_name}</Clip>
                     </h2>
@@ -85,6 +86,8 @@ export function ProfileScreen() {
                       ]}
                     />
                   </div>
+                  {/* THE RENAME PRESS, BESIDE THE NAME (0503). Served `rename_free` decides its word; absent (a server before 0503): no press. */}
+                  {player.rename_free !== undefined && <RenameCompany name={player.company_name} free={player.rename_free} className="ml-auto shrink-0" />}
                 </div>
               ) : (
                 <Row label={t('profile.noCompany')} tone="muted" hairline={false} />

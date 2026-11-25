@@ -166,6 +166,7 @@ import type {
   LandView,
   LandDone,
   FleetRenamed,
+  CompanyRenamed,
   FineReceipt,
   TaxSet,
   NationStandings,
@@ -1164,6 +1165,12 @@ export function cmdLandPack(): Promise<RpcResult<LandDone>> {
 /** Repeat on or off (0458): on, the party goes out again by itself; off, the trip under way is its last. */
 export function cmdLandRepeat(on: boolean): Promise<RpcResult<LandDone>> {
   return call<LandDone>('cmdLandRepeat', [on])
+}
+
+/** Rename your company (0503). The name's rule is the server's (`public.company_name_refusal`, the one a founding is judged by); the
+ *  first rename is free and a later one is refused in plain words until the owner decides the payment. */
+export function cmdRenameCompany(name: string): Promise<RpcResult<CompanyRenamed>> {
+  return call<CompanyRenamed>('cmdRenameCompany', [name])
 }
 
 /** Rename a fleet of yours (0354). The name's rules are the server's: 3 to 24 letters, not one you already use. */

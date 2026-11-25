@@ -190,6 +190,7 @@ export const codesDict = defineDict({
     E_CONTRACT_DONE: 'Request already delivered.',
     E_CITY_BROKE: 'City cannot pay today.',
     E_BAD_NAME: 'Name not allowed.',
+    E_RENAME_PAID: 'Rename not available yet.',
     E_BAD_ORDER: 'No such order.',
     E_WORLD_UNAVAILABLE: 'World not available.',
     E_WORLD_BROKE: 'World out of money.',

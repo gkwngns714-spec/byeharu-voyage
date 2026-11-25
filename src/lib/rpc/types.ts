@@ -2017,6 +2017,10 @@ export interface PlayerHouse {
   levels: PlayerLevels
   /** 0143 — when the company may next change its country (`cmd.change_country`), or null: it may now. */
   nation_change_at: string | null
+  /** 0503: how many times the company has taken a new name (`cmd.rename_company`). Absent before 0503. */
+  renames?: number
+  /** 0503: true while her next rename is free (the first is; a later one waits for the owner's decision on payment). Absent before 0503. */
+  rename_free?: boolean
   /** 0241 (owner row 230): what the company owes the cities (dock fees, a SAIL's stores on credit) — absent at 0. */
   owed?: number
   /** 0241: true while a SAIL's stores may run on credit (the economy closed) — absent otherwise. */
@@ -4186,6 +4190,17 @@ export interface ArmadaSailed {
   cost: number
   on_credit: number
   voyages: { fleet_id: string; fleet: string; voyage_id: string; total_nm: number }[]
+}
+
+/** 0503: `cmd.rename_company`. `changed` false: her own name again, nothing written and nothing counted. Refusals: E_BAD_NAME
+ *  (not 3 to 24 letters and digits with single spaces), E_NAME_TAKEN (a country, a place, a trade good or another company, in any
+ *  case), E_RENAME_PAID (her free rename is used; a later one is not available yet). */
+export interface CompanyRenamed {
+  from: string
+  to: string
+  changed: boolean
+  renames: number
+  rename_free: boolean
 }
 
 /** 0354: `cmd.rename_fleet`. `changed` false: the same name again, nothing written. */
