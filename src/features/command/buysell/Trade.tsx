@@ -19,6 +19,7 @@ import { useDeskPlan } from '../plans/planDraft'
 import { TradeMap, type OrderPick } from '../plans/TradeMap'
 import { useTripBoard } from '../plans/useTripBoard'
 import { CargoBest } from './CargoBest'
+import { CityPrices } from './CityPrices'
 import { ShipInfo } from './ShipInfo'
 import { CityChips, TradeBoard } from './TradeBoard'
 import { FromHere } from './FromHere'
@@ -162,6 +163,19 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const pressCity = (code: string) => {
     setFocus(code)
     setGoTo((g) => ({ code, n: (g?.n ?? 0) + 1 }))
+  }
+  // A PLACE PRESSED ON THE MAP (owner 2026-11-25: "click them for info – price info"): it is the city in hand, as it was, and
+  // its prices stand over the map (CityPrices.tsx, the board's own read and rows). Shut by its own close, by "Trade here"
+  // (the map closes on that city's board) and with the map's page.
+  const [pricesOpen, setPricesOpen] = useState(false)
+  const pressPlace = (code: string) => {
+    pressCity(code)
+    // with an order's estimate up the press only takes the city in hand, as before: a sheet shut now would open by itself when the estimate closes
+    setPricesOpen(orderPick?.fleet !== fleet.id)
+  }
+  const closePage = () => {
+    setPricesOpen(false)
+    setPage(null)
   }
   // a cargo row: that city and that good, ready to go — it is a SELL there (CargoBest is the sell aid, owner row 231).
   // It always OPENS for that city — never the board buttons' toggle (a second row for the same good must switch the
@@ -350,7 +364,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
         </DetailPage>
       )}
       {page === 'map' && (
-        <DetailPage title={t('shell.tab_Map')} figure={mapFigure} onClose={() => setPage(null)} data-testid="trade-map-open-page">
+        <DetailPage title={t('shell.tab_Map')} figure={mapFigure} onClose={closePage} data-testid="trade-map-open-page">
           <TradeMap
             fleet={fleet}
             plan={trip.drawing}
@@ -358,9 +372,13 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
             onClose={() => choose(null)}
             scrollOnPick={!wide}
             city={city}
-            onCity={pressCity}
+            onCity={pressPlace}
             goTo={goTo}
           />
+          {/* the place's prices, inside the page so they stand over it; not while an order's estimate is up (its map takes no press) */}
+          {pricesOpen && city && !pickNow && (
+            <CityPrices city={city} docked={here} quay={quay} rows={rows} onTrade={closePage} onClose={() => setPricesOpen(false)} />
+          )}
         </DetailPage>
       )}
       {page === 'orders' && (

@@ -33,6 +33,9 @@ import { LegLines } from '../../../live/LegLines'
 //   · the standing route: its stops' served courses, the route board's served miles a lap (route_nm) and average
 //     lap net (route_earnings), and the last closed lap's served bought / supplies / wages;
 //   · a raw SAIL (no good traded): the route and the time only, and one line saying no money estimate is served.
+// PLACES ONLY (owner, 2026-11-25: *"a map, showing no NPCs but only locations, where you can click them for info – price
+// info"*): with no order pressed the map draws harbours and nothing else, no merchant (this chart is handed no traffic) and
+// no ship; a place pressed is the city in hand and Trade.tsx opens its prices over the map (buysell/CityPrices.tsx).
 // THE CITIES (owner row 218, 2026-10-26: *"in mini map in command, show cities, when pressed upon, show trade goods
 // with prices, and charts"*): with no order pressed the map draws EVERY harbour the Map tab draws (no `only`), the
 // city in hand ringed and named (`highlight`), and a harbour pressed is handed to `onCity` (SmallChart's `onPort`,
@@ -182,7 +185,9 @@ export function TradeMap({
     <section ref={boxRef} className="mb-4 scroll-mt-28" data-testid="trade-map" data-cities={only ? only.join(' ') : '*'}>
       <SmallChart
         ports={snapshot?.ports ?? []}
-        fleets={planMap ? NO_FLEETS : [fleet]}
+        // PLACES ONLY until an order is pressed (owner 2026-11-25: "showing no NPCs but only locations"): no ship is drawn
+        // on the map of places, hers included; her own ship and course are drawn with the order, the voyage or the route pressed
+        fleets={planMap || !pick ? NO_FLEETS : [fleet]}
         considering={considering}
         highlight={planMap ? null : pick ? null : city}
         only={only}

@@ -122,6 +122,9 @@ export const deskDict = defineDict({
     pickCity: 'Pick a city.',
     noBuy: 'Sells nothing',
     noBuyer: 'No buyer',
+    // THE TRADE TAB'S MAP (owner 2026-11-25): a place pressed shows its prices (buysell/CityPrices.tsx)
+    good: 'Good',
+    tradeHere: 'Trade here',
     // THE MIRRORED SCREEN (owner row 229)
     sailBuy: 'Sail & buy',
     sailSell: 'Sail & sell',
