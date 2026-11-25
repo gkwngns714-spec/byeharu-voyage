@@ -1,8 +1,8 @@
--- 0500 CARGO AT COST, AFTER; ALSO THE 30-MINUTE LIT CHECK. A PROD CHECK: read-only, ONE statement. The gate first.
---   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/cargo-at-cost/after-0500.sql
--- Expect, AS DEPLOYED (dark): head 20260818000500; switch false; since = the deploy's instant; new_fns 2, client_reach false, stable 2;
---   bodies = the chain's world at 0500: settle 09387edc4e25dbd0e3418cca49df43fd, forced_home 52cd84b72d5a5bdb848e6e8c848ae9bd,
---   navy_meets 35b6345aa5eed0a9e15c5fcb94522aea, company_rate_for 2ca556dd6190dafd14d8cfc903d9a792;
+-- 0501 CARGO AT COST, AFTER; ALSO THE 30-MINUTE LIT CHECK. A PROD CHECK: read-only, ONE statement. The gate first.
+--   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/cargo-at-cost/after-0501.sql
+-- Expect, AS DEPLOYED (dark): head 20260818000501; switch false; since = the deploy's instant; new_fns 2, client_reach false, stable 2;
+--   bodies = the chain's world at 0501: settle 1809e424046a2dfb321f8345659702cd, forced_home 99e30283333001752a30dc5a664ee93e,
+--   navy_meets 96e74ac773b2508071c35a64537aadaf, company_rate_for 1891ecfda6170d9a434166e253ea2df3;
 --   untouched = the before read's three digests, unmoved (the loss itself is the same statements).
 --   days_with_loss: of the days resolved since the deploy that lost cargo, every one carries cargo_lost_cost (rows = with_cost_key),
 --   none of them negative; days before the deploy carry none.

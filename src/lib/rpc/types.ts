@@ -3465,12 +3465,12 @@ export interface HqRate {
   top?: string[]
   /** Running lines first, then one time; in each the largest loss first. */
   lines?: HqRateLine[]
-  /** 0500 (cargo_at_cost_enabled lit; absent dark): her cargo read at cost. The trade line is then her sales less the recorded cost
+  /** 0501 (cargo_at_cost_enabled lit; absent dark): her cargo read at cost. The trade line is then her sales less the recorded cost
    *  of what she sold, and `net_24h + one_time_24h + cargo.net_24h = all_24h`. */
   cargo?: HqRateCargo
 }
 
-/** `rate.cargo` (0500, `public.cargo_rate_for`): the coin she put into goods in the last 24 hours that is neither sold nor lost. */
+/** `rate.cargo` (0501, `public.cargo_rate_for`): the coin she put into goods in the last 24 hours that is neither sold nor lost. */
 export interface HqRateCargo {
   /** bought - cost_sold - lost, floored at 0: the goods she bought and still holds, at what she paid. */
   at_cost: number
@@ -3479,7 +3479,7 @@ export interface HqRateCargo {
   bought: number
   cost_sold: number
   lost: number
-  /** Lost cargo is recorded from this instant (0500's deploy); `exact` once the whole window lies after it. */
+  /** Lost cargo is recorded from this instant (0501's deploy); `exact` once the whole window lies after it. */
   exact_since: string
   exact: boolean
 }

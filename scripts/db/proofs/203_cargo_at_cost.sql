@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 203 - CARGO AT COST  (migration 0500; docs/dev-log/2026-11-25-cargo-at-cost.md)
+-- PROOF 203 - CARGO AT COST  (migration 0501; docs/dev-log/2026-11-25-cargo-at-cost.md)
 --
 --   The lead, 2026-11-25: HQ's per hour reads a cargo BUY as a running loss until it is sold (Trading -38,869 with the cargo at
 --   sea). This proof plays a company through the real doors: she buys at Lisbon (cmd.do_buy), sells part (cmd.do_sell), sails, and
@@ -35,7 +35,7 @@ $f$;
 
 do $p$
 declare
-  c_a    constant uuid := '00000000-0500-4000-8000-0000000000a1';
+  c_a    constant uuid := '00000000-0501-4000-8000-0000000000a1';
   v_lis  uuid := (select p.id from public.ports p where p.code = 'LIS' and p.kind = 'HARBOUR');
   v_a    uuid;
   v_fl   uuid;
@@ -147,7 +147,7 @@ begin
      or position('''cargo_lost_cost'', v_cost0 - public.fleet_stock_at_cost(p_fleet)' in pg_get_functiondef('voyage.navy_meets(uuid,integer,uuid,uuid,timestamp with time zone)'::regprocedure)) = 0
      or exists (select 1 from pg_proc p where p.oid in ('voyage.lose_hold(uuid)'::regprocedure, 'voyage.raid_takes(uuid,integer,uuid,text)'::regprocedure,
                                                          'public.fleet_unload(uuid,text,numeric)'::regprocedure)
-                   and (p.prosrc like '%cargo_lost_cost%' or p.prosrc like '%0500%')) then
+                   and (p.prosrc like '%cargo_lost_cost%' or p.prosrc like '%0501%')) then
     raise exception 'PROOF 203 FAILED: the raid''s payload does not carry the news'' own figure, or a loss function was touched';
   end if;
   raise notice 'PASS: CC_BODIES - voyage.settle and voyage.navy_meets write cargo_lost_cost = her cargo at cost before the raid less after (the news'' expression, 0362); lose_hold, raid_takes and fleet_unload do not name it';

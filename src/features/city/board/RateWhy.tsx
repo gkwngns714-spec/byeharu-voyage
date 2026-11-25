@@ -141,8 +141,8 @@ function RateSheet({ rate, lines, onClose }: { rate: HqRate; lines: HqRateLine[]
 
 const ROW = 'grid grid-cols-[minmax(0,1fr)_5.5rem_6.5rem] items-baseline gap-x-2 py-1.5 tabular-nums'
 
-/** 0500: HER CARGO AT COST, neutral (never red: goods she holds are not a loss), and the sum the sheet comes to. The server's
- *  figures: Running + One time + Cargo = All coin (her ledger's 24 hours). Lost cargo is recorded from 0500's deploy on: until the
+/** 0501: HER CARGO AT COST, neutral (never red: goods she holds are not a loss), and the sum the sheet comes to. The server's
+ *  figures: Running + One time + Cargo = All coin (her ledger's 24 hours). Lost cargo is recorded from 0501's deploy on: until the
  *  whole window lies after it, the sheet says from when. */
 function Cargo({ cargo, all }: { cargo: HqRateCargo; all: number }) {
   const t = useT()

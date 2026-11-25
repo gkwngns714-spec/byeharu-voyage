@@ -1,9 +1,9 @@
-# 2026-11-25 — `cargo-at-cost`: goods bought and still held are not a loss (0500, proof 203; dark)
+# 2026-11-25 — `cargo-at-cost`: goods bought and still held are not a loss (0501, proof 203; dark)
 
 The lead: HQ's per hour counts a cargo BUY as a running loss until it is sold (a test company reads Trading −38,869 while its cargo
 is at sea). The same kind of complaint as the owner's *"why investing causes les money? wtf?"* (0493).
 
-## What was recorded, and what was not (read on the chain's bodies at 0499)
+## What was recorded, and what was not (read on the chain's bodies before 0501)
 
 - **A sale's cost is recorded.** `cmd.do_sell` writes the SOLD event with `cost` (`public.fleet_cargo_basis` × units; 0081, 0474,
   0490) in the transaction that writes its SELL ledger row. "Sales less the basis of what was sold" is exact, also for goods bought
@@ -13,7 +13,7 @@ is at sea). The same kind of complaint as the owner's *"why investing causes les
   afterwards: held now = start stock + buys − cost of sales − losses, with start stock and losses both unknown.
 - So the first report stopped there. The lead chose to record the cost at the loss (option 2).
 
-## Server (0500)
+## Server (0501)
 
 **The record (not behind the switch; additive; from deploy on).** The three writers of a day that loses cargo add one key to the
 day's payload in `public.voyage_events`: `cargo_lost_cost` = her cargo at cost before the loss less after it
@@ -63,7 +63,7 @@ Running + One time + Cargo = All coin. Types `HqRateCargo`. Dark, nothing change
 
 ## Measurements (local PGlite, this PC, a private prefix cache)
 
-- 0500 on the chain at 0499: self-assert passed, 150 ms. Scene: the rate dark equals the old body's answer; lit: trade +3,000,
+- 0501 on the chain's world before it: self-assert passed, 150 ms. Scene: the rate dark equals the old body's answer; lit: trade +3,000,
   lost cargo −1,500, net 1,200, cargo 2,500 at cost; older goods at basis: net 2,200, reconciling +1,500.
 - **The loss itself:** a forced home on the new body and on the old body, the same voyage: hold, hulls, crew, purse, ledger, events,
   voyage and the cities' purses identical by digest; the payload identical but for `cargo_lost_cost` 2,000. One call each: 12 ms
@@ -73,7 +73,7 @@ Running + One time + Cargo = All coin. Types `HqRateCargo`. Dark, nothing change
 - Proof 203: 7/7. Real `cmd.do_buy` (anise ×10 for 857), `cmd.do_sell` of four (316, recorded cost 343: the trade line is −27, the
   SOLD event's own profit; cargo 514), then ran dry: the real `voyage.settle` wrote FORCED_HOME with `cargo_lost_cost` 514; lit,
   the lost-cargo line is −514 and cargo 0.
-- Proofs 196 (5/5), 64 (6/6: real raid days through the hunked `voyage.settle`), 23 (6/6), 01, 101, 201 (18/18) pass with 0500.
+- Proofs 196 (5/5), 64 (6/6: real raid days through the hunked `voyage.settle`), 23 (6/6), 01, 101, 201 (18/18) pass with 0501.
 - The first cut used the news' `v_cost0` in `voyage.settle` and broke proof 64 (it rebuilds the body without that variable). Fixed
   at the cause: the record reads the figure itself.
 

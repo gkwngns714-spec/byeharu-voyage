@@ -41,7 +41,7 @@ export const hqDict = defineDict({
     rateGear: 'Gear',
     rateRoom: 'Fleet room',
     rateGifts: 'Gifts',
-    // 0500: cargo at cost (lit): goods bought and still held are not a loss; lost cargo is, at what it cost
+    // 0501: cargo at cost (lit): goods bought and still held are not a loss; lost cargo is, at what it cost
     rateCargoLost: 'Lost cargo',
     rateCargo: 'Cargo',
     rateAtCost: 'At cost',

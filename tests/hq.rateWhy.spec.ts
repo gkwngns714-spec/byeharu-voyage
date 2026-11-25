@@ -34,7 +34,7 @@ const OWNERS_DAY = `
   end $f$;
   create trigger spec_rate_why_day after insert on public.players for each row execute function public.spec_rate_why_day();`
 
-/** 0500, lit: the owner's day, and she also bought cargo for 25,654 that she still holds (a probe row squares her purse). */
+/** 0501, lit: the owner's day, and she also bought cargo for 25,654 that she still holds (a probe row squares her purse). */
 const CARGO_DAY = `${OWNERS_DAY}
   update public.world_config set value = 'true'::jsonb where key = 'cargo_at_cost_enabled';
   create function public.spec_cargo_day() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
@@ -129,7 +129,7 @@ for (const glass of [
   })
 }
 
-// 0500 (cargo_at_cost_enabled lit): cargo she bought and still holds is not a loss. The sheet shows it apart, neutral, and adds up.
+// 0501 (cargo_at_cost_enabled lit): cargo she bought and still holds is not a loss. The sheet shows it apart, neutral, and adds up.
 for (const glass of [
   { width: 390, height: 844 },
   { width: 1440, height: 900 },

@@ -1,10 +1,10 @@
--- 0500 CARGO AT COST, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate's three figures.
---   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/cargo-at-cost/before-0500.sql
--- Expect: head 20260818000499; knobs 0; new_fns 0; the four hunked bodies equal to the chain's world at 0499 (so each of 0500's
+-- 0501 CARGO AT COST, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate's three figures.
+--   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/cargo-at-cost/before-0501.sql
+-- Expect: head 20260818000500; knobs 0; new_fns 0; the four hunked bodies equal to the chain's world before 0501 (so each of 0501's
 --   thirteen hunks occurs there exactly once, as its self-assert proved on that world):
 --   settle 2c355ceab0dcbeeea9c16b9f068290bf, forced_home db19e356d987657236f0047de3e9d4c1,
 --   navy_meets 54ca2ed731ba0126e08b38bec418287d, company_rate_for ab4eae880c37d9eb3042980e718f96f3.
---   A different digest: 0500 refuses at the push (its hunk count), nothing changes.
+--   A different digest: 0501 refuses at the push (its hunk count), nothing changes.
 --   untouched: the three loss bodies' digests, to compare with the after read (they must not move).
 --   days_with_loss_24h: the days of the last 24 hours that lost cargo (how many rows a day gain the one key), and that none carries
 --   the key yet.
