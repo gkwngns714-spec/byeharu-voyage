@@ -56,3 +56,9 @@ Her 899 coral at the cost that makes Diego Garcia's dock fee the 3,233 she paid 
 - Coin an hour before and after with the guard lit (a measured window, the lead's). Prod: nothing was read.
 - 0501 (not seen). Over near-round and fit-to-sail (their branch's files, applied locally before 0502) the self-assert passes; the before / after reads ran locally.
 - `vite build` and `rpc.surface` were not run. No client work: the row draws the served sentence.
+
+## The BUY is found by its verb (2026-11-25, before any deploy)
+
+0508 `stores-in-hold` puts PROVISION DAYS before the BUY: the first version wrote the cut into line 0. `public.run_cut` replaces the BUY
+line alone, wherever it stands; a BUY ALL behind a PROVISION is counted beside those stores. Proof 212 (9/9, new NR_LINES, empty casks so
+that a PROVISION stands first): alone; with 0508 over it; with 0505-0508, 0515 and 0516 over it (proof 220 7/7, proof 210 8/8).

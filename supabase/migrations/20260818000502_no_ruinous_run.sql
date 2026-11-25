@@ -25,6 +25,8 @@
 --     need = stores + dock + crew + reserve + sea. A BUY that leaves less than need is CUT to the units that leave it, when those units
 --     still pay; no units do (or nothing is bought and the purse is under need): {wait: purse}. hull over run_guard_hull_share of the
 --     hull she has: {wait: danger}. A trip nobody can price is left to the door ({ok}).
+--     Where a PROVISION DAYS line stands before a BUY ALL (0508, the stores in the hold), the ALL is what fits beside those stores.
+--   public.run_cut(lines, buy)  the lines with the BUY line's text replaced, WHEREVER IT STANDS (by its verb), every other line as it was.
 --   public.fleet_job_plan     (5 hunks) asked where a run STARTS: a fixed job at its buy harbour, a Best job's sale (the first of its four
 --                             best that stands; none: the first one's reason), a haul leaving the land's harbour. NOT asked: a run at
 --                             its sale's harbour, and a fleet sailing home or to her buy harbour (she must be able to come back).
@@ -34,9 +36,9 @@
 -- ROWS: two world_config rows. 0 new rows a minute.
 -- budget: no table, no cron job, no autovacuum or fillfactor change. Lit: one world.trip_cost and one read of the courses a started run;
 --   a Best job at most four.
--- LOCKS: one INSERT (world_config); CREATE FUNCTION x2; CREATE OR REPLACE x2 by hunks. TIME: about a second. BUDGET: statement_timeout
+-- LOCKS: one INSERT (world_config); CREATE FUNCTION x3; CREATE OR REPLACE x2 by hunks. TIME: about a second. BUDGET: statement_timeout
 --   90 s, lock_timeout 5 s; fails above 45 s.
--- ROLLBACK (forward, owner only): QUICK, run_guard_enabled false. FULL: reverse the six hunks and drop the two functions.
+-- ROLLBACK (forward, owner only): QUICK, run_guard_enabled false. FULL: reverse the six hunks and drop the three functions.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants and meta unmoved; the new functions STABLE
 --   and server only; two knobs added, no other moved. THE PROBE (rolled back by a raised sentinel; its own company): the run is BUILT
 --   (static rows choose the pair; its two market rows are written to a paying pair, as 0498's), the purse is set against the need the
@@ -47,7 +49,7 @@
 do $m$
 declare
   c_hunked constant text[] := array['public.fleet_job_plan(uuid)', 'public.fleet_job_note(uuid,jsonb)'];
-  c_new    constant text[] := array['public.run_guard_on()', 'public.run_need(uuid,uuid,uuid,jsonb)'];
+  c_new    constant text[] := array['public.run_guard_on()', 'public.run_need(uuid,uuid,uuid,jsonb)', 'public.run_cut(jsonb,text)'];
   c_uid    constant uuid := '00000000-0502-4000-8000-000000000001';
   v_t0        timestamptz := clock_timestamp();
   v_h         record;
@@ -147,6 +149,7 @@ declare
   v_cost   numeric := 0;
   v_net    numeric;
   v_got    numeric;
+  v_prov   numeric;
   v_gross  numeric;
   v_trip   jsonb;
   v_stock  numeric;
@@ -167,7 +170,9 @@ begin
   -- THE LINES
   for l in select e from jsonb_array_elements(coalesce(p_lines, '[]'::jsonb)) e loop
     v_w := regexp_split_to_array(l->>'text', ' ');
-    if v_w[1] = 'BUY' then
+    if v_w[1] = 'PROVISION' and v_w[2] = 'DAYS' then
+      v_prov := v_w[3]::numeric;
+    elsif v_w[1] = 'BUY' then
       v_good := v_w[2];
       v_all := v_w[3] = 'ALL';
       v_n := case when v_all then 0 else v_w[3]::numeric end;
@@ -218,6 +223,23 @@ begin
       v_out := public.fleet_buy_capacity(p_fleet, v_gid);
       v_n := coalesce((v_out->>'max_qty')::numeric, 0);
       v_cost := case when v_n > 0 then (v_out->>'est_total')::numeric else 0 end;
+      -- stores in the hold (0345's switch false): the PROVISION before the BUY takes its room first (cmd.do_provision's own reading)
+      if v_prov > 0 and v_n > 0 and not public.ship_stores_separate() then
+        v_got := floor(greatest(0, public.fleet_free_hold(p_fleet) -
+                   (select coalesce(sum(t.water_t + t.food_t), 0)
+                      from public.ships sh
+                     cross join lateral (select public.ship_hold_capacity(sh.id) as hold, public.ship_cargo_tuns(sh.id) as cargo_t offset 0) c
+                     cross join lateral public.stores_topup(sh.crew, sh.water_t, sh.food_t, public.ship_stores_room(sh.id, c.hold - c.cargo_t), v_prov,
+                                                            public.ship_stores_room(sh.id, c.hold * sh.store_ratio)) t
+                     where sh.fleet_id = p_fleet)) / (select g.bulk from public.goods g where g.id = v_gid));
+        if v_got < v_n then
+          v_n := v_got;
+          v_cost := 0;
+          if v_n >= 1 then
+            select q.total into v_cost from world.quote(p_from, v_gid, v_n, 'buy', null, p_fleet) q;
+          end if;
+        end if;
+      end if;
     else
       select q.units, q.total into v_got, v_cost from world.quote(p_from, v_gid, v_n, 'buy', null, p_fleet) q;
       v_n := least(v_n, coalesce(v_got, 0));   -- the quay sells no more than it has
@@ -280,6 +302,20 @@ end
 $body$
   $f$;
 
+  execute $f$
+create function public.run_cut(p_lines jsonb, p_buy text)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $body$
+  -- 0502: a plan's lines with its BUY line's text replaced by p_buy, wherever the BUY stands; every other line, and its order, as it was.
+  select coalesce(jsonb_agg(case when e.l->>'text' like 'BUY %' then e.l || jsonb_build_object('text', p_buy) else e.l end order by e.n), '[]'::jsonb)
+    from jsonb_array_elements(p_lines) with ordinality e(l, n)
+$body$
+  $f$;
+
   foreach v_q in array c_new loop
     execute format('revoke all on function %s from public, anon, authenticated, service_role', v_q::regprocedure);
   end loop;
@@ -305,7 +341,7 @@ $h$    -- 0502 (run_guard_enabled): A RUN IS STARTED (at its buy harbour) only i
         return v_need;
       end if;
       if v_need ? 'line' then
-        v_lines := jsonb_set(v_lines, '{0,text}', v_need->'line');
+        v_lines := public.run_cut(v_lines, v_need->>'line');
       end if;
     end if;
     return jsonb_build_object('lines', v_lines, 'version', f.version, 'note', jsonb_build_object('kind', 'fixed',$h$),
@@ -336,7 +372,7 @@ $h$      v_lines := v_s->'lines';
           continue;
         end if;
         if v_need ? 'line' then
-          v_lines := jsonb_set(v_lines, '{0,text}', v_need->'line');
+          v_lines := public.run_cut(v_lines, v_need->>'line');
           s.e := s.e || jsonb_build_object('units', v_need->'units');
           s.profit := coalesce((v_need->>'net')::numeric, s.profit);
         end if;
@@ -401,7 +437,7 @@ $h$);
   if exists (select 1 from unnest(c_new) u(q)
               where has_function_privilege('authenticated', u.q::regprocedure, 'execute') or has_function_privilege('anon', u.q::regprocedure, 'execute')
                  or has_function_privilege('service_role', u.q::regprocedure, 'execute'))
-     or (select count(*) from pg_proc p where p.oid = any (array(select u.q::regprocedure::oid from unnest(c_new) u(q))) and p.provolatile = 's' and p.prosecdef) <> 2
+     or (select count(*) from pg_proc p where p.oid = any (array(select u.q::regprocedure::oid from unnest(c_new) u(q))) and p.provolatile = 's' and p.prosecdef) <> 3
      or (select count(*) from public.client_write_grants()) <> 0 then
     raise exception '0502 self-assert FAIL: a new function is reachable by a client or service_role, or is not a STABLE definer read';
   end if;
@@ -443,7 +479,7 @@ $h$);
 
     -- (a) DARK: the plan it was
     v_p0 := public.fleet_job_plan(v_fl);
-    if v_p0 #>> '{lines,0,text}' is distinct from format('BUY %s ALL', v_good) then
+    if (select e->>'text' from jsonb_array_elements(v_p0->'lines') e where e->>'text' like 'BUY %') is distinct from format('BUY %s ALL', v_good) then
       raise exception '0502 self-assert FAIL: dark, the fixed plan is not BUY ALL: %', left(v_p0::text, 300);
     end if;
     -- (b) LIT, A DEEP PURSE, A WIDE BOUND: the same plan to the letter; the need adds up, the dock fees are the cargo's she will carry
@@ -461,13 +497,18 @@ $h$);
        or (v_need->>'need')::numeric <> round((v_need->>'stores')::numeric + (v_need->>'dock')::numeric + (v_need->>'crew')::numeric + (v_need->>'reserve')::numeric + (v_need->>'sea')::numeric) then
       raise exception '0502 self-assert FAIL: the need of the built run does not add up (dock %): %', v_dock, v_need;
     end if;
+    -- the cut finds the BUY by its verb and leaves every other line
+    if public.run_cut('[{"text": "PROVISION DAYS 8"}, {"text": "HIRE 2"}, {"text": "BUY x ALL"}, {"text": "SAIL CAD", "path": [[1, 2]]}, {"text": "SELL x ALL"}]', 'BUY x 4')
+       is distinct from '[{"text": "PROVISION DAYS 8"}, {"text": "HIRE 2"}, {"text": "BUY x 4"}, {"text": "SAIL CAD", "path": [[1, 2]]}, {"text": "SELL x ALL"}]'::jsonb then
+      raise exception '0502 self-assert FAIL: the cut moved a line that is not the BUY';
+    end if;
     -- (c) LIT, THE PURSE COVERS THE NEED AND HALF THE BUY: the BUY is cut, and what is left covers the need; or the smaller load would
     -- not pay its way and she waits. (BUY ALL may stand: her purse buys in whole steps, and the odd coin may cover the need)
     update public.players p set ducats = ((v_need->>'need')::numeric + (v_need->>'buy')::numeric / 2)::bigint where p.id = v_me;
     v_p := public.fleet_job_plan(v_fl);
     if v_p ? 'lines' then
       v_w := public.run_need(v_me, v_fl, v_lis, v_p->'lines');
-      if v_p #>> '{lines,0,text}' !~ ('^BUY ' || v_good || ' ([0-9.]+|ALL)$') or coalesce((v_w->>'after')::numeric, -1) < 0 or v_w ? 'line'
+      if (select e->>'text' from jsonb_array_elements(v_p->'lines') e where e->>'text' like 'BUY %') !~ ('^BUY ' || v_good || ' ([0-9.]+|ALL)$') or coalesce((v_w->>'after')::numeric, -1) < 0 or v_w ? 'line'
          or (v_w->>'units')::numeric >= (v_need->>'units')::numeric then
         raise exception '0502 self-assert FAIL: with half the coin the BUY is not cut to what leaves the need: % need %', left(v_p::text, 200), v_w;
       end if;
@@ -521,6 +562,6 @@ $h$);
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0502 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0502 self-assert ok: NO RUINOUS RUN (dark). Six hunks once and reversing; two new functions STABLE and server only; no other function moved; two knobs (run_guard_enabled false, run_guard_hull_share 0.5). Probe (rolled back): %. % ms.',
+  raise notice '0502 self-assert ok: NO RUINOUS RUN (dark). Six hunks once and reversing; three new functions STABLE and server only; no other function moved; two knobs (run_guard_enabled false, run_guard_hull_share 0.5). Probe (rolled back): %. % ms.',
     v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;
