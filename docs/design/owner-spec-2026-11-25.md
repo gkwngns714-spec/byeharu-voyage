@@ -65,6 +65,7 @@ Read by the lead:
 4. A further HQ is opened by total level, gold and Reputation (as crew slots, hq-corp A2.6).
 5. Premium goods pay 3 to 5 times, with a daily limit. 6. "Find architect" is an artifact carried home.
 7 and 13. A failed bargain costs nothing; PASSIVE orders MAY bargain. 12 (written "13. 0-3% is okay"): the buy tax is 0 to 3 %.
+13, amended by the owner the same day: *"13. YEs - but with higher levels in skills"*: passive bargaining opens at a higher Negotiation level (default 8; 3, 6, 10 tries at 8, 12, 16).
 8. Honour does not fall for bad conduct. 9. Fleet room stays as it is. 10. "Sales" is fine. 11. Stories later.
 Not answered, so not done: the one-off payment (A), the rescue of a wrecked company (B), the price of a second rename (C).
 
