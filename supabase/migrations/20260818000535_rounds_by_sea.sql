@@ -19,7 +19,7 @@ declare
   c_hunked constant text[] := array['public.round_terms(uuid,text,jsonb)', 'world.rounds(uuid)', 'public.client_rpc_entry_points()', 'public.round_run_card(uuid)']::text[];
   c_new    constant text[] := array['public.round_seas_for(uuid)', 'public.round_log_of(uuid,integer)']::text[];
   c_doors  constant text[] := array['world.round_quote(uuid,text,text,jsonb)']::text[];
-  c_knobs  constant text[] := array[]::text[];
+  c_knobs  constant text[] := array['round_far_legs']::text[];
   c_ua     constant uuid := '00000000-0535-4000-8000-0000000000a1';
   v_t0         timestamptz := clock_timestamp();
   x            record;
@@ -54,6 +54,8 @@ begin
   select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, ''), ',' order by c.key))
     into v_cfg_before from public.world_config c;
 
+  insert into public.world_config (key, value, description) values
+    ('round_far_legs', '4'::jsonb, '0535: a sea more legs away than this (each the longest she may sail) is far: listed with its sailed time, not to be chosen for rounds.');
   execute $f$
 create function public.round_seas_for(p_fleet uuid)
 returns jsonb
@@ -64,13 +66,17 @@ set search_path = public, pg_temp
 as $body$
   -- 0535: THE SEAS A FLEET MAY BE SENT TO WORK from where she lies: her own sea (base: here) and every other, by the nearest harbour of it the world remembers a
   -- course to. pirates: whether any sail it (the work's own refusal), never how many. A fleet not in a harbour: none.
-  select coalesce(jsonb_agg(jsonb_build_object('sea', q.sea, 'name', q.name, 'base', q.code, 'nm', q.nm, 'pirates', coalesce(voyage.sea_danger(q.sea, now()), 0) > 0) order by q.nm, q.code), '[]'::jsonb)
+  -- far: more legs than a normal chain (knob round_far_legs) of the longest leg she may and can sail: listed, with its sailed time, not to be chosen
+  select coalesce(jsonb_agg(jsonb_build_object('sea', q.sea, 'name', q.name, 'base', q.code, 'nm', q.nm,
+           'seconds', round(q.nm / greatest(g.speed, 0.1) * 3600 / public.wc_num('time_compression')), 'far', q.nm > g.leg * public.wc_num('round_far_legs'), 'pirates', coalesce(voyage.sea_danger(q.sea, now()), 0) > 0) order by q.nm, q.code), '[]'::jsonb)
     from (select distinct on (z.sea) z.sea, s.name, z.code, z.nm
             from (select h.sea_id as sea, h.code, 0::numeric as nm from public.fleets f join public.ports h on h.id = f.port_id and h.kind = 'HARBOUR' where f.id = p_fleet
                   union all
                   select h.sea_id, h.code, round(k.nm) from public.fleets f cross join lateral public.npc_known_legs(f.port_id) k join public.ports h on h.id = k.to_port and h.kind = 'HARBOUR' where f.id = p_fleet) z
             join public.seas s on s.id = z.sea
            order by z.sea, z.nm, z.code) q
+    cross join (select voyage.fleet_speed(p_fleet) as speed,
+                       least(public.passage_reach_nm((select f.player_id from public.fleets f where f.id = p_fleet)), (select sr.cap_nm from public.supply_reach(p_fleet) sr)) as leg) g
 $body$
   $f$;
   execute $f$

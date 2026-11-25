@@ -27,6 +27,13 @@ begin
                  where (a.e->>'nm')::numeric > (b.e->>'nm')::numeric) then
     raise exception 'RS_SEAS: %', x;
   end if;
+  -- a normal chain of none: every other sea is far; of a thousand legs: none is; her own never; each with its sailed time
+  update public.world_config set value = '0'::jsonb where key = 'round_far_legs';
+  if exists (select 1 from jsonb_array_elements(world.rounds(v_f)->'seas') e where (e->>'far')::boolean <> ((e->>'nm')::numeric > 0) or ((e->>'nm')::numeric > 0) <> ((e->>'seconds')::numeric > 0)) then
+    raise exception 'RS_SEAS far: %', world.rounds(v_f)->'seas';
+  end if;
+  update public.world_config set value = '1000'::jsonb where key = 'round_far_legs';
+  if exists (select 1 from jsonb_array_elements(world.rounds(v_f)->'seas') e where (e->>'far')::boolean) then raise exception 'RS_SEAS near'; end if;
   raise notice 'PASS: RS_SEAS - % seas from %', v_n, v_code;
 
   x := world.round_quote(v_f, 'expedition', v_code, '{}');
