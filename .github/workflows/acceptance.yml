@@ -320,7 +320,7 @@ jobs:
     name: acceptance-shard (db)
     needs: select
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180   # main may build its world from zero first
     steps:
       - uses: actions/checkout@v4
       - name: The growth test on this run
@@ -354,7 +354,7 @@ jobs:
     # test's reported duration), and the merchants-on world on every worker. All three now live
     # elsewhere (the db pool, tests/builtWorld.fixture.ts, npc-on-world), so this should come DOWN
     # once CI has measured the new split.
-    timeout-minutes: 120
+    timeout-minutes: 180   # main may build its world from zero first
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/acceptance-pool
@@ -372,7 +372,7 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2]
-    timeout-minutes: 120
+    timeout-minutes: 180   # main may build its world from zero first
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/acceptance-pool

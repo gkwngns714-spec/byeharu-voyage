@@ -40,3 +40,20 @@ E_SLOW is asked again by itself after 2, 5 and 10 s while the sheet stands (its 
 ## Not verified
 
 Prod (nothing was read): `scripts/ops/harness/assign-fast/split.sql` splits the time there; what the crowd at each full minute adds.
+
+## Unanswered is not "nothing pays" (added 2026-11-25 on batch 2, the owner's fleet idle at Kollam)
+
+The plan never read best_sales' `cut`. Now cut with no usable card waits `slow` and is asked at the next tick; cut with one takes the best answered (a cut
+may have hidden a better one). Proof 241, red on the old body (UN_CUT: {nothing}, 15 minutes), green. Best_sales' walk is `order by g.code`, so a cut
+drops the last codes; a plan of {nothing} while `coir` pays needs the cut before coir, so most likely before the first good (her passages ate the
+budget at :00): not observed. The top-up's budget branch leaves a card without `top` (its own sale is whole); `src_cut` is not a clock: the way to the
+buy city is past her stores. Neither makes a "nothing". Moving the tick off :00 without cron: it could sleep to second 15 and commit before its first read (one
+session held 15 s in 120; prod's crowd is 3 to 8 s): not built.
+
+## A run cut short after its BUY (0504 too; `refusal.drive` @1440 on #870, 2026-11-25)
+
+Not the 2.5 s cut and not the spec: a true fault, live since 0500. The run's trace: a fixed job (Woollen Cloth, Lisbon to Setubal) bought a full hold, her
+sail was refused (wreck); mended, the plan bought again: E_HOLD_FULL, the rest cancelled, stopped at the next tick; with `jobs_wait_enabled` lit she
+would wait "nothing to buy" for ever. 390 drew a run that left room. Now a fixed job at its buy harbour with its good aboard and no unit more to be had
+sails and sells what she has; a land haul the same. Proof 242: 6/6, red on the old body (LD_FULL).
+Not changed: a hold full of OTHER goods still refuses the BUY and stops her. With 0516's `under` price lit, a laden fleet may still wait on it (`range`).

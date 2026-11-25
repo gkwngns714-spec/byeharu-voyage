@@ -4,7 +4,7 @@ import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
 import { clearBackend, cmdFoundHouse, cmdRenameCompany, createLocalBackend, setBackend, worldPlayer } from '../src/lib/rpc'
 import { headline } from '../src/features/ledger/headline'
-import { companyNameToSend } from '../src/domain/company/companyName'
+import { companyNameToSend } from '../src/domain/company'
 
 // ═════════════════════════════════════════════════
 // A COMPANY TAKES A NEW NAME: THE SEAM (0503; the owner's specification of 2026-11-25, plan slice A1): the founding door and the rename
