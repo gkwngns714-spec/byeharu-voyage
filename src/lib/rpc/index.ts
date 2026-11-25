@@ -61,6 +61,7 @@ import type {
   CaptainsView,
   CaptainStatsView,
   CaptainSkillsView,
+  CaptainAshore,
   CaptainSkillUp,
   TraitsSet,
   PromotedCaptain,
@@ -696,6 +697,11 @@ export function cmdCaptainTraitsSet(code: string, traits: readonly string[]) {
 /** 0162 — promote a captain to her next grade (her ship docked; her level; the items kept there). */
 export function cmdPromoteCaptain(code: string) {
   return call<PromotedCaptain>('cmdPromoteCaptain', [code])
+}
+
+/** 0528: your captain leads your land party, or leaves it (null). */
+export function cmdCaptainLand(code: string, party: number | null) {
+  return call<CaptainAshore>('cmdCaptainLand', [code, party])
 }
 
 /** 0157 — seat a captain you keep in a cabin of one of your ships (`seat` null: the server's picker),

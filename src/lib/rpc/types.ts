@@ -1395,6 +1395,9 @@ export interface YourCaptain extends CaptainCard {
   cabin_word: string | null
   /** Ashore, or her ship is docked: her traits (and seat) may change. */
   can_change: boolean
+  /** 0527/0528 (absent while the works are dark): her works, and the land party she leads (null: none). */
+  works?: CaptainWork[]
+  party?: number | null
   levels: CaptainLevel[]
   homesick: { days: number; line: string } | null
   /** 0162 — her next promotion: the grade, the level and items it needs, what you keep where her ship is
@@ -1478,6 +1481,27 @@ export interface CaptainSkillUp {
   max: number
   cost: number
   reputation: number
+  sentence: string
+}
+
+/** 0527 — ONE WORK of one of your captains (`world.captains().works`, absent while the works are dark): her level on the long curve, where it began and where the
+ *  next begins (null at the top), and what the level gives a party she leads: a shorter round, fewer of the crew lost, one round in `forage` that gives provisions. */
+export interface CaptainWork {
+  work: string
+  word: string
+  level: number
+  xp: number
+  from: number
+  next_at: number | null
+  time_pct: number
+  crew_pct: number
+  forage: number | null
+}
+
+/** 0528 — what cmd.captain_land answers: the land party she leads (null: none), in one sentence. */
+export interface CaptainAshore {
+  officer: string
+  party: number | null
   sentence: string
 }
 

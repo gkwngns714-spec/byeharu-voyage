@@ -784,6 +784,17 @@ const TABLE = {
       { name: 'p_trait', type: 'text' },
     ],
   },
+  // 0528: your captain leads your land party (its number), or leaves it (null). Dark (captain_works_enabled): E_NOT_IN_USE.
+  cmdCaptainLand: {
+    schema: 'cmd',
+    fn: 'captain_land',
+    mutates: true,
+    invalidates: ['worldCaptains'],
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_party', type: 'int' },
+    ],
+  },
   // 0162 (K8): promote a captain — her ship docked, her level, the items in storage there.
   cmdPromoteCaptain: { schema: 'cmd', fn: 'promote_captain', mutates: true, invalidates: ['worldCaptains'], args: [{ name: 'p_code', type: 'text' }] },
   cmdSeatCaptain: {
