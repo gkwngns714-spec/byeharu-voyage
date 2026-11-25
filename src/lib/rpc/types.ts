@@ -1034,7 +1034,7 @@ export interface HaggleAttempt {
 
 // ── world.fleets() ─────────────────────────────────────────────────────────────────────────────
 
-export type FleetStatus = 'DOCKED' | 'ANCHORED' | 'SAILING' | 'REPAIRING' | 'ADRIFT' | 'UNABLE_TO_SAIL' | 'IN_BATTLE'
+export type FleetStatus = 'DOCKED' | 'ANCHORED' | 'SAILING' | 'REPAIRING' | 'ADRIFT' | 'UNABLE_TO_SAIL' | 'IN_BATTLE' | 'ROUNDS'
 
 /** 0074 — one fitting mounted on a hull. It has LEFT the player's store at the port to be here. */
 export interface MountedFitting {
