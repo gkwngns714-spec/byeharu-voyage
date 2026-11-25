@@ -21,17 +21,21 @@
 --   can stop before the first). public.fleet_job_plan never read `cut`: no card answered read as {nothing}, asked again 15 minutes on.
 --   public.fleet_job_plan          (1 hunk) cut, and no usable card: {wait: slow} (a near round is not sent home on it either). Cut WITH a usable
 --                                  card: the best card answered is taken now. THAT CUT MAY HAVE HIDDEN A BETTER ONE: it is not asked again for it.
+-- A RUN CUT SHORT AFTER ITS BUY (main's and #870's refusal.drive, 2026-11-25; live since 0500): a fixed run's BUY was done, its SAIL refused (her flagship
+--   lost); mended, the plan bought again into a full hold: E_HOLD_FULL, and the next tick stopped her (with 0498's switch lit: "nothing to buy", for ever).
+--   public.fleet_job_plan          (6 hunks) at her buy harbour with her good aboard and no unit more to be had (public.fleet_buy_capacity), she buys
+--                                  nothing and goes on: sail and sell, no quote asked. A land haul the same: its TAKE. Any other job: as before.
 --   public.fleet_job_note          (1 hunk) `slow` and `unpriced` (the read raised) are asked again at the next tick (90 s), not 15 minutes on.
 --   A read that is whole and pays nothing waits as before. LOAD: while the read stays cut, one plan (a best_sales) a job in two minutes, not in 15.
 -- THE SAME OPTIONS AND FIGURES in Assign, byte for byte: no estimator is added, no rule moves. Its 5 s guard and its rule (a slow machine serves the
 --   same list, or says so) stand. public.land_actions_for (the other E_SLOW) is not touched: its terms ask no trip and no quote.
 -- NOT CHANGED: every knob and switch; world.best_sales; the tick's own body; any table; any client read's shape.
--- THE HUNKS (12; each once in the live body, each reverses): sea_actions_for x4, segments_from_course x2, trip_cost x3, fleet_job_leg_shut x1,
---   fleet_job_plan x1, fleet_job_note x1.
+-- THE HUNKS (18; each once in the live body, each reverses): sea_actions_for x4, segments_from_course x2, trip_cost x3, fleet_job_leg_shut x1,
+--   fleet_job_plan x7, fleet_job_note x1.
 --   It SUPERSEDES three bodies, replaced whole by their one-line ask (0494's, 0481's and 0496's text is the rollback's; no answer moves). NEW: five functions, server only.
 -- ROWS: none. budget: no table, no cron job, no autovacuum or fillfactor change.
 -- LOCKS: CREATE FUNCTION x5, CREATE OR REPLACE x9. TIME: a few seconds. BUDGET: statement_timeout 90 s, lock_timeout 5 s; fails above 45 s.
--- ROLLBACK (forward): a migration reversing the twelve hunks, restoring the three wrapped bodies and dropping the five functions.
+-- ROLLBACK (forward): a migration reversing the eighteen hunks, restoring the three wrapped bodies and dropping the five functions.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the cut bodies' grants, volatility, definer, search path and owner
 --   unmoved; no knob moved; the new functions server only. THE PROBE (rolled back, its own company's rows): from Lisbon to every fortieth harbour
 --   and back, the trip and its miles as the old bodies (kept under the session's own schema) work them out, as public.job_trip answers now and
@@ -465,6 +469,42 @@ $h$    -- 0504: the read was cut by its clock and no card it answered is usable:
       return jsonb_build_object('wait', 'slow', 'sentence', 'prices are slow: asked again in two minutes');
     end if;
     -- 0502: every sale judged would ruin her: she WAITS$h$),
+  ('public.fleet_job_plan(uuid)', 2,
+$h$  v_judged int := 0;   -- 0502: how many of them were judged$h$,
+$h$  v_judged int := 0;   -- 0502: how many of them were judged
+  v_laden boolean := false;   -- 0504: the load is aboard already and no more can be taken: nothing to buy, she goes on$h$),
+  ('public.fleet_job_plan(uuid)', 3,
+$h$    if v_at = v_buy then
+      -- 0498 (jobs_wait_enabled): A RUN THAT SELLS IS STARTED ONLY IF$h$,
+$h$    if v_at = v_buy then
+      -- 0504: A RUN CUT SHORT AFTER ITS BUY (her flagship lost, mended since): her good is aboard and she can buy none (hold, purse, quay or
+      -- allowance). A BUY would be refused and stop her (E_HOLD_FULL), and 0498's quote would wait for ever: she goes on with her load
+      v_laden := public.fleet_cargo_qty(p_fleet, v_g) >= 1
+                 and coalesce((public.fleet_buy_capacity(p_fleet, (select g.id from public.goods g where g.code = v_g))->>'max_qty')::numeric, 0) < 1;
+      -- 0498 (jobs_wait_enabled): A RUN THAT SELLS IS STARTED ONLY IF$h$),
+  ('public.fleet_job_plan(uuid)', 4,
+$h$      if public.jobs_wait_on() and coalesce(v_end->>'verb', 'SELL') = 'SELL' and not (v_end ? 'buy') then$h$,
+$h$      if not v_laden and public.jobs_wait_on() and coalesce(v_end->>'verb', 'SELL') = 'SELL' and not (v_end ? 'buy') then$h$),
+  ('public.fleet_job_plan(uuid)', 5,
+$h$      v_to := v_sell;
+    else$h$,
+$h$      if v_laden then   -- 0504
+        v_lines := (select jsonb_agg(z.l order by z.i) from jsonb_array_elements(v_lines) with ordinality z(l, i) where z.l->>'text' not like 'BUY %');
+      end if;
+      v_to := v_sell;
+    else$h$),
+  ('public.fleet_job_plan(uuid)', 6,
+$h$      if v_g is null or coalesce(v_qty, 0) < 1 then$h$,
+$h$      -- 0504: a haul cut short after its TAKE: the same rule (the shed is empty, or no room for one unit more)
+      v_laden := v_g is not null and public.fleet_cargo_qty(p_fleet, v_g) >= 1
+                 and (coalesce(v_qty, 0) < 1 or public.fleet_free_hold(p_fleet) < (select g.bulk from public.goods g where g.code = v_g));
+      if not coalesce(v_laden, false) and (v_g is null or coalesce(v_qty, 0) < 1) then$h$),
+  ('public.fleet_job_plan(uuid)', 7,
+$h$                 || jsonb_build_array(jsonb_build_object('text', format('STORE %s ALL', v_g)));$h$,
+$h$                 || jsonb_build_array(jsonb_build_object('text', format('STORE %s ALL', v_g)));
+      if v_laden then   -- 0504
+        v_lines := (select jsonb_agg(z.l order by z.i) from jsonb_array_elements(v_lines) with ordinality z(l, i) where z.l->>'text' not like 'TAKE %');
+      end if;$h$),
   ('public.fleet_job_note(uuid,jsonb)', 1,
 $h$  elsif p_plan->>'wait' in ('nothing', 'unpriced', 'identity') then$h$,
 $h$  elsif p_plan->>'wait' in ('slow', 'unpriced') then
@@ -591,6 +631,6 @@ $h$  elsif p_plan->>'wait' in ('slow', 'unpriced') then
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0504 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0504 self-assert ok: ASSIGN, FAST. Twelve hunks once and reversing; three bodies wrapped; five new functions server only; no other function moved; no knob moved. Probe (rolled back): %. % ms.',
+  raise notice '0504 self-assert ok: ASSIGN, FAST. Eighteen hunks once and reversing; three bodies wrapped; five new functions server only; no other function moved; no knob moved. Probe (rolled back): %. % ms.',
     v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;
