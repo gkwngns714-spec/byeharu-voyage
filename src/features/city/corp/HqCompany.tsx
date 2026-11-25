@@ -1,3 +1,4 @@
+import { HeldRoom } from '../../../components/ui'
 import type { SnapshotPort } from '../../../lib/rpc'
 import { litAway, useAwayReport } from '../../../live/useAwayReport'
 import { litRace, useNationRace } from '../../../live/useNationRace'
@@ -33,21 +34,37 @@ import { WorkerList } from './WorkerList'
 export function HqCompany({ port }: { port: SnapshotPort | null }) {
   const board = useBoard()
   // 0481: her fleets' standing jobs (world.away_report; dark: null, and nothing of them is drawn)
-  const away = litAway(useAwayReport().view)
+  const awayRead = useAwayReport()
+  const away = litAway(awayRead.view)
   // 0484: the country race (world.nation_race; dark: null, and nothing of it is drawn)
-  const race = litRace(useNationRace().view)
+  const raceRead = useNationRace()
+  const race = litRace(raceRead.view)
   // 0486: her choices at sea (world.sea_choices; dark: null, and nothing of them is drawn)
-  const sea = litSea(useSeaChoices().view)
+  const seaRead = useSeaChoices()
+  const sea = litSea(seaRead.view)
+  // NOTHING HERE MOVES BY ITSELF (2026-11-25). Best moves, the Storage and the Ledger are FIXED SHAPES: the same boxes before their read,
+  // after it, and whatever it says. Three blocks cannot be: a choice at sea, the news from away and the country race are there only
+  // when something happened or a switch is lit, which only their own read knows. Those hold the room they had last time while that
+  // read is asked (HeldRoom.tsx). The worker list is a fixed shape too: its rows are counted from the world before its reads answer
+  // (WorkerList.tsx). `asking` is the first answer still on the wire, never the silent re-ask.
+  const asking = (r: { view: unknown; loading: boolean }) => r.view === null && r.loading
   return (
     <div className="flex flex-col gap-6" data-testid="hq-company">
       <Bridge board={board} />
-      {sea?.open.map((c) => <SeaChoiceCard key={c.id} c={c} />)}
-      {away && <JobsAway report={away} sea={sea?.recent ?? []} />}
+      <HeldRoom name="hq-sea" asking={asking(seaRead)} className="gap-6">
+        {sea?.open.map((c) => <SeaChoiceCard key={c.id} c={c} />)}
+      </HeldRoom>
+      {/* the away block reads the sea's settled choices too, so its room is held until both have answered */}
+      <HeldRoom name="hq-away" asking={asking(awayRead) || asking(seaRead)}>
+        {away && <JobsAway report={away} sea={sea?.recent ?? []} />}
+      </HeldRoom>
       <WorkerList />
       <HqBoard board={board} />
       {port && <WarehouseArea port={port} />}
-      <LedgerArea rate={board.rate} />
-      {race && <RaceBridge race={race} />}
+      <LedgerArea rate={board.rate} asking={board.asking} />
+      <HeldRoom name="hq-race" asking={asking(raceRead)}>
+        {race && <RaceBridge race={race} />}
+      </HeldRoom>
     </div>
   )
 }

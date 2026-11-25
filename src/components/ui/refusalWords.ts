@@ -17,6 +17,12 @@ export function refusalWords(
   figures: { have: number; need: number; unit: string } | null | undefined,
   served?: string | null,
 ): string | null {
+  // 0497: the day's allowance wholly spent reads as what happened, in every language (the server's "Day limit 0 / 1 tons" stood
+  // under a sale that had just sold the day's limit)
+  if (code === 'E_DAILY_CAP' && figures && figures.have === 0) {
+    const spent = translateMaybe(locale, 'codes', 'spent_E_DAILY_CAP') ?? translateMaybe('en', 'codes', 'spent_E_DAILY_CAP')
+    if (spent !== null) return spent
+  }
   const words = codeWords(locale, code, figures)
   if (words === null) return null
   const name = servedName(served, figures)

@@ -31,6 +31,9 @@ export const codesDict = defineDict({
     lab_E_CITY_BROKE: 'City money',
     lab_E_WORLD_BROKE: 'World money',
     lab_E_DAILY_CAP: 'Day limit',
+    // 0497: nothing of the day's allowance is left: she HAS sold what this quay takes today (the owner read "Day limit 0 / 1 tons"
+    // under a sale that had just gone through)
+    spent_E_DAILY_CAP: "Sold today's limit",
     lab_E_DAY_CAP: 'Day limit',
     lab_E_INVEST_MIN: 'Investment',
     lab_E_SHIP_LEVEL: 'Ship level',

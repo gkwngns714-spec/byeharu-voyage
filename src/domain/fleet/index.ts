@@ -36,7 +36,10 @@ export {
   fleetPortCode,
   // THE REFUSED ORDER IN HER QUEUE, and the one-word signal (sailing · waiting · stuck) a picker's
   // dot draws — the queue's halt note and the dot read the same row.
+  causeMended,
+  fleetNewRefusal,
   fleetRefusedOrder,
+  refusalIsNews,
   fleetSignal,
   fleetStatusTone,
   fleetStores,
@@ -81,3 +84,4 @@ export {
 // not about any screen that prints one (statGloss.ts's header carries the citations).
 export { SHIP_STATS, shipStatItems, type ShipStatGloss, type ShipStatKey } from './statGloss'
 export { heldMs, heldUntilMs, inBattle } from './hold'
+export { cargoPort, fixOf, wreckFix, type WorkerFix } from './fix'

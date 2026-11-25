@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Button, Note } from '../components/ui'
 import { cmdPreviewTow, cmdTow, ok } from '../lib/rpc'
 import type { FleetView, Refusal, TowReceipt } from '../lib/rpc'
@@ -46,12 +46,24 @@ interface Served {
   refusal: Refusal | null
 }
 
-function TowRow({ fleet }: { fleet: FleetView }) {
-  const t = useT()
+/** The tow, quoted (0497's HQ press reads it too, live/WreckFix.tsx): the fee and where to once the dry run has answered and her
+ *  purse covers it; the server's own sentence; its refusal (E_TOW_FUNDS names the fee and the purse); and the one press. */
+export interface TowQuote {
+  fee: number | null
+  to: string | null
+  sentence: string | null
+  refusal: Refusal | null
+  busy: boolean
+  send: () => void
+}
+
+/** THE TOW'S ONE ACT: its dry run and its press, handed to whoever draws them. This file stays the one importer of `cmdTow`. */
+export function TowNow({ fleet, children }: { fleet: FleetView; children: (quote: TowQuote) => ReactNode }) {
   const refresh = useWorld((s) => s.refresh)
   const [sending, setSending] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
-  const quote = useServedRead<Served>(`tow:${fleet.id}`, async () => {
+  // the purse is part of the question: a sale that fills it asks the tow again
+  const quote = useServedRead<Served>(`tow:${fleet.id}:${fleet.version}`, async () => {
     const r = await cmdPreviewTow(fleet.id)
     return ok(r.ok ? { view: r.value, refusal: null } : { view: null, refusal: r.refusal })
   }, { name: 'cmdPreviewTow', cache: false })
@@ -65,32 +77,42 @@ function TowRow({ fleet }: { fleet: FleetView }) {
     void (async () => {
       const r = await cmdTow(fleet.id, fleet.version)
       setSending(false)
-      if (r.ok) await refresh()
+      if (r.ok) return void (await refresh())
+      // a fleet that moved on under the press (an order refused a moment ago): her row is read again, and the next press is true
+      if (r.refusal.code === 'E_STALE') await refresh()
       else setRefusal(r.refusal)
     })()
   }
+  return <>{children({ fee: estimate ? estimate.fee : null, to: estimate ? estimate.to_name : null, sentence: estimate ? estimate.sentence : null, refusal: shown, busy: sending, send })}</>
+}
 
+function TowRow({ fleet }: { fleet: FleetView }) {
+  const t = useT()
   // Until the dry run answers there is nothing true to say — the words are the server's.
   return (
-    <>
-      {estimate && (
-        <Note
-          tone="warning"
-          data-testid="tow-note"
-          action={
-            <Button size="sm" busy={sending} busyLabel={t('ship.towing')} onClick={send} data-testid="tow-send">
-              {estimate.fee > 0 ? t('ship.towFee', { fee: formatDucats(estimate.fee) }) : t('ship.tow')}
-            </Button>
-          }
-        >
-          {estimate.sentence}
-        </Note>
+    <TowNow fleet={fleet}>
+      {(q) => (
+        <>
+          {q.fee !== null && q.sentence !== null && (
+            <Note
+              tone="warning"
+              data-testid="tow-note"
+              action={
+                <Button size="sm" busy={q.busy} busyLabel={t('ship.towing')} onClick={q.send} data-testid="tow-send">
+                  {q.fee > 0 ? t('ship.towFee', { fee: formatDucats(q.fee) }) : t('ship.tow')}
+                </Button>
+              }
+            >
+              {q.sentence}
+            </Note>
+          )}
+          {q.refusal && (
+            <Note tone="danger" code={q.refusal.code} figures={q.refusal.figures} data-testid="tow-refusal">
+              {q.refusal.sentence}
+            </Note>
+          )}
+        </>
       )}
-      {shown && (
-        <Note tone="danger" code={shown.code} figures={shown.figures} data-testid="tow-refusal">
-          {shown.sentence}
-        </Note>
-      )}
-    </>
+    </TowNow>
   )
 }
