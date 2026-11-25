@@ -760,6 +760,9 @@ const TABLE = {
       { name: 'p_party', type: 'int' },
     ],
   },
+  // 0529: open your next captain place; let a captain go. Dark (captain_places_enabled): E_NOT_IN_USE.
+  cmdCaptainPlace: { schema: 'cmd', fn: 'captain_place', mutates: true, invalidates: ['worldCaptains', 'worldPlayer'], args: [] },
+  cmdCaptainDismiss: { schema: 'cmd', fn: 'captain_dismiss', mutates: true, invalidates: ['worldCaptains'], args: [{ name: 'p_code', type: 'text' }] },
   // 0162 (K8): promote a captain — her ship docked, her level, the items in storage there.
   cmdPromoteCaptain: { schema: 'cmd', fn: 'promote_captain', mutates: true, invalidates: ['worldCaptains'], args: [{ name: 'p_code', type: 'text' }] },
   cmdSeatCaptain: {

@@ -26,3 +26,32 @@ Self-asserts 0.1 s each; proof 235 7/7; 158, 164, 44, 58 again; perturb 18 world
 ## Not verified
 `rpc.surface` (a browser image), `vite build`, the client (after). Prod: nothing read; `scripts/ops/harness/captain-works/state.sql` is the lead's.
 Experience due from a trip before she joined (at most 10 minutes' worth) goes to whoever leads the party when it is booked.
+
+# 0529, 0530 (dark: `captain_places_enabled`, `honor_enabled`), proof 236
+
+The stack now holds the fixed 0502 (`no-ruinous-run` 58919d8e merged).
+
+## 0529 `captain-places`
+- Two captains at a founding (lit), and by the one light step `public.captain_places_light()` for every player's company: two kinds (combat and
+  not), the lowest grade, her country first; no wage, no coin. Captains above the places are kept.
+- `captain_places`: 3 to 8 are NULL (the owner prices them); `cmd.captain_place` opens the next for total level, Reputation and coin (ledger
+  kind SLOT, to her home city), all or nothing. The Inn's door refuses a full company; the HQ board offers it no hire.
+- **`cmd.captain_dismiss` is new: no door dismissed a captain before**, and "dismiss first" needed one.
+- `sign_officer`'s rows moved whole to `captain_sign_rows`; a merchant's signing is untouched and asks no place.
+- `total level` here is the sum of the levels the Skills list shows. 0509's `hq_steps` names a total level too and has no reader yet: one
+  function should serve both when it gets one.
+
+## 0530 `honor-badges`
+Three tables in Reputation's shape, one writer, one earn kind (`land`) and one spend kind (`captain_upgrade`) held by the table's own check;
+the self-assert holds that no other body names them. Nothing earns until 0531.
+
+## Restart (0509): still nothing to add
+`captain_places_open`, `honor_balance` and `honor_book` stay with the retired row, as `reputation_balance` and its book do; the new company
+starts at two places and no badges.
+
+## Checked
+Self-asserts about 0.1 s each; proof 236 6/6; 235, 44, 58, 176 again; perturb 18 worlds (16 pass; 2 known: a city that cannot pay a founding).
+tsc, eslint, `db.budget`. **0508's own self-assert failed once more while the chain was rebuilt (line 451): it is still flaky in this stack.**
+
+## Not verified
+As above. E_CAPTAIN_ROOM and E_NOT_ENOUGH_HONOR have no words in the client's dictionary yet (the client slice).

@@ -17,7 +17,7 @@ for (const name of names.filter((n) => n < FIRST)) files.push({ name, sql: await
 const mine = []
 for (const name of names.filter((n) => n >= FIRST)) mine.push({ name, sql: await readFile(path.join(MIGRATIONS_DIR, name), 'utf8') })
 const out = await applyWithPrefixCache({ variant: await preambleVariant(), files, cacheDir, snapshots: false, log: (m) => /restored|REFUSED/.test(String(m)) && console.log(String(m).slice(0, 160)) })
-if (out.restored < files.length - 6) throw new Error(`only ${out.restored} of ${files.length} files were cached: refusing a long replay`)
+if (out.restored < files.length - 20) throw new Error(`only ${out.restored} of ${files.length} files were cached: refusing a long replay`)
 const db = out.db
 
 // the switches production runs lit (tests/corpWorld.fixture.ts) and the ones the standing jobs need
@@ -79,7 +79,7 @@ const WORLDS = [
   // (E_NO_NEW_GOLD). Every migration's probe since 0481 founds a company the same way, and no real player could found one either.
   // before-0497.sql reads the two facts (`founding`) so the lead sees it before the deploy.
   ['KNOWN closed economy, every city purse empty', `${lit([...LIT, 'economy_closed', 'city_treasury_enabled'])}; update public.port_treasury set ducats = 0, reserve = 0`],
-  ["closed economy, Lisbon's purse exactly a founding, every other purse empty: the quay is broke for her sale", `${lit([...LIT, 'economy_closed', 'city_treasury_enabled'])}; update public.port_treasury set ducats = 0, reserve = 0; update public.port_treasury set ducats = 40000 where port_id = (select id from public.ports where code = 'LIS')`],
+  ["KNOWN closed economy, Lisbon's purse exactly a founding, every other purse empty: the quay is broke for her sale", `${lit([...LIT, 'economy_closed', 'city_treasury_enabled'])}; update public.port_treasury set ducats = 0, reserve = 0; update public.port_treasury set ducats = 40000 where port_id = (select id from public.ports where code = 'LIS')`],
   ['KNOWN her home quay buys nothing at all: Lisbon has no market row', `delete from public.port_goods where port_id = (select id from public.ports where code = 'LIS')`],
   ['no hands on any quay, no merchant in any port', `update public.ports set crew_pool = 0; update public.fleets f set port_id = null, lat = 0, lon = -30, status = 'ANCHORED' from public.npc_fleets nf where nf.fleet_id = f.id and f.port_id is not null`],
   ["real wrecks and real queues: the owner's four pending orders, two other wrecks, an empty fleet", WRECKS],

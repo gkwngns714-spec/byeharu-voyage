@@ -62,6 +62,8 @@ import type {
   CaptainStatsView,
   CaptainSkillsView,
   CaptainAshore,
+  CaptainDismissed,
+  CaptainPlaceOpened,
   CaptainSkillUp,
   TraitsSet,
   PromotedCaptain,
@@ -696,6 +698,16 @@ export function cmdPromoteCaptain(code: string) {
 /** 0528: your captain leads your land party, or leaves it (null). */
 export function cmdCaptainLand(code: string, party: number | null) {
   return call<CaptainAshore>('cmdCaptainLand', [code, party])
+}
+
+/** 0529: open your next captain place, for what the owner priced it at. */
+export function cmdCaptainPlace() {
+  return call<CaptainPlaceOpened>('cmdCaptainPlace', [])
+}
+
+/** 0529: let a captain of yours go (ashore, docked, or with a party at home). */
+export function cmdCaptainDismiss(code: string) {
+  return call<CaptainDismissed>('cmdCaptainDismiss', [code])
 }
 
 /** 0157 — seat a captain you keep in a cabin of one of your ships (`seat` null: the server's picker),

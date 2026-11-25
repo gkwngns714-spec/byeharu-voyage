@@ -1422,6 +1422,9 @@ export interface PromotedCaptain {
 
 export interface CaptainsView {
   captains: YourCaptain[]
+  /** 0529, 0530 (each absent while its switch is dark): her captain places; her HONOR BADGES. */
+  places?: CaptainPlaces
+  honor?: number
 }
 
 /** 0337 — ONE PART of a stat: an effect her seat adds, in per cent (`pct`), as `public.crew_terms` gives it for her, and the server's own words for it (`line`, "+9.5% speed"; null when there is nothing to say).
@@ -1494,6 +1497,28 @@ export interface CaptainWork {
   time_pct: number
   crew_pct: number
   forage: number | null
+}
+
+/** 0529 — the company's captain places (`world.captains().places`, absent while dark). `next`: null past the last place; `open` false: not priced yet, no figure served. */
+export interface CaptainPlaces {
+  places: number
+  used: number
+  next:
+    | { place: number; open: false }
+    | { place: number; open: true; total_level: number; reputation: number; ducats: number; have: { total_level: number; reputation: number; ducats: number } }
+    | null
+}
+
+/** 0529 — what cmd.captain_place answers. */
+export interface CaptainPlaceOpened {
+  places: number
+  sentence: string
+}
+
+/** 0529 — what cmd.captain_dismiss answers. */
+export interface CaptainDismissed {
+  officer: string
+  sentence: string
 }
 
 /** 0528 — what cmd.captain_land answers: the land party she leads (null: none), in one sentence. */
