@@ -9,9 +9,9 @@ export const KIND_ICON: Record<MoveKind, IconName> = { trade: 'scales', request:
 // 0481: A STANDING JOB AS A MARK: its kind's glyph (the best run a trophy, a fixed route the route, the Land haul the pick), in the tone of
 // its state (working green, waiting muted, stopped red). One table for While away.
 
-export const JOB_ICON: Record<FleetJobKind, IconName> = { best: 'trophy', fixed: 'route', land: 'pick' }
+export const JOB_ICON: Record<FleetJobKind, IconName> = { best: 'trophy', fixed: 'route', land: 'pick', round: 'compass' }
 
-export const JOB_KIND_WORD: Record<FleetJobKind, TKey> = { best: 'hq.jobBest', fixed: 'hq.jobFixed', land: 'hq.jobLand' }
+export const JOB_KIND_WORD: Record<FleetJobKind, TKey> = { best: 'hq.jobBest', fixed: 'hq.jobFixed', land: 'hq.jobLand', round: 'hq.jobRound' }
 
 export const JOB_STATE_TONE: Record<FleetJobRow['state'], NeedTone> = { working: 'success', waiting: 'muted', stopped: 'danger' }
 
