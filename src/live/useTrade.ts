@@ -107,7 +107,11 @@ export function useTrade(
       const okay = await issue(fleet.id, orderText(spec, { good: good.code, qty: all ? 'ALL' : String(n) }, fleet.name), null)
       setSending(false)
       if (okay) onDone()
-      else setRefused({ key, refusal: useWorld.getState().refusal })
+      else {
+        setRefused({ key, refusal: useWorld.getState().refusal })
+        // a refused order moves the fleet's version too: read her again, or her next press (a tow) is refused as stale
+        void useWorld.getState().refresh()
+      }
     })()
   }
 

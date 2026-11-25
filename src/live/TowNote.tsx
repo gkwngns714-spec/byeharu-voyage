@@ -77,7 +77,9 @@ export function TowNow({ fleet, children }: { fleet: FleetView; children: (quote
     void (async () => {
       const r = await cmdTow(fleet.id, fleet.version)
       setSending(false)
-      if (r.ok) await refresh()
+      if (r.ok) return void (await refresh())
+      // a fleet that moved on under the press (an order refused a moment ago): her row is read again, and the next press is true
+      if (r.refusal.code === 'E_STALE') await refresh()
       else setRefusal(r.refusal)
     })()
   }

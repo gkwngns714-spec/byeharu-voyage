@@ -64,7 +64,7 @@ function Step({ fleet, tow, children }: { fleet: FleetView; tow: TowQuote; child
   const short = tow.refusal?.code === 'E_TOW_FUNDS'
   const sells = useWreckSells(fleet, short ? good : null)
   if (tow.fee !== null) {
-    return <>{children({ kind: 'tow', fee: tow.fee, to: tow.to, sentence: tow.sentence, refusal: null, busy: tow.busy, press: tow.send })}</>
+    return <>{children({ kind: 'tow', fee: tow.fee, to: tow.to, sentence: tow.sentence, refusal: tow.refusal, busy: tow.busy, press: tow.send })}</>
   }
   if (short && good !== null && port !== null && sells === true) {
     return <>{children({ kind: 'sell', fee: null, to: null, sentence: null, refusal: tow.refusal, busy: false, press: () => openHq({ sheet: 'trade', port, fleet: fleet.id, good, side: 'sell' }) })}</>
