@@ -31,7 +31,7 @@
 --   with her cap, a short cap and none; each the same text. Her whole read is compared with its clock budgets set off (the old and the new both
 --   copied under the session's schema with an hour): the same text. Nothing of the market is judged.
 -- news: this file posts its own UPDATE row (public.news_update('0536', ...)).
--- VERSION: 0536, a PLACEHOLDER (stacked on batch 2).
+-- VERSION: 0536 (after 0535 `rounds-by-sea`).
 -- ════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$

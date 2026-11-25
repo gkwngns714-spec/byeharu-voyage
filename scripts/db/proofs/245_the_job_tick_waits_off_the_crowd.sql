@@ -1,10 +1,10 @@
--- PROOF 243 - THE JOB TICK WAITS OFF THE CROWD, FOR pg_cron ALONE  (migration 0536; docs/dev-log/2026-11-25-best-sales-fast.md)
+-- PROOF 245 - THE JOB TICK WAITS OFF THE CROWD, FOR pg_cron ALONE  (migration 0536; docs/dev-log/2026-11-25-best-sales-fast.md)
 -- @pass TW_RULE   to second 25 for pg_cron's session; nothing past it, nothing for any other session, nothing for none
 -- @pass TW_HAND   a run by hand (p_commit false) with a job due does not wait, whoever the session says it is; the job is started
 -- @pass TW_SHAPE  in the procedure the wait is only when p_commit and a job is due, each second its own transaction, and what is due is read after it
 do $p$
 declare
-  c_a  constant uuid := '00000000-0536-4000-8000-000000000243';
+  c_a  constant uuid := '00000000-0536-4000-8000-000000000245';
   v_a  uuid;
   v_f  uuid;
   v_t  timestamptz;
@@ -17,7 +17,7 @@ begin
   end if;
   raise notice 'PASS: TW_RULE - 25 s at second 0, 0.5 at 24.5, none from 25 on and none for another session';
 
-  v_a := public.new_house(c_a, 'Casa do Compasso 243', 'PRT');
+  v_a := public.new_house(c_a, 'Casa do Compasso 245', 'PRT');
   select f.id into v_f from public.fleets f where f.player_id = v_a;
   update public.players p set ducats = 5000000 where p.id = v_a;
   update public.world_config set value = 'true'::jsonb where key in ('fleet_jobs_enabled', 'sea_courses_enabled');
