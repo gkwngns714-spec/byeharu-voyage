@@ -6,7 +6,7 @@
 --   through the real doors (cmd.preview, cmd.issue, cmd.tow, the yard). Rolled back by proof.mjs.
 --
 -- @pass WS_DARK     dark, as prod is today: her Sell is dry-run "queued", taken with ok, and never runs; the tow is refused for coin (E_TOW_FUNDS): she is stuck
--- @pass WS_SELL     lit: the dry run is a real quote; ONE press runs the SELL already waiting in her queue past the three SAILs (coral out, coin in); the SAILs are neither run nor cancelled; she is still wrecked
+-- @pass WS_SELL     lit: the quay lists her coral (public.quay_shows) and the dry run is a real quote; ONE press runs the SELL already waiting in her queue past the three SAILs (coral out, coin in); the SAILs are neither run nor cancelled; she is still wrecked
 -- @pass WS_TRUTH    lit: BUY, SAIL, HIRE and REPAIR for her are refused in plain words and nothing is queued; a second SELL the day's limit refuses is refused by the quay's own rule, not queued
 -- @pass WS_STORE    lit: STORE lands her cargo into the warehouse where she lies and TAKE takes it up again
 -- @pass WS_TOW      with the coin of that sale the tow takes her to the nearest yard (her queue cleared, the cargo still aboard), the yard quotes her repair, and the coin left covers it
@@ -64,7 +64,8 @@ begin
 
   -- WS_SELL: the dry run, then ONE press (she presses Sell for one coral: her queue's own SELL ALL runs first)
   v_q := cmd.preview(v_f, 'SELL black-coral ALL');
-  if (v_q->>'ok')::boolean is not true or v_q ? 'queued' or (v_q #>> '{estimate,qty}')::numeric < 1 or (v_q #>> '{estimate,net}')::numeric <= 0 then
+  if (v_q->>'ok')::boolean is not true or v_q ? 'queued' or (v_q #>> '{estimate,qty}')::numeric < 1 or (v_q #>> '{estimate,net}')::numeric <= 0
+     or not public.quay_shows(v_dga, (select g.id from public.goods g where g.code = 'black-coral')) then
     raise exception 'WS_SELL: lit, the dry run of her SELL is not a real quote: %', v_q;
   end if;
   v_r := cmd.issue(v_f, 'SELL black-coral 1', null, null);

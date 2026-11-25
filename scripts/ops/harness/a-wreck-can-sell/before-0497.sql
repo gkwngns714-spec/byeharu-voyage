@@ -1,6 +1,6 @@
 -- 0497 A WRECK CAN SELL, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
 --   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/a-wreck-can-sell/before-0497.sql
--- Expect: head 20260818000496; switch null (no row yet); new_fns 0; hunked 6 (the six bodies 0497 hunks are there); old_gates 3 (the
+-- Expect: head 20260818000496; switch null (no row yet); new_fns 0; hunked 7 (the seven bodies 0497 hunks are there); old_gates 3 (the
 --   three cargo doors still ask `status <> 'DOCKED'` themselves). `wrecks`: every player's fleet that is UNABLE_TO_SAIL today, with
 --   where she lies, whether that port has a yard, her purse, her cargo (each ship's, as stored) and her waiting orders: the companies this is for.
 --   `founding`: the migration's probe founds a company at Lisbon (public.new_house), as every probe does: with economy_closed true
@@ -19,7 +19,7 @@ select json_build_object(
   'new_fns', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                where (n.nspname, p.proname) in (('public', 'wreck_sells_on'), ('public', 'fleet_alongside'), ('public', 'wreck_may'), ('public', 'wreck_order_refusal'))),
   'hunked', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-              where (n.nspname, p.proname) in (('cmd', 'do_sell'), ('cmd', 'do_store'), ('cmd', 'do_take'), ('cmd', 'advance'), ('cmd', 'preview'), ('cmd', 'issue'))),
+              where (n.nspname, p.proname) in (('cmd', 'do_sell'), ('cmd', 'do_store'), ('cmd', 'do_take'), ('public', 'quay_shows'), ('cmd', 'advance'), ('cmd', 'preview'), ('cmd', 'issue'))),
   'old_gates', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'cmd' and p.proname in ('do_sell', 'do_store', 'do_take') and p.prosrc like '%if f.status <> ''DOCKED'' then%'),
   'founding', json_build_object('economy_closed', (select c.value from public.world_config c where c.key = 'economy_closed'),
