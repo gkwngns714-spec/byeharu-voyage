@@ -57,7 +57,7 @@
 -- ROWS: no new row kind. A wrecked fleet's job no longer writes its plan's orders (seven SAILs in the report) nor counts a run.
 -- budget: no table, no cron job, no autovacuum or fillfactor change.
 -- LOCKS: CREATE OR REPLACE x9 by hunks (eight functions, one procedure), CREATE FUNCTION x2. TIME: about a second. BUDGET:
---   statement_timeout 60 s, lock_timeout 5 s; fails above 45 s.
+--   statement_timeout 90 s, lock_timeout 5 s; fails above 45 s.
 -- ROLLBACK (forward, owner only): a migration reversing the fifteen hunks (OLD texts below verbatim) and dropping the two functions. QUICK:
 --   none of its own; fleet_jobs_enabled false stops every job, as before.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants, volatility, definer, search path and
@@ -67,6 +67,15 @@
 --   sails by herself at the first run after her hull is mended. A job already stopped on the code is left alone while she is wrecked
 --   and goes on once she is fit. The sail's refusal reads as it did. SHORT OF CREW: where crew can be hired she waits with
 --   E_CREW_SHORT; where none can she stops on it with nothing issued; manned, she sails at the next run; the door refuses her.
+--   NO REAL COMPANY'S JOB IS ASKED OR WRITTEN (2026-11-25, after 0497 was refused on prod by a probe that leaned on the live world).
+--   The scenes ran public.tick_fleet_jobs after pushing every other company's next_at a day on (a write to every real job's row), and
+--   that did not hold a real job back once the hunks were in: a job stopped on E_FLAGSHIP_DISABLED whose fleet is mended, or one that
+--   waits for crew she now has, is due whatever its next_at (the very rule this file adds), so the run "that asks nothing" asked it and
+--   the assert failed on a world that holds one (reproduced: one such company, and 0499 refused itself). Now pg_temp.tick_mine_0499
+--   runs the tick only when the scene's own job is due, with that job the longest-waiting (its own `since` and last.at set back) and
+--   fleet_jobs_per_tick 1 for the scene: the run plans the scene's job and no other. A run that must ask nothing is read from
+--   public.fleet_jobs_due (her job is not in it). Rows written: the scenes' own companies, world_config (switches, the run's count),
+--   ISL's crew_pool (the hire's gate is the port's), all rolled back. No market price is read for a sign: the plan is a land job's sails.
 -- news: this file posts its own UPDATE row (public.news_update('0499', ...)).
 -- VERSION: 0499 (after 0498 `near-round`).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -88,6 +97,7 @@ declare
   v_meta      text;
   v_cfg_before text;
   v_lived     boolean := false;
+  v_ask       boolean;
   v_d0        jsonb;
   v_d1        jsonb;
   v_isl       uuid;
@@ -97,7 +107,7 @@ declare
   v_r         jsonb;
   v_note      text := '';
 begin
-  perform set_config('statement_timeout', '60s', true);
+  perform set_config('statement_timeout', '90s', true);
   perform set_config('lock_timeout', '5s', true);
 
   -- ── 0. GUARD ──
@@ -122,6 +132,34 @@ begin
     into v_cfg_before from public.world_config c;
 
   -- ── 2. THE SCENE (a temp function, run before the hunks and after): the reported fleet at ISL, healthy, wrecked, mended ──
+  -- THE RUN, FOR THE SCENE'S JOB ALONE (the header): false, and no run, when her job is not due (the run would not ask her); else her
+  -- job is made the longest-waiting (its own row), the run takes one job, and it is hers. No other company's job is planned or written.
+  execute $f$
+create function pg_temp.tick_mine_0499(p_fleet uuid)
+returns boolean
+language plpgsql
+as $body$
+begin
+  if not exists (select 1 from public.fleet_jobs_due() d where d.fleet_id = p_fleet) then
+    return false;
+  end if;
+  update public.fleet_jobs j
+     set since = '2000-01-01 00:00:00+00',
+         last = case when j.last ? 'at' then jsonb_set(j.last, '{at}', to_jsonb('2000-01-01 00:00:00+00'::timestamptz)) else j.last end
+   where j.fleet_id = p_fleet;
+  update public.world_config set value = to_jsonb(1) where key = 'fleet_jobs_per_tick';
+  if (select d.fleet_id from public.fleet_jobs_due() d order by d.turn, d.fleet_id limit 1) is distinct from p_fleet then
+    raise exception '0499 self-assert FAIL: the scene''s job is not the first the run would take';
+  end if;
+  call public.tick_fleet_jobs(false);
+  if (select r.receipt #>> '{steps,0,fleet}' from public.fleet_job_runs r where r.at = now()) is distinct from p_fleet::text
+     or (select jsonb_array_length(r.receipt->'steps') from public.fleet_job_runs r where r.at = now()) <> 1 then
+    raise exception '0499 self-assert FAIL: the run did not take the scene''s job and that job alone: %', (select r.receipt from public.fleet_job_runs r where r.at = now());
+  end if;
+  return true;
+end
+$body$
+  $f$;
   execute $f$
 create function pg_temp.scene_0499(p_uid uuid)
 returns jsonb
@@ -142,14 +180,14 @@ declare
   v_sr  jsonb;
   v_sr0 jsonb;
   v_st  text;
+  v_a1  boolean;
+  v_a2  boolean;
 begin
   v_pl := public.new_house(p_uid, 'Casa da Prova 0499', 'PRT');
   select f.id into v_fl from public.fleets f where f.player_id = v_pl;
   update public.players p set ducats = 2000000 where p.id = v_pl;
   update public.fleets set port_id = v_isl, status = 'DOCKED', ready_at = null where id = v_fl;
   update public.world_config set value = 'true'::jsonb where key in ('fleet_jobs_enabled', 'sea_courses_enabled', 'land_enabled', 'assign_home_enabled');
-  -- only this scene's job is asked: every other company's job waits a day (rolled back with the scene; no real job is planned here)
-  update public.fleet_jobs set next_at = now() + interval '1 day' where player_id <> v_pl;
   perform cmd.assume_identity(p_uid);
   perform public.land_party(v_pl);
   insert into public.fleet_jobs (fleet_id, player_id, kind, params, since, seen_at) values (v_fl, v_pl, 'land', '{"to": "CAD"}'::jsonb, now(), now());
@@ -162,15 +200,15 @@ begin
   update public.ships set durability = 0 where fleet_id = v_fl;
   v_sr := voyage.sail_refusal(v_fl, null, null, 0);
   v_st := public.fleet_state(v_fl);
-  call public.tick_fleet_jobs(false);
+  v_a1 := pg_temp.tick_mine_0499(v_fl);
   select to_jsonb(j) || jsonb_build_object('waits', coalesce(j.next_at > now(), false)) into v_j1 from public.fleet_jobs j where j.fleet_id = v_fl;
-  v_rc1 := (select r.receipt from public.fleet_job_runs r where r.at = now());
+  v_rc1 := case when v_a1 then (select r.receipt from public.fleet_job_runs r where r.at = now()) end;
   v_j1 := v_j1 || jsonb_build_object(
     'orders', (select count(*) from public.orders o where o.fleet_id = v_fl),
     'failed', (select jsonb_agg(o.error_code order by o.seq) from public.orders o where o.fleet_id = v_fl and o.status = 'failed'));
-  call public.tick_fleet_jobs(false);
+  v_a2 := pg_temp.tick_mine_0499(v_fl);
   select to_jsonb(j) into v_j2 from public.fleet_jobs j where j.fleet_id = v_fl;
-  v_rc2 := (select r.receipt from public.fleet_job_runs r where r.at = now());
+  v_rc2 := case when v_a2 then (select r.receipt from public.fleet_job_runs r where r.at = now()) end;
   v_row := (select w from jsonb_array_elements(world.workers()->'workers') w where w->>'fleet' = v_fl::text);
   -- the door, asked for her while she is wrecked (taken back at once: before the hunks it would take the job and start it afresh)
   begin
@@ -181,13 +219,13 @@ begin
 
   -- (mended) her hulls whole again (the yard's own write, cmd.do_repair: durability back to her base), and the very next run
   update public.ships s set durability = (select b.durability from public.ship_base(s.id) b) where s.fleet_id = v_fl;
-  call public.tick_fleet_jobs(false);
+  perform pg_temp.tick_mine_0499(v_fl);
   select to_jsonb(j) into v_j3 from public.fleet_jobs j where j.fleet_id = v_fl;
   return jsonb_build_object(
     'plan', (select jsonb_agg(l->>'text' order by i) from jsonb_array_elements(v_pln->'lines') with ordinality t(l, i)),
     'plan_md5', md5((v_pln - 'version')::text),
     'sail_fit', v_sr0, 'sail_wreck', v_sr, 'state', v_st,
-    'j1', v_j1, 'rc1', v_rc1, 'j2', v_j2, 'rc2', v_rc2, 'row', v_row, 'door', v_door,
+    'j1', v_j1, 'rc1', v_rc1, 'asked1', v_a1, 'j2', v_j2, 'rc2', v_rc2, 'asked2', v_a2, 'row', v_row, 'door', v_door,
     'j3', v_j3, 'status3', (select f.status from public.fleets f where f.id = v_fl),
     'texts3', (select jsonb_agg(o.raw_text order by o.seq) from public.orders o where o.fleet_id = v_fl and o.plan_id = (v_j3->>'last_plan')::uuid));
 end
@@ -205,7 +243,7 @@ $body$
      or v_d0 #>> '{j1,runs}' is distinct from '1' or v_d0 #>> '{j1,failed,0}' is distinct from 'E_FLAGSHIP_DISABLED'
      or v_d0 #>> '{j2,paused_reason}' is distinct from 'E_FLAGSHIP_DISABLED' or v_d0 #>> '{j2,last,sentence}' is distinct from 'the flagship is not fit to sail'
      or v_d0 #>> '{j3,paused_reason}' is distinct from 'E_FLAGSHIP_DISABLED' or v_d0->>'status3' is distinct from 'DOCKED'
-     or v_d0 #>> '{door,ok}' is distinct from 'true' then
+     or v_d0 #>> '{door,ok}' is distinct from 'true' or v_d0 #>> '{asked1}' is distinct from 'true' or v_d0 #>> '{asked2}' is distinct from 'true' then
     raise exception '0499 self-assert FAIL: before the hunks the wrecked fleet''s job did not go as the lead reported: %', left(v_d0::text, 1500);
   end if;
 
@@ -470,7 +508,7 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
      or v_d1 #>> '{j1,waits}' is distinct from 'true' or v_d1 #>> '{j1,last_plan}' is not null
      or v_d1 #>> '{rc1,steps,0,wait}' is distinct from 'unfit' or v_d1 #>> '{rc1,steps,0,code}' is distinct from 'E_FLAGSHIP_DISABLED'
      or v_d1 #> '{rc1,steps,0}' ? 'open' or v_d1 #>> '{rc1,started}' is distinct from '0' or v_d1 #>> '{rc1,stopped}' is distinct from '0'
-     or jsonb_array_length(v_d1 #> '{rc2,steps}') <> 0 or v_d1 #>> '{j2,paused_reason}' is not null then
+     or v_d1 #>> '{asked1}' is distinct from 'true' or v_d1 #>> '{asked2}' is distinct from 'false' or v_d1 #>> '{j2,paused_reason}' is not null then
     raise exception '0499 self-assert FAIL: the wrecked fleet''s job did not wait with nothing issued: %', left(v_d1::text, 1500);
   end if;
   -- her row: waiting, `wait` with the code and the sentence, no stop, her state by the one rule
@@ -502,7 +540,6 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
     update public.players p set ducats = 2000000 where p.id = v_a;
     update public.fleets set port_id = v_isl, status = 'DOCKED', ready_at = null where id = v_fa;
     update public.world_config set value = 'true'::jsonb where key in ('fleet_jobs_enabled', 'sea_courses_enabled', 'land_enabled', 'assign_home_enabled');
-    update public.fleet_jobs set next_at = now() + interval '1 day' where player_id <> v_a;
     perform cmd.assume_identity(c_ua);
     perform public.land_party(v_a);
     update public.ships set durability = 0 where fleet_id = v_fa;
@@ -512,9 +549,10 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
     insert into public.fleet_jobs (fleet_id, player_id, kind, params, since, seen_at, runs, paused_reason, last, last_plan)
     values (v_fa, v_a, 'land', '{"to": "CAD"}'::jsonb, now() - interval '1 day', now() - interval '1 day', 1, 'E_FLAGSHIP_DISABLED',
             jsonb_build_object('at', now() - interval '1 day', 'ok', false, 'code', 'E_FLAGSHIP_DISABLED', 'sentence', 'the flagship is not fit to sail'), v_o);
-    call public.tick_fleet_jobs(false);
-    if (select j.paused_reason from public.fleet_jobs j where j.fleet_id = v_fa) is distinct from 'E_FLAGSHIP_DISABLED'
-       or (select jsonb_array_length(r.receipt->'steps') from public.fleet_job_runs r where r.at = now()) <> 0
+    -- the run first, in its own statement: what it writes is read by the next one
+    v_ask := pg_temp.tick_mine_0499(v_fa);
+    if v_ask
+       or (select j.paused_reason from public.fleet_jobs j where j.fleet_id = v_fa) is distinct from 'E_FLAGSHIP_DISABLED'
        or (select count(*) from public.orders o where o.fleet_id = v_fa) <> 1
        or (select w #>> '{stop,code}' from jsonb_array_elements(world.workers()->'workers') w where w->>'fleet' = v_fa::text) is distinct from 'E_FLAGSHIP_DISABLED' then
       raise exception '0499 self-assert FAIL: a job stopped on E_FLAGSHIP_DISABLED was asked while she is wrecked, or her row lost its stop';
@@ -531,8 +569,10 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
     end if;
     -- as prod's row again, mended: the very next run starts her
     update public.fleet_jobs set paused_reason = 'E_FLAGSHIP_DISABLED', last_plan = v_o, next_at = null where fleet_id = v_fa;
-    call public.tick_fleet_jobs(false);
-    if (select j.paused_reason is not null or j.runs <> 2 or j.last_plan is not distinct from v_o from public.fleet_jobs j where j.fleet_id = v_fa)
+    -- the run first, in its own statement: what it writes is read by the next one
+    v_ask := pg_temp.tick_mine_0499(v_fa);
+    if not v_ask
+       or (select j.paused_reason is not null or j.runs <> 2 or j.last_plan is not distinct from v_o from public.fleet_jobs j where j.fleet_id = v_fa)
        or (select f.status from public.fleets f where f.id = v_fa) <> 'SAILING' then
       raise exception '0499 self-assert FAIL: a job stopped on E_FLAGSHIP_DISABLED did not go on once she was mended: %', (select to_jsonb(j) from public.fleet_jobs j where j.fleet_id = v_fa);
     end if;
@@ -558,8 +598,10 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
       raise exception '0499 self-assert FAIL: short of crew, the sail and the rule do not give the one answer: % / %', voyage.sail_refusal(v_fa, null, null, 0), public.fleet_unfit(v_fa);
     end if;
     v_n := (select count(*) from public.orders o where o.fleet_id = v_fa);
-    call public.tick_fleet_jobs(false);
-    if (select j.paused_reason is not null or j.last->>'wait' is distinct from 'E_CREW_SHORT' or j.last->>'sentence' not like 'Crew % / %'
+    -- the run first, in its own statement: what it writes is read by the next one
+    v_ask := pg_temp.tick_mine_0499(v_fa);
+    if not v_ask
+       or (select j.paused_reason is not null or j.last->>'wait' is distinct from 'E_CREW_SHORT' or j.last->>'sentence' not like 'Crew % / %'
                or j.next_at is null or j.runs <> 0 from public.fleet_jobs j where j.fleet_id = v_fa)
        or (select count(*) from public.orders o where o.fleet_id = v_fa) <> v_n
        or (select w #>> '{wait,code}' from jsonb_array_elements(world.workers()->'workers') w where w->>'fleet' = v_fa::text) is distinct from 'E_CREW_SHORT' then
@@ -572,15 +614,18 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
     -- no hands on the quay: asked again, the job stops on the code, nothing issued; the hire door says the same of this port
     update public.ports set crew_pool = 0 where id = v_isl;
     update public.fleet_jobs set next_at = null where fleet_id = v_fa;
-    call public.tick_fleet_jobs(false);
-    if (select j.paused_reason is distinct from 'E_CREW_SHORT' or j.runs <> 0 from public.fleet_jobs j where j.fleet_id = v_fa)
+    -- the run first, in its own statement: what it writes is read by the next one
+    v_ask := pg_temp.tick_mine_0499(v_fa);
+    if not v_ask
+       or (select j.paused_reason is distinct from 'E_CREW_SHORT' or j.runs <> 0 from public.fleet_jobs j where j.fleet_id = v_fa)
        or (select count(*) from public.orders o where o.fleet_id = v_fa) <> v_n
        or public.port_hires(v_isl) or cmd.preview(v_fa, 'HIRE 1')->>'error_code' is distinct from 'E_CREW_POOL' then
       raise exception '0499 self-assert FAIL: short of crew where none can be hired, her job did not stop with nothing issued: % / %',
         (select to_jsonb(j) from public.fleet_jobs j where j.fleet_id = v_fa), cmd.preview(v_fa, 'HIRE 1');
     end if;
-    call public.tick_fleet_jobs(false);
-    if (select jsonb_array_length(r.receipt->'steps') from public.fleet_job_runs r where r.at = now()) <> 0 then
+    -- the run first, in its own statement: what it writes is read by the next one
+    v_ask := pg_temp.tick_mine_0499(v_fa);
+    if v_ask then
       raise exception '0499 self-assert FAIL: a job stopped for want of crew was asked while she is short';
     end if;
     -- manned (the Inn's own write: crew back to what she needs): the very next run starts her
@@ -589,8 +634,10 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
       raise exception '0499 self-assert FAIL: the hire door refuses a quay with hands: %', cmd.preview(v_fa, 'HIRE 1');
     end if;
     update public.ships s set crew = c.crew_required from public.ship_classes c where c.id = s.class_id and s.fleet_id = v_fa;
-    call public.tick_fleet_jobs(false);
-    if (select j.paused_reason is not null or j.runs <> 1 from public.fleet_jobs j where j.fleet_id = v_fa)
+    -- the run first, in its own statement: what it writes is read by the next one
+    v_ask := pg_temp.tick_mine_0499(v_fa);
+    if not v_ask
+       or (select j.paused_reason is not null or j.runs <> 1 from public.fleet_jobs j where j.fleet_id = v_fa)
        or (select f.status from public.fleets f where f.id = v_fa) <> 'SAILING' then
       raise exception '0499 self-assert FAIL: manned, she did not go on at the next run: %', (select to_jsonb(j) from public.fleet_jobs j where j.fleet_id = v_fa);
     end if;
@@ -608,6 +655,7 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
     raise exception '0499 self-assert FAIL: the probe left something behind';
   end if;
   drop function pg_temp.scene_0499(uuid);
+  drop function pg_temp.tick_mine_0499(uuid);
 
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0499 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
