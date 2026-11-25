@@ -27,8 +27,8 @@ const LIT = [
  *  `courses`: 0482's switch lit too (sea_courses_enabled: the server holds a course between any two harbours, so a job's run needs no
  *  voyage sailed before it, and a board card's run can be assigned as it stands).
  *  `home`: 0492's switch lit too (assign_home_enabled: Bring home and the run count). */
-export const corpWorld = ({ courses = false, home = false, near = false, nearLow = false, slow = 0, wreck = false }: { courses?: boolean; home?: boolean; near?: boolean; nearLow?: boolean; slow?: number; wreck?: boolean } = {}) =>
-  patchedWorldImage(`hq-corp${courses ? '-courses' : ''}${home ? '-home' : ''}${near ? '-near' : ''}${nearLow ? '-low' : ''}${slow ? `-slow${slow}` : ''}${wreck ? '-wreck' : ''}`, async (pg) => {
+export const corpWorld = ({ courses = false, home = false, near = false, nearLow = false, slow = 0, wreck = false, clear = false }: { courses?: boolean; home?: boolean; near?: boolean; nearLow?: boolean; slow?: number; wreck?: boolean; clear?: boolean } = {}) =>
+  patchedWorldImage(`hq-corp${courses ? '-courses' : ''}${home ? '-home' : ''}${near ? '-near' : ''}${nearLow ? '-low' : ''}${slow ? `-slow${slow}` : ''}${wreck ? '-wreck' : ''}${clear ? '-clear' : ''}`, async (pg) => {
     // (0500: her job then WAITS for her repair. A tab has no cron, so the yard's work done is followed by the jobs' tick, as the next
     // two minutes would: the trigger at the foot of this world.)
     // `wreck`: the FIRST SAIL order ever queued finds its flagship a wreck (her hull put at nought as the order is written, once), so
@@ -80,6 +80,9 @@ export const corpWorld = ({ courses = false, home = false, near = false, nearLow
           for each row execute function public.spec_near_low();`)
     await pg.exec(`update public.world_config set value = 'true'::jsonb where key in (${keys.map((k) => `'${k}'`).join(', ')})`)
     await pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite'`)
+    // `clear`: NO WEATHER (hazard_p_max 0), for a spec that waits a voyage out by the wall clock: a storm is 36 hours at sea (675 real seconds)
+    // and a calm 1 to 4 days (450 to 1,800 s). Lisbon to Setubal is under a minute; 13 of 1,500 sails there met one (main, 2026-11-25)
+    if (clear) await pg.exec(`update public.world_config set value = '0'::jsonb where key = 'hazard_p_max'`)
     await pg.exec(`
       create function public.spec_tick_fleet_jobs() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
       begin
