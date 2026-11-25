@@ -681,6 +681,21 @@ export interface ForgeIngredient {
   have: number
 }
 
+/** 0517: the ONE city that wants a made good: it pays `mult` times its normal price for `left` more units today (of `per_day`). */
+export interface PremiumCity {
+  /** The city's code. */
+  port: string
+  name: string
+  mult: number | string
+  /** Sailed miles from the good's nearest maker. */
+  nm: number | string
+  per_day: number | string
+  /** Units your company made and has not sold at a premium. */
+  made: number | string
+  /** The lesser of `made` and what the city still takes today. */
+  left: number | string
+}
+
 /** One crafted good the Forge can make, with its recipe as this city sees it. */
 export interface ForgeRecipe {
   /** `SnapshotGood.id` — what cmd.forge_good takes (a uuid, not the code). */
@@ -693,6 +708,8 @@ export interface ForgeRecipe {
   /** Every ingredient is ashore here in its quantity — the server's verdict, never re-derived. */
   can_forge: boolean
   ingredients: ForgeIngredient[]
+  /** 0517: the one city that pays the premium for it. Absent when none, and dark. */
+  premium?: PremiumCity
 }
 
 export interface ForgeView {
@@ -786,6 +803,8 @@ export interface MarketGood {
    *  for `wanted_left` more units this period. Absent when it does not (always, while city wants are dark). */
   wanted?: number | string
   wanted_left?: number | string
+  /** 0517: this made good's one premium city. Absent when it has none (always, while premium goods are dark). */
+  premium?: PremiumCity
 }
 
 /**
