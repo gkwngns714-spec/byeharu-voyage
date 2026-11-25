@@ -27,8 +27,8 @@ const LIT = [
  *  `courses`: 0482's switch lit too (sea_courses_enabled: the server holds a course between any two harbours, so a job's run needs no
  *  voyage sailed before it, and a board card's run can be assigned as it stands).
  *  `home`: 0492's switch lit too (assign_home_enabled: Bring home and the run count). */
-export const corpWorld = ({ courses = false, home = false, near = false, nearLow = false, slow = false, wreck = false }: { courses?: boolean; home?: boolean; near?: boolean; nearLow?: boolean; slow?: boolean; wreck?: boolean } = {}) =>
-  patchedWorldImage(`hq-corp${courses ? '-courses' : ''}${home ? '-home' : ''}${near ? '-near' : ''}${nearLow ? '-low' : ''}${slow ? '-slow' : ''}${wreck ? '-wreck' : ''}`, async (pg) => {
+export const corpWorld = ({ courses = false, home = false, near = false, nearLow = false, slow = 0, wreck = false }: { courses?: boolean; home?: boolean; near?: boolean; nearLow?: boolean; slow?: number; wreck?: boolean } = {}) =>
+  patchedWorldImage(`hq-corp${courses ? '-courses' : ''}${home ? '-home' : ''}${near ? '-near' : ''}${nearLow ? '-low' : ''}${slow ? `-slow${slow}` : ''}${wreck ? '-wreck' : ''}`, async (pg) => {
     // (0500: her job then WAITS for her repair. A tab has no cron, so the yard's work done is followed by the jobs' tick, as the next
     // two minutes would: the trigger at the foot of this world.)
     // `wreck`: the FIRST SAIL order ever queued finds its flagship a wreck (her hull put at nought as the order is written, once), so
@@ -52,15 +52,15 @@ export const corpWorld = ({ courses = false, home = false, near = false, nearLow
         create trigger spec_wreck_coin after update of status on public.orders for each row
           when (new.status = 'failed' and new.error_code = 'E_FLAGSHIP_DISABLED' and old.status <> 'failed') execute function public.spec_wreck_coin();
         create trigger spec_wreck_once after insert on public.orders for each row when (new.verb = 'SAIL') execute function public.spec_wreck_once();`)
-    // `slow`: world.actions' FIRST answer is its last resort, closed E_SLOW (the read took too long), and every later one is the real
-    // read: the real function is kept under another name and a spec's own door counts its calls.
+    // `slow`: world.actions' first `slow` answers are its last resort, closed E_SLOW (the read took too long), and every later one is the
+    // real read: the real function is kept under another name and a spec's own door counts its calls.
     if (slow)
       await pg.exec(`
         alter function world.actions(text) rename to actions_real;
         create sequence public.spec_slow_asks;
         create function world.actions(p_worker text) returns jsonb language plpgsql security definer set search_path = public, pg_temp as $f$
         begin
-          if nextval('public.spec_slow_asks') = 1 then
+          if nextval('public.spec_slow_asks') <= ${slow} then
             return jsonb_build_object('company', true, 'worker', p_worker, 'kind', 'fleet', 'now', now(), 'ask_s', 300, 'options', '[]'::jsonb, 'cut', false,
                                       'closed', jsonb_build_object('code', 'E_SLOW', 'sentence', 'the quotes are slow just now: ask again in a moment'), 'ms', 5000);
           end if;
