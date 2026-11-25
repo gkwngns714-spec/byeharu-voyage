@@ -62,7 +62,12 @@ const timesOnPage = (page: Page, word: string) => page.evaluate((w) => document.
 async function saidOnce(page: Page, fleetName: string, when: string) {
   expect(await timesOnPage(page, fleetName), `${when}: her fleet's name does not stand exactly once on HQ`).toBe(1)
   expect(repeated(await figuresByArea(page)), `${when}: a figure stands in two areas of HQ`).toEqual([])
-  expect(await timesOnPage(page, '/ hour') - (await page.locator('[data-testid="hq-move"]:has-text("/ hour")').count()), `${when}: more than one per-hour figure of the company`).toBeLessThanOrEqual(1)
+  // (one read of the page: the board's cards may change between two)
+  const perHour = await page.evaluate(() => {
+    const said = (e: Element) => (e as HTMLElement).innerText.split('/ hour').length - 1
+    return said(document.querySelector('[data-testid="city-page"]')!) - [...document.querySelectorAll('[data-testid="hq-move"]')].filter((e) => said(e) > 0).length
+  })
+  expect(perHour, `${when}: more than one per-hour figure of the company`).toBeLessThanOrEqual(1)
   expect(await timesOnPage(page, 'While away'), `${when}: While away stands more than once`).toBeLessThanOrEqual(1)
   for (const id of ['hq-fleets', 'hq-fleet', 'hq-job-control', 'hq-move-repeat', 'corp-ledger-rate', 'hq-bridge-purse']) await expect(page.getByTestId(id), `${when}: ${id} is drawn`).toHaveCount(0)
 }
