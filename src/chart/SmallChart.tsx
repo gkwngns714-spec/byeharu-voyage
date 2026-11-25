@@ -8,6 +8,7 @@ import { buildChartModel, dotPorts, visiblePorts } from './chartModel'
 import { minTierForSpan, openingBounds } from './chartView'
 import { GLYPH } from './glyphs'
 import { hitTest } from './hitTest'
+import { fogPorts, knownPortsKey, type ChartFog } from './fog'
 import { placedNames } from './placedNames'
 import { mapFleetsOf } from './liveWorld'
 import { loopD } from './route'
@@ -127,6 +128,7 @@ export function SmallChart({
   frame,
   wholeWorld = false,
   onPort,
+  fog = null,
   goTo = null,
   ariaLabel,
   findAriaLabel,
@@ -165,6 +167,8 @@ export function SmallChart({
   wholeWorld?: boolean
   /** Row 218: a harbour tapped (THE map tab's hit test) — the caller selects that city. Absent: no tap. */
   onPort?: (code: string) => void
+  /** 0504 — the fog over this chart (./fog.ts); null, the default, is the chart as it was. */
+  fog?: ChartFog | null
   /** Row 231: a city PRESSED (on the map, the chip strip or the cargo list) — `n` counts the presses, so pressing
    *  the same city again glides back to it. The chart glides it to the middle at the reader's zoom. Absent: none. */
   goTo?: { code: string; n: number } | null
@@ -217,9 +221,16 @@ export function SmallChart({
   const surface = useChartSurface(boxRef, frameBounds, !still && onPort ? tap : undefined, { scroll: still ? 'page-vertical' : 'wheel-zoom' })
   const box = surface.viewBox
   const shore = useChartShore(backdrop, box ?? NO_VIEW, surface.unitsPerPx)
+  // 0504 — THE FOG (./fog.ts): lit, with no `only`, the chart holds the cities she has in sight or knows, and no other.
+  const knownKey = fog && onlyKey === null ? knownPortsKey(fog, shore.ports) : null
   const chartPorts = useMemo(
-    () => (onlyKey === null ? shore.ports : shore.ports.filter((p) => onlyKey.split(' ').includes(p.code))),
-    [shore.ports, onlyKey],
+    () =>
+      onlyKey !== null
+        ? shore.ports.filter((p) => onlyKey.split(' ').includes(p.code))
+        : knownKey !== null
+          ? fogPorts(shore.ports, knownKey)
+          : shore.ports,
+    [shore.ports, onlyKey, knownKey],
   )
   const model = useMemo(
     () => buildChartModel(chartFleets, chartPorts, considering),
@@ -313,6 +324,7 @@ export function SmallChart({
           seas={backdrop.seas}
           regions={regionsOn ? backdrop.regions : null}
           islets={shore.islets}
+          fog={fog}
           selection={selection}
           // The zoom column is opaque and sits on the glass; these are its measured boxes, so the
           // label planner never prints a harbour's name underneath it (the Saint-Malo defect, found

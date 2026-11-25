@@ -1334,6 +1334,8 @@ export interface QueuedOrder {
   figures: RefusalFigures | null
   /** Verb-shaped result of a completed order (`{qty, good, total, avg_price}` for BUY, …). */
   result: Record<string, unknown> | null
+  /** 0499: when the order ran (a refused one: when it was refused); null while it waits. Absent before 0499. */
+  at?: string | null
 }
 
 /** 0157 — one cabin of a ship: the server's word for it, and the captain in it (null: empty). */
@@ -2057,12 +2059,43 @@ export interface PlayerHouse {
   levels: PlayerLevels
   /** 0143 — when the company may next change its country (`cmd.change_country`), or null: it may now. */
   nation_change_at: string | null
+  /** 0503: how many times the company has taken a new name (`cmd.rename_company`). Absent before 0503. */
+  renames?: number
+  /** 0503: true while her next rename is free (the first is; a later one waits for the owner's decision on payment). Absent before 0503. */
+  rename_free?: boolean
+  /** 0509: her HQ cities (`public.hq_card`). Absent before 0509. */
+  hq?: HqCard
+  /** 0509: the Restart press (`public.restart_card`); null while dark, absent before 0509. */
+  restart?: RestartCard | null
   /** 0241 (owner row 230): what the company owes the cities (dock fees, a SAIL's stores on credit) — absent at 0. */
   owed?: number
   /** 0241: true while a SAIL's stores may run on credit (the economy closed) — absent otherwise. */
   on_credit?: boolean
   /** 0352 — her Reputation (`public.reputation_card`). Absent before 0352. */
   reputation?: ReputationCard
+}
+
+/** 0509 — `public.hq_card`: `at` the first HQ's harbour code (null: none on record), `list` every one in slot order, `next` what the
+ *  next HQ asks (null while dark). */
+export interface HqCard {
+  at: string | null
+  list: { slot: number; port: string; since: string }[]
+  next: { slot: number; total_level: number; ducats: number; reputation: number } | null
+}
+
+/** 0509 — `public.restart_card`. `refusal` null: she may restart now; else why not, in the server's words. `nations`: codes. */
+export interface RestartCard {
+  refusal: { code: string; sentence: string } | null
+  nations: string[]
+}
+
+/** 0509 — `cmd.restart_company`: the new company, and what the closed one left. Refusals: E_NOT_IN_USE, E_CONFIRM, E_NOT_EUROPE,
+ *  E_BAD_NAME, E_NAME_TAKEN, E_RESTART_TODAY, E_IN_BATTLE, E_CONTRACT_OUT, E_NO_HARBOUR, E_BUSY. */
+export interface CompanyRestarted {
+  player_id: string
+  company_name: string
+  nation: string
+  closed: { ducats: number; port: string; debts_paid: number; dividends: number; requests: number; contracts_cancelled: number; contracts_failed: number; fleets: number; ships: number }
 }
 
 /** 0352 — one row of the Reputation book, as the card serves it. `delta` is positive for an earn, negative for a spend. */
@@ -3194,6 +3227,26 @@ export type LogbookView =
       reward: { rep: number; region_cut: number; kind_cut: number }
     }
 
+/** `world.chart()` (0504, the fog). Dark `{on: false}`: the map is drawn whole. Lit with no company `{on, company: false}`. Lit, hers:
+ *  how far her fleets see, her charted squares and the harbours of her logbook. The client draws them; prices are not gated by it. */
+export type ChartFogView =
+  | { on: false }
+  | { on: true; company: false }
+  | {
+      on: true
+      company: true
+      /** The radius of sight round each of her fleets, in nautical miles (the knob and her NAVIGATION level; the server's). */
+      sight_nm: number
+      rows: number
+      cols: number
+      /** Her bitmap in base64, 8,100 bytes: bit row * 360 + col, row = floor(90 - lat), col = floor(lon + 180), low bit first.
+       *  Null before her first arrival or backfill. */
+      cells: string | null
+      backfilled: boolean
+      /** The harbour codes of her logbook: the cities she has made. */
+      cities: string[]
+    }
+
 /** One good on her mastery ladder (0479): its level 1-10, her units sold of it, the units its level began at and the next level's
  *  (null at the top). */
 export interface GoodMastery {
@@ -3505,6 +3558,23 @@ export interface HqRate {
   top?: string[]
   /** Running lines first, then one time; in each the largest loss first. */
   lines?: HqRateLine[]
+  /** 0501 (cargo_at_cost_enabled lit; absent dark): her cargo read at cost. The trade line is then her sales less the recorded cost
+   *  of what she sold, and `net_24h + one_time_24h + cargo.net_24h = all_24h`. */
+  cargo?: HqRateCargo
+}
+
+/** `rate.cargo` (0501, `public.cargo_rate_for`): the coin she put into goods in the last 24 hours that is neither sold nor lost. */
+export interface HqRateCargo {
+  /** bought - cost_sold - lost, floored at 0: the goods she bought and still holds, at what she paid. */
+  at_cost: number
+  /** The same figure as the ledger signs it (coin out is negative); positive when she sold or lost goods bought before the window. */
+  net_24h: number
+  bought: number
+  cost_sold: number
+  lost: number
+  /** Lost cargo is recorded from this instant (0501's deploy); `exact` once the whole window lies after it. */
+  exact_since: string
+  exact: boolean
 }
 
 /** `world.hq_board()` (0480). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her board, ranked by the server. */
@@ -3747,7 +3817,7 @@ export interface ActionItem {
 
 /** THE ONE SHAPE of an action (`public.action_shape`): a sea run, a land job, a make job. */
 export interface WorkerAction {
-  /** sea:best | sea:fixed:<good>:<buy>:<sell>:<sell|store> | sea:haul:<yard> | land:<job>. A running action and its option share it. */
+  /** sea:best | sea:near (0499) | sea:fixed:<good>:<buy>:<sell>:<sell|store> | sea:haul:<yard> | land:<job>. A running action and its option share it. */
   id: string
   kind: 'sea' | 'gather' | 'make'
   skill: string
@@ -3790,6 +3860,11 @@ export interface WorkerAction {
   sell?: string
   end?: 'sell' | 'store'
   units?: number
+  /** 0499, the near round (sea:near): the miles of her round, the harbour she comes back to (a CODE), and its plain words
+   *  ("Trade near Lisbon"). It carries no rate (basis none) until her own runs give one. */
+  within?: number
+  base?: string
+  sentence?: string
   /** Sea: false for the Best run (one way: its next run starts where it sold). */
   returns?: boolean
   /** Sea: true for the Best run (each run picks its own sale; the figures are the sale it would take now). */
@@ -3832,6 +3907,8 @@ export interface WorkerRow {
   progress: WorkerProgress | null
   stop: { code: string; sentence: string | null } | null
   /** 0498: why a job that is NOT stopped waits, and when it is asked again (low: the run's quote leaves no profit now). Absent before 0498. */
+  /** 0500: code E_FLAGSHIP_DISABLED (her flagship cannot sail) or E_CREW_SHORT (a ship lacks hands, where crew can be hired): the job
+   *  waits for her repair or her hire and goes on by itself. */
   wait?: { code: string; sentence: string; retry_at: string } | null
   runs: number
   /** Whole runs of hers the `runs` basis was read from (0: not enough yet). */
@@ -4262,6 +4339,17 @@ export interface ArmadaSailed {
   cost: number
   on_credit: number
   voyages: { fleet_id: string; fleet: string; voyage_id: string; total_nm: number }[]
+}
+
+/** 0503: `cmd.rename_company`. `changed` false: her own name again, nothing written and nothing counted. Refusals: E_BAD_NAME
+ *  (not 3 to 24 letters and digits with single spaces), E_NAME_TAKEN (a country, a place, a trade good or another company, in any
+ *  case), E_RENAME_PAID (her free rename is used; a later one is not available yet). */
+export interface CompanyRenamed {
+  from: string
+  to: string
+  changed: boolean
+  renames: number
+  rename_free: boolean
 }
 
 /** 0354: `cmd.rename_fleet`. `changed` false: the same name again, nothing written. */

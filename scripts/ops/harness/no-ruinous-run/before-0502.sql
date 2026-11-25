@@ -15,7 +15,7 @@ select json_build_object(
   'switch', (select c.value from public.world_config c where c.key = 'run_guard_enabled'),
   'switches', (select json_object_agg(c.key, c.value) from public.world_config c where c.key in ('fleet_jobs_enabled', 'hq_board_enabled', 'assign_home_enabled', 'sea_courses_enabled')),
   'new_fns', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-               where (n.nspname, p.proname) in (('public', 'run_guard_on'), ('public', 'run_need'))),
+               where (n.nspname, p.proname) in (('public', 'run_guard_on'), ('public', 'run_need'), ('public', 'run_cut'))),
   'hunked', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
               where (n.nspname, p.proname) in (('public', 'fleet_job_plan'), ('public', 'fleet_job_note'))),
   'digests', (select json_object_agg(p.proname, md5(replace(pg_get_functiondef(p.oid), E'\r', ''))) from pg_proc p join pg_namespace n on n.oid = p.pronamespace

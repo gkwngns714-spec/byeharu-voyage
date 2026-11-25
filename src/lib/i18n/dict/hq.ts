@@ -5,6 +5,9 @@ import { defineDict } from '../define'
 export const hqDict = defineDict({
   en: {
     rank: 'Rank',
+    cities: 'HQ cities',
+    shown: 'Shown',
+    show: 'Show',
     rankStep: 'Rank {n} / {of}',
     perHour: '{n} / hour',
     rateDay: '24 h, per hour',
@@ -41,6 +44,12 @@ export const hqDict = defineDict({
     rateGear: 'Gear',
     rateRoom: 'Fleet room',
     rateGifts: 'Gifts',
+    // 0501: cargo at cost (lit): goods bought and still held are not a loss; lost cargo is, at what it cost
+    rateCargoLost: 'Lost cargo',
+    rateCargo: 'Cargo',
+    rateAtCost: 'At cost',
+    rateAll: 'All coin',
+    rateCargoSince: 'Losses counted from {t}',
     boardOff: 'Board off',
     moves: 'Best moves',
     filter: 'Show',
