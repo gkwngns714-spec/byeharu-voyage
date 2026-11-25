@@ -17,6 +17,105 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 -- 0488's own hunks (copied from the migration, word for word); and the four small bodies as they were before it
+-- 0536 re-cut world.best_sales and world.board_sell_memo (how the legs are read): its hunks are put back here, so this proof compares 0488's bodies
+do $u$
+declare
+  v_def text := replace(pg_get_functiondef('world.board_sell_memo(uuid,uuid,jsonb,jsonb)'::regprocedure), E'\r', '');
+  x record;
+begin
+  for x in select * from (values
+  (1, $h$  v_taxon   boolean := public.city_treasury_on();
+begin
+$h$, $h$  v_taxon   boolean := public.city_treasury_on();
+  v_rank    jsonb := p_ctx->'rank';   -- 0536: the legs' figures a harbour is ranked by (world.legs_rank), when the caller has them
+begin
+$h$),
+  (2, $h$  -- SELL AT: every harbour whose culture buys it; the dearest good_board_quoted priced in full
+$h$, $h$  if v_rank is null or jsonb_typeof(v_rank) <> 'object' then
+    v_rank := world.legs_rank(v_legs);
+  end if;
+
+  -- SELL AT: every harbour whose culture buys it; the dearest good_board_quoted priced in full
+$h$),
+  (3, $h$           l.nm, l.stops, l.direct_nm, l.max_leg, l.shut_leg,
+           l.sn_days, l.sn_tons, l.sn_cost, l.sn_fits, l.sn_hold,   -- 0225; sn_hold: the room those stores take in her hold (public.stores_in_hold), read once a leg
+           l.t_sea, l.t_sup, l.t_stop, l.t_pre, l.t_post,   -- 0361: the trip there, as the game will charge it (world.board_legs)
+           l.t_sail, l.t_days, l.t_arrive   -- 0459: and its time as walked (world.board_trips)
+$h$, $h$           l.nm, l.max_leg, l.shut_leg, l.sn_fits, l.sn_hold, l.k   -- 0536: what a harbour is ranked and fitted by; `ranked` reads the rest of its leg
+$h$),
+  (4, $h$      join jsonb_to_recordset(v_legs) l(id uuid, nm numeric, stops text[], direct_nm numeric, max_leg numeric, shut_leg numeric,
+                                        sn_days numeric, sn_tons numeric, sn_cost bigint, sn_fits boolean, sn_hold numeric,
+                                        t_sea numeric, t_sup bigint, t_stop numeric, t_pre text[], t_post text[],
+                                        t_sail numeric, t_days numeric, t_arrive timestamptz) on l.id = p.id   -- 0361; 0459: + t_sail, t_days, t_arrive
+$h$, $h$      join unnest((v_rank->>'id')::uuid[], (v_rank->>'nm')::numeric[], (v_rank->>'max_leg')::numeric[], (v_rank->>'shut_leg')::numeric[],
+                  (v_rank->>'sn_fits')::boolean[], (v_rank->>'sn_hold')::numeric[], (v_rank->>'k')::int[]) l(id, nm, max_leg, shut_leg, sn_fits, sn_hold, k) on l.id = p.id
+$h$),
+  (5, $h$  ), ranked as materialized (
+$h$, $h$  ), ranked0 as materialized (
+$h$),
+  (6, $h$      from cand c
+  ), units as (
+$h$, $h$      from cand c
+  ), ranked as materialized (
+    -- 0536: the rest of a harbour's leg, read of the rows kept (lean: the priced ones): 0225; 0361: the trip there as the game will charge it
+    -- (world.board_legs); 0459: and its time as walked (world.board_trips)
+    select r0.*, l.*
+      from ranked0 r0
+     cross join lateral jsonb_to_record(v_legs->(r0.k - 1)) l(stops text[], direct_nm numeric, sn_days numeric, sn_tons numeric, sn_cost bigint,
+                                                             t_sea numeric, t_sup bigint, t_stop numeric, t_pre text[], t_post text[],
+                                                             t_sail numeric, t_days numeric, t_arrive timestamptz)
+     where not v_lean or r0.rk <= v_quoted or r0.nk <= v_near
+  ), units as (
+$h$),
+  (7, $h$                                                                                                  'only', d.ids), v_legs)) x(e)
+$h$, $h$                                                                                                  'only', d.ids),
+                                                      (select jsonb_agg(v_legs->(r0.k - 1)) from ranked0 r0 where d.ids @> jsonb_build_array(r0.id)))) x(e)
+$h$)
+  ) h(ord, old, new) order by ord desc loop
+    if (length(v_def) - length(replace(v_def, x.new, ''))) / length(x.new) <> 1 then
+      raise exception 'PO_SHAPE: 0536''s hunk % of world.board_sell_memo(uuid,uuid,jsonb,jsonb) is not in the live body once', x.ord;
+    end if;
+    v_def := replace(v_def, x.new, x.old);
+  end loop;
+  execute v_def;
+end
+$u$;
+do $u$
+declare
+  v_def text := replace(pg_get_functiondef('world.best_sales(uuid,uuid)'::regprocedure), E'\r', '');
+  x record;
+begin
+  for x in select * from (values
+  (1, $h$  v_legs_own jsonb;                 -- 0350: world.board_legs for her cargo, asked once
+$h$, $h$  v_legs_own jsonb;                 -- 0350: world.board_legs for her cargo, asked once
+  v_rank_buy jsonb;                 -- 0536: world.legs_rank of the two, asked once
+  v_rank_own jsonb;
+$h$),
+  (2, $h$        v_legs_own := world.board_legs(p_fleet, v_ctx);
+      end if;
+      v_ctx := v_ctx || jsonb_build_object('legs', v_legs_own);
+$h$, $h$        v_legs_own := world.board_legs(p_fleet, v_ctx);
+        v_rank_own := world.legs_rank(v_legs_own);
+      end if;
+      v_ctx := v_ctx || jsonb_build_object('legs', v_legs_own, 'rank', v_rank_own);
+$h$),
+  (3, $h$        v_legs_buy := world.board_legs(p_fleet, v_ctx || jsonb_build_object('only', '[]'::jsonb));
+      end if;
+      v_ctx := v_ctx || jsonb_build_object('legs', v_legs_buy);
+$h$, $h$        v_legs_buy := world.board_legs(p_fleet, v_ctx || jsonb_build_object('only', '[]'::jsonb));
+        v_rank_buy := world.legs_rank(v_legs_buy);
+      end if;
+      v_ctx := v_ctx || jsonb_build_object('legs', v_legs_buy, 'rank', v_rank_buy);
+$h$)
+  ) h(ord, old, new) order by ord desc loop
+    if (length(v_def) - length(replace(v_def, x.new, ''))) / length(x.new) <> 1 then
+      raise exception 'PO_SHAPE: 0536''s hunk % of world.best_sales(uuid,uuid) is not in the live body once', x.ord;
+    end if;
+    v_def := replace(v_def, x.new, x.old);
+  end loop;
+  execute v_def;
+end
+$u$;
 create temp table p191_recut (fn text not null, src text not null, kind text not null, ord int not null, old text, new text not null,
                               primary key (fn, ord)) on commit drop;
 insert into p191_recut (fn, src, kind, ord, old, new) values

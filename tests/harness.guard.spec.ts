@@ -126,6 +126,8 @@ const DERIVED: Readonly<Record<string, Volatility>> = {
   'voyage.fleet_speed_alone_at': 's',
   // 20260818000169…:514-560 re-creates world.quote_priced from a hunk-edited definition.
   'world.quote_priced': 's',
+  // 20260818000488… moves world.board_sell's body to world.board_sell_memo by hunks (its pg_get_functiondef on the cached world: STABLE).
+  'world.board_sell_memo': 's',
   'public.standing_route_state': 's',
   'public.stats_recent': 's',
   'world.skill_bonuses_at': 's',

@@ -14,6 +14,26 @@
 -- @pass PO_COST      the pieces timed both ways on this server (PGlite is PostgreSQL 18, which caches a SQL body's plan: no gain is expected here)
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+-- 0536 moved the arithmetic of voyage.stores_need_days; this proof is of the 27 as 0487 wrote them, so it goes back to 0487's text here
+CREATE OR REPLACE FUNCTION voyage.stores_need_days(p_nm numeric, p_speed numeric)
+ RETURNS numeric
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+#variable_conflict use_column
+begin
+  -- 0487: plpgsql so its plan is kept for the session (PostgreSQL 17 plans a SQL body again at every call); the body is its SQL body, word for word
+  return (
+  -- 0203: THE DAYS OF STORES A PASSAGE OF p_nm AT p_speed ASKS — its days at sea at endurance_margin. The
+  -- sail door (voyage.sail_refusal: E_ENDURANCE when her casks hold fewer), the desk (world.good_board's
+  -- `sailable`) and the planner (public.npc_leg_days) read it; there is no other copy.
+  select ((p_nm / p_speed) / 24) * public.wc_num('endurance_margin')
+
+  );
+end
+$function$
+;
 create function pg_temp.p190_wrap(p_src text, p_set boolean) returns text language sql immutable as $w$
   select E'\n#variable_conflict use_column\nbegin\n'
          || E'  -- 0487: plpgsql so its plan is kept for the session (PostgreSQL 17 plans a SQL body again at every call); the body is its SQL body, word for word\n'
