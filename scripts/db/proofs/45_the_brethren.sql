@@ -231,12 +231,12 @@ begin
   -- ── THE DOORS ──
   perform cmd.assume_identity(c_uid2);
   v_r := cmd.found_house('Casa dos Piratas 0f45', 'PIR');
-  if (v_r ->> 'ok') <> 'false' or (v_r ->> 'error_code') <> 'E_MINOR_POWER' or jsonb_array_length(v_r -> 'fixes') <> 10 or (v_r ->> 'error_message') !~ '^The Brethren takes no companies' then
+  if (v_r ->> 'ok') <> 'false' or (v_r ->> 'error_code') <> 'E_MINOR_POWER' or jsonb_array_length(v_r -> 'fixes') <> 6 or (v_r ->> 'error_message') !~ '^The Brethren takes no companies' then
     raise exception 'PROOF 45 FAIL: found_house under the pirates answered %', v_r;
   end if;
   v_r := cmd.found_house('Casa dos Piratas 0f45', 'VEN');
   v_x := cmd.found_house('Casa dos Piratas 0f45', 'ZZZ');
-  if (v_r ->> 'error_code') <> 'E_MINOR_POWER' or jsonb_array_length(v_r -> 'fixes') <> 10 or (v_x ->> 'error_code') <> 'E_NO_SUCH_NATION' or jsonb_array_length(v_x -> 'fixes') <> 10
+  if (v_r ->> 'error_code') <> 'E_MINOR_POWER' or jsonb_array_length(v_r -> 'fixes') <> 6 or (v_x ->> 'error_code') <> 'E_NO_SUCH_NATION' or jsonb_array_length(v_x -> 'fixes') <> 6
      or v_r::text like '%PIR%' or v_x::text like '%PIR%' then
     raise exception 'PROOF 45 FAIL: a minor or a nobody was answered %, %', v_r, v_x;
   end if;
@@ -251,9 +251,10 @@ begin
   v_w0 := pg_temp.w_45();
   perform cmd.assume_identity(c_uid2);
   v_r := cmd.found_house('Casa dos Piratas 0f45', 'PIR');
-  if (v_r ->> 'ok') <> 'true' or (v_r ->> 'nation') <> 'PIR' then
+  if (v_r ->> 'error_code') is distinct from 'E_NOT_EUROPE' or jsonb_array_length(v_r -> 'fixes') <> 6 then   -- 0512: a new company is of Europe
     raise exception 'PROOF 45 FAIL: with pirates_joinable true found_house answered %', v_r;
   end if;
+  v_r := jsonb_build_object('player_id', public.new_house(c_uid2, 'Casa dos Piratas 0f45', 'PIR', 'POR'));
   v_c := (v_r ->> 'player_id')::uuid;
   if (select p.code from public.fleets f join public.ports p on p.id = f.port_id where f.player_id = v_c) <> 'POR'
      or (select pl.nation_id from public.players pl where pl.id = v_c) <> v_pir then

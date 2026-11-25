@@ -41,3 +41,6 @@ handful more. The cities' purses pay 2.5 % (new company) to 5 % (p1 0.50) of bar
 
 - Production: the bodies' digests, the size and retention of `haggle_daily` (`before-0506.sql` reads both). Real PostgreSQL: CI.
 - The client has no press yet (the Trade tab's slice).
+
+The tenth try (2026-11-25): the draw uses 0.0005 at a first chance of 0.25 (four decimals), never 0; the server serves one decimal. Only the screen rounded to whole per cent:
+it now prints one decimal under 10. No floor was added (proof 244 OD_TENTH: each try under the one before, the tenth above nought).
