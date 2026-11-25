@@ -5,11 +5,11 @@
 -- THE OWNER, 2026-11-25 (R3): the expedition is a repeating activity with a log; it uses provisions and crew; "when your level is high enough, will provide
 --   provisions"; crews die, the rate by the level; gold and Reputation.
 -- A WORK OF KIND sea, as data: 15 minutes a round, half a day of food and water, 1 per cent of the hands less 0.04 a level of Exploration (never under 0.3),
---   and its yield (round_works.yield): {gold 30, rp 2, prov_level 8, prov 0.5}.
+--   and its yield (round_works.yield): {gold 700, gold_ship 100, gold_level 0.03, rp 2, prov_level 8, prov 0.5}.
 --   PROVISIONS   from Exploration 8 the rounds bring back half of what they eat (yield.prov): a round's food and water are that much less, so a run is twice
 --                as long on the same stores. Frozen in the terms, so the stop stays arithmetic.
 --   REPUTATION   yield.rp a round (kind `round`, in the day's cap), at each settle.
---   GOLD         yield.gold a round, paid when the run is over, OUT OF HER COUNTRY'S CAPITAL'S PURSE (public.capital_pays, kind EXPEDITION, moved). A capital that
+--   GOLD         a round: yield.gold, and gold_ship a ship more, the more by gold_level a level (frozen at Send in terms.gold), paid when the run is over, OUT OF HER COUNTRY'S CAPITAL'S PURSE (public.capital_pays, kind EXPEDITION, moved). A capital that
 --                cannot pay it pays nothing then: it waits in her run (carry.gold_due) and is asked again at the end of her next run. Nothing is minted.
 -- If she is attacked: she sails no voyage while she works, so there is no raid on her and no RUN to order (R6's RUN stays what it is for voyages).
 -- ROWS, lit: a settle 2 to 4 rows more (Reputation, a ledger row and two treasury rows at the end). -- budget: that. -- retention: none (no table).
@@ -61,7 +61,7 @@ begin
   insert into public.world_config (key, value, description) values
     ('expedition_rounds_enabled', 'false'::jsonb, '0523: THE SWITCH (the owner''s). true: the work "expedition" may be sent on (while rounds_enabled).');
   insert into public.round_works (code, ord, kind, word, skill, level, seconds, food_days, water_days, crew_pct, crew_less, crew_least, ammo, yield, lit_by)
-  values ('expedition', 2, 'sea', 'Expedition', 'exploration', 1, 900, 0.5, 0.5, 1, 0.04, 0.3, 0, '{"gold": 30, "rp": 2, "prov_level": 8, "prov": 0.5}', 'expedition_rounds_enabled');
+  values ('expedition', 2, 'sea', 'Expedition', 'exploration', 1, 900, 0.5, 0.5, 0.1, 0.004, 0.03, 0, '{"gold": 700, "gold_ship": 100, "gold_level": 0.03, "rp": 2, "prov_level": 8, "prov": 0.5}', 'expedition_rounds_enabled');
   insert into public.stats_flow_words (kind, side, word, ord) values ('EXPEDITION', 'moved', 'Expeditions', (select max(w.ord) + 1 from public.stats_flow_words w));
 
   -- ── 3. THE RULES ──
@@ -105,7 +105,7 @@ begin
     r.carry := r.carry || jsonb_build_object('rp', coalesce((r.carry->>'rp')::int, 0) + v_rp);
   end if;
   if p_over and coalesce((y->>'gold')::numeric, 0) > 0 then
-    v_due := coalesce((r.carry->>'gold_due')::bigint, 0) + floor((y->>'gold')::numeric * p_to)::bigint;
+    v_due := coalesce((r.carry->>'gold_due')::bigint, 0) + floor(coalesce(r.terms->>'gold', y->>'gold')::numeric * p_to)::bigint;
     select n.id, h.id into v_nat, v_cap from public.players p join public.nations n on n.id = p.nation_id left join public.ports h on h.code = n.capital_port_code and h.kind = 'HARBOUR' where p.id = r.player_id;
     if v_due > 0 and v_cap is not null and public.city_treasury_on() then
       v_paid := public.capital_pays(v_cap, v_nat, r.player_id, 'EXPEDITION', v_due, null, false, null);
@@ -130,6 +130,11 @@ $body$
   create temp table hunks_0523 (fn text, ord int, old text, new text) on commit drop;
   insert into hunks_0523 values
   ('public.round_terms(uuid,text,jsonb)', 1,
+$h$ else '{}'::jsonb end;   -- 0521$h$,
+$h$ when w.kind = 'sea' then jsonb_build_object('gold', floor(((w.yield->>'gold')::numeric + (w.yield->>'gold_ship')::numeric * ((select count(*) from public.ships s where s.fleet_id = p_fleet) - 1))
+                                                                             * (1 + (w.yield->>'gold_level')::numeric * (v_lv - 1))))   -- 0523
+              else '{}'::jsonb end;   -- 0521$h$),
+  ('public.round_terms(uuid,text,jsonb)', 2,
 $h$  v_am := public.round_ammo_need(p_fleet, w.ammo);   -- 0520
 $h$,
 $h$  if w.kind = 'sea' and (w.yield->>'prov_level')::int <= v_lv then   -- 0523: her level brings back a share of what a round eats
@@ -246,8 +251,8 @@ $h$);
   exception when sqlstate 'ZX523' then v_l := sqlerrm::jsonb;
   end;
   if v_l is null or not coalesce(v_l->>'dark' ~ '^E_NOT_IN_USE' and (v_l #>> '{l8,food}')::numeric = round((v_l #>> '{l1,food}')::numeric / 2, 4) and (v_l #>> '{l8,crew}')::numeric < (v_l #>> '{l1,crew}')::numeric
-     and (v_l #>> '{l8,most}')::int > (v_l #>> '{l1,most}')::int and v_l #>> '{a,state}' = 'home' and (v_l #>> '{a,gold}')::bigint = 120 and (v_l #>> '{a,city}')::numeric = -120
-     and (v_l #>> '{a,rp}')::int = 8 and (v_l #>> '{a,carry,gold}')::int = 120 and not (v_l #> '{a,carry}') ? 'gold_due', false) then
+     and (v_l #>> '{l8,most}')::int > (v_l #>> '{l1,most}')::int and v_l #>> '{a,state}' = 'home' and (v_l #>> '{a,gold}')::bigint = 3388 and (v_l #>> '{a,city}')::numeric = -3388
+     and (v_l #>> '{a,rp}')::int = 8 and (v_l #>> '{a,carry,gold}')::int = 3388 and (v_l #>> '{l8,gold}')::numeric = 847 and (v_l #>> '{l1,gold}')::numeric = 700 and not (v_l #> '{a,carry}') ? 'gold_due', false) then
     raise exception '0523 self-assert FAIL: the probe: %', v_l;
   end if;
   if exists (select 1 from public.players p where p.company_name = 'Casa da Prova 0523') or public.expedition_rounds_on()
