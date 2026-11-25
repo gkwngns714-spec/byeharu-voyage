@@ -2,7 +2,7 @@
 --   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/batch-0518-0535/before.sql
 -- Gathers the slices' own checks (scripts/ops/harness/<slice>/), which stay the detail of each.
 -- Expect: head 20260818000517; bodies_off []; new_there []; knobs_there []; tables_there 0; classes_have_profiles true; seas.n 64; seas.table_md5 49b9e399ed3e2909a6bd1c1d3034e1c0;
---   payers >= 1, founding_room >= 4 (0529's probe founds three); long_tx 0 (0518 holds public.fleets ACCESS EXCLUSIVE for its status check).
+--   payers >= 1, founding_room >= 4 (0529's probe founds three); tar_sca not under 1030 (0531's market guard is at 0.999 of it; under, 0531 refuses); long_tx 0 (0518 holds public.fleets ACCESS EXCLUSIVE for its status check).
 -- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, the catalog, world_config by key, small tables by count. Only STABLE functions are
 --   called, none writes. The digests are of the local chain's world (PGlite, migrations to 0535).
 begin transaction read only;
@@ -55,6 +55,8 @@ select json_build_object(
   'fleets', (select k.reltuples::bigint from pg_class k where k.oid = 'public.fleets'::regclass),
   'fleets_of_companies', (select count(*) from public.fleets f join public.players p on p.id = f.player_id where not p.is_npc),
   'captains_a_company', (select json_object_agg(z.n, z.c) from (select y.n, count(*) as c from (select count(po.id) as n from public.players p left join public.player_officers po on po.player_id = p.id where not p.is_npc group by p.id) y group by y.n) z),
-  'land_parties', (select count(*) from public.land_parties)
+  'land_parties', (select count(*) from public.land_parties),
+  'tar_sca', (select percentile_disc(0.5) within group (order by coalesce(pg.base_target, pg.stock_target) * least(1, coalesce((select (c.value #>> '{}')::numeric from public.world_config c where c.key = 'depth_m0'), 1)))
+     from public.goods g cross join unnest(g.origin_regions) o(rc) join public.regions rg on rg.code = o.rc join public.ports p on p.region_id = rg.id and p.kind = 'HARBOUR' join public.port_goods pg on pg.port_id = p.id and pg.good_id = g.id where g.code = 'tar' and rg.code = 'SCA')
 );
 rollback;
