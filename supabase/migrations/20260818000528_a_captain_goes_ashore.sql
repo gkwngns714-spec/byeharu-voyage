@@ -20,7 +20,7 @@
 --   world.captains           (2 hunks) lit, `party` (its number) and can_change for a captain ashore with a party.
 --   public.client_rpc_entry_points (1 hunk) the door.
 -- DARK, NO LAND SEAT CAN EXIST, so every reader of captain_seats answers as before; they all join a ship by ship_id, and a land row has none.
--- PARTIES: the check `ord = 1` becomes `ord >= 1`; only party 1 is made by any door of this file (the land's doors know no other). 0531 opens
+-- PARTIES: the check `ord = 1` becomes `ord >= 1`; only party 1 is made by any door of this file (the land's doors know no other). 0534 opens
 --   the second, with a captain on it.
 -- ROWS: a press writes 1; a Collect 1 more at most once in land_book_minutes a party. No table, no cron, no beat step: 0 new rows a minute.
 -- budget: no cron job, no autovacuum or fillfactor change, no new table; two columns relaxed and one added on a table of one row a seated captain.

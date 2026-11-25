@@ -12,8 +12,8 @@
 --   public.honor_credit       THE ONE WRITER: signs checked against the kind, a once-ever key, never below nothing (E_NOT_ENOUGH_HONOR). A merchant: nothing.
 --   the reconcile             at commit the balance is the book's newest row, as 0352's reputation_reconciles.
 --   world.captains (1 hunk)   lit, `honor`: her badges; dark no key.
--- NO EARNER AND NO SPENDER YET: the land expedition (0531) earns, the captain upgrades (0533) spend.
--- ROWS: 2 data rows, 1 config row; 0 a minute (0531: one a party home, about 240 a day at 60 companies).
+-- NO EARNER AND NO SPENDER YET: the land expedition (0534) earns, the captain upgrades (0533) spend.
+-- ROWS: 2 data rows, 1 config row; 0 a minute (0534: one a party home, about 240 a day at 60 companies).
 -- budget: no cron job, no autovacuum or fillfactor change; three tables.
 -- LOCKS: CREATE TABLE x3 (foreign keys on players: SHARE ROW EXCLUSIVE for an instant, under lock_timeout 5 s).
 -- RESTART (0509): nothing to add. Like Reputation's, a closed company's balance and book stay its old row's record, unreachable.

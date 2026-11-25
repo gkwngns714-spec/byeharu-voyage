@@ -776,6 +776,18 @@ const TABLE = {
   // 0529: open your next captain place; let a captain go. Dark (captain_places_enabled): E_NOT_IN_USE.
   cmdCaptainPlace: { schema: 'cmd', fn: 'captain_place', mutates: true, invalidates: ['worldCaptains', 'worldPlayer'], args: [] },
   cmdCaptainDismiss: { schema: 'cmd', fn: 'captain_dismiss', mutates: true, invalidates: ['worldCaptains'], args: [{ name: 'p_code', type: 'text' }] },
+  // 0534: a land expedition: the read (dark: {on: false}; the captain and the ask quote one Send), and the door (ask null: called home).
+  worldLandExpedition: { schema: 'world', fn: 'land_expedition', args: [{ name: 'p_code', type: 'text' }, { name: 'p_ask', type: 'jsonb' }] },
+  cmdLandExpedition: {
+    schema: 'cmd',
+    fn: 'land_expedition',
+    mutates: true,
+    invalidates: ['worldLandExpedition', 'worldCaptains', 'worldPlayer'],
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_ask', type: 'jsonb' },
+    ],
+  },
   // 0533: a captain's next rank of an upgrade, for HONOR BADGES. Dark (honor_enabled): E_NOT_IN_USE.
   cmdCaptainUpgrade: {
     schema: 'cmd',
