@@ -171,7 +171,7 @@ export function SmallChart({
   opening?: (aspect: number) => GeoBounds
   /** Row 218: a harbour tapped (THE map tab's hit test) — the caller selects that city. Absent: no tap. */
   onPort?: (code: string) => void
-  /** 0504 — the fog over this chart (./fog.ts); null, the default, is the chart as it was. */
+  /** 0526 — the fog over this chart (./fog.ts); null, the default, is the chart as it was. */
   fog?: ChartFog | null
   /** Row 231: a city PRESSED (on the map, the chip strip or the cargo list) — `n` counts the presses, so pressing
    *  the same city again glides back to it. The chart glides it to the middle at the reader's zoom. Absent: none. */
@@ -225,7 +225,7 @@ export function SmallChart({
   const surface = useChartSurface(boxRef, frameBounds, !still && onPort ? tap : undefined, { scroll: still ? 'page-vertical' : 'wheel-zoom' })
   const box = surface.viewBox
   const shore = useChartShore(backdrop, box ?? NO_VIEW, surface.unitsPerPx)
-  // 0504 — THE FOG (./fog.ts): lit, with no `only`, the chart holds the cities she has in sight or knows, and no other.
+  // 0526 — THE FOG (./fog.ts): lit, with no `only`, the chart holds the cities she has in sight or knows, and no other.
   const knownKey = fog && onlyKey === null ? knownPortsKey(fog, shore.ports) : null
   const chartPorts = useMemo(
     () =>

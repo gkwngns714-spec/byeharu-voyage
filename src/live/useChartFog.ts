@@ -10,7 +10,7 @@ const lastArrivalAt = (s: ReturnType<typeof useWorld.getState>): number =>
   s.events.reduce((m, e) => (e.kind === 'VOYAGE_REPORT' ? Math.max(m, Date.parse(e.at) || 0) : m), 0)
 
 /**
- * THE FOG FOR A CHART (0504; src/chart/fog.ts says what it means). The ONE read of `world.chart()`, cached by name
+ * THE FOG FOR A CHART (0526; src/chart/fog.ts says what it means). The ONE read of `world.chart()`, cached by name
  * (the map and the Trade map share it) and asked again only when an arrival of hers lands, not on the world's beat.
  * Null while it is dark, signed out, or not yet read: the chart is then drawn whole, as it always was.
  * `fleets` are HER fleets as the chart places them: each is an eye, and the part of a voyage she has already

@@ -5,7 +5,7 @@
 --   at the push); new_there []; knobs_there []; tables_there 0; stores_separate true (0508 is dark by it; the push does not depend on it);
 --   sea_places_free >= 1 (0505's scene); capitals 2; payers >= 1 and founding_room >= 5 (0503's probe founds three companies at once,
 --   0509's two: each 40,000 from a city above its reserve, the richest at last); long_tx 0. case_twins 0 and 0503 builds its
---   index; above 0 it leaves it out and says so. rates_md5: the after file must print the same. companies.moves_home: read before
+--   index; above 0 it leaves it out and says so. 0504 (assign-fast) is live at once. rates_md5: the after file must print the same. companies.moves_home: read before
 --   hq_cities_enabled is ever lit. The switches of batch 1 may be lit: proved with them lit.
 -- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, the catalog, world_config by key, small tables by count. Only STABLE functions are
 --   called, none writes. The digests are of the local chain's world (PGlite, migrations to 0509).
@@ -18,10 +18,10 @@ select json_build_object(
     'io_waiting', (select count(*) from pg_stat_activity a where a.pid <> pg_backend_pid() and a.wait_event_type = 'IO' and a.state = 'active')),
   'head', (select max(version) from supabase_migrations.schema_migrations),
   'bodies_off', (select coalesce(json_agg(json_build_object('fn', w.fn, 'have', h.have)), '[]'::json)
-                   from (values ('voyage.settle(uuid,timestamp with time zone)', '1809e424046a2dfb321f8345659702cd'),
-                                ('public.run_day(uuid,uuid,uuid,uuid,uuid,numeric,numeric,numeric,numeric,numeric)', '8481b18743c6ff2773a56c93d96f9dcb'),
+                   from (values ('public.run_day(uuid,uuid,uuid,uuid,uuid,numeric,numeric,numeric,numeric,numeric)', '8481b18743c6ff2773a56c93d96f9dcb'),
                                 ('cmd.do_buy(uuid,jsonb)', 'c729d43130979aac20ce60e08c26ecdd'),
                                 ('cmd.haggle(uuid,uuid,text)', 'cc1ed1dbd1f1c02e6575efc1d6030bf8'),
+                                ('voyage.segments_from_course(jsonb)', '4d5f239ca6a3ea508d4f7a2b3fd977b2'),
                                 ('public.client_rpc_entry_points()', '16a15f96b3c5d0f71621f1d5ebc7fc82'),
                                 ('cmd.do_sell(uuid,jsonb)', '0abb37cf1eccd82fa4aa0a7e0b42236b'),
                                 ('world.town_hall(uuid)', 'd1e550ccfdffd0db6f2f91ff0e6a77f6'),
@@ -39,17 +39,23 @@ select json_build_object(
                                 ('world.tax_rate(uuid,uuid)', '01bfcd04df2051c271599605e23169eb'),
                                 ('public.fleet_job_plan(uuid)', '2f3b9b0c859a032093c9637e36a75eab'),
                                 ('public.ship_stores_room(uuid,numeric)', '90e678071389da3804f28927e1e2e1e9'),
+                                ('world.trip_cost(uuid,jsonb)', '0389222cddecb3936110d9d782bc800e'),
                                 ('public.level_skills_card(uuid,jsonb)', 'a06aa6775ffbfa92facc3728a7807fec'),
+                                ('public.fleet_job_sails(uuid,uuid,text[])', '83b19fb0350a3e0e01dae17aabfa9feb'),
                                 ('world.spread_pair_from(uuid,uuid,uuid,boolean,numeric[],numeric)', '2d46f503a190ac65b798f968e0e28c49'),
+                                ('public.sea_actions_for(uuid,uuid)', '29b59df20ec44a70f7a06cd845aa366b'),
+                                ('public.fleet_job_legs(uuid,uuid,uuid)', 'a59c47cbd7805953df5919eeccadc184'),
+                                ('public.job_trip(uuid,uuid,text[],boolean)', '84f5e4fedb24608d9f020bb706540c89'),
                                 ('public.fleet_run_quote(uuid,uuid,uuid,text,text,text[])', 'ffb298fac04208924d167a8aeef0b9d7'),
+                                ('public.fleet_job_leg_shut(uuid,uuid,jsonb)', 'e22c0d371d345d7d30bcc27ac57de675'),
                                 ('cmd.set_tax(uuid,numeric)', 'e1d222859a6c98049c1502462bd1e8f0'),
                                 ('world.haggle_state(uuid,uuid)', 'a6900eb8f9e063aa375b70dcffcd9f47'),
                                 ('public.settle_standings(timestamp with time zone)', '6c89ae48600318e4878fd67d12438df1'),
                                 ('world.player()', 'fc28ff0b7626af6b2fb5adc4571f87d9')) w(fn, want)
                   cross join lateral (select md5(replace(pg_get_functiondef(to_regprocedure(w.fn)), E'', '')) as have) h
                   where h.have is distinct from w.want),
-  'new_there', (select coalesce(json_agg(u.s), '[]'::json) from unnest(array['public.company_rename_free(integer)', 'public.rename_company(uuid,text)', 'public.company_name_refusal(text,uuid)', 'cmd.rename_company(text)', 'public.chart_sight_nm(uuid)', 'public.tax_cap()', 'public.tax_home_half(uuid,uuid,numeric,numeric)', 'public.bargain_side_refusal(uuid,uuid,uuid,text)', 'public.bargain_p1(uuid,uuid,uuid,uuid)', 'public.bargain_odds(uuid,uuid,uuid,uuid)', 'public.bargain_actor()', 'public.bargain_xp(uuid,boolean)', 'public.job_bargain_tries(uuid)', 'public.nation_in_europe(uuid)', 'public.hq_card(uuid)', 'public.company_heir(uuid)', 'public.chart_paint(bytea,jsonb,numeric)', 'public.chart_backfill(uuid,integer)', 'public.chart_mark(uuid,uuid)', 'public.chart_backfill_next(integer,integer)', 'world.chart()', 'public.tax_thirty_on()', 'public.bargain_on()', 'public.haggle_attempts_max()', 'public.haggle_step()', 'public.haggle_cap()', 'public.job_bargain(uuid,uuid,text)', 'public.job_bargain_param(jsonb)', 'public.bargain_factor(uuid,uuid,uuid,text)', 'public.bargain_state(uuid,uuid,uuid,uuid)', 'public.bargain_first(uuid,uuid,uuid,text,numeric,numeric)', 'public.buy_tax_on()', 'public.buy_tax_rate(uuid,uuid)', 'public.ship_hold_over(uuid)', 'public.fleet_trip_stores(uuid,uuid,text[])', 'public.stores_in_hold_ready()', 'public.stores_in_hold_light()', 'public.restart_on()', 'public.hq_cities_on()', 'public.restart_refusal(uuid,timestamp with time zone)', 'public.restart_card(uuid)', 'public.company_retire(uuid,timestamp with time zone)', 'cmd.restart_company(text,text,text)']) u(s) where to_regprocedure(u.s) is not null),
-  'knobs_there', (select coalesce(json_agg(c.key), '[]'::json) from public.world_config c where c.key in ('chart_fog_enabled', 'chart_sight_nm', 'tax_thirty_enabled', 'tax_rate_cap', 'home_tax_cut', 'restart_enabled', 'buy_tax_enabled', 'buy_tax_share', 'bargain_total_enabled', 'bargain_attempts', 'bargain_step', 'bargain_p1_base', 'bargain_p1_max', 'bargain_decay', 'hq_cities_enabled', 'buy_tax_max')),
+  'new_there', (select coalesce(json_agg(u.s), '[]'::json) from unnest(array['public.company_rename_free(integer)', 'public.rename_company(uuid,text)', 'public.company_name_refusal(text,uuid)', 'cmd.rename_company(text)', 'voyage.course_pieces(jsonb)', 'voyage.course_nm(jsonb)', 'public.fleet_job_legs_memo(uuid,uuid,uuid,jsonb)', 'public.nation_in_europe(uuid)', 'public.hq_card(uuid)', 'public.company_heir(uuid)', 'public.restart_refusal(uuid,timestamp with time zone)', 'public.restart_card(uuid)', 'public.company_retire(uuid,timestamp with time zone)', 'public.tax_home_half(uuid,uuid,numeric,numeric)', 'public.bargain_side_refusal(uuid,uuid,uuid,text)', 'public.fleet_job_sails_memo(uuid,uuid,text[],jsonb)', 'public.job_trip_memo(uuid,uuid,text[],boolean,jsonb)', 'public.tax_thirty_on()', 'public.tax_cap()', 'public.bargain_on()', 'public.haggle_attempts_max()', 'public.haggle_step()', 'public.haggle_cap()', 'public.bargain_p1(uuid,uuid,uuid,uuid)', 'public.bargain_odds(uuid,uuid,uuid,uuid)', 'public.bargain_actor()', 'public.bargain_xp(uuid,boolean)', 'public.job_bargain_tries(uuid)', 'public.job_bargain(uuid,uuid,text)', 'public.job_bargain_param(jsonb)', 'public.bargain_factor(uuid,uuid,uuid,text)', 'public.bargain_state(uuid,uuid,uuid,uuid)', 'public.bargain_first(uuid,uuid,uuid,text,numeric,numeric)', 'public.buy_tax_on()', 'public.buy_tax_rate(uuid,uuid)', 'public.ship_hold_over(uuid)', 'public.fleet_trip_stores(uuid,uuid,text[])', 'public.stores_in_hold_ready()', 'public.stores_in_hold_light()', 'public.restart_on()', 'public.hq_cities_on()', 'cmd.restart_company(text,text,text)']) u(s) where to_regprocedure(u.s) is not null),
+  'knobs_there', (select coalesce(json_agg(c.key), '[]'::json) from public.world_config c where c.key in ('tax_thirty_enabled', 'tax_rate_cap', 'home_tax_cut', 'buy_tax_enabled', 'buy_tax_share', 'buy_tax_max', 'bargain_total_enabled', 'bargain_attempts', 'bargain_step', 'bargain_p1_base', 'bargain_p1_max', 'bargain_decay', 'restart_enabled', 'hq_cities_enabled')),
   'switches', (select json_object_agg(c.key, c.value) from public.world_config c where c.key in ('economy_closed', 'city_treasury_enabled', 'jobs_wait_enabled', 'wreck_sells_enabled', 'fleet_jobs_enabled', 'influence_enabled')),
   'payers', (select count(*) from public.port_treasury t where t.ducats - t.reserve >= 40000),
   'founding_room', (select coalesce(sum(floor((t.ducats - t.reserve) / 40000)), 0) from public.port_treasury t where t.ducats - t.reserve >= 40000),
@@ -64,7 +70,7 @@ select json_build_object(
                                                        and not exists (select 1 from public.port_mayor m where m.port_id = z.id)),
   'stores_separate', (select c.value from public.world_config c where c.key = 'ship_stores_separate'),
   'rates_md5', (select md5(string_agg(h.code || ':' || world.tax_rate(h.id)::text, ',' order by h.code)) from public.ports h where h.kind = 'HARBOUR'),
-  'tables_there', (select count(*) from pg_class k where k.relnamespace = 'public'::regnamespace and k.relname in ('company_chart', 'company_hqs', 'hq_steps', 'company_retirements')),
+  'tables_there', (select count(*) from pg_class k where k.relnamespace = 'public'::regnamespace and k.relname in ('company_hqs', 'hq_steps', 'company_retirements')),
   'voyages_rows', (select k.reltuples::bigint from pg_class k where k.oid = 'public.voyages'::regclass)
 );
 rollback;

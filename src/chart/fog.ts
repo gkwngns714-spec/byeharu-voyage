@@ -3,7 +3,7 @@ import type { ChartModel, FleetOnChart } from './chartModel'
 import type { MapPort } from './mapTypes'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE FOG (0504, owner 2026-11-25): "The MAP itself will be black, and your fleet will provide a radius that
+// THE FOG (0526, owner 2026-11-25): "The MAP itself will be black, and your fleet will provide a radius that
 // will show you nearby map ... the location you've visited will show like a grey map, where you can tab on that
 // city to not see the info, but to go there ... where your fleets moved and been will be in grey, showing lands
 // partly (transparent)."
@@ -19,7 +19,7 @@ import type { MapPort } from './mapTypes'
 // is not shown. An unseen city is not on the map at all.
 //
 // THE SERVER DECIDES NOTHING BY THIS: no door reads the chart, so a destination named from a list still sails.
-// PRICES ARE STILL SERVED FOR EVERY HARBOUR (0504's header): this file is what hides them on the map.
+// PRICES ARE STILL SERVED FOR EVERY HARBOUR (0526's header): this file is what hides them on the map.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export const FOG_ROWS = 180
@@ -38,7 +38,7 @@ export interface ChartFog {
   readonly eyes: readonly LatLon[]
 }
 
-/** The square a point lies in: the server's own numbering (0504: row = floor(90 - lat), col = floor(lon + 180)). */
+/** The square a point lies in: the server's own numbering (0526: row = floor(90 - lat), col = floor(lon + 180)). */
 export function fogCell(lat: number, lon: number): number {
   const row = Math.min(FOG_ROWS - 1, Math.max(0, Math.floor(90 - lat)))
   const col = ((Math.floor(lon + 180) % FOG_COLS) + FOG_COLS) % FOG_COLS

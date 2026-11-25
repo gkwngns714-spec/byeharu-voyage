@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 206 - THE CHART IS BLACK UNTIL SHE SAILS  (migration 0504, dark: chart_fog_enabled; docs/dev-log/2026-11-25-chart-fog.md)
+-- PROOF 206 - THE CHART IS BLACK UNTIL SHE SAILS  (migration 0526, dark: chart_fog_enabled; docs/dev-log/2026-11-25-chart-fog.md)
 --
 --   The owner: "The MAP itself will be black, and your fleet will provide a radius ... larger based on your NAVIGATION SKILL ... where
 --   your fleets moved and been will be in grey". Played on the proof's own company and its own hand-made courses: nothing here reads a
@@ -15,7 +15,7 @@
 
 do $p$
 declare
-  c_a    constant uuid := '00000000-0504-4000-8000-0000000002a1';
+  c_a    constant uuid := '00000000-0526-4000-8000-0000000002a1';
   v_lis  uuid := (select p.id from public.ports p where p.code = 'LIS' and p.kind = 'HARBOUR');
   v_set  uuid := (select p.id from public.ports p where p.code = 'SET' and p.kind = 'HARBOUR');
   v_la   record; v_sa record;

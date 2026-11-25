@@ -3,7 +3,7 @@ import { CHART_WIDTH, sheetCopies, type ViewBox } from '../lib/geo'
 import { FOG_COLS, FOG_ROWS, cellSet, type ChartFog } from './fog'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE FOG ON THE GLASS (0504; ./fog.ts says what is in sight, charted and unseen).
+// THE FOG ON THE GLASS (0526; ./fog.ts says what is in sight, charted and unseen).
 //
 // ONE CANVAS over the whole chart, the size of the glass, and nothing else: black where she has never been, a
 // grey veil where she has (the coast and a known city show through it, greyed), clear within sight of each of

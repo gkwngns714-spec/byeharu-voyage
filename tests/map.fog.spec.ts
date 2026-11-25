@@ -4,7 +4,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { PHONE, ready, reachable } from './appReady.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 
-// THE FOG (0504, owner 2026-11-25: "The MAP itself will be black, and your fleet will provide a radius ... the location you've visited
+// THE FOG (0526, owner 2026-11-25: "The MAP itself will be black, and your fleet will provide a radius ... the location you've visited
 // will show like a grey map, where you can tab on that city to not see the info, but to go there"). The shipped world is DARK
 // (`chart_fog_enabled` false): the map is drawn whole, with no fog on it. A copy of the image with the switch lit, and a chart seeded
 // for every company the moment her fleet exists (a course painted from her harbour by the server's own painter): the map carries the

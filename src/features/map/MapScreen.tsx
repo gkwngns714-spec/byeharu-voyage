@@ -492,7 +492,7 @@ function Chart({
     () => buildChartModel(fleetsDrawn, allPorts, [], { nowMs, readAtMs: readAt }, trafficDrawn, trafficReadAt),
     [fleetsDrawn, allPorts, nowMs, readAt, trafficDrawn, trafficReadAt],
   )
-  // 0504 — THE FOG (src/chart/fog.ts): lit, the map holds only the cities she has in sight or knows and the merchants in
+  // 0526 — THE FOG (src/chart/fog.ts): lit, the map holds only the cities she has in sight or knows and the merchants in
   // sight; the hit test, the names and the picture all read these two, so what can be pressed is what is drawn. Dark: null,
   // and both are the full lists, as before.
   const fog = useChartFog(fullModel.fleets)
@@ -845,7 +845,7 @@ function Chart({
           <div className="pointer-events-auto absolute bottom-3 left-3 flex flex-col items-start gap-1">
             <PointerCoords chart={chartRef} box={box} />
             {backdrop.error && <p className="text-t-caption text-ink-faint">{t('map.noCoast')}</p>}
-            {/* 0504: no overview under the fog: it would draw the whole world's coast */}
+            {/* 0526: no overview under the fog: it would draw the whole world's coast */}
             {!fog && (zoomed || minimapChosen(minimapPrefs)) && surface.width > 0 && (
               <Minimap
                 model={model}
@@ -960,7 +960,7 @@ function Chart({
           dest={place.dest}
           sea={placeSea}
           unseen={placeGrey}
-          // 0504: a city she knows but does not have in sight can be sailed to, and nothing about it is shown
+          // 0526: a city she knows but does not have in sight can be sailed to, and nothing about it is shown
           line={place.port ? (placeGrey ? t('map.fogKnown') : portLine(model, place.port, harbourRows, portNationOf(allegiance, place.port.code))) : t('map.openSea')}
           harbour={
             place.port && !placeGrey && (

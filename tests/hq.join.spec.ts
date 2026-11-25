@@ -322,14 +322,37 @@ testUnless('Assign: where the server serves no near round, Trade nearby is not d
   await expect(page.locator('[data-testid="corp-worker"][data-wait]'), 'a row says it waits for a price though the server serves no wait').toHaveCount(0)
 })
 
-test('Assign: a read that took too long says so in plain words, and Try again asks once more', async ({ page, request, baseURL }) => {
+test('Assign: a read that took too long once is asked again by itself, and nothing is said', async ({ page, request, baseURL }) => {
   test.setTimeout(900_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
   let actionAsks = 0
   page.on('console', (m) => {
     if (m.type() === 'debug' && m.text().includes('world.actions(')) actionAsks++
   })
-  await serveWorldImage(page, await corpWorld({ courses: true, slow: true }))
+  await serveWorldImage(page, await corpWorld({ courses: true, slow: 1 }))
+  await page.setViewportSize(SIZES[0])
+  await page.goto('city')
+  await ready(page)
+  await expect(page.getByTestId('corp-worker-list')).toBeVisible({ timeout: 300_000 })
+  await fleetRow(page).click()
+  const sheet = page.getByTestId('hq-sheet-assign')
+  const waiting = sheet.getByTestId('corp-assign-waiting')
+  const runs = sheet.getByTestId('corp-assign-run')
+  await expect(waiting.or(runs.first())).toBeVisible({ timeout: 180_000 })
+  await expect(sheet.getByTestId('corp-assign-closed')).toHaveCount(0)
+  await expect(runs.first(), 'the quiet retry did not bring the runs').toBeVisible({ timeout: 180_000 })
+  await expect(sheet.getByTestId('corp-assign-slow')).toHaveCount(0)
+  expect(actionAsks, 'asked once, and once more by itself').toBe(2)
+})
+
+test('Assign: a read that stays too long says so in plain words after three quiet tries, and Try again asks once more', async ({ page, request, baseURL }) => {
+  test.setTimeout(900_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+  let actionAsks = 0
+  page.on('console', (m) => {
+    if (m.type() === 'debug' && m.text().includes('world.actions(')) actionAsks++
+  })
+  await serveWorldImage(page, await corpWorld({ courses: true, slow: 4 }))
   await page.setViewportSize(SIZES[0])
   await page.goto('city')
   await ready(page)
@@ -341,7 +364,7 @@ test('Assign: a read that took too long says so in plain words, and Try again as
   await expect(slow.getByTestId('corp-assign-closed')).toContainText('slow')
   expect((await sheet.innerText()).match(/E_[A-Z_]+/g) ?? [], 'a code is printed in Assign').toEqual([])
   await expect(sheet.getByTestId('corp-assign-run'), 'a shorter list is drawn beside the slow answer').toHaveCount(0)
-  expect(actionAsks).toBe(1)
+  expect(actionAsks, 'asked once, and three times by itself').toBe(4)
   const retry = slow.getByTestId('corp-assign-retry')
   const box = (await retry.boundingBox())!
   expect(box.height, 'Try again is under 44 px').toBeGreaterThanOrEqual(43.5)
@@ -349,7 +372,7 @@ test('Assign: a read that took too long says so in plain words, and Try again as
   await retry.click()
   await expect(sheet.getByTestId('corp-assign-run').first(), 'Try again did not bring the runs').toBeVisible({ timeout: 180_000 })
   await expect(slow).toHaveCount(0)
-  expect(actionAsks, 'Try again did not ask world.actions exactly once more').toBe(2)
+  expect(actionAsks, 'Try again did not ask world.actions exactly once more').toBe(5)
 })
 
 for (const size of SIZES) {
