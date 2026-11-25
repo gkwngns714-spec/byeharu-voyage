@@ -41,6 +41,12 @@ export const hqDict = defineDict({
     rateGear: 'Gear',
     rateRoom: 'Fleet room',
     rateGifts: 'Gifts',
+    // 0500: cargo at cost (lit): goods bought and still held are not a loss; lost cargo is, at what it cost
+    rateCargoLost: 'Lost cargo',
+    rateCargo: 'Cargo',
+    rateAtCost: 'At cost',
+    rateAll: 'All coin',
+    rateCargoSince: 'Losses counted from {t}',
     boardOff: 'Board off',
     moves: 'Best moves',
     filter: 'Show',

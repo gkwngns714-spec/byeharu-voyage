@@ -34,9 +34,23 @@ const OWNERS_DAY = `
   end $f$;
   create trigger spec_rate_why_day after insert on public.players for each row execute function public.spec_rate_why_day();`
 
-async function openHq(page: Page, width: number, height: number) {
+/** 0500, lit: the owner's day, and she also bought cargo for 25,654 that she still holds (a probe row squares her purse). */
+const CARGO_DAY = `${OWNERS_DAY}
+  update public.world_config set value = 'true'::jsonb where key = 'cargo_at_cost_enabled';
+  create function public.spec_cargo_day() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
+  begin
+    if not new.is_npc then
+      insert into public.ledger (player_id, kind, ducats_delta, balance_after, created_at) values
+        (new.id, 'BUY',            -25654, new.ducats, now() - interval '2 hours'),
+        (new.id, 'PROBE_CARGO_DAY', 25654, new.ducats, now() - interval '7 hours');
+    end if;
+    return new;
+  end $f$;
+  create trigger spec_cargo_day after insert on public.players for each row execute function public.spec_cargo_day();`
+
+async function openHq(page: Page, width: number, height: number, world: 'hq-rate-why' | 'hq-rate-cargo' = 'hq-rate-why') {
   await page.setViewportSize({ width, height })
-  await serveWorldImage(page, await patchedWorldImage('hq-rate-why', async (pg) => void (await pg.exec(OWNERS_DAY))))
+  await serveWorldImage(page, await patchedWorldImage(world, async (pg) => void (await pg.exec(world === 'hq-rate-cargo' ? CARGO_DAY : OWNERS_DAY))))
   await page.goto('city')
   await ready(page)
   await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: WORLD_BOOT_MS })
@@ -112,5 +126,42 @@ for (const glass of [
     await expect(page).toHaveURL(/\/city/)
     await expect(page.getByTestId('hq-board')).toBeVisible()
     await expect(figure).toHaveAttribute('data-per-hour', String(perHour))
+  })
+}
+
+// 0500 (cargo_at_cost_enabled lit): cargo she bought and still holds is not a loss. The sheet shows it apart, neutral, and adds up.
+for (const glass of [
+  { width: 390, height: 844 },
+  { width: 1440, height: 900 },
+]) {
+  test(`cargo bought and held is shown at cost, neutral, and the sheet adds up (${glass.width})`, async ({ page, request, baseURL }) => {
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+    test.setTimeout(600_000)
+    await openHq(page, glass.width, glass.height, 'hq-rate-cargo')
+
+    // the headline is still her running costs: the 25,654 of cargo is not in it
+    const figure = page.getByTestId('hq-bridge-rate')
+    const perHour = await num(page, 'hq-bridge-rate', 'data-per-hour')
+    expect(perHour, 'the cargo she holds is not an hourly loss (with it the figure would be under -1,000)').toBeGreaterThan(-1000)
+    await figure.click()
+    const sheet = page.getByTestId('hq-rate-sheet')
+    await expect(sheet).toBeVisible()
+    await expect(sheet.getByTestId('hq-rate-running').locator('[data-line="trade"]')).toHaveAttribute('data-total', '0')
+
+    const cargo = sheet.getByTestId('hq-rate-cargo')
+    await expect(cargo).toHaveAttribute('data-at-cost', '25654')
+    await expect(cargo).toHaveAttribute('data-total', '-25654')
+    const line = cargo.getByTestId('hq-rate-cargo-line')
+    await expect(line).toContainText('Cargo 25,654')
+    await expect(line).toContainText('At cost')
+    const red = await sheet.getByTestId('hq-rate-running').locator('[data-line="tow"] span').last().evaluate((el) => getComputedStyle(el).color)
+    expect(await line.locator('span').last().evaluate((el) => getComputedStyle(el).color), 'cargo is neutral, not red').not.toBe(red)
+    await expect(cargo.getByTestId('hq-rate-cargo-since')).toBeVisible()
+
+    // Running + One time + Cargo = All coin (every figure the server's; the spec does the adding)
+    const total = async (id: string) => Number(await sheet.getByTestId(id).getAttribute('data-total'))
+    expect((await total('hq-rate-running')) + (await total('hq-rate-onetime')) + (await total('hq-rate-cargo'))).toBe(await total('hq-rate-all'))
+    expect(await noSideways(page), 'no sideways scroll with the sheet open').toBe(true)
+    if (process.env.HQ_SHOTS) await page.screenshot({ path: `${process.env.HQ_SHOTS}/rate-cargo-sheet-${glass.width}.png` })
   })
 }

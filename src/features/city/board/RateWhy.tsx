@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react'
 import { DetailPage, Icon } from '../../../components/ui'
-import { formatDucatsDelta, formatInt } from '../../../lib/format'
+import { formatClock, formatDucatsDelta, formatInt, instantMs } from '../../../lib/format'
 import { useT, type TKey } from '../../../lib/i18n'
-import type { HqRate, HqRateLine } from '../../../lib/rpc'
+import type { HqRate, HqRateCargo, HqRateLine } from '../../../lib/rpc'
 import type { Board } from './useBoard'
 
 // THE RATE SAYS WHY (owner, 2026-11-24: "i am -19.649 / hour. it should say why"; then "why investing causes les money? wtf?").
@@ -35,6 +35,7 @@ const LINE_WORD: Record<string, TKey> = {
   gear: 'hq.rateGear',
   room: 'hq.rateRoom',
   gifts: 'hq.rateGifts',
+  cargo_lost: 'hq.rateCargoLost',
 }
 /** A line's word; a line the server names later reads as Other until it has its own. */
 const wordOf = (line: string): TKey => LINE_WORD[line] ?? 'hq.rateOther'
@@ -133,11 +134,44 @@ function RateSheet({ rate, lines, onClose }: { rate: HqRate; lines: HqRateLine[]
       {once.length > 0 && rate.one_time_24h !== undefined && (
         <Group testid="hq-rate-onetime" heading={t('hq.rateOnce')} total={rate.one_time_24h} perHour={null} lines={once} />
       )}
+      {rate.cargo && rate.all_24h !== undefined && <Cargo cargo={rate.cargo} all={rate.all_24h} />}
     </DetailPage>
   )
 }
 
 const ROW = 'grid grid-cols-[minmax(0,1fr)_5.5rem_6.5rem] items-baseline gap-x-2 py-1.5 tabular-nums'
+
+/** 0500: HER CARGO AT COST, neutral (never red: goods she holds are not a loss), and the sum the sheet comes to. The server's
+ *  figures: Running + One time + Cargo = All coin (her ledger's 24 hours). Lost cargo is recorded from 0500's deploy on: until the
+ *  whole window lies after it, the sheet says from when. */
+function Cargo({ cargo, all }: { cargo: HqRateCargo; all: number }) {
+  const t = useT()
+  const since = instantMs(cargo.exact_since)
+  return (
+    <section className="pt-3" data-testid="hq-rate-cargo" data-total={cargo.net_24h} data-at-cost={cargo.at_cost}>
+      <div className={`${ROW} border-b border-edge text-t-caption text-ink-muted`}>
+        <h2 className="text-t-label font-semibold text-ink">{t('hq.rateCargo')}</h2>
+        <span />
+        <span className="text-right">{t('hq.rateColDay')}</span>
+      </div>
+      <div className={`${ROW} text-t-caption`} data-testid="hq-rate-cargo-line">
+        <span className="text-t-body text-ink">{`${t('hq.rateCargo')} ${formatInt(cargo.at_cost)}`}</span>
+        <span className="text-right text-ink-muted">{t('hq.rateAtCost')}</span>
+        <span className="text-right text-ink">{signed(cargo.net_24h)}</span>
+      </div>
+      {!cargo.exact && since !== null && (
+        <p className="pb-1 text-t-caption text-ink-faint" data-testid="hq-rate-cargo-since">
+          {t('hq.rateCargoSince', { t: formatClock(since) })}
+        </p>
+      )}
+      <div className={`${ROW} border-t border-edge text-t-caption font-semibold`} data-testid="hq-rate-all" data-total={all}>
+        <span className="text-ink">{t('hq.rateAll')}</span>
+        <span />
+        <span className="text-right text-ink">{signed(all)}</span>
+      </div>
+    </section>
+  )
+}
 
 /** One group: its heading, then every line (its word and count, per hour or the One time tag, its total over the 24 hours), then the
  *  group's own figures, the server's. A purchase is neutral, never red. */
