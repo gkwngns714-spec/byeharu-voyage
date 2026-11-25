@@ -95,10 +95,6 @@ export const corpWorld = ({ courses = false, home = false, near = false, nearLow
         create function public.spec_tick_repaired() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
         begin
           if old.status = 'REPAIRING' and new.status = 'DOCKED' then
-            -- the jobs' tick after the yard's work, and the one ten minutes on (a tab has no clock to wait for): 0500's first still stops her
-            -- on the plan that failed when the sail was refused, until her next_at; the next lifts that stop and she goes on with her run
-            call public.tick_fleet_jobs(false);
-            update public.fleet_jobs set next_at = now() - interval '1 second' where fleet_id = new.id;
             call public.tick_fleet_jobs(false);
           end if;
           return null;

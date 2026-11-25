@@ -15,11 +15,13 @@
 -- @pass FS_STOPPED  a job ALREADY stopped on E_FLAGSHIP_DISABLED (prod's row) is not asked while she is wrecked and goes on at the first run after her repair
 -- @pass FS_CREW     short of crew (the same class): where crew can be hired her job WAITS with E_CREW_SHORT ("Crew 7 / 8"), nothing issued; the Inn's quote (cmd.preview 'HIRE n') is the price cmd.issue takes; manned, the very next run starts her
 -- @pass FS_NO_HANDS short of crew where no crew can be hired (the quay has no hands: the hire door's own E_CREW_POOL) her job STOPS on E_CREW_SHORT with nothing issued, is not asked while she is short, and goes on once manned
+-- @pass FS_MID_RUN  her flagship lost between the plan and its sail (the sail refused, the plan failed): the job waits; repaired, THE FIRST run after it starts her, whether a run wrote the wait before or not; the same short of crew
 -- @pass FS_ONE_RULE voyage.sail_refusal and public.fleet_unfit give one answer, wrecked and fit; a dead flagship beside a live escort is unfit too
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $p$
 declare
+  v_m    record;
   c_a     constant uuid := '00000000-0500-4000-8000-0000000002a1';
   v_isl   uuid := (select p.id from public.ports p where p.code = 'ISL' and p.kind = 'HARBOUR');
   v_a     uuid;
@@ -234,6 +236,41 @@ begin
     raise exception 'FS_NO_HANDS: manned, the stopped job did not go on: % / %', to_jsonb(v_j), left(v_r::text, 300);
   end if;
   raise notice 'PASS: FS_NO_HANDS — no hands: stopped on % ("%"), the hire door %; not asked while short; manned: runs %', v_w #>> '{stop,code}', v_w #>> '{stop,sentence}', v_q->>'error_code', v_j.runs;
+
+  -- FS_MID_RUN: the state a refused sail leaves (last_plan the plan whose SAIL failed), with and without a run in between, for both codes
+  for v_m in select * from (values ('E_FLAGSHIP_DISABLED', true), ('E_FLAGSHIP_DISABLED', false), ('E_CREW_SHORT', true), ('E_CREW_SHORT', false)) t(code, asked) loop
+    update public.orders set status = 'cancelled' where fleet_id = v_fa and status in ('pending', 'active');
+    update public.voyages set status = 'ARRIVED' where fleet_id = v_fa and status = 'SAILING';
+    update public.fleets set status = 'DOCKED', port_id = v_isl, ready_at = null, busy_until = null where id = v_fa;
+    update public.ships s set durability = (select sb.durability from public.ship_base(s.id) sb), crew = c.crew_required from public.ship_classes c where c.id = s.class_id and s.fleet_id = v_fa;
+    update public.ports set crew_pool = 50 where id = v_isl;
+    update public.fleet_jobs set paused_reason = null, next_at = null, last_plan = (select o.plan_id from public.orders o where o.fleet_id = v_fa and o.plan_id is not null order by o.seq desc limit 1) where fleet_id = v_fa;
+    update public.orders o set status = 'failed', error_code = v_m.code, error_message = 'refused at the sail (proof 202)'
+     where o.id = (select o2.id from public.orders o2 where o2.fleet_id = v_fa and o2.plan_id = (select j.last_plan from public.fleet_jobs j where j.fleet_id = v_fa) and o2.verb = 'SAIL' order by o2.seq limit 1);
+    if not found then
+      raise exception 'FS_MID_RUN: the scene has no failed SAIL in her last plan';
+    end if;
+    if v_m.code = 'E_CREW_SHORT' then
+      update public.ships s set crew = c.crew_required - 1 from public.ship_classes c where c.id = s.class_id and s.fleet_id = v_fa;
+    else
+      update public.ships set durability = 0 where fleet_id = v_fa and is_flagship;
+    end if;
+    select j.runs into v_n from public.fleet_jobs j where j.fleet_id = v_fa;
+    if v_m.asked then
+      call public.tick_fleet_jobs(false);
+      select * into v_j from public.fleet_jobs j where j.fleet_id = v_fa;
+      if v_j.paused_reason is not null or v_j.last->>'wait' is distinct from v_m.code or v_j.runs <> v_n then
+        raise exception 'FS_MID_RUN: % mid-run, her job does not wait: %', v_m.code, to_jsonb(v_j);
+      end if;
+    end if;
+    update public.ships s set durability = (select sb.durability from public.ship_base(s.id) sb), crew = c.crew_required from public.ship_classes c where c.id = s.class_id and s.fleet_id = v_fa;
+    call public.tick_fleet_jobs(false);
+    select * into v_j from public.fleet_jobs j where j.fleet_id = v_fa;
+    if v_j.paused_reason is not null or v_j.runs <> v_n + 1 or (select f.status from public.fleets f where f.id = v_fa) <> 'SAILING' then
+      raise exception 'FS_MID_RUN: % mid-run (a run between: %), mended, the first run did not start her: %', v_m.code, v_m.asked, to_jsonb(v_j);
+    end if;
+  end loop;
+  raise notice 'PASS: FS_MID_RUN - a wreck and a short crew, with a run between and without: the first run after the mending starts her';
 
   -- FS_ONE_RULE
   update public.orders set status = 'cancelled' where fleet_id = v_fa and status in ('pending', 'active');
