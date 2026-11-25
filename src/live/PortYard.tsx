@@ -27,6 +27,7 @@ import { HullFight } from './HullFight'
 import { useBuildingYard } from './useBuildingYard'
 import { useServedRead } from './useServedRead'
 import { useYardSources } from './useYardSources'
+import { WrecksLine } from './WrecksLine'
 import { useWorld } from './worldStore'
 import { planStops, yardPlan, type PlanGood, type PlanPart } from './yardPlan'
 import { fleetCargoByCode, fleetCrew } from '../domain/fleet/derive'
@@ -367,6 +368,7 @@ export function PortYard({
 
   return (
     <div data-testid="port-yard">
+      <WrecksLine />
       {launched && (
         <Note tone="accent" data-testid="yard-launched" className="mb-3">
           {t('yard.launched', { name: launched })}

@@ -27,8 +27,8 @@ const LIT = [
  *  `courses`: 0482's switch lit too (sea_courses_enabled: the server holds a course between any two harbours, so a job's run needs no
  *  voyage sailed before it, and a board card's run can be assigned as it stands).
  *  `home`: 0492's switch lit too (assign_home_enabled: Bring home and the run count). */
-export const corpWorld = ({ courses = false, home = false, near = false, nearLow = false, slow = false, wreck = false, settings = false }: { courses?: boolean; home?: boolean; near?: boolean; nearLow?: boolean; slow?: boolean; wreck?: boolean; settings?: boolean } = {}) =>
-  patchedWorldImage(`hq-corp${courses ? '-courses' : ''}${home ? '-home' : ''}${near ? '-near' : ''}${nearLow ? '-low' : ''}${slow ? '-slow' : ''}${wreck ? '-wreck' : ''}${settings ? '-settings' : ''}`, async (pg) => {
+export const corpWorld = ({ courses = false, home = false, near = false, nearLow = false, slow = false, wreck = false, settings = false, rounds = false }: { courses?: boolean; home?: boolean; near?: boolean; nearLow?: boolean; slow?: boolean; wreck?: boolean; settings?: boolean; rounds?: boolean } = {}) =>
+  patchedWorldImage(`hq-corp${courses ? '-courses' : ''}${home ? '-home' : ''}${near ? '-near' : ''}${nearLow ? '-low' : ''}${slow ? '-slow' : ''}${wreck ? '-wreck' : ''}${settings ? '-settings' : ''}${rounds ? '-rounds' : ''}`, async (pg) => {
     // `wreck`: the FIRST SAIL order ever queued finds its flagship a wreck (her hull put at nought as the order is written, once), so
     // the server refuses it E_FLAGSHIP_DISABLED and her job stops on it: prod's case of 24 Nov, without a fight.
     if (wreck)
@@ -78,7 +78,35 @@ export const corpWorld = ({ courses = false, home = false, near = false, nearLow
         create trigger spec_tick_on_repair after update of status on public.fleets for each row
           when (old.status = 'REPAIRING' and new.status = 'DOCKED') execute function public.spec_tick_on_repair();
         update public.world_config set value = '0.01'::jsonb where key = 'repair_sim_hours_per_pct';`)
-    const keys = [...(settings ? ['passive_settings_enabled', 'jobs_wait_enabled'] : []), ...LIT, ...(courses ? ['sea_courses_enabled'] : []), ...(home ? ['assign_home_enabled'] : []), ...(near ? ['jobs_wait_enabled', 'near_round_enabled'] : [])]
+    // `rounds`: 0518 to 0535 lit (a world without them has no such rows); every ship founded is an armed xebec, manned and stored; a run was sent 25
+    // minutes ago (two rounds of ten done, one of fifteen); every round of an expedition finds an uncommon artifact; Lisbon's purse is full
+    if (rounds)
+      await pg.exec(`
+        create function public.spec_armed() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
+        begin
+          select c.id, c.crew_required + 20, c.durability into new.class_id, new.crew, new.durability from public.ship_classes c where c.code = 'xebec';
+          new.food_t := 40; new.water_t := 60;
+          new.cargo := '{"gunpowder": 30, "shot-and-ball": 30}'::jsonb;
+          return new;
+        end $f$;
+        create trigger spec_armed before insert on public.ships for each row execute function public.spec_armed();
+        create function public.spec_sent_before() returns trigger language plpgsql as $f$
+        begin
+          new.sent_at := new.sent_at - interval '25 minutes'; new.stop_at := new.stop_at - interval '25 minutes';
+          return new;
+        end $f$;
+        create trigger spec_sent_before before insert on public.round_runs for each row execute function public.spec_sent_before();
+        create function public.spec_tick_docked() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
+        begin
+          call public.tick_fleet_jobs(false);
+          return null;
+        end $f$;
+        create trigger spec_tick_docked after update of status on public.fleets for each row
+          when (old.status = 'REPAIRING' and new.status = 'DOCKED') execute function public.spec_tick_docked();
+        update public.world_config set value = '0.01'::jsonb where key = 'repair_sim_hours_per_pct';
+        update public.world_config set value = '[{"tier": "uncommon", "pct": 100, "gold": 400, "rp": 15}]'::jsonb where key = 'artifact_tiers';
+        insert into public.port_treasury (port_id, ducats) select p.id, 50000000 from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do update set ducats = 50000000;`)
+    const keys = [...(rounds ? ['rounds_enabled', 'ammo_enabled', 'combat_rounds_enabled', 'expedition_rounds_enabled', 'wrecks_yield_enabled', 'artifacts_enabled', 'city_treasury_enabled', 'reputation_on', 'ship_stores_separate'] : []), ...(settings ? ['passive_settings_enabled', 'jobs_wait_enabled'] : []), ...LIT, ...(courses ? ['sea_courses_enabled'] : []), ...(home ? ['assign_home_enabled'] : []), ...(near ? ['jobs_wait_enabled', 'near_round_enabled'] : [])]
     if (nearLow)
       await pg.exec(`
         create function public.spec_near_low() returns trigger language plpgsql as $f$

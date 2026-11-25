@@ -179,6 +179,11 @@ export function headline(
       const what = points === null ? '' : t('history.dash', { what: t('history.hullPoints', { n: Math.round(points) }) })
       return t('history.repairing', { fleet, what })
     }
+    // 0518, 0524: a run of rounds is over; artifacts were given
+    case 'ROUNDS_DONE':
+      return t('history.roundsDone', { fleet, n: num(p, 'rounds') ?? 0 })
+    case 'ARTIFACTS_GIVEN':
+      return t('history.artifactsGiven', { fleet, amount: formatDucats(num(p, 'gold') ?? 0) })
     case 'REPAIRED':
       return t('history.repaired', { fleet })
     // 0321: a ship changed fleets in port.
