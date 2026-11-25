@@ -8,12 +8,12 @@ import { serveWorldImage } from './worldImage.fixture'
 // ═══════════════════════════════════════════════════════════════════════════════
 //
 // tests/refusal.stale.spec.ts holds the rule in plain Node. THIS DRIVES IT ONCE IN THE BROWSER, at 390 and 1440:
-//   * her job's first sail is refused because her flagship is a wreck (tests/corpWorld.fixture.ts `wreck`): the job stops on it, and
-//     her row on HQ wears Repair at the server's price;
+//   * her job's first sail is refused because her flagship is a wreck (tests/corpWorld.fixture.ts `wreck`). 0500: the job is NOT stopped,
+//     it WAITS for her repair (no line issued again), and her row on HQ wears Repair at the server's price, with no working dot;
 //   * on the Trade desk the note at the head of her queue names HER (never an order's number), says why in the server's words,
 //     prints no code, and carries Repair at the same price;
 //   * Repair is pressed there: the note is gone (the cause is mended), the refused order is still a row of her queue, and her row
-//     on HQ no longer wears Repair.
+//     on HQ no longer wears Repair: she goes on with her run by herself (nobody assigns her again).
 
 const OUT = process.env.HQ_SHOTS ?? 'test-results/refusal-drive'
 
@@ -38,8 +38,13 @@ for (const size of [
     await sheet.getByTestId('corp-assign-run').first().click({ timeout: 180_000 })
     await sheet.getByTestId('corp-assign-go').click()
     await expect(sheet).toHaveCount(0, { timeout: 120_000 })
-    await expect(row, 'her job did not stop on the wreck with a repair to press').toHaveAttribute('data-fix', 'repair', { timeout: 180_000 })
-    await expect(row).toHaveAttribute('data-state', 'stopped')
+    await expect(row, 'her job does not wait on the wreck with a repair to press').toHaveAttribute('data-fix', 'repair', { timeout: 180_000 })
+    // 0500 fit-to-sail: she WAITS on the sail's own code; the job is not stopped, and nothing says she is at work: the pill stands where
+    // the state's dot would, so no dot (the working one least of all) is drawn for a wreck
+    await expect(row).toHaveAttribute('data-waiting', 'true')
+    await expect(row).toHaveAttribute('data-wait', 'E_FLAGSHIP_DISABLED')
+    expect(await row.getByTestId('corp-worker-state').count(), 'a state dot is drawn for a wreck').toBe(0)
+    expect(await row.innerText()).not.toMatch(/Working|Stopped|E_[A-Z_]+/)
     // the price is the Shipyard's own dry run: it stands on her row once that has answered
     await expect.poll(async () => Number(await row.getAttribute('data-fix-cost')), { timeout: 120_000, message: 'her row names no price for the repair' }).toBeGreaterThan(0)
     const cost = Number(await row.getAttribute('data-fix-cost'))
@@ -75,8 +80,19 @@ for (const size of [
     await page.getByTestId('queue-row').first().scrollIntoViewIfNeeded()
     await page.screenshot({ path: `${OUT}/refusal-mended-${size.width}.png` })
 
-    // and on HQ her row no longer wears Repair
+    // and on HQ her row no longer wears Repair; the yard's work done, she goes on with her run by herself: under way, waiting no more
     await page.goto('city')
     await ready(page)
-    await expect(page.locator('[data-testid="corp-worker"][data-kind="fleet"]').first()).not.toHaveAttribute('data-fix', 'repair', { timeout: 180_000 })
+    const after = page.locator('[data-testid="corp-worker"][data-kind="fleet"]').first()
+    await expect(after).not.toHaveAttribute('data-fix', 'repair', { timeout: 180_000 })
+    // (the yard works for minutes; a tab has no server to end it, so she is read again by opening HQ again, as a player coming back does)
+    await expect(async () => {
+      await page.goto('city')
+      await ready(page)
+      await expect(after.getByTestId('corp-worker-bar'), 'repaired, she does not work by herself').toHaveAttribute('data-on', 'true', { timeout: 20_000 })
+    }).toPass({ timeout: 420_000 })
+    await expect(after).toHaveAttribute('data-waiting', 'false')
+    await expect(after.getByTestId('corp-worker-state')).toHaveText('Working')
+    await expect(after).toHaveAttribute('data-state', 'working')
+    await page.screenshot({ path: `${OUT}/refusal-works-${size.width}.png` })
   })
