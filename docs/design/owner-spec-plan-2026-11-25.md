@@ -237,6 +237,116 @@ Built in parallel (three writers, files do not overlap). S1 can also be prepared
 
 ---
 
+## 6. The addition (trading and tax), same day
+
+Source: the "Addition" block of `docs/design/owner-spec-2026-11-25.md`. Written in a second pass of 35 minutes; no production read.
+Lines I opened myself here: 0022 header, 205-222, 228-246, 283-300, 318-336; 0122:24, 103-105, 402-407; 0147:18-41, 101, 128-146;
+0174 and 0212 headers; 0211:8-22; 0488:190-206. Knob values are as SEEDED in those files; 0024 re-tuned three bargain knobs and I did
+not re-read their present values.
+
+### 6.1 Sentence by sentence
+
+| # | The owner's sentence | Today | Missing | Contradicts | Smallest change |
+|---|---|---|---|---|---|
+| 49 | "Trade goods price will grow in accordance with the distance between the two cities." | BUILT and live: the haul, `world.haul_at` (0173), stored per market row (`port_goods.haul`), multiplied into the price by `world.mid_from_terms`. `haul_max` 3 (0212): x1.003 at 1,000 nm, x1.07 at 5,000, x1.34 at 10,000, x2 from 14,500. Since 0491 the miles are the sailed miles. | Nothing. It is nearly flat near home by the owner's own earlier target (a far route 1.3 to 1.5 times a near one). | Nothing. | None. The sale face (0490) may show the distance share; not a slice. |
+| 50 | "You can bargain 10 times for price reduction or increase when selling." | BUILT on the server and still there: `cmd.haggle`, `world.haggle_state`, `public.haggle_odds` 022:283, `public.haggle_concession`, one row `public.haggle_daily` (company, city, good, day; re-keyed to the real day by 0317). Still read by the price (`world.spread_effective`, last re-cut 0256/0488). 3 attempts a day. The CLIENT lost it: the haggle UI sat in the desk tray, unreachable since 2026-11-23 (simplify "Removed", `TRADE_ON_DESK`). | 10 attempts; the press on the Trade tab. | simplify's "Removed: haggle UI"; the owner's open "haggling back?" is now answered yes. | `haggle_attempts_per_day` 3 -> 10; the press back on the Trade tab (**T2**). |
+| 51 | "The success rate will decrease every time you attempt." | Odds = (0.45 + HAGGLING skill) x (1 - 0.25 x FAILS today), cap 0.85 (022:296-300). It falls only after a failure. | Falling on every attempt. | The 0022 curve. | One hunk in `haggle_odds`: the factor is by attempts, not fails (**T2**). |
+| 52 | "Each time you attempt will create 5 % of total price reduction." | A win shaves a share of the city's SPREAD (seeded 15 % of a 2-6 % spread, about 0.3-0.5 % of the price); 0022 forbids touching the price itself. | 5 % of the total. | 0022's first rule ("never the world's price"); the spread floor. | The concession becomes a share of the TOTAL of her own quote, in the one quote authority (`world.quote_terms` 169:484). The published price and the mid stay untouched (**T2**). |
+| 53 | "This will also be enhanced by captains, and skills (level) – I am thinking NEGOTIATION skill." | The skill exists as HAGGLING (0016; effect `SPREAD` through `public.player_skill_bonus`), already added to the odds. A captain's PURSER bonus shaves the spread (`fleet_officer_bonus`), not the odds. | The captain in the odds; the word Negotiation. | Nothing. | The PURSER bonus is added to the odds; the dict shows HAGGLING as "Negotiation". No second skill (**T2**). |
+| 54 | "Each city will have its own tax, with 0 %~30 %." | Each city has its own rate: `ports.tax_rate` x `profit_tax_scale` 5, capped at `tax_rate_max` **0.20** (`world.tax_rate`, 122:402, re-cut 147:128). A mayor sets it within 0 to the cap, once a day (`cmd.set_tax` 147:188). | 30. | The 0.20 cap; the mayor's 0-20. | `tax_rate_max` 0.20 -> 0.30, with every city's present rate held where it is (**T1**). |
+| 55 | "Your own country or the city that has your HQ will provide less tax." | Own country: a company of the country that HOLDS the city pays half (`influence_citizen_tax_cut` 0.5, 147:146). Stance between countries scales the dock fee (`country_factor`, 488:200); whether it also scales the tax today: **not verified**. HQ city: nothing for the tax (the dock fee has a home factor, `nation_fee_factor`). | The HQ city. | Nothing. | In `world.tax_rate`: the same half where the city is her home (`home_port_of`; her HQ cities once B3 exists). The better of the two, never both (**T1**). |
+| 56 | "TAX is only paid when a profit is made, or when buying." | On a profit only, at the sale, to the city's purse (`public.profit_tax` -> `profit_tax_at` 488:27). A BUY pays no tax since 0122 turned the old turnover tax into a profit tax. | A tax when buying. | 0122. Near trade: see 6.3. | A buy tax in the same quote authority, to the city's purse (**T3**, dark, Q7). |
+
+### 6.2 What ten successes do
+
+**Added, not compounded.** Each success moves the price by 5 % of her FIRST quoted total, so ten are 50 %.
+- Added: buying 100 -> 50 (-50 %); selling 100 -> 150 (+50 %).
+- Compounded: buying 100 x 0.95^10 = 59.9 (-40.1 %); selling 100 x 1.05^10 = 162.9 (+62.9 %).
+- Why added: the owner's words are "5 % of total price" each time; both sides stay equal (compounding gives the seller more than the
+  buyer); the row stores one number (wins x 0.05; the column `concession` already holds a fraction up to 1); the face shows "-15 %".
+
+**Both sides at once.** A round trip that costs C and sells for S, with b wins buying and s wins selling, earns
+S x (1 + 0.05 s) - C x (1 - 0.05 b). With S = 1.10 C (a 10 % trade): no bargain 0.10 C; one win each side 0.205 C (double);
+ten each 1.15 C (11.5 times). So the success curve, not the 5 %, is the whole balance.
+
+**The curve I propose.** Chance on attempt n = p1 x 0.5^(n-1); it falls on EVERY attempt, won or lost.
+p1 = 0.25 + Negotiation + captain, never above 0.50.
+
+| | p1 | Expected wins in 10 | Expected move a side | At least one win | All ten |
+|---|---|---|---|---|---|
+| New company | 0.25 | 0.50 | **2.5 %** | 42 % | under 1 in 10^19 |
+| Best skill and captain | 0.50 | 1.00 | **5.0 %** | 71 % | under 1 in 10^16 |
+
+(Sum of p1 x 0.5^(n-1) over ten attempts = p1 x 1.998.) Nearly all the value is in the first three attempts; ten are allowed, as the
+owner says, and the long tail is a lottery ticket. For comparison p1 0.50 with a factor of 0.70 gives 1.62 wins (8.1 % a side): too much.
+
+**The same-city leak, which must be closed in T2.** A city's spread is 2 to 6 %. Two wins buying (-10 %) already put her price under
+what the same city pays back, so buy-and-sell on one quay would take coin from the purse with no voyage. Rule: the day's row is one
+side only (it holds `last_side` already), and a good bought in a city sells in that city, that day, for no more than was paid.
+
+**Abuse, and what already stops it.**
+- *Bargain, cancel, retry:* the attempt count is written BEFORE the roll and the roll is keyed on (company, day, city, good, attempt)
+  (022:541 and the table's comment). A retry is the next attempt, already paid for. Kept as it is.
+- *Many small buys:* a bargain is spent by the one trade that uses it (0022). Kept.
+- *Many fleets:* the row is the company's, not the fleet's. Kept.
+- *Volume:* ten attempts a good, a city, a day; the daily trade cap (`world.daily_cap_remaining`) bounds the units a bargain can carry.
+- *Passive orders:* **may not bargain** by default (Q8): a job that bargained would turn the expected 2.5-5 % into a rate on every
+  automated ton.
+
+### 6.3 What it does to money
+
+**City purses (closed economy).** A bargain is paid by the city: it receives less for what it sells and pays more for what it buys.
+Per 100,000 of a player's turnover in a city, the purse gives up 2,500 (new company) to 5,000 (best) on average. Nothing is minted;
+the empty-purse rule (the bid reads the live purse, 0174) still shrinks a sale the city cannot pay. Tax returns part: a buy tax of
+1.5 % returns 1,500 per 100,000 bought, and the profit tax takes its share of the bargained gain. With about 19 companies this is
+small against the purses; it is a per-company rate and grows with players, so `haggle_base_success` stays the knob to watch.
+
+**Near trade.** Measured income today: near Repeat 148 to 3,328 /h; Trade nearby 2,700 to 19,700 /h at 40,000 coin.
+For ONE round trip of a full 40,000 purse (buy 40,000, sell about the same):
+
+| | Active, new company | Active, best | Passive job |
+|---|---|---|---|
+| Bargain, both sides (2.5 % / 5 % of about 80,000) | +2,000 | +4,000 | 0 |
+| Buy tax at 1.5 % of 40,000 (half at home) | -600 (-300) | -600 (-300) | -600 (-300) |
+| Profit tax at 15 % on the bargained gain | -300 | -600 | 0 |
+| Net change a round trip | **about +1,100** | **about +2,800** | **-600** |
+
+How many round trips an hour a near trade makes is **not measured here**. At two an hour an active new company gains about 2,200 /h
+(most of Trade nearby's low end again) and a passive near Repeat loses 1,200 /h, which is more than its low end earns (148 /h).
+So: bargaining roughly doubles the weakest active near trade, and **any buy tax on turnover sinks the weakest passive jobs**;
+with 0498 jobs-never-lose they would wait instead of sailing. That is why T3 is dark and asked (Q7).
+
+**Tick and row cost.** No tick, no cron. An attempt is one UPDATE of the one row a (company, city, good, day); ten attempts are ten
+updates of the same row. A hand trade of 5 goods bargained fully on both sides is at most 100 small updates. The table needs a
+retention line when touched: rows older than yesterday are deleted (whether a job already does this: **not verified**).
+
+### 6.4 Slices (numbers after 0504; the rows of section 3 from 0505 on each move down three)
+
+| # | Slice | Owns | The player sees | Proof | Database cost |
+|---|---|---|---|---|---|
+| 0505 | **T1 `tax-to-thirty`** | `tax_rate_max` 0.20 -> 0.30; one statement that holds every city at today's served rate; one hunk in `world.tax_rate` (home city pays the citizen's half) | Nothing moves at deploy. A mayor may set up to 30 %; "Home: half tax" on the sale face | Before and after: `world.tax_rate` equal for every harbour; a probe sale at her home pays half; never both halves | A one-off update of `ports` rows whose rate x 5 is over 0.20 (count read before the PR) |
+| 0506 | **T2 `bargain-ten`** (`bargain_total_enabled`) | hunks in `haggle_odds`, `cmd.haggle`, `world.quote_terms`, `cmd.do_buy`, `cmd.do_sell`; the three knobs; the Trade tab's Bargain press (C1's files), the sale face line | "Bargain 3 / 10 · 6 % chance · -10 %" beside Buy and Sell; the won price in the face before the press | Dark: every quote is the pre-image. Lit, on a probe: a win moves her total 5 % of the first quote and nobody else's price; attempt 11 refused; the same-city resale pays no more than was paid; a second trade gets no bargain; the city's purse never goes negative | No table. Updates of the existing row only |
+| 0507 | **T3 `buy-tax`** (`buy_tax_enabled`) | one term in `world.quote_terms` (buy side), paid to the city's purse as kind TAX; the buy face | "Tax 1.5 %" on the buy face before the press | Dark: buys as today. Lit: the purse gains exactly the tax; home pays half; a job's quoted profit (0498) counts it | Meant to ride the buy's own ledger row (to be confirmed on `cmd.do_buy`) |
+
+T1 can start now. T2 can be built dark now; its light is a live-play change with the 30-minute check and the purse totals read before
+and after. T3 waits for Q7.
+
+**Live players.** T1: nobody's rate changes; the home half only lowers. T2: an open bargain of the old kind (a share of the spread) is
+honoured for its day, then the row means the new thing; nobody loses a won bargain. T3: cargo already bought is not taxed again.
+
+### 6.5 Two questions for the owner
+
+| # | Question | Default |
+|---|---|---|
+| Q7 | **How big is the tax when BUYING?** The city's full rate (0-30 %) on every purchase would cost more than a near trade earns. | **One tenth of the city's rate (0 to 3 %)**, half in your own country or HQ city; not lit until you have seen its effect on near trade. |
+| Q8 | **May a PASSIVE order bargain?** | **No.** Bargaining is the active trader's edge; a repeating job trades at the listed price. |
+
+Not verified in this section: the present values of the bargain knobs after 0024; whether stance scales the profit tax; whether the
+distance premium is still paid from outside the city's purse (0174) under the closed economy (0233 may have closed it); round trips an
+hour of a near trade; how many cities have a rate x 5 over 0.20; the retention of `haggle_daily`.
+
+---
+
 ## What I did not verify
 
 - Any switch on production; any live row. All states are as written in the docs.
