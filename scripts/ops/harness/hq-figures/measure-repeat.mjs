@@ -27,6 +27,8 @@ try {
   const f = await one(`select f.id, p.code as home from public.fleets f join public.ports p on p.id = f.port_id where f.player_id = $1`, [a])
   await db.query(`update public.players set ducats = $2 where id = $1`, [a, PURSE])
   await db.exec(`update public.world_config set value = 'true'::jsonb where key in ('fleet_jobs_enabled', 'sea_courses_enabled', 'land_enabled', 'assign_home_enabled')`)
+  // --lit: 0498's switch on (a run whose quote leaves no profit is not started: the job waits)
+  if (process.argv.includes('--lit')) await db.exec(`update public.world_config set value = 'true'::jsonb where key = 'jobs_wait_enabled'`)
   await db.query(`select cmd.assume_identity($1)`, [AUTH])
   const turn = Number((await one(`select world.trip_stop_seconds() as s`)).s)
   const day = Number((await one(`select public.wc_num('game_day_seconds') as s`)).s)
@@ -77,6 +79,12 @@ try {
       const net1 = after - before
       const last = (await one(`select j.last from public.fleet_jobs j where j.fleet_id = $1`, [f.id]))?.last
       runs.push({ n, net: net1, secs: out + turn + TICK_WAIT_S, out, back: 0 })
+      if (process.argv.includes('--ledger')) {
+        const ord = await db.query(`select o.raw_text, o.status, o.error_code, o.result->>'units' as units, o.result->>'total' as total from public.orders o where o.fleet_id = $1 and o.plan_id = (select j.last_plan from public.fleet_jobs j where j.fleet_id = $1) and o.verb in ('BUY', 'SELL') order by o.seq`, [f.id])
+        const aboard = await one(`select coalesce(sum((e.value)::numeric), 0) as q from public.ships s, jsonb_each_text(s.cargo) e where s.fleet_id = $1`, [f.id])
+        const cap = last?.to && last?.good ? await one(`select world.daily_cap_remaining($1, (select id from public.ports where code = $2), (select id from public.goods where code = $3)) as left, (select t.ducats from public.port_treasury t join public.ports p on p.id = t.port_id where p.code = $2) as city`, [a, last.to, last.good]) : null
+        console.log('    orders: ' + ord.rows.map((r) => `${r.raw_text} ${r.status}${r.error_code ? ' ' + r.error_code : ''} units ${r.units} total ${r.total}`).join(' | ') + `; aboard after ${aboard.q}; allowance left there ${cap?.left}; city purse ${cap?.city}`)
+      }
       console.log(`  run ${n}: net ${net1}, ${last?.good} ${last?.from} -> ${last?.to} (its card said ${last?.profit} in ${last?.seconds} s), sailed ${Math.round(out)} s`)
       continue
     }
