@@ -53,7 +53,7 @@ begin
   if jsonb_array_length(public.hq_card(v_n)->'list') <> 0 then raise exception 'HQ_LIST: a merchant'; end if;
   raise notice 'PASS: HQ_LIST — Lisbon, London';
 
-  if world.player()->'player'->'hq'->'next' <> 'null'::jsonb or to_regprocedure('cmd.open_hq(text)') is not null or public.home_port_of(v_a) <> v_lis then raise exception 'HQ_DARK: dark'; end if;
+  if world.player()->'player'->'hq'->'next' <> 'null'::jsonb or cmd.open_hq('LON')->>'error_code' <> 'E_NOT_IN_USE' /* 0512: the door is there, and shut */ or public.home_port_of(v_a) <> v_lis then raise exception 'HQ_DARK: dark'; end if;
   update public.company_hqs set slot = 5 where player_id = v_a and slot = 1;
   update public.company_hqs set slot = 1 where player_id = v_a and port_id = v_lon;
   if public.home_port_of(v_a) <> v_lis then raise exception 'HQ_DARK: home moved while dark'; end if;
