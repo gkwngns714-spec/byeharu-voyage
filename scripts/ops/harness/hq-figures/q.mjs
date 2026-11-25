@@ -14,7 +14,7 @@ export async function world() {
   const out = await applyWithPrefixCache({ variant: await preambleVariant(), files, cacheDir: PREFIX_CACHE_DIR, snapshots: false, log: (m) => /restored|applying|REFUSED/.test(String(m)) && console.log(String(m).slice(0, 300)) })
   // HQ_NOTICES=1: the receipts of the files applied here (not restored), as their self-asserts printed them
   if (process.env.HQ_NOTICES) for (const r of out.applied.filter((a) => !a.restored)) for (const n of r.notices) console.log(`${r.name}: ${String(n).slice(0, 1600)}`)
-  if (out.restored < files.length - 3) throw new Error(`only ${out.restored} of ${files.length} files were cached: refusing a long replay`)
+  if (out.restored < files.length - 6) throw new Error(`only ${out.restored} of ${files.length} files were cached: refusing a long replay`)
   return out.db
 }
 

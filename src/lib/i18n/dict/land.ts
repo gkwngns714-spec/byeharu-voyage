@@ -81,6 +81,7 @@ export const landDict = defineDict({
     failed: 'Land not loaded.',
     faces: 'Land faces',
     ground_mines: 'Mines',
+    ground_woods: 'Woods',
     siteOf: '{region} · {ground}',
     site_IBE_mines: 'Biscay and Almaden',
     site_BRI_mines: 'Cornwall and the Forest of Dean',

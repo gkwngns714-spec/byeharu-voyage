@@ -22,7 +22,7 @@
 --   cmd.land_expedition(code, ask), world.land_expedition(code, ask): the door and the read (registry, 1 hunk).
 -- COIN: the hands, the provisions and a day's pay a man for each day begun go to the harbour she lives in (HIRE, PROVISION, WAGES). A raid's gold is her
 --   country's capital's (VOYAGE_REWARD by public.capital_pays; none while the purses are dark, none when it cannot pay). Nothing is minted.
--- NOT HERE: woodcutting (no job of the land gathers wood yet), artifacts (0524), weapons carried.
+-- NOT HERE: artifacts (0524), weapons carried. A gathering is any gather job of an open land skill a captain has a work for (Mining; Woodcutting, 0531).
 -- ROWS: 2 works, 1 Reputation kind, 6 config rows. Lit: one run row a party, kept; a press 3 to 6 rows; home 4 to 9 once. 0 rows a minute idle.
 -- budget: no cron job, no autovacuum or fillfactor change, no new table; two columns on land_parties, two on round_runs.
 -- LOCKS: ALTER round_runs, round_works, land_parties (ACCESS EXCLUSIVE for an instant, small tables); CREATE OR REPLACE x8 by hunks.
@@ -211,7 +211,7 @@ $body$
 create function public.land_expedition_terms(p_player uuid, p_signing uuid, p_ask jsonb, p_seed uuid)
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp
 as $body$
--- 0534: WHAT A SEND WOULD FREEZE AND COST for a captain of hers: p_ask {work: land_gather | land_raid, target (a mining job | a foe), crew, stores (tons; none: all
+-- 0534: WHAT A SEND WOULD FREEZE AND COST for a captain of hers: p_ask {work: land_gather | land_raid, target (a gather job of a land skill that is open | a foe), crew, stores (tons; none: all
 -- they carry on a raid, half on a gathering), stop {crew, rounds}, then: home | repeat}. Every figure an authority's: the level's perk (captain_work_perk), the job's turn and march
 -- (land_terms), the fight (land_raid_terms), the hands' and the stores' price (crew_hire_cost_at, stores_cost). short: the refusal a Send would meet.
 -- The public part is public.land_expedition_card's. Writes nothing.
@@ -234,6 +234,7 @@ declare
   v_a     numeric;
   v_s     jsonb;
   v_cap   int;
+  v_cw    text;   -- the captain's work that earns
 begin
   if not public.land_expedition_on() then
     return jsonb_build_object('short', cmd.refusal('E_NOT_IN_USE', 'land expeditions are not open yet'));
@@ -254,8 +255,9 @@ begin
   if v_port is null then
     return jsonb_build_object('short', cmd.refusal('E_NO_HOUSE', 'a company with no home city has no party'));
   end if;
-  v_perk := public.captain_work_perk(p_signing, case when v_work = 'land_raid' then 'arms' else 'mining' end);
-  v_t := jsonb_build_object('work', v_work, 'target', v_tgt, 'crew', v_crew, 'cap', v_cap, 'level', v_perk->'level', 'forage', v_perk->'forage', 'seed', p_seed,
+  v_cw := case when v_work = 'land_raid' then 'arms' else (select cw.code from public.land_actions a join public.captain_works cw on cw.skill = a.skill where a.code = v_tgt and a.kind = 'gather') end;
+  v_perk := public.captain_work_perk(p_signing, v_cw);
+  v_t := jsonb_build_object('work', v_work, 'target', v_tgt, 'cw', v_cw, 'crew', v_crew, 'cap', v_cap, 'level', v_perk->'level', 'forage', v_perk->'forage', 'seed', p_seed,
                             'min', greatest(1, coalesce((p_ask #>> '{stop,crew}')::int, 1)), 'stop', coalesce(p_ask->'stop', '{}'::jsonb),
                             'then', case when p_ask->>'then' = 'repeat' then 'repeat' else 'home' end);
   if v_work = 'land_raid' then
@@ -268,7 +270,7 @@ begin
                                      'cost', public.land_raid_card(v_r)->'cost');
   else
     j := public.land_terms(p_player, v_tgt);
-    if j is null or j->>'skill' <> 'mining' or j ? 'make' then
+    if j is null or v_cw is null or j ? 'make' or not public.land_skill_on(j->>'skill') then
       return jsonb_build_object('short', cmd.refusal('E_NO_SUCH_JOB', 'there is no such place to gather'));
     elsif jsonb_typeof(j->'short') = 'object' then
       return jsonb_build_object('short', j->'short');
@@ -276,7 +278,7 @@ begin
     -- one turn of the job's own, at the company's level, less the captain's; a round is as many whole turns as fit in it, one at the least
     v_a := greatest(1, round((j->>'a')::numeric * (1 - case when j ? 'captain' then 0 else (v_perk->>'time_pct')::numeric end / 100)));
     v_secs := greatest(w.seconds, v_a)::int;
-    v_t := v_t || jsonb_build_object('good', j->'good', 'word', (select g.name from public.goods g where g.id = (j->>'good')::uuid),
+    v_t := v_t || jsonb_build_object('good', j->'good', 'skill', j->'skill', 'word', (select g.name from public.goods g where g.id = (j->>'good')::uuid),
                                      'bulk', (select g.bulk from public.goods g where g.id = (j->>'good')::uuid), 'units', floor(v_secs / v_a)::int,
                                      'lead', (j->>'s')::int + (j->>'m')::int, 'xp', floor(v_secs / v_a)::int * (j->>'xp')::int, 'rp', 0,
                                      'loss', round(v_crew * w.crew_pct / 100 * (1 - (v_perk->>'crew_pct')::numeric / 100), 4));
@@ -312,7 +314,7 @@ create function public.land_expedition_card(p_terms jsonb)
 returns jsonb language sql immutable set search_path = public, pg_temp
 as $body$
   -- 0534: what a screen may show of the terms: no seed, no result, no chance.
-  select case when p_terms ? 'short' then p_terms else p_terms - 'seed' - 'raid' - 'port' - 'good' - 'loss' - 'hands' end
+  select case when p_terms ? 'short' then p_terms else p_terms - 'seed' - 'raid' - 'port' - 'good' - 'loss' - 'hands' - 'cw' - 'skill' end
 $body$
   $f$;
 
@@ -493,9 +495,9 @@ begin
   end if;
   if coalesce((v_c->>'xp')::int, 0) > 0 then
     if t->>'work' = 'land_gather' then
-      perform public.level_grant(lp.player_id, (select la.code from public.level_activities la where la.skill = 'mining' order by la.ord limit 1), (v_c->>'xp')::int, 'landx:' || (t->>'seed'));
+      perform public.level_grant(lp.player_id, (select la.code from public.level_activities la where la.skill = t->>'skill' order by la.ord limit 1), (v_c->>'xp')::int, 'landx:' || (t->>'seed'));
     end if;
-    perform public.captain_work_credit((t->>'captain')::uuid, case when t->>'work' = 'land_raid' then 'arms' else 'mining' end, (v_c->>'xp')::int);
+    perform public.captain_work_credit((t->>'captain')::uuid, t->>'cw', (v_c->>'xp')::int);
   end if;
   if coalesce((v_c->>'rp')::int, 0) > 0 then
     perform public.reputation_credit(lp.player_id, 'land', (v_c->>'rp')::int, 'landx:' || (t->>'seed'));
@@ -649,10 +651,10 @@ begin
     case when v_po is null then '{}'::jsonb else jsonb_build_object(
       'cap', public.land_raid_crew_cap(v_me),
       'targets', (select coalesce(jsonb_agg(q.t order by q.o1, q.o2), '[]'::jsonb) from (
-                    select 1 as o1, a.ord as o2, jsonb_build_object('work', 'land_gather', 'target', a.code, 'word', g.name, 'level', a.level, 'open', public.level_of('mining', coalesce((select x.xp from public.level_xp x where x.player_id = v_me and x.skill = 'mining'), 0)) >= a.level) as t
-                      from public.land_actions a join public.goods g on g.id = a.good_id where a.skill = 'mining' and a.kind <> 'make'
+                    select cw.ord as o1, a.ord as o2, jsonb_build_object('work', 'land_gather', 'target', a.code, 'word', g.name, 'level', a.level, 'open', public.level_of(a.skill, coalesce((select x.xp from public.level_xp x where x.player_id = v_me and x.skill = a.skill), 0)) >= a.level) as t
+                      from public.land_actions a join public.goods g on g.id = a.good_id join public.captain_works cw on cw.skill = a.skill where a.kind = 'gather' and public.land_skill_on(a.skill)
                     union all
-                    select 2, f.ord, jsonb_build_object('work', 'land_raid', 'target', f.code, 'word', f.word, 'level', f.level, 'open', public.captain_work_level(v_po, 'arms') >= f.level)
+                    select 99, f.ord, jsonb_build_object('work', 'land_raid', 'target', f.code, 'word', f.word, 'level', f.level, 'open', public.captain_work_level(v_po, 'arms') >= f.level)
                       from public.land_foes f where public.land_raids_on()) q),
       'card', case when p_ask is null then null else public.land_expedition_card(public.land_expedition_terms(v_me, v_po, p_ask, md5(v_po::text || coalesce(p_ask->>'target', ''))::uuid)) end) end;
 end

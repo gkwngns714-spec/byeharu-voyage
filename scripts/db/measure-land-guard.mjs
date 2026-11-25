@@ -28,9 +28,9 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { migrationFiles, MIGRATIONS_DIR, PREFIX_CACHE_DIR, preambleVariant, REPO_ROOT } from './apply-chain.mjs'
 import { applyWithPrefixCache } from './prefix-cache.mjs'
-import { LADDERS, MAKERS } from '../build-land-migration.mjs'
+import { LADDERS, MAKERS, WOODS } from '../build-land-migration.mjs'
 
-const gather = Object.values(LADDERS).flatMap((l) => l.goods.map(([, c]) => c))
+const gather = [...Object.values(LADDERS), ...Object.values(WOODS)].flatMap((l) => l.goods.map(([, c]) => c))
 const make = Object.values(MAKERS).flatMap((l) => l.goods.map(([, c]) => c))
 const codes = [...gather, ...make]
 // The world BEFORE the first migration that carries the generator's rows (0455): the markets are the same (no land file touches

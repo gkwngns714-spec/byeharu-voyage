@@ -80,6 +80,7 @@ export const commandDict = defineDict({
     lvMining: 'Mining',
     // 0461: the land's first making skill (land slice L2, behind land_smith_enabled)
     lvSmithing: 'Smithing',
+    lvWoodcutting: 'Woodcutting',
     lvGiveGiftEvery: 'Reputation +{n} × level ÷ {every}, every {every} levels',
     lvSea: 'Sea',
     lvLand: 'Land',

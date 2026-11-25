@@ -422,6 +422,8 @@ const TABLE = {
   worldEarlySighting: { schema: 'world', fn: 'early_sighting', args: [] },
   // 0478 (roadmap 2026-11-23 slice 9): the logbook page's one read. Dark {on: false}.
   worldLogbook: { schema: 'world', fn: 'logbook', args: [] },
+  // 0504 (owner spec 2026-11-25, the fog): her sight, her charted squares and her logbook's harbours. Dark {on: false}.
+  worldChart: { schema: 'world', fn: 'chart', args: [] },
   // 0479 (roadmap 2026-11-23 slice 11): goods mastery's one read. Dark {on: false}.
   worldGoodsMastery: { schema: 'world', fn: 'goods_mastery', args: [] },
   // 0480 (docs/design/hq-command-2026-11-23.md v2): the HQ board's one read, ranked by the server. Dark {on: false}.
@@ -577,6 +579,13 @@ const TABLE = {
   worldHouseRoom: { schema: 'world', fn: 'house_room', args: [] },
   cmdBuyRoom: { schema: 'cmd', fn: 'buy_room', mutates: true, args: [{ name: 'p_kind', type: 'text' }] },
   cmdRenameFleet: { schema: 'cmd', fn: 'rename_fleet', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }, { name: 'p_name', type: 'text' }] },
+  // 0503 (the owner's specification, 2026-11-25): a company takes a new name. The caller's own; the first is free, a later one is refused (E_RENAME_PAID).
+  cmdRenameCompany: { schema: 'cmd', fn: 'rename_company', mutates: true, args: [{ name: 'p_name', type: 'text' }] },
+  // 0509 (the owner, 2026-11-25): the caller's company is closed and a new one founded (her name typed; dark: E_NOT_IN_USE).
+  cmdRestartCompany: {
+    schema: 'cmd', fn: 'restart_company', mutates: true,
+    args: [{ name: 'p_confirm', type: 'text' }, { name: 'p_company_name', type: 'text' }, { name: 'p_nation_code', type: 'text' }],
+  },
   // 0424 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): the Gear face and its press, buy a starter piece and fit it.
   worldStarterGear: { schema: 'world', fn: 'starter_gear', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdBuyStarter: { schema: 'cmd', fn: 'buy_starter', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }, { name: 'p_ship', type: 'uuid' }, { name: 'p_item', type: 'text' }] },
