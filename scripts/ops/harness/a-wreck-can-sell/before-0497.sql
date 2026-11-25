@@ -3,7 +3,9 @@
 -- Expect: head 20260818000496; switch null (no row yet); new_fns 0; hunked 6 (the six bodies 0497 hunks are there); old_gates 3 (the
 --   three cargo doors still ask `status <> 'DOCKED'` themselves). `wrecks`: every player's fleet that is UNABLE_TO_SAIL today, with
 --   where she lies, whether that port has a yard, her purse, her cargo (each ship's, as stored) and her waiting orders: the companies this is for.
--- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, world_config by key, the catalog, the UNABLE_TO_SAIL fleets (a
+--   `founding`: the migration's probe founds a company at Lisbon (public.new_house), as every probe does: with economy_closed true
+--   and Lisbon's purse under 40,000 that founding is refused (E_NO_NEW_GOLD) and the push fails with nothing applied.
+-- Reads: port_treasury (Lisbon's row), arrivals_beats (5 minutes), pg_class, pg_stat_activity, world_config by key, the catalog, the UNABLE_TO_SAIL fleets (a
 --   handful) with their ships, port, player and orders by key. No function that writes is called. Nothing to roll back.
 begin transaction read only;
 select json_build_object(
@@ -20,6 +22,8 @@ select json_build_object(
               where (n.nspname, p.proname) in (('cmd', 'do_sell'), ('cmd', 'do_store'), ('cmd', 'do_take'), ('cmd', 'advance'), ('cmd', 'preview'), ('cmd', 'issue'))),
   'old_gates', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'cmd' and p.proname in ('do_sell', 'do_store', 'do_take') and p.prosrc like '%if f.status <> ''DOCKED'' then%'),
+  'founding', json_build_object('economy_closed', (select c.value from public.world_config c where c.key = 'economy_closed'),
+                                'lisbon_purse', (select t.ducats from public.port_treasury t join public.ports p on p.id = t.port_id where p.code = 'LIS')),
   'wrecks', (select coalesce(json_agg(json_build_object(
                'fleet', f.name, 'port', (select p.code from public.ports p where p.id = f.port_id),
                'yard_here', (select public.port_has_shipyard(f.port_id)), 'ships', (select count(*) from public.ships s where s.fleet_id = f.id),
