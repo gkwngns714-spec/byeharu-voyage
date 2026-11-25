@@ -27,8 +27,8 @@ const LIT = [
  *  `courses`: 0482's switch lit too (sea_courses_enabled: the server holds a course between any two harbours, so a job's run needs no
  *  voyage sailed before it, and a board card's run can be assigned as it stands).
  *  `home`: 0492's switch lit too (assign_home_enabled: Bring home and the run count). */
-export const corpWorld = ({ courses = false, home = false, near = false, nearLow = false, slow = false, wreck = false }: { courses?: boolean; home?: boolean; near?: boolean; nearLow?: boolean; slow?: boolean; wreck?: boolean } = {}) =>
-  patchedWorldImage(`hq-corp${courses ? '-courses' : ''}${home ? '-home' : ''}${near ? '-near' : ''}${nearLow ? '-low' : ''}${slow ? '-slow' : ''}${wreck ? '-wreck' : ''}`, async (pg) => {
+export const corpWorld = ({ courses = false, home = false, near = false, nearLow = false, slow = false, wreck = false, settings = false }: { courses?: boolean; home?: boolean; near?: boolean; nearLow?: boolean; slow?: boolean; wreck?: boolean; settings?: boolean } = {}) =>
+  patchedWorldImage(`hq-corp${courses ? '-courses' : ''}${home ? '-home' : ''}${near ? '-near' : ''}${nearLow ? '-low' : ''}${slow ? '-slow' : ''}${wreck ? '-wreck' : ''}${settings ? '-settings' : ''}`, async (pg) => {
     // `wreck`: the FIRST SAIL order ever queued finds its flagship a wreck (her hull put at nought as the order is written, once), so
     // the server refuses it E_FLAGSHIP_DISABLED and her job stops on it: prod's case of 24 Nov, without a fight.
     if (wreck)
@@ -58,7 +58,27 @@ export const corpWorld = ({ courses = false, home = false, near = false, nearLow
         end $f$;
         revoke all on function world.actions(text) from public, anon;
         grant execute on function world.actions(text) to authenticated;`)
-    const keys = [...LIT, ...(courses ? ['sea_courses_enabled'] : []), ...(home ? ['assign_home_enabled'] : []), ...(near ? ['jobs_wait_enabled', 'near_round_enabled'] : [])]
+    // `settings`: 0516's switch lit (a world without it has no such row); a job that stops over 31 % finds her hull halved; and her jobs
+    // are asked again when a repair is over, seconds here (the server's tick runs every 2 minutes; a tab has no cron)
+    if (settings)
+      await pg.exec(`
+        create function public.spec_halve_hull() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
+        begin
+          if new.params->>'stop_damage' = '31' then
+            update public.ships s set durability = (select sb.durability from public.ship_base(s.id) sb) * 0.5 where s.fleet_id = new.fleet_id;
+          end if;
+          return new;
+        end $f$;
+        create trigger spec_halve_hull before insert or update of since on public.fleet_jobs for each row execute function public.spec_halve_hull();
+        create function public.spec_tick_on_repair() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
+        begin
+          call public.tick_fleet_jobs(false);
+          return null;
+        end $f$;
+        create trigger spec_tick_on_repair after update of status on public.fleets for each row
+          when (old.status = 'REPAIRING' and new.status = 'DOCKED') execute function public.spec_tick_on_repair();
+        update public.world_config set value = '0.01'::jsonb where key = 'repair_sim_hours_per_pct';`)
+    const keys = [...(settings ? ['passive_settings_enabled', 'jobs_wait_enabled'] : []), ...LIT, ...(courses ? ['sea_courses_enabled'] : []), ...(home ? ['assign_home_enabled'] : []), ...(near ? ['jobs_wait_enabled', 'near_round_enabled'] : [])]
     if (nearLow)
       await pg.exec(`
         create function public.spec_near_low() returns trigger language plpgsql as $f$

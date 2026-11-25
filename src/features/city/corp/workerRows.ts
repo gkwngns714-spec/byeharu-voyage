@@ -104,6 +104,9 @@ export interface WorkerRow {
   /** 0497: her job is NOT stopped but waits (its run would leave no profit now): the served code, its sentence, and when the server
    *  asks it again. Null when she does not wait for a price. */
   wait: { code: string; sentence: string; retryMs: number } | null
+  /** 0516: stopped by her own settings (a stop she set): the server's sentence, said on her row in place of the action (its press may be
+   *  Repair, which opens no sheet). Null for every other stop. */
+  stopSaid: string | null
 }
 
 export type LitLand = Extract<LandView, { company: true }>
@@ -174,6 +177,7 @@ function rowOf(w: ServedRow, fleet: FleetView | null, job: FleetJobRow | null, l
     captain: seat ? { code: seat.code, name: seat.name, grade: seat.grade } : null,
     // the server's sentence, else its code's plain words (dict/codes.ts); never the code itself
     why: w.stop ? (w.stop.sentence ?? translateMaybe('en', 'codes', w.stop.code) ?? null) : null,
+    stopSaid: w.stop?.code === 'E_STOP_DAMAGE' || w.stop?.code === 'E_STOP_PROFIT' ? w.stop.sentence : null,
     wait: w.wait && instantMs(w.wait.retry_at) !== null ? { code: w.wait.code, sentence: w.wait.sentence, retryMs: instantMs(w.wait.retry_at)! } : null,
     // the one press that mends it, from the served stop's code (`fixOf`); a repair or a hire only while she lies docked
     // 0497: and where no code names one, the press her own served state asks for (a wreck in a port; a towed hull at a yard)
