@@ -40,7 +40,6 @@ export function SendFleet({
   sea = null,
   line,
   harbour,
-  unseen = false,
   onClose,
 }: {
   dest: SailDest
@@ -51,8 +50,6 @@ export function SendFleet({
   /** The harbour's ships — in port and incoming (CityHarbour), built by MapScreen, which holds
    *  the harbour's read. Unused at sea. */
   harbour: ReactNode
-  /** 0504 — a city she knows but does not have in sight (src/chart/fog.ts): its name and the sending, and nothing about it. */
-  unseen?: boolean
   onClose: () => void
 }) {
   const t = useT()
@@ -119,7 +116,7 @@ export function SendFleet({
           name={
             // 2026-10-18 (the owner): the flag of the nation that holds the city, beside its name.
             <span className="inline-flex max-w-full items-center gap-1.5">
-              {dest.kind === 'port' && !unseen && <PortFlag code={dest.code} size="title" />}
+              {dest.kind === 'port' && <PortFlag code={dest.code} size="title" />}
               <GoToLink to={dest.kind === 'port' ? { kind: 'port', code: dest.code } : { kind: 'point', at: dest.at }}>
                 {flow.destName}
               </GoToLink>
@@ -142,7 +139,7 @@ export function SendFleet({
                   {t('map.sendFleet')}
                 </Button>
               )}
-              {dest.kind === 'port' && !unseen && (
+              {dest.kind === 'port' && (
                 <Button variant="secondary" size="sm" onClick={() => navigate(`/city?port=${dest.code}`)} data-testid="map-hq-here">
                   {t('map.hqHere')}
                 </Button>
@@ -166,7 +163,6 @@ export function SendFleet({
         ) : undefined
       }
       data-testid="map-detail-tray"
-      data-unseen={unseen || undefined}
       {...CHART_CHROME}
     >
       {dest.kind === 'port' ? (
@@ -174,11 +170,9 @@ export function SendFleet({
           {/* THE HARBOUR'S PICTURE (2026-11-23, the visual overhaul's slice 4, principle 7): its regional skyline at dusk, above
               the lists, from the served culture (components/ui/Skyline.tsx `skylineOf`, the one table). Decoration; the head
               above says where. */}
-          {!unseen && (
-            <div className="mb-2 overflow-hidden rounded-tile border border-edge" data-testid="map-harbour-skyline-band">
-              <Skyline kind={skylineOf(culture)} height={64} data-testid="map-harbour-skyline" />
-            </div>
-          )}
+          <div className="mb-2 overflow-hidden rounded-tile border border-edge" data-testid="map-harbour-skyline-band">
+            <Skyline kind={skylineOf(culture)} height={64} data-testid="map-harbour-skyline" />
+          </div>
           {sendSection}
           {harbour}
         </>

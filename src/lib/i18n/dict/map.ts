@@ -75,7 +75,6 @@ export const mapDict = defineDict({
     miniOpen: 'Small map',
     miniSize: 'Resize',
     openSea: 'Open sea',
-    fogKnown: 'Out of sight',
     allSeas: 'All seas',
     yourFleets: 'Fleets',
     noFleetsYet: 'No fleets yet.',
