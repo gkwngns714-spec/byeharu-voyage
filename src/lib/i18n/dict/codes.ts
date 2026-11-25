@@ -202,6 +202,8 @@ export const codesDict = defineDict({
     E_TEST: 'Probe error.',
     E_SHED_FULL: 'Storage full.',
     E_ROUND_SHORT: 'Too few stores or crew.',
+    E_NO_GUNS: 'No guns aboard.',
+    E_NO_PIRATES: 'No pirates here.',
     E_LEVEL: 'Level too low.',
     E_LAND_OUT: 'Party is out.',
     E_LAND_HAVE: 'Already have it.',

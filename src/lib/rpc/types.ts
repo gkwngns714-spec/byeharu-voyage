@@ -3604,6 +3604,8 @@ export interface RoundStop {
   crew?: number
   days?: number
   rounds?: number
+  /** 0521: the hull, in per cent of whole, a combat run ends under (60 when absent). */
+  hull?: number
 }
 
 /** 0519: what a Send would freeze: the cost of one round (hands a fraction, food and water in tuns) and the most rounds, and what stops them. */
@@ -3613,6 +3615,9 @@ export interface RoundTerms {
   crew: number
   food: number
   water: number
+  /** 0520: units of Gunpowder and of Shot and Ball a round; 0521: the mean share of her hull a combat round costs. */
+  ammo?: number
+  hull?: number
   min: number
   days: number
   most: number
@@ -3629,17 +3634,18 @@ export interface RoundRun {
   sea: string
   state: 'out' | 'home'
   sent_at: string
-  stop_at: string
+  /** null while a combat run is out: what it will meet is not told (0521); so are `most` and `why`. */
+  stop_at: string | null
   ended: string | null
   rounds: number
-  most: number
-  why: string
+  most: number | null
+  why: string | null
   next_at: string | null
   seconds: number
-  cost: { food: number; water: number; crew: number }
+  cost: { food: number; water: number; crew: number; ammo?: number; hull?: number }
   stop: RoundStop
   carry: Record<string, unknown>
-  log: { r: number; at: string; crew: number }[]
+  log: { r: number; at: string; crew: number; hull?: number; won?: 0 | 1 }[]
 }
 
 export type RoundsView =
