@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { decodeFogCells, liveFogCells, trailsKey, trailsOf, type ChartFog } from '../chart/fog'
+import { decodeFogCells, liveFogCells, trailsKey, trailsOf, type ChartFog } from '../chart'
 import { buildChartModel, mapFleetsOf, mapPortsOf, type FleetOnChart } from '../chart'
 import { worldChart, type ChartFogView } from '../lib/rpc'
 import { useServedRead } from './useServedRead'
