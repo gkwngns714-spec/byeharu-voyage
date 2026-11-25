@@ -1,3 +1,4 @@
+import { useFleetNav } from '../../live/useFleetNav'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { LatLon } from '../../lib/geo'
 import type { FleetView, Refusal, VerbSpec } from '../../lib/rpc'
@@ -61,6 +62,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   const divert = useWorld((s) => s.divert)
   const portByCode = useWorld((s) => s.portByCode)
   const seaNav = useWorld((s) => s.seaNav)
+  const navOf = useFleetNav() // 0514: the water this fleet may sail
   const cancelOrder = useWorld((s) => s.cancel)
   const clearQueue = useWorld((s) => s.clear)
   // A served reference or a frozen constant — never `?? []` inside the selector (React #185).
@@ -98,7 +100,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
     void (async () => {
       for (const f of todo) {
         const origin = sailOrigin(f, portByCode)
-        const course = origin ? proposeCourse(seaNav, origin, target) : null
+        const course = origin ? proposeCourse(navOf(f.id) ?? seaNav, origin, target) : null
         const result = await preview(f.id, orderText(spec, args, f.name), course)
         if (!alive) return
         const refusal = useWorld.getState().refusal
@@ -112,7 +114,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
         // any other, so a row never offers a trip her first leg would refuse (short of crew, in debt).
         let plan: PassagePlan | null = null
         if (dest.kind === 'port' && (verdict.kind === 'ok' || (verdict.kind === 'refused' && shutByReach(verdict.refusal.code)))) {
-          plan = await planPassage(f, dest.code, seaNav, portByCode)
+          plan = await planPassage(f, dest.code, navOf(f.id) ?? seaNav, portByCode)
           if (!alive) return
           if (verdict.kind === 'refused' && plan?.kind === 'open' && plan.stops.length > 0) {
             const leg = plan.legs[0]
@@ -131,7 +133,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
     return () => {
       alive = false
     }
-  }, [open, fleets, spec, seaNav, target, args, dest, portByCode, preview, verdicts, standingOf])
+  }, [open, fleets, spec, seaNav, navOf, target, args, dest, portByCode, preview, verdicts, standingOf])
 
 
   const pick = (f: FleetView) => {
@@ -171,7 +173,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
         await useWorld.getState().refresh()
         const fresh = useWorld.getState().fleets.find((x) => x.id === f.id) ?? f
         const now = fleetNow(fresh, portByCode)
-        const course = now ? proposeCourse(seaNav, now, target) : null
+        const course = now ? proposeCourse(navOf(f.id) ?? seaNav, now, target) : null
         okay = await divert(
           f.id,
           dest.kind === 'port' ? (portByCode[dest.code]?.id ?? null) : null,
@@ -184,7 +186,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
         okay = v.kind === 'chain' && (await issueLines(f.id, passageLines(v.plan)))
       } else {
         const origin = sailOrigin(f, portByCode)
-        const course = origin ? proposeCourse(seaNav, origin, target) : null
+        const course = origin ? proposeCourse(navOf(f.id) ?? seaNav, origin, target) : null
         // 0213: `SAIL <dest> INSURED` when asked — the grammar's own word (cmd.verb_schema's `insurance`
         // enum), written by the one line composer; the server prices and charges it at departure.
         const sailArgs = insureOf(f) ? { ...args, insurance: 'INSURED' } : args

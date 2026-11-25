@@ -180,7 +180,7 @@ export interface LabelRequest {
   readonly flagOnlyFallback?: boolean
   /**
    * 2026-11-15 (the Seas filter) — A SECOND, SMALLER LINE under a CENTRED name: a sea zone's ask
-   * ("Title 3 · Waves 6"). The planned box holds both lines, so the planner keeps the ask clear too.
+   * ("Title 3 · Wave resistance 6"). The planned box holds both lines, so the planner keeps the ask clear too.
    */
   readonly note?: string
   readonly noteSizePx?: number

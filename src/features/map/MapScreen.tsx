@@ -93,12 +93,13 @@ import {
   type PathStop,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
-import { Button, chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter, seaName } from '../../components/ui'
+import { Button, chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter, seaName, seaWallAsks } from '../../components/ui'
 import { worldLoadSteps } from '../../live/loadSteps'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
 import { SendFleet } from './SendFleet'
+import { useShutSeas } from '../../live/useFleetNav'
 import { useSeaRows, useSeaZoneCells } from '../../live/useSeas'
 import { ZoneTray } from './ZoneTray'
 import { zoneAt } from '../../domain/seas'
@@ -586,16 +587,21 @@ function Chart({
   // (owner, 2026-11-23), so a name carries no ask and no zone is marked closed. The borders and the names' places come from the
   // server's raster, worked out once per raster (src/chart/seaZones.ts).
   const zoneCode = seasOn && selection?.kind === 'zone' ? selection.code : null
+  // 0514: while the seas bite, a sea closed to the fleet in hand says under its name what it asks that she does not hold (no fill: 2026-11-14)
+  const shutSeas = useShutSeas()
+  const handFleet = useCommandDraft((s) => s.fleetId)
+  const shutHere = shutSeas.of(handFleet ?? fleetViews[0]?.id)
   const zones = useMemo<ZonesOnChart | null>(() => {
     if (!seasOn || !seaCells) return null
     const shape = zoneShapes(seaCells)
     const labels = seas.rows.flatMap((r) => {
       const at = shape.anchors.get(r.zone.code)
       if (!at || at.length === 0) return []
-      return [{ code: r.zone.code, name: seaName(locale, { zoneName: r.zone.name }), at, selected: r.zone.code === zoneCode }]
+      const wall = shutHere[r.zone.code]
+      return [{ code: r.zone.code, name: seaName(locale, { zoneName: r.zone.name }), at, selected: r.zone.code === zoneCode, ...(wall ? { note: seaWallAsks(locale, wall) } : {}) }]
     })
     return { outline: shape.outline, labels }
-  }, [seasOn, seaCells, seas.rows, locale, zoneCode])
+  }, [seasOn, seaCells, seas.rows, locale, zoneCode, shutHere])
   useEffect(() => {
     zoneTap.current = seasOn && seaCells ? (at: Point) => {
       const ll = unproject(at)

@@ -52,6 +52,10 @@ export interface SeaNav {
    *  352). When present, the course author re-sails every course off it (./refine.ts); a course
    *  proposed before it arrives is still raster water, only not yet held off the drawn coast. */
   readonly coast?: DrawnLand
+  /** 0514: the whole water, when `cells` has the seas shut to a fleet closed (./shut.ts). The course author falls back to it. */
+  readonly open?: SeaNav
+  /** 0514: how many times finer a line is sampled (a corner of a shut sea must not be grazed); 1 when absent, the world's own grid. */
+  readonly fine?: number
 }
 
 /** Cell centre latitude of a grid row (row 0 is the north edge). */

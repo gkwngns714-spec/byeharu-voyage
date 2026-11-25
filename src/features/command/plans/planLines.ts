@@ -73,7 +73,7 @@ export interface SeaHeld {
 }
 
 /** One ask of a sea as HAVE / NEED (2026-11-15 owner: shorter words — "just tell me what i have, and what is required"):
- *  `Waves 12 / 30`, `Title 1 / 2`; the need alone when what she holds is unread. `short`: the server's refusal says this
+ *  `Wave resistance 12 / 30`, `Title 1 / 2`; the need alone when what she holds is unread. `short`: the server's refusal says this
  *  ask is short (0396's flags; a refusal without them, an older world's, reads its own two figures). */
 export interface SeaPair {
   ask: 'wave' | 'title'
@@ -97,8 +97,8 @@ export function seaPairs(sea: BoardSea, held: SeaHeld | null): SeaPair[] {
 /** What a sea asks, as HAVE / NEED (0219) — THE ONE WORDING, read by `reachWords` when the sea closes a city and
  *  by the plan's per-city sea rows:
  *
- *    Macaronesia and the Canary Current · Waves 12 / 10 · Title 1 / 2     (a refusal names the zone that refuses)
- *    Waves 18 / 30 · Title 2 / 4                                          (the route's most any leg asks)
+ *    Macaronesia and the Canary Current · Wave resistance 12 / 10 · Title 1 / 2     (a refusal names the zone that refuses)
+ *    Wave resistance 18 / 30 · Title 2 / 4                                          (the route's most any leg asks)
  *
  *  The figures are the server's. */
 export function seaAsksWords(sea: BoardSea, held: SeaHeld | null = null): string {
