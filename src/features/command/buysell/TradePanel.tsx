@@ -11,7 +11,7 @@ import { useTrade } from '../../../live/useTrade'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { useShellState } from '../../../app/shellState'
 import { formatCountdown, formatDaysReal, formatInt, formatPctDelta, formatPrice, formatPriceDelta, formatPriceFigure, instantMs, moneyFigure, moneyWord } from '../../../lib/format'
-import type { BoardSellRow, FleetView, MarketGood, PriceSeries } from '../../../lib/rpc'
+import type { BoardSellRow, FleetView, MarketGood, PriceSeries, Refusal } from '../../../lib/rpc'
 import { properName, useT } from '../../../lib/i18n'
 import { WhyThisPrice } from '../markets/WhyThisPrice'
 import type { PlanDraft } from '../../../domain/plan'
@@ -153,6 +153,7 @@ function Frame({
   pair,
   total,
   extra,
+  refusal,
   profit,
   button,
   after,
@@ -180,6 +181,8 @@ function Frame({
   total: number | null
   /** Rows under the total (the trip's estimate). */
   extra?: ReactNode
+  /** The server's refusal of the last press, pinned above the button. */
+  refusal?: Refusal | null
   /** A trip that sells: its served profit (null while unknown), on the money's line, pinned above the fold. Undefined: no sale. */
   profit?: number | null
   button: ReactNode
@@ -209,7 +212,13 @@ function Frame({
               before the press. One line, not a row of its own, so the half-raised sheet still shows the units. */}
           {/* 0490: A SALE'S TWO PRICES, pinned above it (the owner, 2026-11-24: "the price i bought, the price i will get"): the half-raised
               sheet at 390 x 844 showed the sale's lines only to the fold (measured), so the two unit prices ride with the money */}
-          {pair && (
+          {/* 0497: THE PRESS'S REFUSAL stands where the two prices stood, by the button that earned it: under the chart (`extra`) a
+              half-raised sheet at 390 x 844 never showed it, and "Sold today's limit" read as a press that did nothing */}
+          {refusal ? (
+            <Note tone="danger" code={refusal.code} figures={refusal.figures} sea={seaWallOf(refusal)} data-testid="trade-tray-refusal">
+              {refusal.sentence}
+            </Note>
+          ) : pair && (
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 pt-1 text-t-caption" data-testid="sale-pair">
               <span className="inline-flex items-baseline gap-1.5">
                 <span className="text-ink-muted">{t('trade.bought')}</span>
@@ -374,12 +383,13 @@ function DockedAct({
   const t = useT()
   const [qty, setQty] = useState<number | null>(null)
   const sent = useRef<{ units: number; total: number | null } | null>(null)
+  const aboard = fleetCargoByCode(fleet)[good.code] ?? 0
+  // 0497: selling all she carries is the grammar's ALL (the quay's day limit cuts it; the bare number over the limit is refused whole)
   const trade = useTrade(fleet, side, good, qty, () => {
     const s = sent.current
     onDone({ side, units: s?.units ?? qty ?? 0, good: good.name, total: s?.total ?? null, sailTo: null })
-  })
+  }, undefined, side === 'sell' && qty !== null && qty > 0 && qty === aboard)
   const { capacity, step, act } = trade
-  const aboard = fleetCargoByCode(fleet)[good.code] ?? 0
   const lot = Math.max(1, Math.round(step))
   const ceiling = side === 'buy' ? (capacity.bound?.max ?? 0) : aboard
   const ducats = useWorld((s) => s.ducats)
@@ -448,13 +458,7 @@ function DockedAct({
             />
         ) : undefined
       }
-      extra={
-        act.refusal ? (
-          <Note tone="danger" code={act.refusal.code} figures={act.refusal.figures} sea={seaWallOf(act.refusal)} data-testid="trade-tray-refusal">
-            {act.refusal.sentence}
-          </Note>
-        ) : undefined
-      }
+      refusal={act.refusal}
       button={
         <BigButton
           act={side}

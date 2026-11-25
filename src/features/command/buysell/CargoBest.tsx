@@ -1,5 +1,5 @@
 import { Clip, Hint, Icon, Skeleton, goodIcon } from '../../../components/ui'
-import { fleetCargoByCode, paidPerTun } from '../../../domain/fleet'
+import { cargoPort, fleetCargoByCode, paidPerTun } from '../../../domain/fleet'
 import { PortFlag } from '../../../live/PortFlag'
 import { useGoodBoard, usePriceWhy } from '../../../live/useDesk'
 import { useSaleEstimate } from '../../../live/useSaleEstimate'
@@ -78,7 +78,7 @@ function CargoGood({
   const t = useT()
   const good = useWorld((s) => s.goodByCode[code] ?? null)
   const portByCode = useWorld((s) => s.portByCode)
-  const docked = fleet.status === 'DOCKED' ? fleet.port : null
+  const docked = cargoPort(fleet)   // 0497: or the port a wreck lies in
   const board = useGoodBoard(good?.id ?? null, fleet.id, fleet.version, null, null)
   const b = board.view
   // where she lies, when that city buys it (the board has its row): its bid now, the served price
