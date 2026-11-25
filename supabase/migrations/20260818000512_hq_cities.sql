@@ -376,8 +376,8 @@ $h$);
 
   -- ── 5. EVERY STEP UNSET, THE PERKS EMPTY ──
   if exists (select 1 from public.hq_steps s where s.slot > 1 and (s.total_level is not null or s.ducats is not null or s.reputation is not null))
-     or (select count(*) from public.hq_steps) <> 5 or exists (select 1 from public.hq_perks) or public.hq_cities_on() then
-    raise exception '0512 self-assert FAIL: a step is set, a perk is there, or the switch is lit';
+     or (select count(*) from public.hq_steps) <> 5 or exists (select 1 from public.hq_perks) then
+    raise exception '0512 self-assert FAIL: a step is set, or a perk is there';
   end if;
   if (select md5(coalesce(string_agg(p.id::text || ':' || coalesce(public.home_port_of(p.id)::text, '') || ':' || coalesce(public.hq_at(p.id, public.home_port_of(p.id))::text, ''), ',' order by p.id), ''))
         from public.players p where not p.is_npc)
@@ -392,6 +392,7 @@ $h$);
     select f.id, f.port_id into v_fl, v_lis from public.fleets f where f.player_id = v_me;
     perform cmd.assume_identity('00000000-0512-4000-8000-000000000001');
     v_lon := (select p.id from public.ports p where p.code = 'LON');
+    update public.world_config set value = 'false'::jsonb where key = 'hq_cities_enabled';   -- the probe's own dark (it may be lit by now; rolled back)
     v_r := cmd.open_hq('LON');
     if v_r->>'error_code' is distinct from 'E_NOT_IN_USE' then raise exception '0512 self-assert FAIL: dark: %', v_r; end if;
     update public.world_config set value = 'true'::jsonb where key = 'hq_cities_enabled';
@@ -415,7 +416,8 @@ $h$);
   exception when sqlstate 'ZX512' then
     v_lived := true;
   end;
-  if not v_lived or exists (select 1 from public.players p where p.company_name = 'Casa das Sedes 0512') or public.hq_cities_on() then
+  if not v_lived or exists (select 1 from public.players p where p.company_name = 'Casa das Sedes 0512')
+     or (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, ''), ',' order by c.key)) from public.world_config c) <> v_cfg_before then
     raise exception '0512 self-assert FAIL: the probe did not run to its end, or left something behind';
   end if;
 

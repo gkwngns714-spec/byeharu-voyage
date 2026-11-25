@@ -387,10 +387,10 @@ $h$  -- 0515 (dark: trade_benefits_enabled): each answer less her Trading level'
     return public.trade_tax_cut(p_player, p_rate);
 $h$),
   ('public.tax_home_half(uuid,uuid,numeric,numeric)', 2,
-$h$  if public.home_port_of(p_player) is distinct from p_port then
+$h$  if not public.hq_at(p_player, p_port) then   -- 0512: home, or lit any HQ of hers
     return p_rate;
 $h$,
-$h$  if public.home_port_of(p_player) is distinct from p_port then
+$h$  if not public.hq_at(p_player, p_port) then   -- 0512: home, or lit any HQ of hers
     return public.trade_tax_cut(p_player, p_rate);
 $h$),
   ('public.tax_home_half(uuid,uuid,numeric,numeric)', 3,
