@@ -9,10 +9,10 @@
 --   the server plays 8 fights (4 for a fleet over 3 hulls: public.round_fights) and freezes them; each round is one of them by voyage.rng (fleet, round, Send). So
 --   12 hours of rounds cost 8 fights, once, and the settle fights nothing.
 -- THE RUN IS ARITHMETIC ON THAT SEQUENCE (public.round_sequence, at Send): hull, hands, won or beaten a round, round by round; it stops after the round that
---   leaves the hull under stop.hull (default 60 per cent, the owner's default), after a round she was BEATEN OFF in, before the round that would take her
+--   leaves the hull under stop.hull (default 40 per cent, decided by default), after a round she was BEATEN OFF in, before the round that would take her
 --   hands under MIN, or at any bound of 0518 and 0520. A late settle and a prompt one still agree.
 -- WHAT IS SERVED: a round's MEAN cost (hull, hands, food, water, ammo). Neither the fights nor any share won is served (asserted).
--- HANDS: a round loses half the share of hull it lost, of the hands she left with (knob round_hand_share 0.5).
+-- HANDS: a round loses half the share of hull it lost, of the hands she left with (knob round_hand_share 0.1).
 -- Never a company, a merchant or a navy: the side she closes on is no ship's row. A sea with no pirates (danger 0), a fleet with no guns: refused.
 -- THE COST of a Send (PGlite, docs/dev-log/2026-11-25-combat-rounds.md): under 200 ms for every fleet against what a sea can hold (strength at most 40).
 -- ROWS as 0518's (the frozen rounds add up to 2 KB to a run's row). -- budget: none more. -- retention: none (no table).
@@ -63,15 +63,15 @@ begin
   -- ── 2. THE KNOBS AND THE DATA ──
   insert into public.world_config (key, value, description) values
     ('combat_rounds_enabled', 'false'::jsonb, '0521: THE SWITCH (the owner''s). true: the work "pirates" may be sent on (while rounds_enabled).'),
-    ('round_hull_stop', '60'::jsonb, '0521: the hull, in per cent of whole, under which a combat run ends when the player set none (the owner: leave at 60).'),
-    ('round_hand_share', '0.5'::jsonb, '0521: the share of a round''s hull loss that its hands lose.');
+    ('round_hull_stop', '40'::jsonb, '0521: the hull, in per cent of whole, under which a combat run ends when the player set none (decided by default, 2026-11-25).'),
+    ('round_hand_share', '0.1'::jsonb, '0521: the share of a round''s hull loss that its hands lose.');
   -- retention: none, bounded by construction: one row a fleet, gone with it
   create table public.round_fights_kept (fleet_id uuid primary key references public.fleets(id) on delete cascade, sig text not null, guns numeric not null, fights jsonb not null);
   comment on table public.round_fights_kept is '0521: the fights a fleet would have, kept while nothing of her has changed by a tenth (public.round_fights_sig). Server only.';
   alter table public.round_fights_kept enable row level security;
   revoke all on table public.round_fights_kept from public, anon, authenticated;
   insert into public.round_works (code, ord, kind, word, skill, level, seconds, food_days, water_days, crew_pct, ammo, lit_by)
-  values ('pirates', 1, 'combat', 'Pirates', 'combat', 1, 600, 0.4, 0.4, 0, 0.2, 'combat_rounds_enabled');
+  values ('pirates', 1, 'combat', 'Pirates', 'combat', 1, 600, 0.4, 0.4, 0, 0.01, 'combat_rounds_enabled');
 
   -- ── 3. THE RULES ──
   execute $f$
