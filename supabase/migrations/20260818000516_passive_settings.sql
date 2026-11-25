@@ -1,5 +1,5 @@
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- news: none (dark: nothing changes for a player until the owner lights passive_settings_enabled)
+-- news: none (the settings are dark until the owner lights passive_settings_enabled; a laden run only goes on or waits)
 -- 0516 - THE PASSIVE SETTINGS OF A FIXED JOB  (dark: the owner's switch passive_settings_enabled, false. Slice `passive-settings`,
 --   docs/design/owner-spec-2026-11-25.md "PASSIVE METHOD", owner-spec-red-2026-11-25.md R9/R10, slide 9)
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -25,17 +25,29 @@
 -- ONE QUOTE: public.job_settings_judge asks public.fleet_run_quote (0498) for the run and world.quote for the limits; it never prices by
 --   itself. With the job's range cutting the load it answers the BUY line, so 0498's own check is not asked a second time.
 -- DARK, or a job with none of the six: {} and the plan is the plan it was (asserted to the letter).
--- NOT CHANGED: a Best job, a land haul, a hand's order; any command; any table; the tick; the ledger.
+-- NOT CHANGED by the settings: a Best job, a land haul, a hand's order; any command; any table; the tick; the ledger.
 -- A JOB STOPPED FOR HER HULL GOES ON ONCE SHE IS MENDED (public.job_damage_mended: the same reading, public.fleet_damage_pct): due again,
 --   as 0500 does for a flagship, and the stop is lifted by the note. Dark, it goes on as a plain job.
 -- world.workers() serves `settings` while lit: for each fleet her hold, what is left of it (stores in the hold: after the days her job keeps)
 --   and the least and most crew, so a screen works nothing out (public.job_settings_room).
--- THE HUNKS (9; each once, each reverses): fleet_job_plan x3, fleet_job_note x3, fleet_jobs_due x1, fleet_job_set_for x1, world.workers x1. Their anchors are in
+-- A LADEN RUN IS JUDGED (no switch; the review of 0504's laden run, 2026-11-25; proof 243). 0504 let a fixed job at its buy harbour, her good aboard and no
+--   unit more to be had, sail with it; it was not judged. Now:
+--   public.fleet_run_quote   the quote of a run counts the load aboard at what she paid for it (public.fleet_cargo_basis, as a Best card of her cargo
+--                            does): `units` to buy, `load` to sell, `net` of both. With nothing of the good aboard: the answer it was. (4 hunks)
+--   public.fleet_job_plan    a laden run is quoted whether or not jobs_wait_enabled is lit, and waits `low` like any run when it does not pay: no token
+--                            load sails. One unit of room is no reason to wait: the whole load is judged. A BUY that cannot be is left out. (6 hunks)
+--   public.run_need          (run_guard_enabled) nothing to buy and cargo to sell: her cargo is her coin. Straight to the sale she needs her stores and her hands
+--                            alone; by way of other harbours their fees and a storm's default too; never the repair; a BUY cut to nothing beside a load that pays its way is left out. (4 hunks)
+--   public.fleet_job_ends    (bring home) the shed holds exactly her load: she buys no more and brings it home. The shed holds less than
+--                            her load: she WAITS (`low`), not stopped (a STORE is whole or refused). Nothing aboard: stopped E_SHED_FULL, as 0492. (1 hunk)
+--   A land haul whose good changed: the old load (a good the land makes) is stored first when there is nothing of the new to take. (in fleet_job_plan)
+-- THE HUNKS (24; each once, each reverses): fleet_job_plan x9, fleet_job_note x3, fleet_jobs_due x1, fleet_job_set_for x1, world.workers x1, fleet_run_quote x4,
+--   run_need x4, fleet_job_ends x1. Their anchors are in
 --   none of 0499, 0500, 0508 or 0509's hunks. PROVISION: where a plan already has one (0508's), its days are raised, not a second line.
 -- COST: dark, one switch read a fixed plan and one a workers read. Lit, a job with settings is at most one fleet_run_quote and five world.quote
 --   a plan, instead of 0498's one quote; a waiting job is asked once in 600 s or more.
 -- ROWS: one world_config row. -- budget: none (no table, no job, no index). -- retention: none.
--- LOCKS: one INSERT, CREATE FUNCTION x7, CREATE OR REPLACE x5. TIME: a second. BUDGET: statement_timeout 60 s, lock_timeout 5 s; fails above 30 s.
+-- LOCKS: one INSERT, CREATE FUNCTION x7, CREATE OR REPLACE x8. TIME: a second. BUDGET: statement_timeout 60 s, lock_timeout 5 s; fails above 30 s.
 -- ROLLBACK (forward, owner only): QUICK, passive_settings_enabled false: a job that carries settings runs as a plain fixed job. FULL: a
 --   migration reversing the hunks (OLD texts below verbatim) and dropping the seven functions and the knob.
 -- SELF-ASSERT: hunks once and reversing; no other function moved; grants and settings unmoved; the new functions STABLE and server only.
@@ -45,7 +57,8 @@
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 do $m$
 declare
-  c_hunked constant text[] := array['public.fleet_job_plan(uuid)', 'public.fleet_job_note(uuid,jsonb)', 'public.fleet_job_set_for(uuid,uuid,text,jsonb)', 'world.workers()', 'public.fleet_jobs_due()'];
+  c_hunked constant text[] := array['public.fleet_job_plan(uuid)', 'public.fleet_job_note(uuid,jsonb)', 'public.fleet_job_set_for(uuid,uuid,text,jsonb)', 'world.workers()', 'public.fleet_jobs_due()',
+                                    'public.fleet_run_quote(uuid,uuid,uuid,text,text,text[])', 'public.run_need(uuid,uuid,uuid,jsonb)', 'public.fleet_job_ends(uuid,uuid,jsonb,text)'];
   c_new    constant text[] := array['public.passive_settings_on()', 'public.job_settings_param(uuid,jsonb)', 'public.job_settings_judge(uuid,text,jsonb)',
                                     'public.job_settings_lines(jsonb,jsonb)', 'public.fleet_damage_pct(uuid)', 'public.job_damage_mended(uuid)', 'public.job_settings_room(uuid)'];
   c_knobs  constant text[] := array['passive_settings_enabled'];
@@ -355,6 +368,7 @@ declare
   v_sells boolean := coalesce(p_end->>'verb', 'SELL') = 'SELL';
   v_out   jsonb := '{}'::jsonb;
   v_aboard numeric;
+  v_own   numeric := 0;
   v_dmg   numeric;
   v_done  boolean;
   v_n     numeric;
@@ -465,6 +479,18 @@ begin
       return v_out;   -- no way through: the plan's own judge says it
     end if;
     v_n0 := coalesce((v_rq->>'units')::numeric, 0);
+    v_own := greatest(0, coalesce((v_rq->>'load')::numeric, 0) - v_n0);   -- what she would sell of the load aboard
+    if v_n0 < 1 and v_own >= 1 then   -- nothing to buy beside her load: judged as any run, and she goes on with it
+      v_net := (v_rq->>'net')::numeric;
+      if v_net <= 0 then
+        return jsonb_build_object('end', jsonb_build_object('wait', 'low', 'sentence', 'prices low', 'net', v_net));
+      end if;
+      if j.params ? 'stop_profit' and v_net < (j.params->>'stop_profit')::numeric then
+        return jsonb_build_object('end', jsonb_build_object('pause', 'E_STOP_PROFIT', 'sentence',
+                 format('this run would leave %s, you stop under %s', to_char(v_net, 'FM999,999,999,990'), to_char((j.params->>'stop_profit')::numeric, 'FM999,999,999,990'))));
+      end if;
+      return v_out || jsonb_build_object('end', p_end || '{"laden": true}'::jsonb) || case when j.params ? 'over' then '{"sell": false}'::jsonb else '{}'::jsonb end;
+    end if;
     if v_n0 < 1 then
       return jsonb_build_object('end', jsonb_build_object('wait', 'low', 'net', v_rq->'net', 'sentence',
                case v_rq->>'why' when 'allowance' then 'the day''s allowance is spent' else 'nothing to buy now' end));
@@ -511,7 +537,8 @@ begin
       v_net := (v_rq->>'net')::numeric;
     else
       select q.total into v_cost from world.quote(f.port_id, v_gid, v_n, 'buy', null, p_fleet) q;
-      select q.total into v_gross from world.quote(v_dest, v_gid, v_n, 'sell', null, p_fleet) q;
+      v_cost := v_cost + v_own * coalesce(public.fleet_cargo_basis(p_fleet, v_g), 0);
+      select q.total into v_gross from world.quote(v_dest, v_gid, v_n + v_own, 'sell', null, p_fleet) q;
       v_net := round(v_gross - v_cost - coalesce(public.profit_tax(v_dest, v_gross - v_cost, j.player_id), 0) - (v_rq->>'trip')::numeric);
     end if;
     -- the hands are a cost of this run (the stores are in the trip's)
@@ -597,6 +624,172 @@ $h$    if v_set <> '{}'::jsonb then   -- 0516
       v_lines := public.job_settings_lines(v_lines, v_set);
     end if;
     return jsonb_build_object('lines', v_lines, 'version', f.version, 'note', jsonb_build_object('kind', 'fixed',$h$),
+  ('public.fleet_job_plan(uuid)', 4,
+$h$      v_laden := public.fleet_cargo_qty(p_fleet, v_g) >= 1
+                 and coalesce((public.fleet_buy_capacity(p_fleet, (select g.id from public.goods g where g.code = v_g))->>'max_qty')::numeric, 0) < 1;
+$h$,
+$h$      v_laden := coalesce((v_end->>'laden')::boolean, false)   -- 0516: her settings or the home shed said so (public.job_settings_judge, public.fleet_job_ends)
+                 or (public.fleet_cargo_qty(p_fleet, v_g) >= 1
+                     and coalesce((public.fleet_buy_capacity(p_fleet, (select g.id from public.goods g where g.code = v_g))->>'max_qty')::numeric, 0) < 1);
+$h$),
+  ('public.fleet_job_plan(uuid)', 5,
+$h$      if not v_laden and public.jobs_wait_on() and coalesce(v_end->>'verb', 'SELL') = 'SELL' and not (v_end ? 'buy') then$h$,
+$h$      -- 0516: a laden run is judged whatever the switch (the load aboard is in the quote): no token load sails
+      if (v_laden or public.jobs_wait_on()) and coalesce(v_end->>'verb', 'SELL') = 'SELL' and not (v_end ? 'buy') and not (v_end ? 'laden') then$h$),
+  ('public.fleet_job_plan(uuid)', 6,
+$h$          if coalesce((v_rq->>'units')::numeric, 0) < 1 or coalesce((v_rq->>'net')::numeric, 0) <= 0 then$h$,
+$h$          if coalesce((v_rq->>'load')::numeric, 0) < 1 or coalesce((v_rq->>'net')::numeric, 0) <= 0 then   -- 0516: what she would sell, aboard or bought$h$),
+  ('public.fleet_job_plan(uuid)', 7,
+$h$          if (v_rq->>'cut')::boolean then
+            v_end := v_end || jsonb_build_object('buy', format('BUY %s %s', v_g, trim_scale((v_rq->>'units')::numeric)));$h$,
+$h$          if (v_rq->>'units')::numeric < 1 then
+            v_laden := true;   -- 0516: nothing to buy beside the load that pays
+          elsif (v_rq->>'cut')::boolean then
+            v_end := v_end || jsonb_build_object('buy', format('BUY %s %s', v_g, trim_scale((v_rq->>'units')::numeric)));$h$),
+  ('public.fleet_job_plan(uuid)', 8,
+$h$      if v_need ? 'line' then
+        v_lines := public.run_cut(v_lines, v_need->>'line');
+      end if;
+    end if;
+$h$,
+$h$      if v_need ? 'line' then
+        v_lines := public.run_cut(v_lines, v_need->>'line');
+      elsif v_need ? 'nobuy' then   -- 0516: the purse bears no BUY; the load aboard goes on
+        v_lines := (select jsonb_agg(z.l order by z.i) from jsonb_array_elements(v_lines) with ordinality z(l, i) where z.l->>'text' not like 'BUY %');
+      end if;
+    end if;
+$h$),
+  ('public.fleet_job_plan(uuid)', 9,
+$h$      if not coalesce(v_laden, false) and (v_g is null or coalesce(v_qty, 0) < 1) then$h$,
+$h$      -- 0516: nothing of its good to take, and the load of the good before it still aboard (one the land makes): that load is stored first
+      if not coalesce(v_laden, false) and (v_g is null or coalesce(v_qty, 0) < 1 or public.fleet_free_hold(p_fleet) < (select g.bulk from public.goods g where g.code = v_g)) then
+        select g.code into v_buy from (select distinct a.good_id from public.land_actions a where a.good_id is not null) l join public.goods g on g.id = l.good_id
+         where public.fleet_cargo_qty(p_fleet, g.code) >= 1 order by public.fleet_cargo_qty(p_fleet, g.code) desc, g.code limit 1;
+        if v_buy is not null then
+          v_g := v_buy;
+          v_laden := true;
+        end if;
+      end if;
+      if not coalesce(v_laden, false) and (v_g is null or coalesce(v_qty, 0) < 1) then$h$),
+  ('public.fleet_run_quote(uuid,uuid,uuid,text,text,text[])', 1,
+$h$  v_tax   numeric;
+  v_trip  jsonb;
+begin$h$,
+$h$  v_tax   numeric;
+  v_trip  jsonb;
+  v_own   numeric;   -- 0516: whole units of the good aboard
+  v_sell  numeric;   -- 0516: what she would sell: those and the units bought, to the day's allowance
+begin$h$),
+  ('public.fleet_run_quote(uuid,uuid,uuid,text,text,text[])', 2,
+$h$  if v_u0 < 1 then
+    return jsonb_build_object('units', 0, 'net', null, 'why', 'buy');
+  end if;
+  v_left := world.daily_cap_remaining(p_player, v_dest, v_gid);
+$h$,
+$h$  -- 0516: THE LOAD ABOARD IS PART OF THE RUN, at what she paid for it (public.fleet_cargo_basis; no known cost: nothing)
+  v_own := floor(coalesce(public.fleet_cargo_qty(p_fleet, p_good), 0));
+  if v_u0 < 1 and v_own < 1 then
+    return jsonb_build_object('units', 0, 'net', null, 'why', 'buy');
+  end if;
+  v_left := world.daily_cap_remaining(p_player, v_dest, v_gid);
+$h$),
+  ('public.fleet_run_quote(uuid,uuid,uuid,text,text,text[])', 3,
+$h$  if v_n < 1 then
+    return jsonb_build_object('units', 0, 'net', null, 'why', 'allowance');
+  end if;
+  if v_n = v_u0 then
+    v_cost := (v_cap->>'est_total')::numeric;
+  else
+    select q.total into v_cost from world.quote(p_from, v_gid, v_n, 'buy', null, p_fleet) q;
+  end if;
+  select q.units, q.total into v_got, v_gross from world.quote(v_dest, v_gid, v_n, 'sell', null, p_fleet) q;
+  if v_cost is null or v_gross is null or coalesce(v_got, 0) < v_n then
+    return jsonb_build_object('units', 0, 'net', null, 'why', 'allowance');
+  end if;$h$,
+$h$  -- 0516: the allowance takes the load aboard first
+  v_n := greatest(0, least(v_n, floor(coalesce(v_left, v_u0 + v_own)) - v_own));
+  v_sell := least(v_own + v_n, floor(coalesce(v_left, v_own + v_n)));
+  if v_sell < 1 then
+    return jsonb_build_object('units', 0, 'net', null, 'why', 'allowance');
+  end if;
+  if v_n < 1 then
+    v_cost := 0;
+  elsif v_n = v_u0 then
+    v_cost := (v_cap->>'est_total')::numeric;
+  else
+    select q.total into v_cost from world.quote(p_from, v_gid, v_n, 'buy', null, p_fleet) q;
+  end if;
+  v_cost := v_cost + (v_sell - v_n) * coalesce(public.fleet_cargo_basis(p_fleet, p_good), 0);
+  select q.units, q.total into v_got, v_gross from world.quote(v_dest, v_gid, v_sell, 'sell', null, p_fleet) q;
+  if v_cost is null or v_gross is null or coalesce(v_got, 0) < v_sell then
+    return jsonb_build_object('units', 0, 'net', null, 'why', 'allowance');
+  end if;$h$),
+  ('public.fleet_run_quote(uuid,uuid,uuid,text,text,text[])', 4,
+$h$  return jsonb_build_object('units', v_n, 'cost', round(v_cost),$h$,
+$h$  return jsonb_build_object('load', v_sell, 'units', v_n, 'cost', round(v_cost),$h$),
+  ('public.run_need(uuid,uuid,uuid,jsonb)', 1,
+$h$  v_sells  boolean := false;
+$h$,
+$h$  v_sells  boolean := false;
+  v_sg     text;           -- 0516: the good she sells
+  v_own    numeric := 0;   -- 0516: whole units of it aboard now
+  v_must   numeric;        -- 0516: what she must pay before that sale
+$h$),
+  ('public.run_need(uuid,uuid,uuid,jsonb)', 2,
+$h$      v_sells := v_w[2] = v_good;
+$h$,
+$h$      v_sells := v_w[2] = v_good;
+      v_sg := v_w[2];
+$h$),
+  ('public.run_need(uuid,uuid,uuid,jsonb)', 3,
+$h$  if v_purse >= v_need and v_n0 >= 1 and v_n < 1 then$h$,
+$h$  -- 0516: HER CARGO IS HER COIN. Nothing bought (or nothing the purse bears) and a load of the good aboard to sell: what she needs is what she pays BEFORE that
+  -- sale. Straight to it, her stores and her hands alone (the dock fee and the repair come out of it); by way of other harbours, their dock fees and the
+  -- storm's default too (the run that ruined a company, 0502), never the repair. A BUY the purse bears none of is left out (`nobuy`) if the load pays its way
+  v_own := case when v_sg is null then 0 else floor(coalesce(public.fleet_cargo_qty(p_fleet, v_sg), 0)) end;
+  if v_own >= 1 and v_n < 1 and (v_good is null or v_good = v_sg) then
+    v_must := (v_trip->>'supplies')::numeric + v_crew + case when cardinality(v_calls) > 1 then v_dock + v_sea else 0 end;
+    if v_purse < v_must then
+      return v_out || jsonb_build_object('wait', 'purse', 'sentence', format('purse %s, her way to the sale costs %s', to_char(v_purse, 'FM999,999,999,990'), to_char(v_must, 'FM999,999,999,990')));
+    end if;
+    if v_good is null or v_n0 < 1 then
+      return v_out || jsonb_build_object('ok', true, 'aboard', v_own);
+    end if;
+    v_gid := (select g.id from public.goods g where g.code = v_sg);
+    v_own := least(v_own, floor(coalesce(world.daily_cap_remaining(p_player, v_dest, v_gid), v_own)));
+    v_net := null;
+    if v_own >= 1 then
+      select q.total into v_gross from world.quote(v_dest, v_gid, v_own, 'sell', null, p_fleet) q;
+      v_got := v_own * coalesce(public.fleet_cargo_basis(p_fleet, v_sg), 0);
+      v_net := coalesce(v_gross, 0) - v_got - coalesce(public.profit_tax(v_dest, coalesce(v_gross, 0) - v_got, p_player), 0)
+               - (v_trip->>'supplies')::numeric - (v_trip->>'wages')::numeric - v_dock;
+    end if;
+    if coalesce(v_net, 0) <= 0 then
+      return v_out || jsonb_build_object('wait', 'purse', 'sentence', 'purse buys too little to pay its way');
+    end if;
+    return v_out || jsonb_build_object('ok', true, 'nobuy', true, 'aboard', v_own, 'net', round(v_net));
+  end if;
+  if v_purse >= v_need and v_n0 >= 1 and v_n < 1 then$h$),
+  ('public.run_need(uuid,uuid,uuid,jsonb)', 4,
+$h$      select q.total into v_gross from world.quote(v_dest, v_gid, v_n, 'sell', null, p_fleet) q;
+      v_net := coalesce(v_gross, 0) - v_cost - coalesce(public.profit_tax(v_dest, coalesce(v_gross, 0) - v_cost, p_player), 0)$h$,
+$h$      -- 0516: with the load aboard, at what she paid for it
+      select q.total into v_gross from world.quote(v_dest, v_gid, v_n + v_own, 'sell', null, p_fleet) q;
+      v_got := v_cost + v_own * coalesce(public.fleet_cargo_basis(p_fleet, v_good), 0);
+      v_net := coalesce(v_gross, 0) - v_got - coalesce(public.profit_tax(v_dest, coalesce(v_gross, 0) - v_got, p_player), 0)$h$),
+  ('public.fleet_job_ends(uuid,uuid,jsonb,text)', 1,
+$h$    if v_room < 1 then
+      return jsonb_build_object('pause', 'E_SHED_FULL',$h$,
+$h$    -- 0516: her load aboard and no room for more than it: she brings it home; no room for all of it (a STORE is whole or refused): she waits, not stopped
+    if v_room < 1 and public.fleet_cargo_qty(p_fleet, g.code) >= 1 then
+      if v_room < 0 then
+        return jsonb_build_object('wait', 'low', 'sentence', format('the warehouse at %s is full', p_params->>'sell'));
+      end if;
+      return jsonb_strip_nulls(jsonb_build_object('verb', 'STORE', 'laden', true,
+               'note', jsonb_strip_nulls(jsonb_build_object('end', 'store', 'leg', 'out', 'left', p_params->'left'))));
+    end if;
+    if v_room < 1 then
+      return jsonb_build_object('pause', 'E_SHED_FULL',$h$),
   ('public.fleet_job_note(uuid,jsonb)', 1,
 $h$  elsif p_plan->>'wait' = 'low' then
 $h$,
@@ -750,7 +943,7 @@ $h$  -- 0516 (dark: no such key): a fixed job may carry settings; each fleet's h
   if clock_timestamp() - v_t0 > interval '30 seconds' then
     raise exception '0516 self-assert FAIL: the file took % (budget 30 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0516 self-assert ok: THE PASSIVE SETTINGS (dark). Nine hunks once and reversing in five bodies; no other function moved; seven new functions STABLE and server only, no level asked. Probe (rolled back): "%" and "%" wait; % of % units under the limit; "%"; "%"; %. % ms.',
+  raise notice '0516 self-assert ok: THE PASSIVE SETTINGS (dark). Twenty-four hunks once and reversing in eight bodies; no other function moved; seven new functions STABLE and server only, no level asked. Probe (rolled back): "%" and "%" wait; % of % units under the limit; "%"; "%"; %. % ms.',
     v_l #>> '{dear,sentence}', v_l #>> '{cheap,sentence}', v_l->>'cut_n', v_l->>'cut_all', v_l #>> '{profit,sentence}', v_l #>> '{hurt,sentence}',
     (select string_agg(e->>'text', ', ') from jsonb_array_elements(v_l #> '{crew,lines}') e), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0516;

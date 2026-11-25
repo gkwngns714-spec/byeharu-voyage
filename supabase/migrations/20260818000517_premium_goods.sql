@@ -454,13 +454,13 @@ security definer
 set search_path = public, pg_temp
 as $body$
 -- 0517: what a face shows of a premium good: {premium: {port, name, mult, nm, per_day, made, left}}; null dark, or not one. made: what the
--- reader's company made and has not sold at a premium; left: the lesser of it and what the city still takes today.
+-- reader's company made and has not sold at a premium; left: what the city still takes today; mine: the lesser of the two.
 begin
   if not public.premium_on() then
     return null;
   end if;
   return (select jsonb_build_object('premium', jsonb_build_object('port', h.code, 'name', h.name, 'mult', u.mult, 'nm', pg.haul_nm,
-                                                                  'per_day', public.wc_num('premium_day_units'), 'made', mine.n, 'left', least(u.left_units, mine.n)))
+                                                                  'per_day', public.wc_num('premium_day_units'), 'made', mine.n, 'left', u.left_units, 'mine', least(u.left_units, mine.n)))
             from public.goods g
             join public.ports h on h.id = g.premium_port_id
             join public.port_goods pg on pg.port_id = h.id and pg.good_id = g.id

@@ -21,10 +21,13 @@
 --   near round, the first charted point, a closed company's heir: slot 1; pass home and home waters (0396, 0513): her country's capital, NOT the HQ; dividends: no home at all.
 -- NOTHING MOVES A LIVE COMPANY'S HOME: home_port_of is not touched; the switch stays false until the owner has seen before-0509's moves_home.
 -- THE COIN: HQ is a moved flow (public.stats_flow_words), no profit of a city's (public.flow_is_profit: capital, as SHARE; no influence), a one-time line of the rate.
+-- A NEW COMPANY IS OF EUROPE (no switch; the owner: "you will choose your home COUNTRY (EUROPE)"): cmd.found_house (2 hunks) refuses any other, E_NOT_EUROPE, by 0509's
+--   one rule (public.nation_in_europe); world.snapshot (1 hunk) serves each country's `foundable` for the picker. Companies already of another country, and
+--   cmd.change_country, are as they were. The skull is not of Europe: a new company no longer starts under it, and may change to it.
 -- ROWS: hq_steps and kinds: seven rows of data. An open HQ: one row of company_hqs, one each of ledger, flow, event and Reputation. 0 a minute.
 -- retention: none, bounded by one row a perk kind, data only a migration writes (public.hq_perks)
 -- budget: no cron job, no autovacuum or fillfactor change. Tick: 0. world.player while dark: one knob read more.
--- LOCKS: ALTER TABLE hq_steps (5 rows); CREATE TABLE x1; CREATE FUNCTION x5; hunks x9 bodies. TIME: a second. BUDGET: statement_timeout 90 s, lock_timeout 5 s; fails above 45 s.
+-- LOCKS: ALTER TABLE hq_steps (5 rows); CREATE TABLE x1; CREATE FUNCTION x5; hunks x11 bodies. TIME: a second. BUDGET: statement_timeout 90 s, lock_timeout 5 s; fails above 45 s.
 -- ROLLBACK (forward, owner only): QUICK, hq_cities_enabled false (it is). FULL: the hunks reversed, the functions and hq_perks dropped; an HQ opened stays a row.
 -- SELF-ASSERT: each hunk once and reversing; no other function or knob moved; the door and the read for authenticated alone; every step past the first unset; the perks empty;
 --   home_port_of, the tax and the job end answer as before; THE PROBE (rolled back; its own company, the switch, a step, levels 0 and a purse planted): dark and unset refuse in
@@ -33,7 +36,7 @@
 
 do $m$
 declare
-  c_hunked constant text[] := array['public.hq_card(uuid)', 'public.tax_home_half(uuid,uuid,numeric,numeric)', 'cmd.request_place(uuid,uuid,numeric,bigint)', 'world.requests(uuid)', 'public.fleet_job_end(uuid,jsonb)', 'public.flow_is_profit(text)', 'public.company_rate_line(text)', 'public.client_rpc_entry_points()']::text[];
+  c_hunked constant text[] := array['cmd.found_house(text,text)', 'world.snapshot()', 'public.hq_card(uuid)', 'public.tax_home_half(uuid,uuid,numeric,numeric)', 'cmd.request_place(uuid,uuid,numeric,bigint)', 'world.requests(uuid)', 'public.fleet_job_end(uuid,jsonb)', 'public.flow_is_profit(text)', 'public.company_rate_line(text)', 'public.client_rpc_entry_points()']::text[];
   c_new    constant text[] := array['public.total_level(uuid)', 'public.hq_at(uuid,uuid)', 'public.hq_open_refusal(uuid,uuid)', 'world.hq_open(text)', 'cmd.open_hq(text)']::text[];
   c_gone   constant text[] := array[]::text[];   -- dropped and made again with more to answer (the same arguments)
   v_t0        timestamptz := clock_timestamp();
@@ -288,6 +291,30 @@ $h$jsonb_build_object('slot', h.slot, 'port', p.code, 'since', h.opened_at) orde
 $h$jsonb_build_object('slot', h.slot, 'port', p.code, 'since', h.opened_at)
                                -- 0512: lit, her warehouse there: what is in her shed in that city
                                || case when public.hq_cities_on() then jsonb_build_object('warehouse', jsonb_build_object('cap', public.storage_cap(p.id), 'used', public.storage_used(p_player, p.id))) else '{}'::jsonb end order by h.slot)$h$),
+  ('cmd.found_house(text,text)', 1,
+$h$where public.nation_joinable(id)));   -- GP1$h$,
+$h$where public.nation_joinable(id) and public.nation_in_europe(id)));   -- 0512: and of Europe; GP1$h$),
+  ('cmd.found_house(text,text)', 2,
+$h$where public.nation_joinable(id)));
+  end if;
+
+  -- 0503: THE NAME'S RULE$h$,
+$h$where public.nation_joinable(id) and public.nation_in_europe(id)));
+  end if;
+
+  -- 0512: A NEW COMPANY'S COUNTRY IS ONE OF EUROPE (public.nation_in_europe, 0509's one rule, as Restart asks it). A company of another country is not asked.
+  if not public.nation_in_europe((select id from public.nations where code = v_nation)) then
+    return jsonb_build_object(
+      'ok', false, 'error_code', 'E_NOT_EUROPE', 'error_message', 'Choose a country of Europe.',
+      'fixes', (select jsonb_agg(format('(sail under %s — %s)', code, name) order by code)
+                  from public.nations where public.nation_joinable(id) and public.nation_in_europe(id)));
+  end if;
+
+  -- 0503: THE NAME'S RULE$h$),
+  ('world.snapshot()', 1,
+$h$        'joinable', public.nation_joinable(n.id),$h$,
+$h$        'foundable', public.nation_joinable(n.id) and public.nation_in_europe(n.id),   -- 0512: a new company may choose it (cmd.found_house)
+        'joinable', public.nation_joinable(n.id),$h$),
   ('public.tax_home_half(uuid,uuid,numeric,numeric)', 1,
 $h$  if public.home_port_of(p_player) is distinct from p_port then
 $h$,

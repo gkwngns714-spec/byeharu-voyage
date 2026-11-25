@@ -103,7 +103,7 @@ export function SignTheBook() {
 
         <p className="mt-4 text-t-label text-ink-muted">{t('found.countryQ')}</p>
         <div className="mt-2">
-          <NationPicker value={nation} onChange={setNation} label={t('found.country')} />
+          <NationPicker value={nation} onChange={setNation} founding label={t('found.country')} />
         </div>
 
         {/* A refusal is DATA (DESIGN F.5): a sentence and at least one fix, printed as it arrives —

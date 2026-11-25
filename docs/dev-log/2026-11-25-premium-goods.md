@@ -162,3 +162,5 @@ Each city (size 3 or 5) once; never one that offers or makes the good, or whose 
 - A run that has bought may find the day's units taken by another company on arrival: it then sells at the normal price, as with any price move.
 - The Forge averages its materials' cost a unit instead of adding them (`forge_take`, 0281): the profit (and its tax) on a made good is
   overstated. Not touched.
+
+`left` on the face is what the city still takes today; `mine` is the lesser of it and what she made (it read 0 before anything was made). Proofs 221, 244.

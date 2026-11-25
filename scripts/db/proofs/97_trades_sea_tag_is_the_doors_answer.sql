@@ -51,7 +51,7 @@ begin
       perform cmd.assume_identity(c_a);
     else
       perform cmd.assume_identity(c_j);
-      v_r := cmd.found_house('Casa Etiqueta Longe 97', 'JPN');
+      v_r := jsonb_build_object('ok', true, 'nation', 'JPN', 'player_id', public.new_house(auth.uid(), 'Casa Etiqueta Longe 97', 'JPN', (select n.capital_port_code from public.nations n where n.code = 'JPN')));   -- 0512: no door founds one outside Europe now; the companies that are stay
       v_pl := (v_r ->> 'player_id')::uuid;
     end if;
     select f.id, f.port_id, p.code into v_fl, v_port, v_ocode from public.fleets f join public.ports p on p.id = f.port_id where f.player_id = v_pl;

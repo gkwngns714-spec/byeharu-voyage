@@ -87,7 +87,7 @@ begin
   select v_pl, v_lis, r.ingredient_id, r.qty * 4, 5 from public.goods_recipes r where r.product_id = v_g;
   v_r := cmd.forge_good(v_lis, v_g, 4);
   v_p := (select e->'premium' from jsonb_array_elements(world.goods_forge(v_lis)->'recipes') e where e->>'product' = v_code);
-  if v_r->>'ok' <> 'true' or v_p->>'port' <> 'LIS' or (v_p->>'mult')::numeric <> 4 or (v_p->>'left')::numeric <> 4 or (v_p->>'made')::numeric <> 4 then
+  if v_r->>'ok' <> 'true' or v_p->>'port' <> 'LIS' or (v_p->>'mult')::numeric <> 4 or (v_p->>'left')::numeric <> 30 or (v_p->>'mine')::numeric <> 4 or (v_p->>'made')::numeric <> 4 then
     raise exception 'PROOF 221 FAIL: the Forge: % %', v_r, v_p;
   end if;
   perform cmd.do_take(v_fl, jsonb_build_object('good', v_g, 'qty', 4));

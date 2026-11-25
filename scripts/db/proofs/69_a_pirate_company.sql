@@ -93,7 +93,7 @@ begin
   -- ── FOUNDED ──
   v_w0 := pg_temp.w_69();
   perform cmd.assume_identity(c_uid_p);
-  v_r := cmd.found_house('Skull Company 0f69', v_code);
+  v_r := jsonb_build_object('ok', true, 'nation', v_code, 'player_id', public.new_house(auth.uid(), 'Skull Company 0f69', v_code, (select n.capital_port_code from public.nations n where n.code = v_code)));   -- 0512: no door founds one outside Europe now; the companies that are stay
   if (v_r ->> 'ok') is distinct from 'true' then
     raise exception 'PROOF 69 FAIL: found_house under the skull answered %', v_r;
   end if;

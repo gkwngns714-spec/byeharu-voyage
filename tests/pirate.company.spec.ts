@@ -10,8 +10,8 @@ import { LANGS } from './korean.paused'
 // A COMPANY UNDER THE SKULL, ON THE GLASS (0338's knob `pirates_joinable`, 0380's `pirate` key; owner row 284 "yes they can", row 324
 // "do all, make everything work"). Proof 69 plays her through the real commands; this drives the pages she meets, lit, at 390 x 844 and
 // 1280 x 800, in English and Korean:
-//   * the picker offers the eleven, and choosing the skull SAYS WHAT IT COSTS before she presses Start (the server names the pirate power);
-//   * a company founded under the skull through cmd.found_house opens as a company of the Brethren, and her Levels page lists the ten
+//   * a new company chooses among the countries of Europe (0512), never the skull; what the skull costs is said at Profile's change of country;
+//   * a company under the skull opens as a company of the Brethren, and her Levels page lists the ten
 //     crowns by their names IN HER LANGUAGE, with their flags (the list printed the server's English names in Korean);
 //   * her own free port does not say "half: your country" beside a tax of 0;
 //   * a company of a crown changes country to the Brethren through Profile's own picker and button.
@@ -58,27 +58,17 @@ for (const lang of LANGS) {
   for (const size of SIZES) {
     const tag = `${lang}, ${size.width}`
 
-    test(`the picker offers the eleven and says what the skull costs (${tag})`, async ({ page, request, baseURL }) => {
+    test(`a new company chooses a country of Europe, and never the skull (${tag})`, async ({ page, request, baseURL }) => {
       test.setTimeout(600_000)
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
       await open(page, lang, size, serveBrethrenOpen, 'ui/gates/found')
       const picker = page.getByTestId('nation-picker')
-      await expect(picker.locator('[data-testid^="nation-"]')).toHaveCount(GREAT_POWERS.length, { timeout: 60_000 })
-      await expect(page.getByTestId('nation-skull'), 'no word of the skull while a crown is chosen').toHaveCount(0)
-      const begin = (await page.getByTestId('found-begin').innerText()).trim()
-      await picker.getByTestId(`nation-${PIRATE_POWER}`).click()
-      const note = page.getByTestId('nation-skull')
-      await expect(note).toBeVisible()
-      await expect(note).toHaveText(translate(lang, 'found.skull'))
-      // how she begins names her own capital now, not the capital of the crown that was chosen first
-      await expect(page.getByTestId('found-begin')).not.toHaveText(begin)
-      // the note stands inside the form card, whole
-      const card = (await page.getByTestId('found-form').boundingBox())!
-      const box = (await note.boundingBox())!
-      expect(box.x, 'the note starts inside the card').toBeGreaterThanOrEqual(card.x)
-      expect(box.x + box.width, 'the note ends inside the card').toBeLessThanOrEqual(card.x + card.width + 0.5)
+      // 0512 (the owner: "your home COUNTRY (EUROPE)"): the served `foundable`; the skull and the four of Asia are for a change of country
+      for (const c of ['PRT', 'ESP', 'FRA', 'ENG', 'NLD', 'OTT']) await expect(picker.getByTestId(`nation-${c}`)).toBeVisible({ timeout: 60_000 })
+      await expect(picker.locator('[data-testid^="nation-"]')).toHaveCount(6)
+      await expect(picker.getByTestId(`nation-${PIRATE_POWER}`)).toHaveCount(0)
       await fits(page, 'Start')
-      await shot(page, `picker-skull-${lang}-${size.width}`)
+      await shot(page, `picker-europe-${lang}-${size.width}`)
     })
 
     test(`a company under the skull: her Levels page names the crowns in her language, her free port asks no half (${tag})`, async ({ page, request, baseURL }) => {

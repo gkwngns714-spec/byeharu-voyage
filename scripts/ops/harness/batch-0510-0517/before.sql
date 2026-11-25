@@ -17,6 +17,8 @@ select json_build_object(
   'head', (select max(version) from supabase_migrations.schema_migrations),
   'bodies_off', (select coalesce(json_agg(json_build_object('fn', w.fn, 'have', h.have)), '[]'::json)
                    from (values ('voyage.settle(uuid,timestamp with time zone)', '1809e424046a2dfb321f8345659702cd'),
+                                ('world.snapshot()', '61c159176199419f5ce878bc6526b21f'),
+                                ('public.run_need(uuid,uuid,uuid,jsonb)', 'eaa3c9c09df55cf2bc39f6527c18a74c'),
                                 ('world.market(uuid)', 'c855d403c735e297579032ba6bb81114'),
                                 ('voyage.report_line(integer,text,jsonb)', '9cec8948d88df53e23d8c5e741d7cfea'),
                                 ('public.client_rpc_entry_points()', 'b14f2a1c2231bae88cd1d2005b57b71b'),
@@ -24,6 +26,7 @@ select json_build_object(
                                 ('public.fleet_job_set_for(uuid,uuid,text,jsonb)', 'da1a0d55c91cd239539f4ebaff048b10'),
                                 ('public.sea_routes(uuid,integer,numeric,jsonb)', '0bd3e864b56f05950ab335268521131c'),
                                 ('world.quote_priced(uuid,uuid,numeric,text,numeric,uuid,numeric,numeric,numeric,numeric)', '0e837b48ff97d74c5392ce9633a1f91f'),
+                                ('cmd.found_house(text,text)', '234bc83b157260f14882161010092fcc'),
                                 ('world.mid_terms(uuid,uuid)', '6ba0746ba6fc742584de419a895bab4c'),
                                 ('voyage.reach_passage(uuid,uuid,uuid,numeric)', 'ed4e1e4ef63ad69c2c210725b3b7846a'),
                                 ('voyage.forced_home(uuid,integer,uuid)', '99e30283333001752a30dc5a664ee93e'),
@@ -47,6 +50,7 @@ select json_build_object(
                                 ('public.level_perk(uuid,text)', 'e2ed74ab0ff4357f02da30688baebb24'),
                                 ('public.fleet_job_end(uuid,jsonb)', '249dca4dbefeb161098a94821961dcbb'),
                                 ('world.workers()', '65ceab73f6fe4b93f400e080897ea62a'),
+                                ('public.fleet_run_quote(uuid,uuid,uuid,text,text,text[])', 'af48eb64101d73e877567ccfd9c2d1ee'),
                                 ('public.bargain_p1(uuid,uuid,uuid,uuid)', '83b4750eec39ae7f9d28f9046dc91eca'),
                                 ('public.hq_card(uuid)', '3713aea18b20d3ee7d37ab287b54e66e'),
                                 ('public.sea_floor(uuid,jsonb)', '48e59b52da928db7a36860e1a8423af0'),
@@ -55,10 +59,11 @@ select json_build_object(
                                 ('public.sea_gate(uuid,uuid,uuid,jsonb)', 'bd12541b95e57a0bc52496745b9f5fb6'),
                                 ('public.fleet_job_note(uuid,jsonb)', 'cebb1b3f92469ece8498f18b461df352'),
                                 ('public.fleet_jobs_due()', 'f2d229aed2876f3ae01a8bf84422e60b'),
+                                ('public.fleet_job_ends(uuid,uuid,jsonb,text)', '965198e767f7c308afc6750d626a716e'),
                                 ('world.good_mids(uuid)', 'e771e478c68d705091b1b6d6c981dadf')) w(fn, want)
                   cross join lateral (select md5(replace(pg_get_functiondef(to_regprocedure(w.fn)), E'', '')) as have) h
                   where h.have is distinct from w.want),
-  'new_there', (select coalesce(json_agg(u.s), '[]'::json) from unnest(array['public.premium_spend(uuid,uuid,uuid,numeric)', 'public.sea_closed(uuid,uuid)', 'voyage.happenings_on()', 'voyage.freeze_happenings(jsonb,boolean)', 'public.sea_passes(uuid,uuid)', 'public.sea_beyond(uuid,uuid,text[])', 'public.sea_passes_lit(uuid,uuid)', 'public.management_on()', 'public.trade_tax_cut(uuid,numeric)', 'public.job_wait_s(uuid)', 'public.job_sail_xp(uuid,uuid)', 'public.premium_on()', 'public.premium_lift()', 'public.premium_mult(numeric)', 'public.seas_kept(uuid)', 'voyage.happening_takes(uuid,integer,uuid,text,numeric,numeric)', 'voyage.crew_share(uuid,jsonb)', 'public.total_level(uuid)', 'public.hq_at(uuid,uuid)', 'public.hq_open_refusal(uuid,uuid)', 'world.hq_open(text)', 'cmd.open_hq(text)', 'public.sea_home(uuid)', 'public.sea_lies(uuid)', 'public.seas_relit_ready()', 'public.seas_relit_light(text)', 'public.passive_settings_on()', 'public.job_settings_judge(uuid,text,jsonb)', 'public.fleet_damage_pct(uuid)', 'public.job_settings_param(uuid,jsonb)', 'public.job_settings_lines(jsonb,jsonb)', 'public.job_damage_mended(uuid)', 'public.job_settings_room(uuid)', 'public.premium_units(uuid,uuid)', 'public.premium_left(uuid,uuid,uuid)', 'public.premium_mine(uuid,uuid)', 'public.premium_count(uuid,uuid,numeric)', 'public.premium_hold(uuid,uuid)', 'public.premium_port(uuid)', 'public.premium_face(uuid)']) u(s) where to_regprocedure(u.s) is not null),
+  'new_there', (select coalesce(json_agg(u.s), '[]'::json) from unnest(array['public.sea_closed(uuid,uuid)', 'voyage.happenings_on()', 'voyage.freeze_happenings(jsonb,boolean)', 'public.sea_passes(uuid,uuid)', 'public.sea_beyond(uuid,uuid,text[])', 'public.sea_passes_lit(uuid,uuid)', 'public.management_on()', 'public.trade_tax_cut(uuid,numeric)', 'public.job_wait_s(uuid)', 'public.job_sail_xp(uuid,uuid)', 'public.job_damage_mended(uuid)', 'public.job_settings_room(uuid)', 'public.premium_on()', 'public.premium_lift()', 'public.premium_mult(numeric)', 'public.seas_kept(uuid)', 'voyage.happening_takes(uuid,integer,uuid,text,numeric,numeric)', 'voyage.crew_share(uuid,jsonb)', 'public.total_level(uuid)', 'public.hq_at(uuid,uuid)', 'public.hq_open_refusal(uuid,uuid)', 'world.hq_open(text)', 'cmd.open_hq(text)', 'public.sea_home(uuid)', 'public.sea_lies(uuid)', 'public.seas_relit_ready()', 'public.seas_relit_light(text)', 'public.passive_settings_on()', 'public.job_settings_param(uuid,jsonb)', 'public.job_settings_judge(uuid,text,jsonb)', 'public.job_settings_lines(jsonb,jsonb)', 'public.fleet_damage_pct(uuid)', 'public.premium_units(uuid,uuid)', 'public.premium_left(uuid,uuid,uuid)', 'public.premium_mine(uuid,uuid)', 'public.premium_count(uuid,uuid,numeric)', 'public.premium_hold(uuid,uuid)', 'public.premium_spend(uuid,uuid,uuid,numeric)', 'public.premium_port(uuid)', 'public.premium_face(uuid)']) u(s) where to_regprocedure(u.s) is not null),
   'knobs_there', (select coalesce(json_agg(c.key), '[]'::json) from public.world_config c where c.key in ('management_level_enabled', 'trade_benefits_enabled', 'trade_tax_keep', 'seas_by_continent_at', 'happenings_bite', 'happenings_terms', 'passive_settings_enabled', 'premium_goods_enabled', 'premium_mult_near', 'premium_mult_far', 'premium_near_nm', 'premium_far_nm', 'premium_day_units', 'premium_purse_share', 'premium_price_lift')),
   'switches', (select json_object_agg(c.key, c.value) from public.world_config c where c.key in ('economy_closed', 'city_treasury_enabled', 'jobs_wait_enabled', 'wreck_sells_enabled', 'fleet_jobs_enabled', 'influence_enabled')),
   'payers', (select count(*) from public.port_treasury t where t.ducats - t.reserve >= 40000),

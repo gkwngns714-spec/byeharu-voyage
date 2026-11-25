@@ -15,16 +15,19 @@ export function NationPicker({
   value,
   onChange,
   label,
+  founding = false,
 }: {
   value: string
   onChange: (code: string) => void
   /** Names the set for assistive tech. Not painted. */
   label: string
+  /** Start your company: the countries a NEW company may choose (`foundable`, 0512: Europe). Else any it may change to. */
+  founding?: boolean
 }) {
   const t = useT()
   const nationByCode = useWorld((s) => s.nationByCode)
   const nations = Object.values(nationByCode)
-    .filter((n) => n.joinable)
+    .filter((n) => (founding ? n.foundable : n.joinable))
     .sort((a, b) => a.name.localeCompare(b.name))
   return (
     <>

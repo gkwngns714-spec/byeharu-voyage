@@ -70,7 +70,7 @@ begin
 
   -- ── CC_JAPAN ──
   perform cmd.assume_identity(c_j);
-  v_r := cmd.found_house('Casa Seto 96', 'JPN');
+  v_r := jsonb_build_object('ok', true, 'nation', 'JPN', 'player_id', public.new_house(auth.uid(), 'Casa Seto 96', 'JPN', (select n.capital_port_code from public.nations n where n.code = 'JPN')));   -- 0512: no door founds one outside Europe now; the companies that are stay
   v_pj := (v_r ->> 'player_id')::uuid;
   select id into v_fj from public.fleets where player_id = v_pj;
   select c.* into v_c from c96 c join public.sea_zones z on z.code = c.zb

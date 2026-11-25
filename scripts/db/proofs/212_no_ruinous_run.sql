@@ -90,7 +90,7 @@ begin
     end if;
     update public.world_config set value = '1000000'::jsonb where key = 'run_guard_hull_share';   -- the purse's question alone
     v_n := public.run_need(v_a, v_f, v_isl, v_l);
-    if v_n->>'wait' is distinct from 'purse' or v_n->>'sentence' !~ '^purse 8,240, fees and repair need [0-9,]+$' then
+    if v_n->>'wait' is distinct from 'purse' or v_n->>'sentence' !~ '^purse 8,240, her way to the sale costs [0-9,]+$' then
       raise exception 'NR_HERS: her purse does not stop the run: %', v_n;
     end if;
     raise notice 'PASS: NR_HERS — "%": stores %, dock fees % over % sails, crew %, a repair %, one storm %', v_n->>'sentence',
