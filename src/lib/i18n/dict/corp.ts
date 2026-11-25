@@ -97,6 +97,7 @@ export const corpDict = defineDict({
     mustDock: 'Dock first',
     noGuns: 'No guns',
     noPirates: 'No pirates',
+    far: 'Far',
     comeHome: 'Come home',
     log: 'Log',
     gold: 'Gold',

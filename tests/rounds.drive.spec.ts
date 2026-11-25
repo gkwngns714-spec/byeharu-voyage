@@ -67,6 +67,10 @@ for (const size of [
     expect(await small()).toEqual([])
     expect(await sideways(page)).toBe(false)
     await shot('2-combat')
+    // a sea beyond a normal chain of legs is listed with its sailed time and cannot be chosen
+    const far = form.locator('[data-testid="round-sea"][data-far="true"]').first()
+    await expect(far).toBeDisabled()
+    await expect(far).toContainText(/^.+Far · [\d,]+ miles · \d+h/)
     const open = form.locator('[data-testid="round-sea"]:not([disabled])')
     if ((await open.count()) > 1) {
       const before = await form.getByTestId('round-cost').getAttribute('data-hull')

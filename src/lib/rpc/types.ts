@@ -3630,7 +3630,7 @@ export type RoundsView =
       /** 0524: what each fleet carries home, and what a capital gives for one (null: dark). */
       artifacts?: { tiers: { tier: string; gold: number; rp: number }[]; kept: { fleet: string; tier: 'uncommon' | 'rare' | 'very_rare'; qty: number }[] } | null
       /** 0535: the seas a docked fleet may be sent to work, the nearest base of each; its own first. */
-      seas?: { sea: string; name: string; base: string; nm: number; pirates: boolean }[]
+      seas?: { sea: string; name: string; base: string; nm: number; pirates: boolean; /** real seconds of the sail there */ seconds: number; /** more legs than a normal chain: listed, not to be chosen */ far: boolean }[]
       runs: RoundRun[]; works: { work: string; kind: 'combat' | 'sea'; word: string; skill: string; level: number; open: boolean; terms: RoundTerms | null }[] }
 
 /** 0481: what a job did last: a run it started (its note), a wait for nothing to do, or the code it stopped on. */

@@ -48,7 +48,7 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
   const work = lit.works.find((w) => w.kind === kind) ?? null
   const seas = lit.seas ?? []
   const [picked, setBase] = useState<string | null>(null)
-  const base = picked ?? seas.find((s) => kind === 'sea' || s.pirates)?.base ?? null
+  const base = picked ?? seas.find((s) => !s.far && (kind === 'sea' || s.pirates))?.base ?? null
   const [take, setTake] = useState<Record<string, string>>({})
   const [stop, setStop] = useState<Record<string, string>>({})
   const [then, setThen] = useState<'repeat' | 'home'>('repeat')
@@ -68,8 +68,8 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
     ? [
         { key: 'food', word: 'corp.food', text: formatFixed(terms.food, 2) },
         { key: 'water', word: 'corp.water', text: formatFixed(terms.water, 2) },
-        { key: 'crew', word: 'corp.crew', text: formatFixed(terms.crew, 1) },
-        ...(kind === 'combat' ? [{ key: 'ammo', word: 'corp.ammo' as TKey, text: formatFixed(terms.ammo ?? 0, 1) }, { key: 'hull', word: 'corp.hull' as TKey, text: `${formatFixed((terms.hull ?? 0) * 100, 1)}%` }] : []),
+        { key: 'crew', word: 'corp.crew', text: formatFixed(terms.crew, 2) },
+        ...(kind === 'combat' ? [{ key: 'ammo', word: 'corp.ammo' as TKey, text: formatFixed(terms.ammo ?? 0, 2) }, { key: 'hull', word: 'corp.hull' as TKey, text: `${formatFixed((terms.hull ?? 0) * 100, 1)}%` }] : []),
       ]
     : []
   return (
@@ -90,14 +90,15 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
                     key={s.sea}
                     type="button"
                     aria-pressed={s.base === base}
-                    disabled={none}
+                    disabled={none || s.far}
                     onClick={() => setBase(s.base)}
                     className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-control px-3 text-left transition ${s.base === base ? 'bg-accent-soft ring-1 ring-inset ring-accent' : 'bg-surface hover:bg-surface-2'} disabled:opacity-45`}
                     data-testid="round-sea"
                     data-base={s.base}
+                    data-far={s.far}
                   >
                     <span className="min-w-0 break-words text-t-body text-ink">{s.name}</span>
-                    <span className="shrink-0 text-t-caption tabular-nums text-ink-muted">{none ? t('corp.noPirates') : s.nm === 0 ? names.port(s.base) : `${names.port(s.base)} · ${formatMiles(s.nm)}`}</span>
+                    <span className="shrink-0 text-t-caption tabular-nums text-ink-muted">{none ? t('corp.noPirates') : s.nm === 0 ? names.port(s.base) : `${s.far ? t('corp.far') : names.port(s.base)} · ${formatMiles(s.nm)} · ${formatRealShort(s.seconds * 1000)}`}</span>
                   </button>
                 )
               })}
