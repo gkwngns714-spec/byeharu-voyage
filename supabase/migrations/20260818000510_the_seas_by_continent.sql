@@ -18,7 +18,7 @@
 --                               that asks more, and, for a company whose capital is outside Europe, her old home rank's seas. Every other change asks LESS.
 --                               (The water her FLEETS lie in beyond her rung is pass-home's, 0513.)
 --   public.sea_closed(player, fleet)   the seas shut to her now, each asked of public.sea_judge with her floors, less the ones kept. NEW, one reading.
---   public.sea_floor            made again with the two zones beside their asks (zone, home_zone); its four first answers are as they were.
+--   public.sea_floor            SUPERSEDES 0396's body (the same answers, re-cut): made again with the two zones beside their asks (zone, home_zone); its four first answers are as they were.
 --   public.sea_judge (3 hunks), public.npc_sea_floor (2)  A MERCHANT'S HOME WATERS ARE GROUPED BY title_was: the world's merchants (title null: only
 --                               the wave binds them) sail exactly where they sailed, whatever sea_conditions_bite_npc says.
 --   public.sea_gate, public.sea_conditions_ready (1 hunk each), public.sea_routes, world.sea_conditions (2 each), voyage.reach_passage (6): the kept seas are
