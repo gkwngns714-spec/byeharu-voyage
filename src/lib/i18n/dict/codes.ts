@@ -194,7 +194,7 @@ export const codesDict = defineDict({
     E_CONFIRM: 'Name not typed right.',
     E_NOT_EUROPE: 'Choose a country of Europe.',
     E_RESTART_TODAY: 'Restarted today.',
-    E_CONTRACT_OUT: 'A contract of yours is out.',
+    E_CONTRACT_OUT: 'A delivery of yours is under way.',
     E_BAD_ORDER: 'No such order.',
     E_WORLD_UNAVAILABLE: 'World not available.',
     E_WORLD_BROKE: 'World out of money.',

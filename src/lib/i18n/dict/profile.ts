@@ -28,7 +28,7 @@ export const profileDict = defineDict({
     // 0509: close the company and found again
     restart: 'Restart',
     restartTitle: 'Restart company',
-    restartWarning: 'Your company closes for good: ships, cargo, stores, captains, shares and levels go. Your coin goes to your capital. You begin again with the usual start. Once a day.',
+    restartWarning: 'Your company closes for good: ships, cargo, supplies, captains, shares and levels go. Your coin goes to your capital. You begin again with the usual start. Once a day.',
     restartConfirm: 'Type {name} to confirm',
   },
   ko: {

@@ -85,7 +85,7 @@ lock wait answers `E_BUSY`; any refusal, also of the founding, undoes everything
 
 Local PGlite on main's chain + 0498 + 0503: 0509 applies in 0.8 s with its probe; proofs 213 (8 markers: every holding, closed economy,
 world sum to the coin) and 214 (4 markers) green; before / after harness run; `tsc`, `eslint`, `vite build`; `tests/restartCompany.spec.ts`
-at 390, 320 and 1440 px. The results of the other specs are in the report.
+at 390, 320 and 1440 px. Also green: rpc.surface, rpc.companyName, companyName, db.budget, news.lint, i18n, words, names.whole, city.page, city.phone, hq.corp, hq.join, hq.inplace, pages.standStill, profile.design; proofs 45, 57, 69, 91, 205 (and those their names match).
 
 ## 9. Not verified
 
