@@ -39,6 +39,14 @@ declare
   v_m     jsonb;
   v_ev    jsonb;
 begin
+  -- THE MARKET IS PINNED (proof.pin_market, scripts/db/market-fixture.mjs: the one authority, this proof's own key), its drift slot
+  -- parked a day ahead. The famine's sale is held against the plain sale quoted BEFORE the event, and world.market, read between the
+  -- two, winds the drift of a harbour whose slot is behind the clock: a random() step (0010) on the very price compared. Unpinned, the
+  -- same sale read x1.89 to x2.08 of the plain one over eighteen runs, with 0498 and without (PR #865's red, 2026-11-25: 16.50 ->
+  -- 36.56, x2.22, past the 10 % allowed); pinned it is x2.00 every run. Every assertion is as it was.
+  if (proof.pin_market('00000000-0469-4000-8000-000000000172'::uuid, 'proof-172') ->> 'nonzero')::int < 14000 then
+    raise exception 'PROOF 172 FAIL: the market was not pinned';
+  end if;
   select p.id into v_lis from public.ports p
    where p.kind = 'HARBOUR' and p.code <> 'CAD'
      and exists (select 1 from public.port_goods pg join public.goods g on g.id = pg.good_id
