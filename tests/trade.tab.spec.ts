@@ -111,7 +111,7 @@ for (const size of [
 
       // ── A PRESS ON THE NAME CHANGES THE FLEET IN PLACE, AND THE LIST FOLLOWS ────────────────────
       const address = page.url()
-      const where = async () => ({ strip: (await rect(page.getByTestId('fleet-strip'))).y, board: await rect(board), card: await rect(mine) })
+      const where = async () => ({ strip: (await rect(page.getByTestId('fleet-strip'))).y, board: await rect(board), card: await rect(mine), doors: await Promise.all(['cargo-open', 'trade-map-open', 'command-queue'].map(async (id) => rect(face.getByTestId(id)))) })
       const before = await where()
       await picker.click()
       await expect(page.getByTestId('fleet-list')).toBeVisible()

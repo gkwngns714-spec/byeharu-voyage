@@ -409,11 +409,12 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
               {status}
               {events}
               {chips}
-              {fromHere}
               {cargoRow}
               {mapRow}
               {routeRow}
               {ordersRow}
+              {/* last: it stands only once her best sales land, so above the doors it moved them on every change of fleet (2026-11-25) */}
+              {fromHere}
             </>
           ),
           main: (

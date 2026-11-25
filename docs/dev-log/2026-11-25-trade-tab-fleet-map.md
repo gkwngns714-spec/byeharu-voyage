@@ -24,6 +24,10 @@ a map, showing no NPCs but only locations, where you can click them for info –
   whether or not a sale has landed. Without it, changing the fleet changed the cards' height (182 to 166 px at 390). Nothing else
   came over: that branch's one trade list is this tab's own board hosted on HQ, and it deletes the tab, the picker and the strip.
 
+- **Wide glass: the "From here" block stands under the doors.** Above them it moved Cargo, Map, Route and Orders by 174 px when the
+  fleet changed and again when her best sales landed.
+- **"No gain" stands beside its red figure** (it took a line of its own and made its row of cards 18 px taller).
+
 ## Proof
 
 `tests/trade.tab.spec.ts`, 390 and 1440, two fleets: the name is at the top and 44 px; a row pressed changes the fleet with the
@@ -36,5 +40,5 @@ again at her own harbour through the map; nothing moves over 4 s; no sideways sc
 - The map is one press away (the "Map" door), not on the face: a phone's Trade face has no line to spare (tests/onepage.spec.ts).
 - On a phone the whole world at 0 % is 358 x 179 px: names crowd, and a press near one can take its neighbour. Zoom first.
 - On a wide glass the sheet covers the right quarter of the map and the page's city name.
+- A card whose sale is short of money AND goes to a two-line city is still a line taller than its neighbours.
 - The lifted card height leaves an empty band in a card whose sale is one line.
-- On a wide glass the left pane's doors shift up when the fleet picked has no "From here" block (not changed here).

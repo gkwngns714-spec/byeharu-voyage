@@ -316,12 +316,10 @@ function SaleBlock({
             NOT RED (2026-11-22 play-test): a sale she can pay for still stands, so this is a fact, not a refusal; while she sails
             with her coin in cargo it stood red on every card and read as an error. The refusal (no sale she can pay for) is the
             red line above. */}
-        {money(sale) !== null ? (
+        {money(sale) !== null && (
           <span className="shrink-0 font-medium text-ink-muted" data-testid="best-sale-money">
             {t('desk.moneyHaveNeed', money(sale)!)}
           </span>
-        ) : (
-          !sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>
         )}
         {/* 0475: in the first hour, a sale beyond the near trips is marked, not hidden (served `near` false; absent while dark) */}
         {sale.near === false && (
@@ -344,6 +342,9 @@ function SaleBlock({
               ·<span className="ml-0.5">{time}</span>
             </span>
           )}
+          {/* "No gain" stands with its red figure and gives way to it: on a line of its own it made the card, and its whole row, a line
+              taller (218 against 200 px at 1440, 2026-11-25). The line's title says it too. */}
+          {money(sale) === null && !sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>}
           {spark}
         </span>
       </span>
