@@ -1,6 +1,8 @@
-# 2026-11-25 — `near-round`: 0498 (dark: `near_round_enabled`), proof 201
+# 2026-11-25 — `near-round`: 0499 (dark: `near_round_enabled`), proof 201
 
-Stacked on `jobs-never-lose` (0497). Server only here; the client half is on `hq-figures`. Nothing touched production; no knob but
+**Renumbered 2026-11-25: this file was 0498 and is 0499.** 0497 is `a-wreck-can-sell` (urgent, off main); the stack moved up by one (jobs-never-lose 0498, near-round 0499, fit-to-sail 0500). The numbers below are the new ones; the measurements were taken under the old.
+
+Stacked on `jobs-never-lose` (0498). Server only here; the client half is on `hq-figures`. Nothing touched production; no knob but
 the new switch.
 
 ## What it is
@@ -8,8 +10,8 @@ the new switch.
 A `best` job with `{within: nm}` (and an optional `base` harbour; her home by default). **The best plan, extended: no second planner.**
 
 - Each run: the best paying card of `world.best_sales` where she lies, by profit a second, whose lines (0494's harbour legs,
-  `public.sale_lines`) are within her miles. Never at a loss: a profit above nought, for the units the sale's harbour takes (0497).
-- Nothing pays: away from her base she sails to it; at her base she waits as 0497 waits (asked again 10 minutes on, not stopped).
+  `public.sale_lines`) are within her miles. Never at a loss: a profit above nought, for the units the sale's harbour takes (0498).
+- Nothing pays: away from her base she sails to it; at her base she waits as 0498 waits (asked again 10 minutes on, not stopped).
 - The door (`cmd.set_fleet_job 'best'`) keeps `{within, base}`; `within` is held between 50 and 3,000 nm in the function (no knob).
 - `world.actions` offers it first: `sea:near`, "Trade near Lisbon", the door's job `{within: 1440}`.
 - `world.workers`: her action is `sea:near` with `within`, `base` and `sentence`.
@@ -29,7 +31,7 @@ passes the bar.
 
 ## Measured: the real job, the real tick, three game days that turn (local PGlite, rolled back)
 
-`scripts/ops/harness/hq-figures/measure-near.mjs`. A fresh Barca, 40,000 coin, `{within: 1440}`, 0497 lit.
+`scripts/ops/harness/hq-figures/measure-near.mjs`. A fresh Barca, 40,000 coin, `{within: 1440}`, 0498 lit.
 
 | Home | Near round | Waiting Repeat (same world, `measure-cap.mjs`) | selling runs a day | kinds | sails home | runs that lost coin | plan, mean / max |
 |---|---|---|---|---|---|---|---|
@@ -46,15 +48,15 @@ passes the bar.
 
 ## Checked
 
-- 0498's self-assert on the snapshot at 0497: passed. Proof 201: 7/7. Proofs 200, 199, 184, 195, 197: pass.
-- `tsc -b`, eslint, `vite build` (the browser image with 0498), `db.budget`, `news.lint`: passed.
+- 0499's self-assert on the snapshot at 0498: passed. Proof 201: 7/7. Proofs 200, 199, 184, 195, 197: pass.
+- `tsc -b`, eslint, `vite build` (the browser image with 0499), `db.budget`, `news.lint`: passed.
 - The before / after reads: `scripts/ops/harness/near-round/`.
 
 ## Decided by default (the owner may reverse)
 
 - `within` is offered at 1,440 nm and held between 50 and 3,000.
 - No rate is served for the round (above).
-- Lit without 0497's switch the round still runs, but its cards are not cut to the sale harbour's allowance.
+- Lit without 0498's switch the round still runs, but its cards are not cut to the sale harbour's allowance.
 
 ## Not verified
 

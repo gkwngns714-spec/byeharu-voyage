@@ -1,8 +1,8 @@
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 201 - THE NEAR ROUND  (migration 0498, dark: near_round_enabled; docs/dev-log/2026-11-25-near-round.md)
+-- PROOF 201 - THE NEAR ROUND  (migration 0499, dark: near_round_enabled; docs/dev-log/2026-11-25-near-round.md)
 --
 --   A `best` job with {within: nm}: each run the best paying sale within those miles, never at a loss; nothing pays: she sails to
---   her base and waits there as 0497 waits. The best plan extended, no second planner. Rolled back by proof.mjs.
+--   her base and waits there as 0498 waits. The best plan extended, no second planner. Rolled back by proof.mjs.
 --
 -- @pass NR_DARK     dark: the door refuses `within` (E_NOT_IN_USE) and world.actions starts with the Best run
 -- @pass NR_OFFER    lit: world.actions offers the near round first (sea:near, "Trade near Lisbon", no rate, basis none); the door takes it as {within 1440, base LIS}; her row is it
@@ -15,7 +15,7 @@
 
 do $p$
 declare
-  c_a    constant uuid := '00000000-0498-4000-8000-0000000002a1';
+  c_a    constant uuid := '00000000-0499-4000-8000-0000000002a1';
   v_a    uuid;
   v_fa   uuid;
   v_lis  uuid;
@@ -34,9 +34,9 @@ begin
   -- THE MARKET IS PINNED (proof.pin_market, scripts/db/market-fixture.mjs: the one authority, this proof's own key) and THE SEA IS
   -- CALMED (hazard_p_max 0, as proofs 04, 11, 157, 184). Which run pays at Lisbon, and whether four times a harbour's stock sinks
   -- it, are facts of the market, and every from-zero apply deals another (with every quay empty, every price at its floor or no
-  -- price differing this proof went red, 2026-11-25; so did 0497's own probe on prod's market). A voyage's days are rolled on its
+  -- price differing this proof went red, 2026-11-25; so did 0498's own probe on prod's market). A voyage's days are rolled on its
   -- own id. The pinned market is drawn on the authored codes, the same in every world. Every assertion is as it was.
-  if (proof.pin_market('00000000-0498-4000-8000-000000000201'::uuid, 'proof-201') ->> 'nonzero')::int < 14000 then
+  if (proof.pin_market('00000000-0499-4000-8000-000000000201'::uuid, 'proof-201') ->> 'nonzero')::int < 14000 then
     raise exception 'PROOF 201: the market was not pinned';
   end if;
   update public.world_config set value = to_jsonb(0) where key = 'hazard_p_max';

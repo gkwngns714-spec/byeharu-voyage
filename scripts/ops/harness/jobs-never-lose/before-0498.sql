@@ -1,7 +1,7 @@
--- 0497 JOBS NEVER LOSE, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
---   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/jobs-never-lose/before-0497.sql
--- Expect: head 20260818000496; switch null (no row yet); new_fns 0; hunked 6 (the six bodies 0497 hunks are there).
---   The digests are printed for the record: 0497 refuses at the push if a hunk does not occur exactly once, and nothing changes.
+-- 0498 JOBS NEVER LOSE, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
+--   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/jobs-never-lose/before-0498.sql
+-- Expect: head 20260818000497; switch null (no row yet); new_fns 0; hunked 6 (the six bodies 0498 hunks are there).
+--   The digests are printed for the record: 0498 refuses at the push if a hunk does not occur exactly once, and nothing changes.
 -- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, world_config by key, the catalog. No player's row is read and no
 --   function that writes is called. ROLLBACK: nothing to roll back (read only; ends with rollback).
 begin transaction read only;

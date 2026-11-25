@@ -3647,7 +3647,7 @@ export interface ActionItem {
 
 /** THE ONE SHAPE of an action (`public.action_shape`): a sea run, a land job, a make job. */
 export interface WorkerAction {
-  /** sea:best | sea:near (0498) | sea:fixed:<good>:<buy>:<sell>:<sell|store> | sea:haul:<yard> | land:<job>. A running action and its option share it. */
+  /** sea:best | sea:near (0499) | sea:fixed:<good>:<buy>:<sell>:<sell|store> | sea:haul:<yard> | land:<job>. A running action and its option share it. */
   id: string
   kind: 'sea' | 'gather' | 'make'
   skill: string
@@ -3678,7 +3678,7 @@ export interface WorkerAction {
   /** A sea run set to repeat, over one game day by the server's own rules (`public.run_day`): the whole runs the day's allowance, the
    *  quay's stock and the day's length take, the coin they leave (every run after the first priced into the press of the runs before
    *  it), their seconds, and what stops her. `net` and `interval_s` stay ONE run's. */
-  /** 0497 (jobs_wait_enabled lit): `stop` low: the day ends at the first run that would leave no profit (the job waits there), and
+  /** 0498 (jobs_wait_enabled lit): `stop` low: the day ends at the first run that would leave no profit (the job waits there), and
    *  `runs` may be 0. */
   day?: { runs: number; coin: number; seconds: number; stop: 'allowance' | 'time' | 'low' }
   /** Sea: what `cmd.set_fleet_job(fleet, job.kind, job.params)` takes. */
@@ -3690,7 +3690,7 @@ export interface WorkerAction {
   sell?: string
   end?: 'sell' | 'store'
   units?: number
-  /** 0498, the near round (sea:near): the miles of her round, the harbour she comes back to (a CODE), and its plain words
+  /** 0499, the near round (sea:near): the miles of her round, the harbour she comes back to (a CODE), and its plain words
    *  ("Trade near Lisbon"). It carries no rate (basis none) until her own runs give one. */
   within?: number
   base?: string
@@ -3736,7 +3736,7 @@ export interface WorkerRow {
   action: WorkerAction | null
   progress: WorkerProgress | null
   stop: { code: string; sentence: string | null } | null
-  /** 0497: why a job that is NOT stopped waits, and when it is asked again (low: the run's quote leaves no profit now). Absent before 0497. */
+  /** 0498: why a job that is NOT stopped waits, and when it is asked again (low: the run's quote leaves no profit now). Absent before 0498. */
   wait?: { code: string; sentence: string; retry_at: string } | null
   runs: number
   /** Whole runs of hers the `runs` basis was read from (0: not enough yet). */

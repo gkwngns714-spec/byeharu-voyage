@@ -1,7 +1,7 @@
--- 0498 THE NEAR ROUND, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
---   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/near-round/before-0498.sql
--- Expect: head 20260818000497; switch null (no row yet); new_fns 0; hunked 4 (the four bodies 0498 hunks are there); jobs_wait
---   printed for the reader (0498 changes neither switch).
+-- 0499 THE NEAR ROUND, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
+--   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/near-round/before-0499.sql
+-- Expect: head 20260818000498; switch null (no row yet); new_fns 0; hunked 4 (the four bodies 0499 hunks are there); jobs_wait
+--   printed for the reader (0499 changes neither switch).
 -- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, world_config by key, the catalog. No player's row is read and no
 --   function that writes is called. ROLLBACK: nothing to roll back (read only; ends with rollback).
 begin transaction read only;

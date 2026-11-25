@@ -1,6 +1,6 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- news: none (dark: nothing changes for a player until the owner lights jobs_wait_enabled)
--- 0497 - JOBS NEVER LOSE  (dark: the owner's switch jobs_wait_enabled, false)
+-- 0498 - JOBS NEVER LOSE  (dark: the owner's switch jobs_wait_enabled, false)
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- THE LEAD, 2026-11-25: "a Repeat or Best sea job plans a run only if the server's own quote of that run at that moment leaves a profit
 --   after tax, dock, wages, stores and the sail back; otherwise the job WAITS (not stopped), with a plain reason and a served retry
@@ -63,7 +63,8 @@
 --   probe's is planned: her wait is written by public.fleet_job_note and her start by public.fleet_job_open, the two steps
 --   public.tick_fleet_jobs makes for a due job (the tick itself would plan the real companies' due jobs first). Those two rows, the
 --   quay and Lisbon's purse are held for the seconds the probe runs, as before.
--- VERSION: 0497 (after 0496 `workers-read`; 0495 is `dividend-hourly`'s and touches none of these bodies).
+-- VERSION: 0498 (it was 0497 until 2026-11-25; 0497 is `a-wreck-can-sell`, which hunks cmd.do_sell, cmd.do_store and cmd.advance, none
+--   of these bodies; after 0496 `workers-read`; 0495 is `dividend-hourly`'s and touches none of them either).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -73,7 +74,7 @@ declare
                                     'public.run_day(uuid,uuid,uuid,uuid,uuid,numeric,numeric,numeric,numeric,numeric)'];
   c_new    constant text[] := array['public.jobs_wait_on()', 'public.fleet_run_quote(uuid,uuid,uuid,text,text,text[])',
                                     'public.sale_fit(uuid,uuid,uuid,jsonb)', 'public.cards_fit(uuid,uuid,uuid,jsonb,integer,boolean)'];
-  c_uid    constant uuid := '00000000-0497-4000-8000-000000000001';
+  c_uid    constant uuid := '00000000-0498-4000-8000-000000000001';
   v_t0        timestamptz := clock_timestamp();
   v_t         timestamptz;
   v_h         record;
@@ -120,13 +121,13 @@ begin
 
   -- ── 0. GUARD ──
   if exists (select 1 from public.world_config where key = 'jobs_wait_enabled') or to_regprocedure('public.jobs_wait_on()') is not null then
-    raise exception '0497 refuses: it has been applied once';
+    raise exception '0498 refuses: it has been applied once';
   end if;
   if to_regprocedure('public.run_day(uuid,uuid,uuid,uuid,uuid,numeric,numeric,numeric,numeric,numeric)') is null
      or to_regprocedure('public.job_trip(uuid,uuid,text[],boolean)') is null or to_regprocedure('public.fleet_job_tick_s()') is null
      or to_regprocedure('public.fleet_job_plan(uuid)') is null or to_regprocedure('public.hq_board_for(uuid)') is null
      or to_regprocedure('world.daily_cap_remaining(uuid,uuid,uuid)') is null or to_regprocedure('public.profit_tax(uuid,numeric,uuid)') is null then
-    raise exception '0497 refuses: 0496 (the workers and the day), 0481 (the standing jobs) or 0480 (the board) is not in this world';
+    raise exception '0498 refuses: 0496 (the workers and the day), 0481 (the standing jobs) or 0480 (the board) is not in this world';
   end if;
 
   -- ── 1. THE PRE-IMAGES ──
@@ -143,7 +144,7 @@ begin
   -- ── 2. THE KNOB ──
   insert into public.world_config (key, value, description) values
     ('jobs_wait_enabled', 'false'::jsonb,
-     '0497: THE SWITCH (the owner''s). true: a fixed standing job that sells is started only when the server''s quote of that run leaves a profit after the tax, the dock fees, the wages, the stores and the sail back, and otherwise WAITS (asked again 10 minutes on, never stopped); a card of world.best_sales is cut to the units its sale harbour''s day allowance takes before the Best job, world.actions or the HQ board use it; the HQ board ranks a trade card by its day''s coin an hour (public.run_day). false: every one of them as before 0497.');
+     '0498: THE SWITCH (the owner''s). true: a fixed standing job that sells is started only when the server''s quote of that run leaves a profit after the tax, the dock fees, the wages, the stores and the sail back, and otherwise WAITS (asked again 10 minutes on, never stopped); a card of world.best_sales is cut to the units its sale harbour''s day allowance takes before the Best job, world.actions or the HQ board use it; the HQ board ranks a trade card by its day''s coin an hour (public.run_day). false: every one of them as before 0498.');
 
   -- ── 3. THE RULES ──
   execute $f$
@@ -154,7 +155,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0497: THE SWITCH, read once: world_config jobs_wait_enabled.
+  -- 0498: THE SWITCH, read once: world_config jobs_wait_enabled.
   select public.wc('jobs_wait_enabled') = 'true'::jsonb
 $body$
   $f$;
@@ -167,7 +168,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0497: THE QUOTE OF A FIXED RUN, AT THIS MOMENT, for the fleet lying at its buy harbour p_from: p_good bought there, sold at p_sell,
+-- 0498: THE QUOTE OF A FIXED RUN, AT THIS MOMENT, for the fleet lying at its buy harbour p_from: p_good bought there, sold at p_sell,
 -- sailing p_codes (the harbours of the whole trip, there and back). Every figure is an authority's:
 --   units   what she can buy (public.fleet_buy_capacity: her hold, the stock, the day's allowance here, her purse), cut to what the
 --           SALE harbour's allowance takes today (world.daily_cap_remaining)
@@ -231,7 +232,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0497: ONE CARD OF world.best_sales ({good, basis, port, units, cost, profit, ...}) CUT TO WHAT ITS SALE HARBOUR TAKES NOW. A card
+-- 0498: ONE CARD OF world.best_sales ({good, basis, port, units, cost, profit, ...}) CUT TO WHAT ITS SALE HARBOUR TAKES NOW. A card
 -- prices the load she can BUY; the sale harbour's day allowance (world.daily_cap_remaining: its stock mark's share, less what she has
 -- traded there today) may take less, and the rest would stay aboard. The allowance takes the load: the card, untouched. It takes less:
 -- the card priced again for those units: `units`, `cost` and `profit` from world.quote and public.profit_tax, less the card's own fees
@@ -292,7 +293,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0497: THE CARDS A CALLER MAY USE, from world.best_sales' `goods` (the Best job, world.actions, the HQ board). DARK
+-- 0498: THE CARDS A CALLER MAY USE, from world.best_sales' `goods` (the Best job, world.actions, the HQ board). DARK
 -- (jobs_wait_enabled false): p_goods as it is, untouched. LIT: the paying cards (the callers' own filter: pays, a harbour, a profit,
 -- `near` not false, a time), by profit a second, each through public.sale_fit (cut to its sale harbour's allowance, or left out), until
 -- p_limit stand; at most p_limit + 4 are looked at. p_day (the board): each carries `per_hour`, THE DAY'S COIN AN HOUR of that run there
@@ -371,20 +372,20 @@ $body$
   end loop;
 
   -- ── 4. THE HUNKS (each OLD text once in the live body; each reverses) ──
-  create temp table hunks_0497 (fn text, ord int, old text, new text) on commit drop;
-  insert into hunks_0497 values
+  create temp table hunks_0498 (fn text, ord int, old text, new text) on commit drop;
+  insert into hunks_0498 values
   ('public.fleet_job_plan(uuid)', 1,
 $h$  v_end   jsonb;   -- 0492: what the fixed job's end and count make of this run (public.fleet_job_ends)
 $h$,
 $h$  v_end   jsonb;   -- 0492: what the fixed job's end and count make of this run (public.fleet_job_ends)
-  v_rq    jsonb;   -- 0497: the run's quote at this moment (public.fleet_run_quote)
+  v_rq    jsonb;   -- 0498: the run's quote at this moment (public.fleet_run_quote)
 $h$),
   ('public.fleet_job_plan(uuid)', 2,
 $h$    if v_at = v_buy then
       v_s := public.fleet_job_sails(f.id, f.port_id, v_st || v_sell);
 $h$,
 $h$    if v_at = v_buy then
-      -- 0497 (jobs_wait_enabled): A RUN THAT SELLS IS STARTED ONLY IF ITS QUOTE NOW LEAVES A PROFIT after the tax, the dock fees, the
+      -- 0498 (jobs_wait_enabled): A RUN THAT SELLS IS STARTED ONLY IF ITS QUOTE NOW LEAVES A PROFIT after the tax, the dock fees, the
       -- wages, the stores and the sail back (public.fleet_run_quote). No profit, nothing to buy, or the sale's harbour takes none today:
       -- she WAITS (public.fleet_job_note: asked again 10 minutes on; not stopped). The sale's allowance under what she can buy: the
       -- BUY names those units, so nothing she cannot sell is bought. A bring-home (STORE) is exempt.
@@ -407,14 +408,14 @@ $h$),
   ('public.fleet_job_plan(uuid)', 3,
 $h$        from jsonb_array_elements(coalesce(v_bs->'goods', '[]'::jsonb)) g(e)
 $h$,
-$h$        -- 0497: the cards cut to what each sale's harbour takes now (public.cards_fit; dark: the cards as they are)
+$h$        -- 0498: the cards cut to what each sale's harbour takes now (public.cards_fit; dark: the cards as they are)
         from jsonb_array_elements(public.cards_fit(j.player_id, f.id, f.port_id, v_bs->'goods', greatest(0, coalesce(public.wc_int('fleet_jobs_runs'), 12)), false)) g(e)
 $h$),
   ('public.fleet_job_note(uuid,jsonb)', 1,
 $h$  elsif p_plan->>'wait' in ('nothing', 'unpriced', 'identity') then
 $h$,
 $h$  elsif p_plan->>'wait' = 'low' then
-    -- 0497: the run's quote leaves no profit now: she waits, asked again no sooner than 10 minutes on; the job is not stopped
+    -- 0498: the run's quote leaves no profit now: she waits, asked again no sooner than 10 minutes on; the job is not stopped
     update public.fleet_jobs
        set next_at = now() + make_interval(secs => greatest(600, coalesce(public.wc_num('fleet_jobs_wait_s'), 900))),
            last = jsonb_build_object('at', now(), 'wait', 'low', 'sentence', coalesce(p_plan->>'sentence', 'prices low'), 'net', p_plan->'net')
@@ -425,7 +426,7 @@ $h$),
 $h$      'action', v_act, 'progress', v_prog, 'stop', v_stop, 'runs', coalesce(r.runs, 0),
 $h$,
 $h$      'action', v_act, 'progress', v_prog, 'stop', v_stop, 'runs', coalesce(r.runs, 0),
-      -- 0497: why a job that is not stopped waits, and when it is asked again (the job's own `last` and next_at)
+      -- 0498: why a job that is not stopped waits, and when it is asked again (the job's own `last` and next_at)
       'wait', case when r.has_job and r.paused_reason is null and r.last->>'wait' is not null and r.next_at > now()
                    then jsonb_build_object('code', r.last->>'wait', 'retry_at', r.next_at,
                           'sentence', coalesce(r.last->>'sentence', case r.last->>'wait' when 'nothing' then 'nothing pays now' else 'waiting' end)) end,
@@ -433,7 +434,7 @@ $h$),
   ('public.sea_actions_for(uuid,uuid)', 1,
 $h$      from jsonb_array_elements(coalesce(v_bs->'goods', '[]'::jsonb)) g(e)
 $h$,
-$h$      -- 0497: the cards cut to what each sale's harbour takes now (public.cards_fit; dark: the cards as they are)
+$h$      -- 0498: the cards cut to what each sale's harbour takes now (public.cards_fit; dark: the cards as they are)
       from jsonb_array_elements(public.cards_fit(p_player, p_fleet, v_at, v_bs->'goods', greatest(c_top, coalesce(public.wc_int('fleet_jobs_runs'), 12)), false)) g(e)
 $h$),
   ('public.run_day(uuid,uuid,uuid,uuid,uuid,numeric,numeric,numeric,numeric,numeric)', 1,
@@ -441,8 +442,8 @@ $h$  v_w      numeric;
 begin
 $h$,
 $h$  v_w      numeric;
-  v_pb     numeric := 0;   -- 0497: the buys of the runs before this one
-  v_ps     numeric := 0;   -- 0497: their sales
+  v_pb     numeric := 0;   -- 0498: the buys of the runs before this one
+  v_ps     numeric := 0;   -- 0498: their sales
   v_cb     numeric;
   v_cs     numeric;
   v_m      numeric;
@@ -456,7 +457,7 @@ $h$    v_sale := 0;
 $h$,
 $h$    v_sale := 0;
   elsif public.jobs_wait_on() then
-    -- 0497 (jobs_wait_enabled): A RUN THAT WOULD LEAVE NO PROFIT IS NOT STARTED (public.fleet_job_plan waits), so the day is its
+    -- 0498 (jobs_wait_enabled): A RUN THAT WOULD LEAVE NO PROFIT IS NOT STARTED (public.fleet_job_plan waits), so the day is its
     -- gaining runs. Each run is priced after the runs before it: its buy and its sale are the quay's walk from where they left it
     -- (world.quote of i runs' units less that of i - 1), its sale under the mark of the sales before it, less the profit tax and a
     -- run's other costs (the first run's: dock fees, wages, stores, the sail back). The first that leaves nothing ends the day.
@@ -496,42 +497,42 @@ $h$),
   ('public.run_day(uuid,uuid,uuid,uuid,uuid,numeric,numeric,numeric,numeric,numeric)', 3,
 $h$    'seconds', round(case when v_stop = 'allowance' then greatest(v_day, v_n * p_interval) else v_n * p_interval end),
 $h$,
-$h$    -- 0497: stopped by a run that would not pay (`low`), she waits for the day's turn as when the allowance stops her
+$h$    -- 0498: stopped by a run that would not pay (`low`), she waits for the day's turn as when the allowance stops her
     'seconds', round(case when v_stop in ('allowance', 'low') then greatest(v_day, v_n * p_interval) else v_n * p_interval end),
 $h$),
   ('public.hq_board_for(uuid)', 1,
 $h$        from jsonb_array_elements(coalesce(v_bs->'goods', '[]'::jsonb)) g(e)
 $h$,
-$h$        -- 0497: the cards cut to what each sale's harbour takes now, each with its day's coin an hour (public.cards_fit; dark: as they are)
+$h$        -- 0498: the cards cut to what each sale's harbour takes now, each with its day's coin an hour (public.cards_fit; dark: as they are)
         from jsonb_array_elements(public.cards_fit(p_player, f.id, f.port_id, v_bs->'goods', v_runs, true)) g(e)
 $h$),
   ('public.hq_board_for(uuid)', 2,
 $h$        'score', round(s.profit * 3600 / s.secs), 'profit', round(s.profit), 'seconds', round(s.secs),
 $h$,
-$h$        -- 0497 (lit): coin an hour is the run's DAY (public.run_day through public.cards_fit), not one trip over its seconds; `profit` stays the trip's
+$h$        -- 0498 (lit): coin an hour is the run's DAY (public.run_day through public.cards_fit), not one trip over its seconds; `profit` stays the trip's
         'score', case when public.jobs_wait_on() then (s.e->>'per_hour')::numeric else round(s.profit * 3600 / s.secs) end, 'profit', round(s.profit), 'seconds', round(s.secs),
 $h$);
 
-  for v_h in select h.fn from hunks_0497 h group by h.fn order by h.fn loop
+  for v_h in select h.fn from hunks_0498 h group by h.fn order by h.fn loop
     v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'\r', '');
     v_pre := v_def;
-    for x in select * from hunks_0497 h where h.fn = v_h.fn order by h.ord loop
+    for x in select * from hunks_0498 h where h.fn = v_h.fn order by h.ord loop
       v_n := (length(v_def) - length(replace(v_def, x.old, ''))) / length(x.old);
       if v_n <> 1 then
-        raise exception '0497 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', x.ord, x.fn, v_n;
+        raise exception '0498 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', x.ord, x.fn, v_n;
       end if;
       v_def := replace(v_def, x.old, x.new);
     end loop;
     execute v_def;
     v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'\r', '');
-    for x in select * from hunks_0497 h where h.fn = v_h.fn order by h.ord desc loop
+    for x in select * from hunks_0498 h where h.fn = v_h.fn order by h.ord desc loop
       if (length(v_def) - length(replace(v_def, x.new, ''))) / length(x.new) <> 1 then
-        raise exception '0497 self-assert FAIL: hunk % of % is not in the new body once', x.ord, x.fn;
+        raise exception '0498 self-assert FAIL: hunk % of % is not in the new body once', x.ord, x.fn;
       end if;
       v_def := replace(v_def, x.new, x.old);
     end loop;
     if v_def <> v_pre then
-      raise exception '0497 self-assert FAIL: % does not reverse to its pre-image', v_h.fn;
+      raise exception '0498 self-assert FAIL: % does not reverse to its pre-image', v_h.fn;
     end if;
   end loop;
 
@@ -540,28 +541,28 @@ $h$);
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
          and p.oid <> all (array(select u.q::regprocedure::oid from unnest(c_hunked || c_new) u(q)))) <> v_fn_before then
-    raise exception '0497 self-assert FAIL: another function moved';
+    raise exception '0498 self-assert FAIL: another function moved';
   end if;
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text, ',' order by p.oid::regprocedure::text))
         from pg_proc p where p.oid = any (array(select u.q::regprocedure::oid from unnest(c_hunked) u(q)))) <> v_meta then
-    raise exception '0497 self-assert FAIL: the grants, volatility, definer, search path or owner of a hunked body moved';
+    raise exception '0498 self-assert FAIL: the grants, volatility, definer, search path or owner of a hunked body moved';
   end if;
   if exists (select 1 from unnest(c_new) u(q)
               where has_function_privilege('authenticated', u.q::regprocedure, 'execute') or has_function_privilege('anon', u.q::regprocedure, 'execute')
                  or has_function_privilege('service_role', u.q::regprocedure, 'execute'))
      or (select count(*) from pg_proc p where p.oid = any (array(select u.q::regprocedure::oid from unnest(c_new) u(q))) and p.provolatile = 's' and p.prosecdef) <> 4
      or (select count(*) from public.client_write_grants()) <> 0 then
-    raise exception '0497 self-assert FAIL: a new function is reachable by a client or service_role, or is not a STABLE definer read';
+    raise exception '0498 self-assert FAIL: a new function is reachable by a client or service_role, or is not a STABLE definer read';
   end if;
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, ''), ',' order by c.key))
         from public.world_config c where c.key <> 'jobs_wait_enabled') <> v_cfg_before
      or public.wc('jobs_wait_enabled') is distinct from 'false'::jsonb or public.jobs_wait_on() then
-    raise exception '0497 self-assert FAIL: a knob other than jobs_wait_enabled moved, or the switch is not false';
+    raise exception '0498 self-assert FAIL: a knob other than jobs_wait_enabled moved, or the switch is not false';
   end if;
 
   -- ── 6. THE PROBE, rolled back by a raised sentinel (its own company's rows alone) ──
   begin
-    v_me := public.new_house(c_uid, 'Casa da Espera 0497', 'PRT');
+    v_me := public.new_house(c_uid, 'Casa da Espera 0498', 'PRT');
     select f.id, f.port_id into v_fl, v_lis from public.fleets f where f.player_id = v_me;
     update public.players p set ducats = 5000000 where p.id = v_me;
     update public.world_config set value = 'true'::jsonb where key in ('fleet_jobs_enabled', 'sea_courses_enabled', 'hq_board_enabled');
@@ -579,7 +580,7 @@ $h$);
        and public.fleet_free_hold(v_fl) >= 20 * g.bulk
      order by k.nm, g.base_value desc, g.code limit 1;
     if v_good is null then
-      raise exception '0497 self-assert FAIL: the probe found no good Lisbon offers that a remembered harbour takes (static rows, not the market)';
+      raise exception '0498 self-assert FAIL: the probe found no good Lisbon offers that a remembered harbour takes (static rows, not the market)';
     end if;
     -- PAYING: Lisbon at the band's floor (a full quay, the least affinity, a glut), the harbour at its ceiling (an empty quay, the
     -- most affinity, a dearth), both with room for any load (the mark sets the day's allowance)
@@ -591,7 +592,7 @@ $h$);
      where pg.port_id = v_dest and pg.good_id = v_gid;
     v_rq := public.fleet_run_quote(v_me, v_fl, v_lis, v_good, v_sell, array[v_sell, 'LIS']);
     if coalesce((v_rq->>'net')::numeric, 0) <= 0 or coalesce((v_rq->>'units')::numeric, 0) <= 6 then
-      raise exception '0497 self-assert FAIL: the probe did not build a paying run of more than 6 units (% from LIS to %, floor against ceiling): % ; the fault is the probe''s, not the market''s',
+      raise exception '0498 self-assert FAIL: the probe did not build a paying run of more than 6 units (% from LIS to %, floor against ceiling): % ; the fault is the probe''s, not the market''s',
         v_good, v_sell, v_rq;
     end if;
 
@@ -613,7 +614,7 @@ $h$);
                                - coalesce(public.profit_tax(v_dest, v_gross - (v_cap->>'est_total')::numeric, v_me), 0)),
                'seconds', (public.job_trip(v_fl, v_lis, array[v_sell], true)->>'seconds')::numeric);
       if coalesce((v_c->>'units')::numeric, 0) <= 6 or coalesce((v_c->>'profit')::numeric, 0) <= 0 or jsonb_typeof(v_c->'seconds') <> 'number' then
-        raise exception '0497 self-assert FAIL: the probe did not build a paying card of more than 6 units: % ; the fault is the probe''s, not the market''s', v_c;
+        raise exception '0498 self-assert FAIL: the probe did not build a paying card of more than 6 units: % ; the fault is the probe''s, not the market''s', v_c;
       end if;
       v_cards := coalesce(v_bs->'goods', '[]'::jsonb) || jsonb_build_array(v_c);
     else
@@ -622,12 +623,12 @@ $h$);
 
     -- (a) DARK: the cards pass untouched; a fixed plan is the plan it was (BUY ALL, no quote asked); the board's score is the trip's
     if public.cards_fit(v_me, v_fl, v_lis, v_cards, 3, true) is distinct from v_cards then
-      raise exception '0497 self-assert FAIL: dark, public.cards_fit changed the cards';
+      raise exception '0498 self-assert FAIL: dark, public.cards_fit changed the cards';
     end if;
     perform cmd.set_fleet_job(v_fl, 'fixed', jsonb_build_object('good', v_good, 'buy', 'LIS', 'sell', v_sell));
     v_p0 := public.fleet_job_plan(v_fl);
     if v_p0 #>> '{lines,0,text}' is distinct from format('BUY %s ALL', v_good) then
-      raise exception '0497 self-assert FAIL: dark, the fixed plan is not BUY ALL: %', left(v_p0::text, 400);
+      raise exception '0498 self-assert FAIL: dark, the fixed plan is not BUY ALL: %', left(v_p0::text, 400);
     end if;
     v_t := clock_timestamp();
     v_b := public.hq_board_for(v_me);
@@ -637,7 +638,7 @@ $h$);
     update public.world_config set value = 'true'::jsonb where key = 'jobs_wait_enabled';
     v_p := public.fleet_job_plan(v_fl);
     if not (v_p ? 'lines') or v_p #>> '{lines,0,text}' !~ ('^BUY ' || v_good || ' ') then
-      raise exception '0497 self-assert FAIL: lit, a run whose quote leaves a profit is not planned: % (quote %)', left(v_p::text, 300), v_rq;
+      raise exception '0498 self-assert FAIL: lit, a run whose quote leaves a profit is not planned: % (quote %)', left(v_p::text, 300), v_rq;
     end if;
     delete from public.fleet_jobs where fleet_id = v_fl;
     -- THE DAY'S COIN AN HOUR of the built card, from the one cut every reader makes (public.cards_fit), with no budgeted read between:
@@ -645,7 +646,7 @@ $h$);
     v_m := public.cards_fit(v_me, v_fl, v_lis, jsonb_build_array(v_c), 1, true) -> 0;
     if v_m is null or jsonb_typeof(v_m->'per_hour') <> 'number'
        or (v_m->>'per_hour')::numeric > round((v_m->>'profit')::numeric * 3600 / greatest((v_m->>'seconds')::numeric, 1)) then
-      raise exception '0497 self-assert FAIL: lit, the built card has no day''s coin an hour, or it reads above its one trip: % from %', v_m, v_c;
+      raise exception '0498 self-assert FAIL: lit, the built card has no day''s coin an hour, or it reads above its one trip: % from %', v_m, v_c;
     end if;
     v_t := clock_timestamp();
     v_b := public.hq_board_for(v_me);
@@ -658,7 +659,7 @@ $h$);
                   and (m->>'score')::numeric > round((m->>'profit')::numeric * 3600 / greatest((m->>'seconds')::numeric, 1)))
        or (not v_slow and not exists (select 1 from jsonb_array_elements(v_b->'moves') m
                                        where m->>'kind' = 'trade' and m #>> '{needs,good}' = v_good and jsonb_typeof(m->'score') = 'number')) then
-      raise exception '0497 self-assert FAIL: lit, a trade card reads above its one trip, or the built run''s card is not on the board with its day''s coin an hour: %', left((v_b->'moves')::text, 1200);
+      raise exception '0498 self-assert FAIL: lit, a trade card reads above its one trip, or the built run''s card is not on the board with its day''s coin an hour: %', left((v_b->'moves')::text, 1200);
     end if;
     v_note := format('the run built: %s from LIS to %s, %s units, net %s; the board %s ms dark, %s ms lit (%s trade cards, %s with the day''s coin an hour%s)',
                      v_good, v_sell, v_rq->>'units', v_rq->>'net', v_ms_dark, v_ms_lit,
@@ -672,15 +673,15 @@ $h$);
     v_fit := public.sale_fit(v_me, v_fl, v_lis, v_c);
     if v_fit is not null and ((v_fit->>'units')::numeric <> 6 or (v_fit->>'cut')::boolean is not true
                               or (v_fit->>'profit')::numeric >= (v_c->>'profit')::numeric or (v_fit->>'profit')::numeric <= 0) then
-      raise exception '0497 self-assert FAIL: a card is not cut to the 6 units its sale''s harbour takes: % from %', v_fit, v_c;
+      raise exception '0498 self-assert FAIL: a card is not cut to the 6 units its sale''s harbour takes: % from %', v_fit, v_c;
     end if;
     if exists (select 1 from jsonb_array_elements(public.cards_fit(v_me, v_fl, v_lis, v_cards, 12, false)) e
                 where e->>'good' = v_good and e->>'port' = v_sell and (e->>'units')::numeric > 6) then
-      raise exception '0497 self-assert FAIL: the cards still offer more than the sale''s harbour takes';
+      raise exception '0498 self-assert FAIL: the cards still offer more than the sale''s harbour takes';
     end if;
     update public.trade_daily set qty = v_left where player_id = v_me and port_id = v_dest and good_id = v_gid;
     if public.sale_fit(v_me, v_fl, v_lis, v_c) is not null then
-      raise exception '0497 self-assert FAIL: a card is offered though its sale''s harbour takes nothing today';
+      raise exception '0498 self-assert FAIL: a card is offered though its sale''s harbour takes nothing today';
     end if;
     delete from public.trade_daily where player_id = v_me and port_id = v_dest and good_id = v_gid;
     v_note := v_note || format('; %s %s to %s %s when 6.5 are left, and left out when none is', v_c->>'units', v_good, v_sell,
@@ -693,12 +694,12 @@ $h$);
      where pg.port_id = v_dest and pg.good_id = v_gid;
     v_rq := public.fleet_run_quote(v_me, v_fl, v_lis, v_good, v_sell, array[v_sell, 'LIS']);
     if (v_rq->>'net') is null or (v_rq->>'net')::numeric >= 0 then
-      raise exception '0497 self-assert FAIL: the probe did not build a losing run (% from LIS to %, floor against floor): % ; the fault is the probe''s, not the market''s',
+      raise exception '0498 self-assert FAIL: the probe did not build a losing run (% from LIS to %, floor against floor): % ; the fault is the probe''s, not the market''s',
         v_good, v_sell, v_rq;
     end if;
     v_p := public.fleet_job_plan(v_fl);
     if v_p->>'wait' is distinct from 'low' or v_p ? 'lines' or (v_p->>'net')::numeric > 0 then
-      raise exception '0497 self-assert FAIL: a run whose quote loses is planned: % (quote %)', left(v_p::text, 400), v_rq;
+      raise exception '0498 self-assert FAIL: a run whose quote loses is planned: % (quote %)', left(v_p::text, 400), v_rq;
     end if;
     -- the tick's step for a plan with no lines (public.tick_fleet_jobs: the wait is written by public.fleet_job_note), for HER job alone
     perform public.fleet_job_note(v_fl, v_p);
@@ -709,22 +710,22 @@ $h$);
        or (select f.status from public.fleets f where f.id = v_fl) <> 'DOCKED'
        or v_w->>'state' <> 'waiting' or v_w #>> '{wait,code}' <> 'low' or v_w #>> '{wait,sentence}' <> 'prices low'
        or (v_w #>> '{wait,retry_at}')::timestamptz <> v_j.next_at or jsonb_typeof(v_w->'stop') <> 'null' then
-      raise exception '0497 self-assert FAIL: she did not wait (not stopped, nothing ordered, asked again 600 s on, her row saying why): job % / row %', to_jsonb(v_j), v_w;
+      raise exception '0498 self-assert FAIL: she did not wait (not stopped, nothing ordered, asked again 600 s on, her row saying why): job % / row %', to_jsonb(v_j), v_w;
     end if;
     -- not asked again before its time
     if exists (select 1 from public.fleet_jobs_due() d where d.fleet_id = v_fl) then
-      raise exception '0497 self-assert FAIL: a waiting job is due before its next_at (a hot loop)';
+      raise exception '0498 self-assert FAIL: a waiting job is due before its next_at (a hot loop)';
     end if;
     -- THE PRICE IS BACK (the harbour at its ceiling again) and her time has come: she is due, and the tick's two steps start her
     update public.port_goods pg set stock = 0, affinity = 3, glut = -0.5, glut_at = now() where pg.port_id = v_dest and pg.good_id = v_gid;
     update public.fleet_jobs set next_at = now() - interval '1 second' where fleet_id = v_fl;
     if not exists (select 1 from public.fleet_jobs_due() d where d.fleet_id = v_fl) then
-      raise exception '0497 self-assert FAIL: her time come, the waiting job is not due (it would never start by itself): %',
+      raise exception '0498 self-assert FAIL: her time come, the waiting job is not due (it would never start by itself): %',
         (select to_jsonb(j) from public.fleet_jobs j where j.fleet_id = v_fl);
     end if;
     v_p := public.fleet_job_plan(v_fl);
     if not (v_p ? 'lines') then
-      raise exception '0497 self-assert FAIL: with the price back her plan has no lines: %', left(v_p::text, 400);
+      raise exception '0498 self-assert FAIL: with the price back her plan has no lines: %', left(v_p::text, 400);
     end if;
     -- the open never waits for the quay (-1: busy, the live beat holds it): asked again, as the tick's next run would, for 5 s at most
     for i in 1 .. 50 loop
@@ -735,26 +736,26 @@ $h$);
     select * into v_j from public.fleet_jobs j where j.fleet_id = v_fl;
     if v_o <> 1 or v_j.runs <> 1 or v_j.paused_reason is not null or (select f.status from public.fleets f where f.id = v_fl) <> 'SAILING'
        or world.workers() #> '{workers,0,wait}' <> 'null'::jsonb then
-      raise exception '0497 self-assert FAIL: with the price back she did not start by herself (open %): %', v_o, to_jsonb(v_j);
+      raise exception '0498 self-assert FAIL: with the price back she did not start by herself (open %): %', v_o, to_jsonb(v_j);
     end if;
     v_note := v_note || '; the same run with its sale fallen waited (asked again 600 s on, not stopped, no order), and started by itself when the price was back';
-    raise exception using errcode = 'ZX497', message = 'PROBE_ROLLBACK_0497';
-  exception when sqlstate 'ZX497' then
+    raise exception using errcode = 'ZX498', message = 'PROBE_ROLLBACK_0498';
+  exception when sqlstate 'ZX498' then
     v_lived := true;
   end;
   if not v_lived then
-    raise exception '0497 self-assert FAIL: the probe did not run to its end';
+    raise exception '0498 self-assert FAIL: the probe did not run to its end';
   end if;
-  if exists (select 1 from public.players p where p.company_name = 'Casa da Espera 0497' or p.auth_uid = c_uid) then
-    raise exception '0497 self-assert FAIL: the probe left something behind';
+  if exists (select 1 from public.players p where p.company_name = 'Casa da Espera 0498' or p.auth_uid = c_uid) then
+    raise exception '0498 self-assert FAIL: the probe left something behind';
   end if;
   if public.wc('jobs_wait_enabled') is distinct from 'false'::jsonb then
-    raise exception '0497 self-assert FAIL: the switch is not false after the probe';
+    raise exception '0498 self-assert FAIL: the switch is not false after the probe';
   end if;
 
   if clock_timestamp() - v_t0 > interval '45 seconds' then
-    raise exception '0497 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
+    raise exception '0498 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0497 self-assert ok: JOBS NEVER LOSE (dark). Eleven hunks once and reversing; four new functions STABLE and server only; no other function moved; one knob (jobs_wait_enabled false). Probe (rolled back): %. % ms.',
+  raise notice '0498 self-assert ok: JOBS NEVER LOSE (dark). Eleven hunks once and reversing; four new functions STABLE and server only; no other function moved; one knob (jobs_wait_enabled false). Probe (rolled back): %. % ms.',
     v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;
