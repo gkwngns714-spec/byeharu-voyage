@@ -5,7 +5,7 @@
 -- THE OWNER, 2026-11-25 (R5): combat "gives the same benefits of expedition - gold and reputation", and "wrecks - ships and gears, that can be gathered and be
 --   used to make, upgrade ships and gears".
 -- EVERYTHING IS MOVED, NOTHING IS MADE (public.round_spoils, called by the one settle for the rounds it books that were won; a lost round gives nothing):
---   GOLD    out of the Brethren's hoard by its one payer (public.pirate_pay, kind LOOT: its day's room, its capital's surplus): yield.gold a point of the sea's
+--   GOLD    out of the Brethren's hoard by its one payer (public.pirate_pay, kind LOOT: its day's room, its capital's surplus): yield.gold_base and yield.gold a point of the sea's
 --           strength a won round, for the share of hull it cost her (0374's rule: loot_risk_full), under loot_per_ship a round and what is left of
 --           loot_per_company_day (public.loot_today). A hoard with less room pays what it has; none: nothing, and it is not owed.
 --   SALVAGE the goods a hull is made of (planks, timber, cordage, canvas duck, iron, tar), by the round's dice, taken OUT OF THE PIRATE HOMES' OWN STOCK
@@ -63,7 +63,7 @@ begin
   insert into public.world_config (key, value, description) values
     ('wrecks_yield_enabled', 'false'::jsonb, '0522: THE SWITCH (the owner''s). true: a won combat round gives gold out of the pirates'' hoard, salvage out of their homes'' stock, and Reputation.');
   insert into public.reputation_kinds (code, sign, capped, word) values ('round', 1, true, 'Rounds');
-  update public.round_works set yield = '{"gold": 40, "rp": 2, "salvage": [["timber", 3, 4], ["planks", 2, 2], ["cordage", 3, 3], ["canvas-duck", 2, 3], ["iron", 2, 3], ["tar", 1, 2]]}' where code = 'pirates';
+  update public.round_works set yield = '{"gold": 75, "gold_base": 1250, "rp": 2, "salvage": [["timber", 3, 4], ["planks", 2, 2], ["cordage", 3, 3], ["canvas-duck", 2, 3], ["iron", 2, 3], ["tar", 1, 2]]}' where code = 'pirates';
 
   -- ── 3. THE RULES ──
   execute $f$
@@ -115,7 +115,7 @@ begin
   for n in p_from .. p_to loop
     continue when (r.terms #>> array['fight', 'w', (n - 1)::text]) is distinct from '1';
     v_won := v_won + 1;
-    v_gold := v_gold + least(public.wc_num('loot_per_ship'), coalesce((y->>'gold')::numeric, 0) * (r.terms->>'strength')::numeric
+    v_gold := v_gold + least(public.wc_num('loot_per_ship'), (coalesce((y->>'gold_base')::numeric, 0) + coalesce((y->>'gold')::numeric, 0) * (r.terms->>'strength')::numeric)
                 * case when v_full > 0 then least(1, (r.terms #>> array['fight', 'l', (n - 1)::text])::numeric / v_full) else 1 end);
     for k in 1 .. 2 loop
       v_roll := voyage.rng(p_fleet, n * 10 + k, 'salvage:' || extract(epoch from r.sent_at)::text) * coalesce(v_sum, 0);
@@ -282,7 +282,7 @@ $h$);
   exception when sqlstate 'ZX522' then v_l := sqlerrm::jsonb;
   end;
   if v_l is null or not coalesce(v_l #> '{dark,carry}' = '{}'::jsonb and (v_l #>> '{dark,purse}')::numeric = 0 and (v_l #>> '{dark,home}')::numeric = 0
-     and (v_l #>> '{lit,purse}')::numeric = floor(40 * 10 * 1) + floor(40 * 10 * 0.4) + floor(40 * 10 * 1) and (v_l #>> '{lit,purse}')::numeric + (v_l #>> '{lit,city}')::numeric = 0
+     and (v_l #>> '{lit,purse}')::numeric = floor(2000 * 1) + floor(2000 * 0.4) + floor(2000 * 1) and (v_l #>> '{lit,purse}')::numeric + (v_l #>> '{lit,city}')::numeric = 0
      and v_l #>> '{lit,kind}' = 'LOOT' and (v_l #>> '{lit,home}')::numeric = (v_l #>> '{lit,aboard}')::numeric and (v_l #>> '{lit,aboard}')::numeric between 6 and 24
      and (v_l #>> '{lit,rp}')::int = 6 and (v_l #>> '{lit,carry,won}')::int = 3 and (v_l #>> '{lit,carry,gold}')::bigint = (v_l #>> '{lit,purse}')::bigint, false) then
     raise exception '0522 self-assert FAIL: the probe: %', v_l;
