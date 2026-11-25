@@ -183,6 +183,8 @@ for (const size of SIZES) {
     await expect(sheet.getByTestId('corp-assign-run').first()).toBeVisible({ timeout: 180_000 })
     await expect(sheet.getByRole('tab', { name: 'Bring home' }), 'Bring home is offered at home').toHaveCount(0)
     // she sails ONE run to the nearest sale, the shortest the server offers, and lies there
+    // (the runs that lose are listed when asked for: the nearest may be one of them)
+    if ((await sheet.getByTestId('corp-assign-losses').count()) > 0) await sheet.getByTestId('corp-assign-losses').click()
     const spans = await sheet.getByTestId('corp-assign-run').evaluateAll((els) => els.map((el) => Number(el.getAttribute('data-interval'))))
     const order = spans.map((v, i) => ({ v, i })).sort((x, y) => x.v - y.v)
     let away = false

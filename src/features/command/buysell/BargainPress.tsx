@@ -30,7 +30,7 @@ export function BargainPress({ fleet, goodId, code, side }: { fleet: string; goo
     })
   }
   const held = deal.held_pct > 0 && (deal.side === null || deal.side === side) ? t(side === 'buy' ? 'desk.bargainOff' : 'desk.bargainUp', { n: formatPctPoints(deal.held_pct, 0) }) : null
-  const odds = formatPctPoints(quay.next_odds_pct, quay.next_odds_pct < 10 ? 1 : 0)
+  const odds = quay.attempts_left > 0 && quay.next_odds_pct < 1 ? t('desk.bargainUnder') : formatPctPoints(quay.next_odds_pct, 0)
   return (
     <div className="flex min-h-11 items-center justify-between gap-3" data-testid="bargain" data-left={quay.attempts_left} data-held={deal.held_pct}>
       <span className="min-w-0 text-t-caption tabular-nums" role="status" title={said?.words} data-testid="bargain-said" data-tone={said?.tone}>
