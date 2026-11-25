@@ -20,7 +20,7 @@
 --   same list, or says so) stand. public.land_actions_for (the other E_SLOW) is not touched: its terms ask no trip and no quote.
 -- NOT CHANGED: every knob and switch; world.best_sales; the tick; any table; any client read's shape.
 -- THE HUNKS (10; each once in the live body, each reverses): sea_actions_for x4, segments_from_course x2, trip_cost x3, fleet_job_leg_shut x1.
---   Three bodies replaced whole by their one-line ask (0494's, 0481's and 0496's text is the rollback's). NEW: five functions, server only.
+--   It SUPERSEDES three bodies, replaced whole by their one-line ask (0494's, 0481's and 0496's text is the rollback's; no answer moves). NEW: five functions, server only.
 -- ROWS: none. budget: no table, no cron job, no autovacuum or fillfactor change.
 -- LOCKS: CREATE FUNCTION x5, CREATE OR REPLACE x7. TIME: a few seconds. BUDGET: statement_timeout 90 s, lock_timeout 5 s; fails above 45 s.
 -- ROLLBACK (forward): a migration reversing the ten hunks, restoring the three wrapped bodies and dropping the five functions.
