@@ -4,6 +4,7 @@
 -- Expect: head 20260818000517; bodies_off []; missing []; knobs_off []; reach []; rungs 1..8 as {15,7,6,2,8,18,2,6}; raised ["ARC"]; seas_bite as before (false);
 --   hap_terms_at_sea 0; hq {set_steps 0, perks 0, past_first 0}; jobs_with_settings 0; premium {67, 0}; made.over_sold 0; taken_today 0.
 --   dead_pair_rows falls as autovacuum runs. The 30-minute check is this file again, with the gate. Merchants keep their groups (title_was): no sign to read here.
+--   ticks: the runs that asked a job; plan_ms under the 4,300 to 5,900 of second 0, ms without the wait (v_t0 is after it). slow_waits 0 or falling.
 -- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, the catalog, world_config by key, small tables by count. Only STABLE functions are
 --   called, none writes. The digests are of the local chain's world (PGlite, migrations to 0517).
 begin transaction read only;
@@ -43,6 +44,7 @@ select json_build_object(
                                 ('public.npc_sea_floor(uuid)', '324df54685f53f927afb63dfb85e7f53'),
                                 ('public.level_arrival(uuid,uuid)', 'e2295b1790822ed683efbae261b58fab'),
                                 ('cmd.refusal_line(text,jsonb)', 'dc88d0b5857f5632f56a8a6c693237bd'),
+                                ('public.tick_fleet_jobs(boolean)', '054e550ad7754a955b628312cab79374'),
                                 ('world.board_sell_memo(uuid,uuid,jsonb,jsonb)', 'a0e37e672f7c0ec7649961ff5d6b64b2'),
                                 ('public.tax_home_half(uuid,uuid,numeric,numeric)', '7b2cd552b49b377d6f4f182682b74646'),
                                 ('public.level_benefits(text,integer)', '29aa89fd5931eb05510117a5eda18818'),
@@ -56,7 +58,7 @@ select json_build_object(
                                 ('voyage.ship_speed_parts(uuid)', 'f5c0a4b19a841ad1b85da9490c8e7445'),
                                 ('public.company_rate_line(text)', '6c9612598342ed108467fd6c001c9f32'),
                                 ('public.sea_gate(uuid,uuid,uuid,jsonb)', '0413777b7685ff587b1f0d1c45c3b1c1'),
-                                ('public.fleet_job_note(uuid,jsonb)', '9498b37df43cb7edc88a660855a3b9f9'),
+                                ('public.fleet_job_note(uuid,jsonb)', '14e1251a2b61313f910b984c39c611d5'),
                                 ('public.fleet_jobs_due()', 'ba97e0d37140914f9779966f04589455'),
                                 ('public.fleet_job_ends(uuid,uuid,jsonb,text)', '9042f9adfe1c17e96295d922dd25f6a0'),
                                 ('world.good_mids(uuid)', '0ad985218d7d8433ab9cf52f1973caee'),
@@ -70,11 +72,19 @@ select json_build_object(
                                 ('public.trade_tax_cut(uuid,numeric)', 'eaec80674f6fbf518a10d5ec075676cf'),
                                 ('public.job_wait_s(uuid)', 'cc725bd5f8428db43e1ee9d220f7361b'),
                                 ('public.job_sail_xp(uuid,uuid)', '79b43bb7cc07b5c12efb735bb2315ba6'),
+                                ('public.fleet_damage_pct(uuid)', '14453b23cc5404384647c82c08680468'),
                                 ('public.job_damage_mended(uuid)', '15736a8f1fad245009c15cfaff8d1d0a'),
-                                ('public.job_settings_room(uuid)', 'e45cfcbaa133dcc612f55f97c085f4d5'),
                                 ('public.premium_on()', 'f131e6333b6290674d99c4d369b2f87d'),
                                 ('public.premium_lift()', 'f5d3b99e6927454d2b23c6d7c935323e'),
                                 ('public.premium_mult(numeric)', '8b882dc9b46dc5f021e195033e1394bd'),
+                                ('public.premium_units(uuid,uuid)', '85528d52394df910f9d3d46a2a20c02a'),
+                                ('public.premium_left(uuid,uuid,uuid)', 'a932125172b9ffd3048716b76bfadf7f'),
+                                ('public.premium_mine(uuid,uuid)', '6a7371211e538789866929ca393c3a8c'),
+                                ('public.premium_count(uuid,uuid,numeric)', 'e4d44305d924ef7ad44dd825a741ef99'),
+                                ('public.premium_hold(uuid,uuid)', 'e60f093f75fc3ecd9a9f0e7f7ca4619a'),
+                                ('public.premium_spend(uuid,uuid,uuid,numeric)', 'e1f45b86fad226d2a42f3f933cf96fb7'),
+                                ('public.premium_port(uuid)', 'fe3246113030344956855c79a215233f'),
+                                ('public.premium_face(uuid)', '89ec58b453e36edb940aa28b9b272293'),
                                 ('public.seas_kept(uuid)', '342634d2ee397f141ec270c9371a6a1a'),
                                 ('voyage.happening_takes(uuid,integer,uuid,text,numeric,numeric)', '3cd09e7cfbb079e58818dd8831ca8563'),
                                 ('voyage.crew_share(uuid,jsonb)', 'bf10b3970373715c590d9b1b497469c1'),
@@ -91,19 +101,12 @@ select json_build_object(
                                 ('public.job_settings_param(uuid,jsonb)', 'a5feec416af1db887aaea9fd15c623c8'),
                                 ('public.job_settings_judge(uuid,text,jsonb)', '87cba7b27092caef9e367718a8337a21'),
                                 ('public.job_settings_lines(jsonb,jsonb)', '1f73c069d4beb2d458c4b11236447bd2'),
-                                ('public.fleet_damage_pct(uuid)', '14453b23cc5404384647c82c08680468'),
-                                ('public.premium_units(uuid,uuid)', '85528d52394df910f9d3d46a2a20c02a'),
-                                ('public.premium_left(uuid,uuid,uuid)', 'a932125172b9ffd3048716b76bfadf7f'),
-                                ('public.premium_mine(uuid,uuid)', '6a7371211e538789866929ca393c3a8c'),
-                                ('public.premium_count(uuid,uuid,numeric)', 'e4d44305d924ef7ad44dd825a741ef99'),
-                                ('public.premium_hold(uuid,uuid)', 'e60f093f75fc3ecd9a9f0e7f7ca4619a'),
-                                ('public.premium_spend(uuid,uuid,uuid,numeric)', 'e1f45b86fad226d2a42f3f933cf96fb7'),
-                                ('public.premium_port(uuid)', 'fe3246113030344956855c79a215233f'),
-                                ('public.premium_face(uuid)', '89ec58b453e36edb940aa28b9b272293')) w(fn, want)
+                                ('public.job_settings_room(uuid)', 'e45cfcbaa133dcc612f55f97c085f4d5'),
+                                ('public.job_tick_wait_s(numeric,text)', '6219ad218199204f4c3a885fb4aa44f1')) w(fn, want)
                   cross join lateral (select md5(replace(pg_get_functiondef(to_regprocedure(w.fn)), E'', '')) as have) h
                   where h.have is distinct from w.want),
-  'missing', (select coalesce(json_agg(u.s), '[]'::json) from unnest(array['public.sea_closed(uuid,uuid)', 'voyage.happenings_on()', 'voyage.freeze_happenings(jsonb,boolean)', 'public.sea_passes(uuid,uuid)', 'public.sea_beyond(uuid,uuid,text[])', 'public.sea_passes_lit(uuid,uuid)', 'public.management_on()', 'public.trade_tax_cut(uuid,numeric)', 'public.job_wait_s(uuid)', 'public.job_sail_xp(uuid,uuid)', 'public.job_damage_mended(uuid)', 'public.job_settings_room(uuid)', 'public.premium_on()', 'public.premium_lift()', 'public.premium_mult(numeric)', 'public.seas_kept(uuid)', 'voyage.happening_takes(uuid,integer,uuid,text,numeric,numeric)', 'voyage.crew_share(uuid,jsonb)', 'public.total_level(uuid)', 'public.hq_at(uuid,uuid)', 'public.hq_open_refusal(uuid,uuid)', 'world.hq_open(text)', 'cmd.open_hq(text)', 'public.sea_home(uuid)', 'public.sea_lies(uuid)', 'public.seas_relit_ready()', 'public.seas_relit_light(text)', 'public.passive_settings_on()', 'public.job_settings_param(uuid,jsonb)', 'public.job_settings_judge(uuid,text,jsonb)', 'public.job_settings_lines(jsonb,jsonb)', 'public.fleet_damage_pct(uuid)', 'public.premium_units(uuid,uuid)', 'public.premium_left(uuid,uuid,uuid)', 'public.premium_mine(uuid,uuid)', 'public.premium_count(uuid,uuid,numeric)', 'public.premium_hold(uuid,uuid)', 'public.premium_spend(uuid,uuid,uuid,numeric)', 'public.premium_port(uuid)', 'public.premium_face(uuid)']) u(s) where to_regprocedure(u.s) is null),
-  'reach', (select coalesce(json_agg(u.s), '[]'::json) from unnest(array['public.sea_closed(uuid,uuid)', 'voyage.happenings_on()', 'voyage.freeze_happenings(jsonb,boolean)', 'public.sea_passes(uuid,uuid)', 'public.sea_beyond(uuid,uuid,text[])', 'public.sea_passes_lit(uuid,uuid)', 'public.management_on()', 'public.trade_tax_cut(uuid,numeric)', 'public.job_wait_s(uuid)', 'public.job_sail_xp(uuid,uuid)', 'public.job_damage_mended(uuid)', 'public.job_settings_room(uuid)', 'public.premium_on()', 'public.premium_lift()', 'public.premium_mult(numeric)', 'public.seas_kept(uuid)', 'voyage.happening_takes(uuid,integer,uuid,text,numeric,numeric)', 'voyage.crew_share(uuid,jsonb)', 'public.total_level(uuid)', 'public.hq_at(uuid,uuid)', 'public.hq_open_refusal(uuid,uuid)', 'world.hq_open(text)', 'cmd.open_hq(text)', 'public.sea_home(uuid)', 'public.sea_lies(uuid)', 'public.seas_relit_ready()', 'public.seas_relit_light(text)', 'public.passive_settings_on()', 'public.job_settings_param(uuid,jsonb)', 'public.job_settings_judge(uuid,text,jsonb)', 'public.job_settings_lines(jsonb,jsonb)', 'public.fleet_damage_pct(uuid)', 'public.premium_units(uuid,uuid)', 'public.premium_left(uuid,uuid,uuid)', 'public.premium_mine(uuid,uuid)', 'public.premium_count(uuid,uuid,numeric)', 'public.premium_hold(uuid,uuid)', 'public.premium_spend(uuid,uuid,uuid,numeric)', 'public.premium_port(uuid)', 'public.premium_face(uuid)']) u(s)
+  'missing', (select coalesce(json_agg(u.s), '[]'::json) from unnest(array['public.sea_closed(uuid,uuid)', 'voyage.happenings_on()', 'voyage.freeze_happenings(jsonb,boolean)', 'public.sea_passes(uuid,uuid)', 'public.sea_beyond(uuid,uuid,text[])', 'public.sea_passes_lit(uuid,uuid)', 'public.management_on()', 'public.trade_tax_cut(uuid,numeric)', 'public.job_wait_s(uuid)', 'public.job_sail_xp(uuid,uuid)', 'public.fleet_damage_pct(uuid)', 'public.job_damage_mended(uuid)', 'public.premium_on()', 'public.premium_lift()', 'public.premium_mult(numeric)', 'public.premium_units(uuid,uuid)', 'public.premium_left(uuid,uuid,uuid)', 'public.premium_mine(uuid,uuid)', 'public.premium_count(uuid,uuid,numeric)', 'public.premium_hold(uuid,uuid)', 'public.premium_spend(uuid,uuid,uuid,numeric)', 'public.premium_port(uuid)', 'public.premium_face(uuid)', 'public.seas_kept(uuid)', 'voyage.happening_takes(uuid,integer,uuid,text,numeric,numeric)', 'voyage.crew_share(uuid,jsonb)', 'public.total_level(uuid)', 'public.hq_at(uuid,uuid)', 'public.hq_open_refusal(uuid,uuid)', 'world.hq_open(text)', 'cmd.open_hq(text)', 'public.sea_home(uuid)', 'public.sea_lies(uuid)', 'public.seas_relit_ready()', 'public.seas_relit_light(text)', 'public.passive_settings_on()', 'public.job_settings_param(uuid,jsonb)', 'public.job_settings_judge(uuid,text,jsonb)', 'public.job_settings_lines(jsonb,jsonb)', 'public.job_settings_room(uuid)', 'public.job_tick_wait_s(numeric,text)']) u(s) where to_regprocedure(u.s) is null),
+  'reach', (select coalesce(json_agg(u.s), '[]'::json) from unnest(array['public.sea_closed(uuid,uuid)', 'voyage.happenings_on()', 'voyage.freeze_happenings(jsonb,boolean)', 'public.sea_passes(uuid,uuid)', 'public.sea_beyond(uuid,uuid,text[])', 'public.sea_passes_lit(uuid,uuid)', 'public.management_on()', 'public.trade_tax_cut(uuid,numeric)', 'public.job_wait_s(uuid)', 'public.job_sail_xp(uuid,uuid)', 'public.fleet_damage_pct(uuid)', 'public.job_damage_mended(uuid)', 'public.premium_on()', 'public.premium_lift()', 'public.premium_mult(numeric)', 'public.premium_units(uuid,uuid)', 'public.premium_left(uuid,uuid,uuid)', 'public.premium_mine(uuid,uuid)', 'public.premium_count(uuid,uuid,numeric)', 'public.premium_hold(uuid,uuid)', 'public.premium_spend(uuid,uuid,uuid,numeric)', 'public.premium_port(uuid)', 'public.premium_face(uuid)', 'public.seas_kept(uuid)', 'voyage.happening_takes(uuid,integer,uuid,text,numeric,numeric)', 'voyage.crew_share(uuid,jsonb)', 'public.total_level(uuid)', 'public.hq_at(uuid,uuid)', 'public.hq_open_refusal(uuid,uuid)', 'world.hq_open(text)', 'cmd.open_hq(text)', 'public.sea_home(uuid)', 'public.sea_lies(uuid)', 'public.seas_relit_ready()', 'public.seas_relit_light(text)', 'public.passive_settings_on()', 'public.job_settings_param(uuid,jsonb)', 'public.job_settings_judge(uuid,text,jsonb)', 'public.job_settings_lines(jsonb,jsonb)', 'public.job_settings_room(uuid)', 'public.job_tick_wait_s(numeric,text)']) u(s)
              where has_function_privilege('anon', to_regprocedure(u.s), 'execute') or has_function_privilege('service_role', to_regprocedure(u.s), 'execute')
                 or (u.s like 'public.%' and has_function_privilege('authenticated', to_regprocedure(u.s), 'execute'))),
   'knobs_off', (select coalesce(json_agg(json_build_object('key', w.key, 'have', c.value)), '[]'::json)
@@ -119,6 +122,9 @@ select json_build_object(
   'jobs_with_settings', (select count(*) from public.fleet_jobs j where j.params ?| array['under', 'over', 'crew', 'days', 'stop_profit', 'stop_damage']),
   'premium', (select json_build_object('goods', count(*), 'offered_where_wanted', count(*) filter (where public.port_offers(g.premium_port_id, g.id))) from public.goods g where g.premium_port_id is not null),
   'made', (select json_build_object('rows', count(*), 'over_sold', count(*) filter (where m.sold > m.made)) from public.premium_made m),
-  'taken_today', (select count(*) from public.port_goods pg where pg.premium_day = public.real_day(now()) and pg.premium_units > 0)
+  'taken_today', (select count(*) from public.port_goods pg where pg.premium_day = public.real_day(now()) and pg.premium_units > 0),
+  'ticks', (select json_agg(json_build_object('at', r.at, 'ms', r.ms, 'steps', r.receipt->'steps') order by r.at desc)
+              from (select * from public.fleet_job_runs x where x.at > now() - interval '40 minutes' and jsonb_array_length(x.receipt->'steps') > 0 order by x.at desc limit 8) r),
+  'slow_waits', (select count(*) from public.fleet_jobs j where j.last->>'wait' in ('slow', 'unpriced'))
 );
 rollback;

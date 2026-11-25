@@ -1,5 +1,6 @@
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- news: none (the settings are dark until the owner lights passive_settings_enabled; a laden run only goes on or waits)
+-- news: this file posts its own UPDATE row (public.news_update('0516', ...)): the Best run's wait. The settings are dark until the owner lights
+--   passive_settings_enabled.
 -- 0516 - THE PASSIVE SETTINGS OF A FIXED JOB  (dark: the owner's switch passive_settings_enabled, false. Slice `passive-settings`,
 --   docs/design/owner-spec-2026-11-25.md "PASSIVE METHOD", owner-spec-red-2026-11-25.md R9/R10, slide 9)
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -25,7 +26,7 @@
 -- ONE QUOTE: public.job_settings_judge asks public.fleet_run_quote (0498) for the run and world.quote for the limits; it never prices by
 --   itself. With the job's range cutting the load it answers the BUY line, so 0498's own check is not asked a second time.
 -- DARK, or a job with none of the six: {} and the plan is the plan it was (asserted to the letter).
--- NOT CHANGED by the settings: a Best job, a land haul, a hand's order; any command; any table; the tick; the ledger.
+-- NOT CHANGED by the settings: a Best job, a land haul, a hand's order; any command; any table; the ledger.
 -- A JOB STOPPED FOR HER HULL GOES ON ONCE SHE IS MENDED (public.job_damage_mended: the same reading, public.fleet_damage_pct): due again,
 --   as 0500 does for a flagship, and the stop is lifted by the note. Dark, it goes on as a plain job.
 -- world.workers() serves `settings` while lit: for each fleet her hold, what is left of it (stores in the hold: after the days her job keeps)
@@ -41,16 +42,27 @@
 --   public.fleet_job_ends    (bring home) the shed holds exactly her load: she buys no more and brings it home. The shed holds less than
 --                            her load: she WAITS (`low`), not stopped (a STORE is whole or refused). Nothing aboard: stopped E_SHED_FULL, as 0492. (1 hunk)
 --   A land haul whose good changed: the old load (a good the land makes) is stored first when there is nothing of the new to take. (in fleet_job_plan)
--- THE HUNKS (24; each once, each reverses): fleet_job_plan x9, fleet_job_note x3, fleet_jobs_due x1, fleet_job_set_for x1, world.workers x1, fleet_run_quote x4,
---   run_need x4, fleet_job_ends x1. Their anchors are in
+-- THE JOB TICK OFF THE MINUTE'S CROWD (no switch; live at deploy; proof 245). Prod, 2026-11-25: every run starts at second 0 with every other job, a plan takes
+--   5 s there, its 2.5 s read of her sales is cut, and the job says `slow`; off that second the same read answers whole.
+--   public.tick_fleet_jobs   a job DUE and the session pg_cron's own (application_name): it commits and waits to second 25 before it plans
+--                            (public.job_tick_wait_s), then reads what is due afresh. None due: it returns as before. By hand, in a proof, in PGlite: no
+--                            wait. WHILE IT WAITS it holds one connection (active, in pg_sleep), no lock and no row; it commits every second, so no
+--                            transaction and no snapshot of it is older than a second, and it is never idle in transaction. (2 hunks)
+--                            NO OVERLAP: at most 25 s, fleet_jobs_budget_ms and the one job under way, of the 120 s between two runs; and pg_cron does not
+--                            start a run of a job while one of it runs. The cron job and its schedule are not touched.
+--   public.fleet_job_note    0504's `slow` / `unpriced` ask again after 60 s, not 90: written as late as second 30, 90 would miss the due read at
+--                            second 0 of the next run. (1 hunk)
+-- THE HUNKS (27; each once, each reverses): fleet_job_plan x9, fleet_job_note x4, fleet_jobs_due x1, fleet_job_set_for x1, world.workers x1, fleet_run_quote x4,
+--   run_need x4, fleet_job_ends x1, tick_fleet_jobs x2. Their anchors are in
 --   none of 0499, 0500, 0508 or 0509's hunks. PROVISION: where a plan already has one (0508's), its days are raised, not a second line.
 -- COST: dark, one switch read a fixed plan and one a workers read. Lit, a job with settings is at most one fleet_run_quote and five world.quote
 --   a plan, instead of 0498's one quote; a waiting job is asked once in 600 s or more.
 -- ROWS: one world_config row. -- budget: none (no table, no job, no index). -- retention: none.
--- LOCKS: one INSERT, CREATE FUNCTION x7, CREATE OR REPLACE x8. TIME: a second. BUDGET: statement_timeout 60 s, lock_timeout 5 s; fails above 30 s.
+-- LOCKS: one INSERT, CREATE FUNCTION x8, CREATE OR REPLACE x9. TIME: a second. BUDGET: statement_timeout 60 s, lock_timeout 5 s; fails above 30 s.
 -- ROLLBACK (forward, owner only): QUICK, passive_settings_enabled false: a job that carries settings runs as a plain fixed job. FULL: a
---   migration reversing the hunks (OLD texts below verbatim) and dropping the seven functions and the knob.
--- SELF-ASSERT: hunks once and reversing; no other function moved; grants and settings unmoved; the new functions STABLE and server only.
+--   migration reversing the hunks (OLD texts below verbatim) and dropping the eight functions and the knob. THE WAIT ALONE: a migration that
+--   makes public.job_tick_wait_s answer 0.
+-- SELF-ASSERT: hunks once and reversing; no other function moved; grants and settings unmoved; the new functions STABLE (the wait's, immutable) and server only.
 --   THE PROBE (rolled back; the run is BUILT as 0498's: static rows choose the pair, its two market rows are written, the hull, the crew and
 --   the purse are set): no step asks the live market, dice or companies a sign. Proof 220 plays it through the real tick.
 -- VERSION: 0516 (after 0515; the lead deploys in number order).
@@ -58,9 +70,11 @@
 do $m$
 declare
   c_hunked constant text[] := array['public.fleet_job_plan(uuid)', 'public.fleet_job_note(uuid,jsonb)', 'public.fleet_job_set_for(uuid,uuid,text,jsonb)', 'world.workers()', 'public.fleet_jobs_due()',
-                                    'public.fleet_run_quote(uuid,uuid,uuid,text,text,text[])', 'public.run_need(uuid,uuid,uuid,jsonb)', 'public.fleet_job_ends(uuid,uuid,jsonb,text)'];
+                                    'public.fleet_run_quote(uuid,uuid,uuid,text,text,text[])', 'public.run_need(uuid,uuid,uuid,jsonb)', 'public.fleet_job_ends(uuid,uuid,jsonb,text)',
+                                    'public.tick_fleet_jobs(boolean)'];
   c_new    constant text[] := array['public.passive_settings_on()', 'public.job_settings_param(uuid,jsonb)', 'public.job_settings_judge(uuid,text,jsonb)',
                                     'public.job_settings_lines(jsonb,jsonb)', 'public.fleet_damage_pct(uuid)', 'public.job_damage_mended(uuid)', 'public.job_settings_room(uuid)'];
+  c_wait   constant text := 'public.job_tick_wait_s(numeric,text)';
   c_knobs  constant text[] := array['passive_settings_enabled'];
   c_ua     constant uuid := '00000000-0516-4000-8000-0000000000a1';
   v_t0         timestamptz := clock_timestamp();
@@ -81,7 +95,7 @@ begin
   perform set_config('lock_timeout', '5s', true);
 
   -- ── 0. GUARD ──
-  if exists (select 1 from public.world_config where key = any (c_knobs)) or exists (select 1 from unnest(c_new) f where to_regprocedure(f) is not null) then
+  if exists (select 1 from public.world_config where key = any (c_knobs)) or exists (select 1 from unnest(c_new || c_wait) f where to_regprocedure(f) is not null) then
     raise exception '0516 refuses: it has been applied once';
   end if;
   if exists (select 1 from unnest(c_hunked || array['public.fleet_run_quote(uuid,uuid,uuid,text,text,text[])', 'public.run_need(uuid,uuid,uuid,jsonb)', 'public.job_wait_s(uuid)']) f
@@ -597,7 +611,19 @@ begin
 end
 $body$
   $f$;
-  foreach v_def in array c_new loop
+  execute $f$
+create function public.job_tick_wait_s(p_second numeric, p_app text)
+returns numeric
+language sql
+immutable
+parallel safe
+as $body$
+  -- 0516: THE SECONDS THE FLEET-JOBS TICK WAITS BEFORE IT PLANS: to second 25 of the minute, for pg_cron's own session (its application_name)
+  -- alone; nothing for anyone else, and nothing past it
+  select case when p_app like 'pg_cron%' and p_second < 25 then 25 - p_second else 0 end
+$body$
+  $f$;
+  foreach v_def in array c_new || c_wait loop
     execute format('revoke all on function %s from public, anon, authenticated, service_role', v_def::regprocedure);
   end loop;
 
@@ -805,6 +831,36 @@ $h$  -- 0516: a job stopped for her hull, asked again now that she is mended: th
   update public.fleet_jobs set paused_reason = null where fleet_id = p_fleet and paused_reason = 'E_STOP_DAMAGE' and public.job_damage_mended(p_fleet);
   if p_plan ? 'pause' then
 $h$),
+  ('public.fleet_job_note(uuid,jsonb)', 4,
+$h$       set next_at = now() + interval '90 seconds',
+$h$,
+$h$       set next_at = now() + interval '60 seconds',   -- 0516: due at second 0 of the next run, however late in this one it is written
+$h$),
+  ('public.tick_fleet_jobs(boolean)', 1,
+$h$  v_steps   jsonb := '[]'::jsonb;
+begin
+$h$,
+$h$  v_steps   jsonb := '[]'::jsonb;
+  v_off     numeric;   -- 0516: the wait off the minute's crowd
+begin
+$h$),
+  ('public.tick_fleet_jobs(boolean)', 2,
+$h$  select array_agg(d.fleet_id order by d.turn, d.fleet_id), array_agg(d.player_id order by d.turn, d.fleet_id),
+$h$,
+$h$  -- 0516: OFF THE MINUTE'S CROWD: a job due, and this is pg_cron's session: wait to second 25 (public.job_tick_wait_s), a second at a time, each its
+  -- own transaction; then what is due is read afresh. By hand and in a proof: no wait
+  if p_commit and exists (select 1 from public.fleet_jobs_due()) then
+    commit;
+    for k in 1 .. 30 loop
+      v_off := public.job_tick_wait_s(extract(second from clock_timestamp()), current_setting('application_name', true));
+      exit when v_off <= 0;
+      perform pg_sleep(least(v_off, 1));
+      commit;
+    end loop;
+    v_t0 := clock_timestamp();
+  end if;
+  select array_agg(d.fleet_id order by d.turn, d.fleet_id), array_agg(d.player_id order by d.turn, d.fleet_id),
+$h$),
   ('public.fleet_jobs_due()', 1,
 $h$     and (j.paused_reason is null
 $h$,
@@ -853,7 +909,7 @@ $h$  -- 0516 (dark: no such key): a fixed job may carry settings; each fleet's h
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')) || ':' || coalesce(p.proacl::text, ''), ',' order by p.oid::regprocedure::text))
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
-         and p.oid <> all (array(select u.q::regprocedure::oid from unnest(c_hunked || c_new) u(q)))) <> v_fn_before then
+         and p.oid <> all (array(select u.q::regprocedure::oid from unnest(c_hunked || c_new || c_wait) u(q)))) <> v_fn_before then
     raise exception '0516 self-assert FAIL: another function moved';
   end if;
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text, ',' order by p.oid::regprocedure::text))
@@ -864,10 +920,10 @@ $h$  -- 0516 (dark: no such key): a fixed job may carry settings; each fleet's h
         from public.world_config c where c.key <> all (c_knobs)) <> v_cfg_before or public.passive_settings_on() then
     raise exception '0516 self-assert FAIL: a knob of another file moved, or the switch is not false';
   end if;
-  if exists (select 1 from unnest(c_new) u(q)
+  if exists (select 1 from unnest(c_new || c_wait) u(q)
               where has_function_privilege('anon', u.q::regprocedure, 'execute') or has_function_privilege('authenticated', u.q::regprocedure, 'execute')
                  or has_function_privilege('service_role', u.q::regprocedure, 'execute') or has_function_privilege('public', u.q::regprocedure, 'execute')
-                 or (select p.provolatile from pg_proc p where p.oid = u.q::regprocedure) <> 's')
+                 or (select p.provolatile from pg_proc p where p.oid = u.q::regprocedure) <> case when u.q = c_wait then 'i'::"char" else 's'::"char" end)
      or (select count(*) from public.client_write_grants()) <> 0 then
     raise exception '0516 self-assert FAIL: a new function is reachable by a client or service_role';
   end if;
@@ -875,6 +931,12 @@ $h$  -- 0516 (dark: no such key): a fixed job may carry settings; each fleet's h
   if exists (select 1 from unnest(c_new) u(q) where (select position('level_' in p.prosrc) + position('player_progress' in p.prosrc) from pg_proc p where p.oid = u.q::regprocedure) > 0) then
     raise exception '0516 self-assert FAIL: a setting asks a level';
   end if;
+
+  if public.job_tick_wait_s(0, 'pg_cron') <> 25 or public.job_tick_wait_s(25, 'pg_cron') <> 0 or public.job_tick_wait_s(59.9, 'pg_cron') <> 0
+     or public.job_tick_wait_s(0, 'PostgREST') <> 0 or public.job_tick_wait_s(0, '') <> 0 or public.job_tick_wait_s(0, null) <> 0 then
+    raise exception '0516 self-assert FAIL: the tick''s wait is not to second 25 for pg_cron alone';
+  end if;
+  perform public.news_update('0516', 'A fleet on the Best run waits less for slow prices', 'A fleet on the Best run waits less for slow prices');
 
   -- ── 7. DARK IDENTITY, then LIT ──
   begin
@@ -943,7 +1005,7 @@ $h$  -- 0516 (dark: no such key): a fixed job may carry settings; each fleet's h
   if clock_timestamp() - v_t0 > interval '30 seconds' then
     raise exception '0516 self-assert FAIL: the file took % (budget 30 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0516 self-assert ok: THE PASSIVE SETTINGS (dark). Twenty-four hunks once and reversing in eight bodies; no other function moved; seven new functions STABLE and server only, no level asked. Probe (rolled back): "%" and "%" wait; % of % units under the limit; "%"; "%"; %. % ms.',
+  raise notice '0516 self-assert ok: THE PASSIVE SETTINGS (dark). Twenty-seven hunks once and reversing in nine bodies; no other function moved; eight new functions server only, no level asked; pg_cron''s tick waits to second 25. Probe (rolled back): "%" and "%" wait; % of % units under the limit; "%"; "%"; %. % ms.',
     v_l #>> '{dear,sentence}', v_l #>> '{cheap,sentence}', v_l->>'cut_n', v_l->>'cut_all', v_l #>> '{profit,sentence}', v_l #>> '{hurt,sentence}',
     (select string_agg(e->>'text', ', ') from jsonb_array_elements(v_l #> '{crew,lines}') e), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0516;
