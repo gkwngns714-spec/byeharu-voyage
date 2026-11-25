@@ -26,3 +26,57 @@ Self-asserts 0.1 s each; proof 235 7/7; 158, 164, 44, 58 again; perturb 18 world
 ## Not verified
 `rpc.surface` (a browser image), `vite build`, the client (after). Prod: nothing read; `scripts/ops/harness/captain-works/state.sql` is the lead's.
 Experience due from a trip before she joined (at most 10 minutes' worth) goes to whoever leads the party when it is booked.
+
+# 0529, 0530 (dark: `captain_places_enabled`, `honor_enabled`), proof 236
+
+The stack now holds the fixed 0502 (`no-ruinous-run` 58919d8e merged).
+
+## 0529 `captain-places`
+- Two captains at a founding (lit), and by the one light step `public.captain_places_light()` for every player's company: two kinds (combat and
+  not), the lowest grade, her country first; no wage, no coin. Captains above the places are kept.
+- `captain_places`: 3 to 8 are NULL (the owner prices them); `cmd.captain_place` opens the next for total level, Reputation and coin (ledger
+  kind SLOT, to her home city), all or nothing. The Inn's door refuses a full company; the HQ board offers it no hire.
+- **`cmd.captain_dismiss` is new: no door dismissed a captain before**, and "dismiss first" needed one.
+- `sign_officer`'s rows moved whole to `captain_sign_rows`; a merchant's signing is untouched and asks no place.
+- `total level` here is the sum of the levels the Skills list shows. 0509's `hq_steps` names a total level too and has no reader yet: one
+  function should serve both when it gets one.
+
+## 0530 `honor-badges`
+Three tables in Reputation's shape, one writer, one earn kind (`land`) and one spend kind (`captain_upgrade`) held by the table's own check;
+the self-assert holds that no other body names them. Nothing earns until 0531.
+
+## Restart (0509): still nothing to add
+`captain_places_open`, `honor_balance` and `honor_book` stay with the retired row, as `reputation_balance` and its book do; the new company
+starts at two places and no badges.
+
+## Checked
+Self-asserts about 0.1 s each; proof 236 6/6; 235, 44, 58, 176 again; perturb 18 worlds (16 pass; 2 known: a city that cannot pay a founding).
+tsc, eslint, `db.budget`. **0508's own self-assert failed once more while the chain was rebuilt (line 451): it is still flaky in this stack.**
+
+## Not verified
+As above. E_CAPTAIN_ROOM and E_NOT_ENOUGH_HONOR have no words in the client's dictionary yet (the client slice).
+
+# 0532, 0533 (dark: `land_raids_enabled`, `honor_enabled`), proof 237
+
+## 0532 `land-raids`: the fight, and only the fight
+- `land_foes` (7, data), a party as one hull, the crew cap (10 + 2 a COMBAT level above 1), `land_raid_terms` (16 `tick_fight`s frozen at Send),
+  `land_raid_round` (one of the 16, whole hands, pure in terms, party and round), `land_raid_card` (the mean hands a round; no chance, no result).
+- **The Send, stores, log, gold from the capital and badges are 0531's**: the rounds' tables are keyed by fleet and know `combat` and `sea` alone
+  (0518), so a party cannot be sent on them yet. 0532 is what 0531's Send and settle call. No door, no body cut.
+- Foe figures tuned on the local fight knobs (20 fights each, a captain of the foe's level): 10 hands win Wolves 0.75 and Boar 0.85, lose to
+  Brigands (0.10); 20 hands win Brigands and Bear (1.00), Deserters 0.60, Great beast 0.10; 48 hands win all. **Production's fight knobs were not
+  read**; they decide it. A defeat is the fight's own break-off (15 % of the party's strength). `land_raid_crew_share` 0.15.
+- A Send's 16 fights: 145 ms here. COMBAT is not raised by a raid.
+
+## 0533 `captain-upgrades`
+Four upgrades, five ranks, 350 badges each (10, 30, 60, 100, 150); `cmd.captain_upgrade`; they change `captain_work_perk` alone, which no body at sea
+reads (asserted). Surgeon's hand and the level together can take 80 % of the crew lost (50 + 30), Pathfinder and the level 40 % of the time (25 + 15).
+
+## Restart (0509): nothing to add for 0532 and 0533
+`captain_upgrades` goes with the signing; `land_foes` is data.
+
+## Checked
+Self-asserts 0.1 s; proof 237 6/6, 236 6/6, 235 7/7; perturb 18 worlds over all six files (16 pass, 2 known). tsc, eslint.
+
+## Not verified
+The six files over 0518 and 0519 (`rounds-log`): they cut other bodies but for the registry, on other lines; not run together. `rpc.surface`, `vite build`.
