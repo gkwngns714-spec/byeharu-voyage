@@ -40,3 +40,12 @@ E_SLOW is asked again by itself after 2, 5 and 10 s while the sheet stands (its 
 ## Not verified
 
 Prod (nothing was read): `scripts/ops/harness/assign-fast/split.sql` splits the time there; what the crowd at each full minute adds.
+
+## Unanswered is not "nothing pays" (added 2026-11-25 on batch 2, the owner's fleet idle at Kollam)
+
+The plan never read best_sales' `cut`. Now cut with no usable card waits `slow` and is asked at the next tick; cut with one takes the best answered (a cut
+may have hidden a better one). Proof 241, red on the old body (UN_CUT: {nothing}, 15 minutes), green. Best_sales' walk is `order by g.code`, so a cut
+drops the last codes; a plan of {nothing} while `coir` pays needs the cut before coir, so most likely before the first good (her passages ate the
+budget at :00): not observed. The top-up's budget branch leaves a card without `top` (its own sale is whole); `src_cut` is not a clock: the way to the
+buy city is past her stores. Neither makes a "nothing". Moving the tick off :00 without cron: it could sleep to second 15 and commit before its first read (one
+session held 15 s in 120; prod's crowd is 3 to 8 s): not built.
