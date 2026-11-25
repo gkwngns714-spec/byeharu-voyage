@@ -422,6 +422,8 @@ const TABLE = {
   worldEarlySighting: { schema: 'world', fn: 'early_sighting', args: [] },
   // 0478 (roadmap 2026-11-23 slice 9): the logbook page's one read. Dark {on: false}.
   worldLogbook: { schema: 'world', fn: 'logbook', args: [] },
+  // 0504 (owner spec 2026-11-25, the fog): her sight, her charted squares and her logbook's harbours. Dark {on: false}.
+  worldChart: { schema: 'world', fn: 'chart', args: [] },
   // 0479 (roadmap 2026-11-23 slice 11): goods mastery's one read. Dark {on: false}.
   worldGoodsMastery: { schema: 'world', fn: 'goods_mastery', args: [] },
   // 0480 (docs/design/hq-command-2026-11-23.md v2): the HQ board's one read, ranked by the server. Dark {on: false}.

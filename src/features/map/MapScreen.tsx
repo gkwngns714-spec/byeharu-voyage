@@ -9,6 +9,7 @@ import { pointToken, snapSeaPoint } from '../../domain/passage'
 import { useShellState } from '../../app/shellState'
 import { portNationOf, useWorld } from '../../live/worldStore'
 import { useShipPath } from '../../live/useShipPath'
+import { useChartFog } from '../../live/useChartFog'
 import { CityFlag } from '../../live/CityFlag'
 import { usePortFlags } from '../../live/usePortFlags'
 // THE MERCHANTS (0099): their sheet and its card are live-data React shared with PORT.
@@ -71,6 +72,10 @@ import {
   minimapChosen,
   useMinimapPrefs,
   minTierForSpan,
+  fogModel,
+  fogPorts,
+  knownPortsKey,
+  portFogState,
   openingBounds,
   shipMarks,
   toggleSelection,
@@ -448,8 +453,8 @@ function Chart({
   // THE PORTS AS THIS VIEW DRAWS THEM: on the fine shore close in, on the world coast when wide
   // (src/chart/useChartShore.ts). One list, read by the model, the hit test and the picture.
   const shore = useChartShore(backdrop, box ?? NO_VIEW, surface.unitsPerPx)
-  const ports = shore.ports
-  const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
+  const allPorts = shore.ports
+  const portsByCode = useMemo(() => new Map(allPorts.map((p) => [p.code, p])), [allPorts])
   // THE BATTLES BEING FOUGHT (0364, owner row 321): each is a red ring round its fleets (src/chart/fightRings.ts),
   // and a press on a ring opens the fight (src/live/FightSheet.tsx). Asked only while this screen is mounted.
   const fightCards = useFights()
@@ -482,10 +487,17 @@ function Chart({
   const myFleetIds = useMemo(() => new Set(fleetViews.map((f) => f.id)), [fleetViews])
   const fleetsDrawn = useMemo(() => pinFleets(fleets, pins), [fleets, pins])
   const trafficDrawn = useMemo(() => pinTraffic(traffic, pins, myFleetIds), [traffic, pins, myFleetIds])
-  const model = useMemo(
-    () => buildChartModel(fleetsDrawn, ports, [], { nowMs, readAtMs: readAt }, trafficDrawn, trafficReadAt),
-    [fleetsDrawn, ports, nowMs, readAt, trafficDrawn, trafficReadAt],
+  const fullModel = useMemo(
+    () => buildChartModel(fleetsDrawn, allPorts, [], { nowMs, readAtMs: readAt }, trafficDrawn, trafficReadAt),
+    [fleetsDrawn, allPorts, nowMs, readAt, trafficDrawn, trafficReadAt],
   )
+  // 0504 — THE FOG (src/chart/fog.ts): lit, the map holds only the cities she has in sight or knows and the merchants in
+  // sight; the hit test, the names and the picture all read these two, so what can be pressed is what is drawn. Dark: null,
+  // and both are the full lists, as before.
+  const fog = useChartFog(fullModel.fleets)
+  const knownKey = fog ? knownPortsKey(fog, allPorts) : null
+  const ports = useMemo(() => (knownKey === null ? allPorts : fogPorts(allPorts, knownKey)), [allPorts, knownKey])
+  const model = useMemo(() => (fog ? fogModel(fullModel, fog) : fullModel), [fullModel, fog])
 
   // TICK COMBAT (docs/design/tick-combat.md 8, 9.4): every ship in a battle being fought is drawn on a red ground, and her
   // fleets are weighed for the Join bar at the chart's own place for each. Joining is a choice: nothing here stops a ship.
@@ -631,6 +643,7 @@ function Chart({
     if (selection?.kind === 'sea') return { dest: { kind: 'sea' as const, at: selection.at }, port: null }
     return null
   }, [selection, portsByCode])
+  const placeGrey = fog !== null && place?.port != null && portFogState(fog, place.port) !== 'sight'
   // THE SEA THE PLACE IS IN (while the Seas filter is on): named on the tray's line. A harbour is placed at its roads.
   const placeSea = useMemo(() => {
     if (!place || !seaCells) return null
@@ -769,6 +782,7 @@ function Chart({
           fights={fights}
           events={eventMarks}
           inFight={inFight}
+          fog={fog}
           selection={selection}
           plannedD={routeView ? routeD : pathD}
           pathStops={routeView ? routeStops : shipPath.stops}
@@ -825,7 +839,8 @@ function Chart({
           <div className="pointer-events-auto absolute bottom-3 left-3 flex flex-col items-start gap-1">
             <PointerCoords chart={chartRef} box={box} />
             {backdrop.error && <p className="text-t-caption text-ink-faint">{t('map.noCoast')}</p>}
-            {(zoomed || minimapChosen(minimapPrefs)) && surface.width > 0 && (
+            {/* 0504: no overview under the fog: it would draw the whole world's coast */}
+            {!fog && (zoomed || minimapChosen(minimapPrefs)) && surface.width > 0 && (
               <Minimap
                 model={model}
                 ports={ports}
@@ -938,9 +953,11 @@ function Chart({
           key={place.dest.kind === 'port' ? place.dest.code : pointToken(place.dest.at)}
           dest={place.dest}
           sea={placeSea}
-          line={place.port ? portLine(model, place.port, harbourRows, portNationOf(allegiance, place.port.code)) : t('map.openSea')}
+          unseen={placeGrey}
+          // 0504: a city she knows but does not have in sight can be sailed to, and nothing about it is shown
+          line={place.port ? (placeGrey ? t('map.fogKnown') : portLine(model, place.port, harbourRows, portNationOf(allegiance, place.port.code))) : t('map.openSea')}
           harbour={
-            place.port && (
+            place.port && !placeGrey && (
               <CityHarbour
                 portCode={place.port.code}
                 merchants={harbourRows}
