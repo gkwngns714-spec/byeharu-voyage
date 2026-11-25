@@ -40,6 +40,7 @@ import {
   cellLat,
   cellLon,
   findPath,
+  isWaterAt,
   refineCourse,
   snapToNav,
   type SeaNav,
@@ -169,8 +170,16 @@ export function fleetNow(fleet: FleetView, portByCode: Record<string, SnapshotPo
  * course is re-sailed off the land the chart draws (src/lib/sea/refine.ts): the raster is 1:110m and
  * has no Socotra, so the straightened search alone ran straight over islands and capes. The
  * re-sailed course is still raster water by the server's own rule, or the search's course is kept.
+ *
+ * ROUND THE SEAS SHUT TO HER (0514): a grid with them closed (src/lib/sea/shut.ts) is searched first. When either end lies in a
+ * shut sea, or there is no way round, the whole water is: the server then says which sea is closed, in its own words.
  */
 export function proposeCourse(nav: SeaNav, from: LatLon, to: LatLon): SeaPath | null {
+  if (nav.open) {
+    const open = nav.open
+    const whole = (p: LatLon) => isWaterAt(nav, p.lat, p.lon) === isWaterAt(open, p.lat, p.lon)
+    return (whole(from) && whole(to) ? proposeCourse({ ...nav, open: undefined }, from, to) : null) ?? proposeCourse(open, from, to)
+  }
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0
   const found = findPath(nav, from, to, SCRATCH)
   const r = found && nav.coast ? { ...found, path: refineCourse(nav, nav.coast, found.path).path } : found

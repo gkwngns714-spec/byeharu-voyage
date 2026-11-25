@@ -34,19 +34,19 @@ begin
   update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite_npc';
 
   -- THE MERCHANT: homed in a sea of a far rank that asks more wave than a fusta holds, with the most known legs inside seas of that rank
-  select nf.fleet_id, nf.route_id, nf.player_id, st.port_id as home, z.code as zone, z.title_min, z.wave_min into v_m
+  select nf.fleet_id, nf.route_id, nf.player_id, st.port_id as home, z.code as zone, z.title_was, z.wave_min into v_m
     from public.npc_fleets nf
     join lateral (select s.port_id from public.standing_route_stops s where s.route_id = nf.route_id order by s.ord limit 1) st on true
     join public.sea_leg_asks a on a.from_port = st.port_id and a.to_port = st.port_id
     join public.sea_zones z on z.code = a.zones[1]
     join public.fleets f on f.id = nf.fleet_id and f.port_id = st.port_id and f.status = 'DOCKED'
-   where nf.route_id is not null and z.title_min >= 4 and z.wave_min > 6
+   where nf.route_id is not null and z.title_was >= 4 and z.wave_min > 6
    -- (0403: counted on her KNOWN legs and the seas their courses cross, as the readers below judge them. Until 0403 this read the first sea of the
    -- pair table's straight-line row, a stand-in that the plotted rows no longer are.)
    order by (select count(*) from public.npc_known_legs(st.port_id) k
               where not exists (select 1 from public.sea_zones zx
                                  where zx.code = any (public.npc_course_zones(k.course) || array_remove(array[public.harbour_zone(k.to_port)], null))
-                                   and (zx.title_min <> z.title_min or zx.wave_min > z.wave_min))) desc, nf.roster_ord
+                                   and (zx.title_was <> z.title_was or zx.wave_min > z.wave_min))) desc, nf.roster_ord
    limit 1;
   if v_m.fleet_id is null or v_fusta is null then
     raise exception 'PROOF 95 FAIL: the world has no merchant lying at a home in a far sea, or no fusta';
@@ -57,9 +57,9 @@ begin
     raise exception 'PROOF 95 FAIL: a fusta holds % and her home sea asks only %', public.fleet_wave(v_m.fleet_id), v_m.wave_min;
   end if;
   select * into v_fl from public.npc_sea_floor(v_m.fleet_id);
-  if v_fl.home_title is distinct from v_m.title_min or v_fl.home_wave is distinct from v_m.wave_min or v_fl.lie_title is distinct from v_m.title_min
+  if v_fl.home_title is distinct from v_m.title_was or v_fl.home_wave is distinct from v_m.wave_min or v_fl.lie_title is distinct from v_m.title_was
      or v_fl.wave is distinct from public.fleet_wave(v_m.fleet_id) then
-    raise exception 'PROOF 95 FAIL: her floors % are not her home sea''s asks (% / %)', to_jsonb(v_fl), v_m.title_min, v_m.wave_min;
+    raise exception 'PROOF 95 FAIL: her floors % are not her home sea''s asks (% / %)', to_jsonb(v_fl), v_m.title_was, v_m.wave_min;
   end if;
 
   -- ── MH_DARK ──
@@ -77,17 +77,17 @@ begin
      or exists (select 1 from jsonb_array_elements(v_lit) x
                  where exists (select 1 from public.sea_zones z
                                 where z.code = any (public.npc_course_zones(x -> 'course') || array_remove(array[public.harbour_zone((x ->> 'port_id')::uuid)], null))
-                                  and (z.wave_min > v_fl.wave and (z.title_min <> v_m.title_min or z.wave_min > v_m.wave_min))))
+                                  and (z.wave_min > v_fl.wave and (z.title_was <> v_m.title_was or z.wave_min > v_m.wave_min))))
      or exists (select 1 from jsonb_array_elements(v_lit) x where not (v_dark @> jsonb_build_array(x))) then
     raise exception 'PROOF 95 FAIL: lit, her legs are % of the dark %: none, or one that touches a sea her floors do not hold, or one that was not offered dark', jsonb_array_length(v_lit), jsonb_array_length(v_dark);
   end if;
-  raise notice 'PASS: MH_HOME — lit, she keeps % of her % known legs: every one stays in seas of rank % asking no more than %; the plain rule would leave her none', jsonb_array_length(v_lit), jsonb_array_length(v_dark), v_m.title_min, v_m.wave_min;
+  raise notice 'PASS: MH_HOME — lit, she keeps % of her % known legs: every one stays in seas of rank % asking no more than %; the plain rule would leave her none', jsonb_array_length(v_lit), jsonb_array_length(v_dark), v_m.title_was, v_m.wave_min;
 
   -- ── MH_OTHER ──
   select count(*) into v_n from jsonb_array_elements(v_dark) x
    where exists (select 1 from public.sea_zones z
                   where z.code = any (public.npc_course_zones(x -> 'course') || array_remove(array[public.harbour_zone((x ->> 'port_id')::uuid)], null))
-                    and z.wave_min > v_fl.wave and (z.title_min <> v_m.title_min or z.wave_min > v_m.wave_min));
+                    and z.wave_min > v_fl.wave and (z.title_was <> v_m.title_was or z.wave_min > v_m.wave_min));
   if v_n <> jsonb_array_length(v_dark) - jsonb_array_length(v_lit) then
     raise exception 'PROOF 95 FAIL: % dark legs touch a sea her floors do not hold, and % were taken away', v_n, jsonb_array_length(v_dark) - jsonb_array_length(v_lit);
   end if;
@@ -138,7 +138,7 @@ begin
       from public.npc_fleets nf
       join public.npc_houses nh on nh.player_id = nf.player_id
       join public.sea_leg_asks a on a.from_port = nh.home_port_id and a.to_port = nh.home_port_id
-      join public.sea_zones z on z.code = a.zones[1] and z.title_min = 1
+      join public.sea_zones z on z.code = a.zones[1] and z.title_was = 1
      where nf.route_id is not null and nf.fleet_id <> v_m.fleet_id and public.fleet_wave(nf.fleet_id) = 12
        and (select count(*) from public.ships s where s.fleet_id = nf.fleet_id) = 1
      order by nf.roster_ord limit 1;

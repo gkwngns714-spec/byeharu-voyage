@@ -681,6 +681,21 @@ export interface ForgeIngredient {
   have: number
 }
 
+/** 0517: the ONE city that wants a made good: it pays `mult` times its normal price for `left` more units today (of `per_day`). */
+export interface PremiumCity {
+  /** The city's code. */
+  port: string
+  name: string
+  mult: number | string
+  /** Sailed miles from the good's nearest maker. */
+  nm: number | string
+  per_day: number | string
+  /** Units your company made and has not sold at a premium. */
+  made: number | string
+  /** The lesser of `made` and what the city still takes today. */
+  left: number | string
+}
+
 /** One crafted good the Forge can make, with its recipe as this city sees it. */
 export interface ForgeRecipe {
   /** `SnapshotGood.id` — what cmd.forge_good takes (a uuid, not the code). */
@@ -693,6 +708,8 @@ export interface ForgeRecipe {
   /** Every ingredient is ashore here in its quantity — the server's verdict, never re-derived. */
   can_forge: boolean
   ingredients: ForgeIngredient[]
+  /** 0517: the one city that pays the premium for it. Absent when none, and dark. */
+  premium?: PremiumCity
 }
 
 export interface ForgeView {
@@ -786,6 +803,8 @@ export interface MarketGood {
    *  for `wanted_left` more units this period. Absent when it does not (always, while city wants are dark). */
   wanted?: number | string
   wanted_left?: number | string
+  /** 0517: this made good's one premium city. Absent when it has none (always, while premium goods are dark). */
+  premium?: PremiumCity
 }
 
 /**
@@ -955,6 +974,30 @@ export interface HaggleOnQuay {
   at_floor: boolean
   /** "the next trade of this good at this port, or the day's end" — the server's own words. */
   spent_on: string
+  /** 0506 — present only while `bargain_total_enabled` is lit: a bargain is then a share of HER TOTAL
+   *  (5 % a win, ten tries a day), not of the spread. Absent: the fields above are the whole rule. */
+  bargain?: HaggleBargain
+}
+
+/** 0506 — `world.haggle_state`'s `bargain` key (`public.bargain_state`). Every figure is the server's. */
+export interface HaggleBargain {
+  /** What a win is a share of: her total for that trade. */
+  of: 'total'
+  /** What one won try adds, and the most ten can add, in per cent of her total. */
+  step_pct: number
+  most_pct: number
+  /** What she holds unspent now, in per cent of her total. */
+  held_pct: number
+  /** The side the day's row is on (one side a good a city a day); null before her first try. */
+  side: 'buy' | 'sell' | null
+  /** The chance of her FIRST try of a day (each later try is half the one before). */
+  first_odds: number
+  /** What her buy and her sale of this good here are multiplied by now (1 = no bargain; the other
+   *  side of a won bargain is charged it back the same day). */
+  buy_factor: number
+  sell_factor: number
+  /** The tries a standing job of this fleet may make a day (0: none, or below Negotiation 8). */
+  job_tries: number
 }
 
 export type HaggleState = HaggleAshore | HaggleOnQuay
@@ -994,7 +1037,7 @@ export interface HaggleAttempt {
 
 // ── world.fleets() ─────────────────────────────────────────────────────────────────────────────
 
-export type FleetStatus = 'DOCKED' | 'ANCHORED' | 'SAILING' | 'REPAIRING' | 'ADRIFT' | 'UNABLE_TO_SAIL' | 'IN_BATTLE'
+export type FleetStatus = 'DOCKED' | 'ANCHORED' | 'SAILING' | 'REPAIRING' | 'ADRIFT' | 'UNABLE_TO_SAIL' | 'IN_BATTLE' | 'ROUNDS'
 
 /** 0074 — one fitting mounted on a hull. It has LEFT the player's store at the port to be here. */
 export interface MountedFitting {
@@ -1352,6 +1395,10 @@ export interface YourCaptain extends CaptainCard {
   cabin_word: string | null
   /** Ashore, or her ship is docked: her traits (and seat) may change. */
   can_change: boolean
+  /** 0527/0528 (absent while the works are dark): her works, and the land party she leads (null: none). */
+  works?: CaptainWork[]
+  upgrades?: CaptainUpgrade[]
+  party?: number | null
   levels: CaptainLevel[]
   homesick: { days: number; line: string } | null
   /** 0162 — her next promotion: the grade, the level and items it needs, what you keep where her ship is
@@ -1378,6 +1425,9 @@ export interface PromotedCaptain {
 
 export interface CaptainsView {
   captains: YourCaptain[]
+  /** 0529, 0530 (each absent while its switch is dark): her captain places; her HONOR BADGES. */
+  places?: CaptainPlaces
+  honor?: number
 }
 
 /** 0337 — ONE PART of a stat: an effect her seat adds, in per cent (`pct`), as `public.crew_terms` gives it for her, and the server's own words for it (`line`, "+9.5% speed"; null when there is nothing to say).
@@ -1435,6 +1485,175 @@ export interface CaptainSkillUp {
   max: number
   cost: number
   reputation: number
+  sentence: string
+}
+
+/** 0527 — ONE WORK of one of your captains (`world.captains().works`, absent while the works are dark): her level on the long curve, where it began and where the
+ *  next begins (null at the top), and what the level gives a party she leads: a shorter round, fewer of the crew lost, one round in `forage` that gives provisions. */
+export interface CaptainWork {
+  work: string
+  word: string
+  level: number
+  xp: number
+  from: number
+  next_at: number | null
+  time_pct: number
+  crew_pct: number
+  forage: number | null
+  /** 0533 (absent while the badges are dark): her upgrades' share of what her crew carries and of her party's attack. */
+  carry_pct?: number
+  attack_pct?: number
+}
+
+/** 0529 — the company's captain places (`world.captains().places`, absent while dark). `next`: null past the last place; `open` false: not priced yet, no figure served. */
+export interface CaptainPlaces {
+  places: number
+  used: number
+  next:
+    | { place: number; open: false }
+    | { place: number; open: true; total_level: number; reputation: number; ducats: number; have: { total_level: number; reputation: number; ducats: number } }
+    | null
+}
+
+/** 0534 — WHAT IS ASKED of a land expedition: gathering (`target` a mining job) or a raid (a foe), the hands, the provisions in tons (absent: the server's own), where it
+ *  stops and what then. */
+export interface LandAsk {
+  work: 'land_gather' | 'land_raid'
+  target: string
+  crew: number
+  stores?: number
+  stop?: { crew?: number; rounds?: number }
+  then?: 'home' | 'repeat'
+}
+
+/** 0534 — the card of one Send: a round's cost and yield, the rounds there can be and what stops them, the bill. No odds are served. */
+export interface LandCard {
+  work: string
+  target: string
+  word: string
+  level: number
+  crew: number
+  cap: number
+  min: number
+  seconds: number
+  lead: number
+  carry: number
+  stores: number
+  use: number
+  units?: number
+  xp: number
+  rp: number
+  forage: number | null
+  cost: { hands: number }
+  most: number
+  why: string
+  hire: number
+  bill: { hire: number; stores: number; wages: number }
+  total: number
+}
+
+/** 0534 — a Send the server would refuse: its code and sentence. */
+export interface LandShort {
+  short: { code?: string; error_code?: string; sentence?: string; error_message?: string; figures?: { have: number; need: number; unit: string } | null }
+}
+
+/** 0534 — one line of an expedition's log, newest last. */
+export interface LandLogLine {
+  r: number
+  at: string
+  crew: number
+  xp: number
+  gold: number
+  units: number
+  fed: boolean
+  result: number
+}
+
+/** 0534 — one party's run. */
+export interface LandRun {
+  party: number
+  captain: string | null
+  name: string | null
+  crew: number
+  stores: number
+  work: string
+  word: string | null
+  target: string
+  state: 'out' | 'home'
+  ended: string | null
+  sent_at: string
+  home_at: string
+  rounds: number
+  most: number
+  why: string
+  seconds: number
+  lead: number
+  min: number
+  then: string
+  cost: { hands: number }
+  carry: { hands?: number; xp?: number; gold?: number; rp?: number; units?: number; won?: number; paid?: number }
+  log: LandLogLine[]
+  waiting: Record<string, number>
+}
+
+/** 0534 — `world.land_expedition(code, ask)`. `on` false: dark, nothing else is served. `targets`, `cap` and `card` only with a captain named. */
+export interface LandExpeditionView {
+  on: boolean
+  company?: boolean
+  now?: string
+  raids?: boolean
+  runs?: LandRun[]
+  cap?: number
+  targets?: { work: 'land_gather' | 'land_raid'; target: string; word: string; level: number; open: boolean }[]
+  card?: LandCard | LandShort | null
+}
+
+/** 0534 — what cmd.land_expedition answers. */
+export interface LandSent {
+  officer?: string
+  rounds: number
+  home_at: string
+  paid?: number
+  sentence: string
+}
+
+/** 0533 — one upgrade of one of your captains (`world.captains().upgrades`, absent while the badges are dark): `cost` is the next rank's price in HONOR BADGES, null at the top. */
+export interface CaptainUpgrade {
+  upgrade: string
+  word: string
+  rank: number
+  top: number
+  pct: number
+  cost: number | null
+}
+
+/** 0533 — what cmd.captain_upgrade answers. */
+export interface CaptainUpgraded {
+  officer: string
+  upgrade: string
+  rank: number
+  top: number
+  cost: number
+  honor: number
+  sentence: string
+}
+
+/** 0529 — what cmd.captain_place answers. */
+export interface CaptainPlaceOpened {
+  places: number
+  sentence: string
+}
+
+/** 0529 — what cmd.captain_dismiss answers. */
+export interface CaptainDismissed {
+  officer: string
+  sentence: string
+}
+
+/** 0528 — what cmd.captain_land answers: the land party she leads (null: none), in one sentence. */
+export interface CaptainAshore {
+  officer: string
+  party: number | null
   sentence: string
 }
 
@@ -3543,7 +3762,7 @@ export type CourierContractsView =
     }
 
 /** 0481: a standing fleet job's kind: repeat her best run, a fixed route, carry the Land's output to the yard. */
-export type FleetJobKind = 'best' | 'fixed' | 'land'
+export type FleetJobKind = 'best' | 'fixed' | 'land' | 'round'
 
 /** 0481: a job's settings as served (each kind its own): a fixed route's good and harbours, the Land haul's yard and good. */
 export interface FleetJobParams {
@@ -3560,6 +3779,54 @@ export interface FleetJobParams {
   /** 0492: the runs still to start, as served (counted down from `times`). */
   left?: number | null
 }
+
+/** 0518: the stop rule a run is sent with: the least hands, the days of stores kept, the rounds. */
+export interface RoundStop {
+  crew?: number
+  days?: number
+  rounds?: number
+}
+
+/** 0519: what a Send would freeze: the cost of one round (hands a fraction, food and water in tuns) and the most rounds, and what stops them. */
+export interface RoundTerms {
+  seconds: number
+  crew0: number
+  crew: number
+  food: number
+  water: number
+  min: number
+  days: number
+  most: number
+  why: 'food' | 'water' | 'crew' | 'rounds' | 'cap'
+  level: number
+}
+
+/** 0519: one fleet's run as served (world.rounds). No odds are served. */
+export interface RoundRun {
+  fleet: string
+  work: string
+  kind: 'combat' | 'sea'
+  word: string
+  sea: string
+  state: 'out' | 'home'
+  sent_at: string
+  stop_at: string
+  ended: string | null
+  rounds: number
+  most: number
+  why: string
+  next_at: string | null
+  seconds: number
+  cost: { food: number; water: number; crew: number }
+  stop: RoundStop
+  carry: Record<string, unknown>
+  log: { r: number; at: string; crew: number }[]
+}
+
+export type RoundsView =
+  | { on: false }
+  | { on: true; company: false }
+  | { on: true; company: true; now: string; runs: RoundRun[]; works: { work: string; kind: 'combat' | 'sea'; word: string; skill: string; level: number; open: boolean; terms: RoundTerms | null }[] }
 
 /** 0481: what a job did last: a run it started (its note), a wait for nothing to do, or the code it stopped on. */
 export interface FleetJobLast {

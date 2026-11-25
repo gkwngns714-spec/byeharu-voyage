@@ -3,6 +3,7 @@ import { useWorld } from '../../../live/worldStore'
 import type { BoardBuyRow, BoardSellRow, FleetView } from '../../../lib/rpc'
 import { planLines, type PlanDraft } from '../../../domain/plan'
 import type { PlanLeg } from '../../../domain/passage'
+import { useFleetNav } from '../../../live/useFleetNav'
 import { useHeldFleet } from '../../../live/useSailLegs'
 
 // THE COURSES THE TRADE PAGE DRAWS (owner rows 183 and 217) — proposed ONCE, by the one course author
@@ -18,7 +19,7 @@ export function usePlanCourse(
   buyRow: BoardBuyRow | null,
   sellRow: BoardSellRow | null,
 ): readonly PlanLeg[] {
-  const seaNav = useWorld((s) => s.seaNav)
+  const seaNav = useFleetNav()(fleet.id)
   const portByCode = useWorld((s) => s.portByCode)
   const held = useHeldFleet(fleet) ?? fleet
   const toBuyKey = (buyRow?.stops ?? []).join(' ')

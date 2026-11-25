@@ -273,6 +273,9 @@ declare
   v_def text := replace(pg_get_functiondef(p_fn::regprocedure), E'\r', '');
   x     record;
 begin
+  -- 0517's one hunk of world.board_sell_memo, cut after 0488, put back first (the premium city is always priced)
+  v_def := replace(v_def, $z$order by (c.nm is null), (c.id is not distinct from (select public.premium_port(p_good))) desc,   -- 0517: the city that pays the premium is always priced (dark: none)
+                                       c.mid desc, c.nm nulls last, c.code) as rk$z$, $z$order by (c.nm is null), c.mid desc, c.nm nulls last, c.code) as rk$z$);
   for x in select * from p191_recut r where r.fn = p_fn order by r.ord desc loop
     if (length(v_def) - length(replace(v_def, x.new, ''))) / length(x.new) <> 1 then
       raise exception 'PO_SHAPE: hunk % of % is not in the live body once', x.ord, p_fn;

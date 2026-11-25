@@ -1630,6 +1630,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // id; her fleets and land party, each with her action in the one shape. world.actions(worker) - a row's id; only what the doors
       // would take, priced by the server's own quotes. Both READS. The server lands first: the HQ worker list (H1) hooks them up after.
       'worldWorkers', 'worldActions',
+      // Pin moved deliberately 2026-11-25 with migration 0519 (rounds): world.rounds(fleet) - a fleet of hers or none, no player id; dark {on: false};
+      // her runs and the works with what a round costs, never odds. A read. Its two doors, none taking a player id: cmd.round_send(fleet, work,
+      // stop), cmd.round_home(fleet); a fleet not hers refused; dark E_NOT_IN_USE. The server lands first.
+      'worldRounds', 'cmdRoundSend', 'cmdRoundHome',
       // Pin moved deliberately 2026-11-23 with migration 0483 (courier contracts): world.courier_contracts() - no argument, no player id;
       // dark {on: false}; lit her posted and carried contracts. A read. And its five doors, none taking a player id: cmd.take_contract(fleet,
       // contract, version) (HQ's card, one press), cmd.deliver_contract(contract), cmd.fail_contract(contract), cmd.post_contract(from, to,
@@ -1764,6 +1768,14 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // code, no player id; null when the caller keeps no such captain), and THE STEP, cmd.captain_skill_up(code, skill): one step of one skill bought with Reputation
       // (no player id; only ashore or in port; refused by the same reading the read prints). Landed WITH the rows that print and press them (src/live/CaptainSkills.tsx).
       'worldCaptainSkills', 'cmdCaptainSkillUp',
+      // Pin moved deliberately 2026-11-25 with migration 0528 (dark): A CAPTAIN LEADS A LAND PARTY, cmd.captain_land(code, party). Her own captain only (no player id).
+      'cmdCaptainLand',
+      // Pin moved deliberately 2026-11-25 with migration 0529 (dark): the next captain place, and a captain let go (no player id).
+      'cmdCaptainPlace', 'cmdCaptainDismiss',
+      // Pin moved deliberately 2026-11-25 with migration 0533 (dark): a captain's upgrade for HONOR BADGES (no player id).
+      'cmdCaptainUpgrade',
+      // Pin moved deliberately 2026-11-25 with migration 0534 (dark): the land expeditions, a read and a door (her own captain; no player id).
+      'worldLandExpedition', 'cmdLandExpedition',
       // Pin moved deliberately 2026-10-18 with migration 0163 (docs/SHIPS_AND_SKILLS.md S16): AUGMENT A
       // FITTING with a perk the player chooses, paid in kits. Takes a ship (the caller's own,
       // E_NOT_YOUR_SHIP otherwise), the item, the perk and the rank; no player id. Only docked at a level 3

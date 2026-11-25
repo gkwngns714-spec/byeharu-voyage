@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { sailLegs, type PlanLeg } from '../domain/passage'
 import type { FleetView } from '../lib/rpc'
+import { useFleetNav } from './useFleetNav'
 import { useWorld } from './worldStore'
 
 // THE FLEET THE COURSES ARE PROPOSED FROM is held while nothing about where she starts has changed: the world is
@@ -18,9 +19,10 @@ const NONE: readonly PlanLeg[] = []
 
 /** A queued trip's legs: through its SAILs' harbours, in order, from where she is now (`sailLegs`). */
 export function useSailLegs(fleet: FleetView | null, codes: readonly string[]): readonly PlanLeg[] {
-  const seaNav = useWorld((s) => s.seaNav)
+  const navOf = useFleetNav()
   const portByCode = useWorld((s) => s.portByCode)
   const held = useHeldFleet(fleet)
+  const seaNav = navOf(held?.id)
   const key = codes.join(' ')
   return useMemo(
     () => (seaNav && held && key ? sailLegs(held, seaNav, portByCode, key.split(' ')) : NONE),

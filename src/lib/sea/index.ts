@@ -48,6 +48,8 @@ export {
   type CoastMaskPayload,
 } from './coastMask.ts'
 
+export { shutSeas, type ZoneGrid } from './shut.ts'
+
 export {
   snapToNav,
   findPath,

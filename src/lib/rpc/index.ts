@@ -61,6 +61,13 @@ import type {
   CaptainsView,
   CaptainStatsView,
   CaptainSkillsView,
+  CaptainAshore,
+  CaptainDismissed,
+  CaptainPlaceOpened,
+  LandAsk,
+  LandExpeditionView,
+  LandSent,
+  CaptainUpgraded,
   CaptainSkillUp,
   TraitsSet,
   PromotedCaptain,
@@ -100,6 +107,9 @@ import type {
   CourierOutcome,
   FleetJobKind,
   FleetJobParams,
+  RoundStop,
+  RoundTerms,
+  RoundsView,
   FleetJobSet,
   MerchantCard,
   InsuranceView,
@@ -694,6 +704,36 @@ export function cmdPromoteCaptain(code: string) {
   return call<PromotedCaptain>('cmdPromoteCaptain', [code])
 }
 
+/** 0528: your captain leads your land party, or leaves it (null). */
+export function cmdCaptainLand(code: string, party: number | null) {
+  return call<CaptainAshore>('cmdCaptainLand', [code, party])
+}
+
+/** 0529: open your next captain place, for what the owner priced it at. */
+export function cmdCaptainPlace() {
+  return call<CaptainPlaceOpened>('cmdCaptainPlace', [])
+}
+
+/** 0529: let a captain of yours go (ashore, docked, or with a party at home). */
+export function cmdCaptainDismiss(code: string) {
+  return call<CaptainDismissed>('cmdCaptainDismiss', [code])
+}
+
+/** 0533: a captain's next rank of an upgrade, for HONOR BADGES. */
+export function cmdCaptainUpgrade(code: string, upgrade: string) {
+  return call<CaptainUpgraded>('cmdCaptainUpgrade', [code, upgrade])
+}
+
+/** 0534: the land expeditions; with a captain and an ask, the card of that Send. */
+export function worldLandExpedition(code: string | null = null, ask: LandAsk | null = null) {
+  return call<LandExpeditionView>('worldLandExpedition', [code, ask])
+}
+
+/** 0534: send a captain of yours on a land expedition, or call her home (null). */
+export function cmdLandExpedition(code: string, ask: LandAsk | null) {
+  return call<LandSent>('cmdLandExpedition', [code, ask])
+}
+
 /** 0157 — seat a captain you keep in a cabin of one of your ships (`seat` null: the server's picker),
  *  move her, or put her ashore (`shipId` null). Only in port; the refusal says why. */
 export function cmdSeatCaptain(code: string, shipId: string | null, seat: number | null = null) {
@@ -854,6 +894,19 @@ export function worldActions(worker: string): Promise<RpcResult<WorkerActionsVie
 }
 
 /** 0481: give her fleet a standing job (best | fixed | land). Dark E_NOT_IN_USE; a fleet on a route E_ROUTE_TAKEN. */
+/** 0519: the rounds (dark {on: false}); `fleet`: one of hers, whose works and their costs are served with the runs. */
+export function worldRounds(fleet: string | null): Promise<RpcResult<RoundsView>> {
+  return call<RoundsView>('worldRounds', [fleet])
+}
+
+export function cmdRoundSend(fleet: string, work: string, stop: RoundStop): Promise<RpcResult<{ ok: true; fleet: string; terms: RoundTerms }>> {
+  return call<{ ok: true; fleet: string; terms: RoundTerms }>('cmdRoundSend', [fleet, work, stop])
+}
+
+export function cmdRoundHome(fleet: string): Promise<RpcResult<{ ok: true; fleet: string; rounds: number }>> {
+  return call<{ ok: true; fleet: string; rounds: number }>('cmdRoundHome', [fleet])
+}
+
 export function cmdSetFleetJob(fleetId: string, kind: FleetJobKind, params: FleetJobParams): Promise<RpcResult<FleetJobSet>> {
   return call<FleetJobSet>('cmdSetFleetJob', [fleetId, kind, params])
 }

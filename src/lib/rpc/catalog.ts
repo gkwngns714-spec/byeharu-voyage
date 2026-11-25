@@ -469,6 +469,19 @@ const TABLE = {
   // Reads; no switch of their own. world.actions prices (the server's quotes): asked when the Assign sheet opens, never on a timer.
   worldWorkers: { schema: 'world', fn: 'workers', args: [] },
   worldActions: { schema: 'world', fn: 'actions', args: [{ name: 'p_worker', type: 'text' }] },
+  // 0519 ROUNDS (dark: {on: false} / E_NOT_IN_USE): her fleets' runs and, for a fleet named, the works; and its two doors
+  worldRounds: { schema: 'world', fn: 'rounds', args: [{ name: 'p_fleet', type: 'uuid' }] },
+  cmdRoundSend: {
+    schema: 'cmd',
+    fn: 'round_send',
+    mutates: true,
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_work', type: 'text' },
+      { name: 'p_stop', type: 'jsonb' },
+    ],
+  },
+  cmdRoundHome: { schema: 'cmd', fn: 'round_home', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }] },
   // 0483 — COURIER CONTRACTS (dark: the doors E_NOT_IN_USE, the read {on: false})
   worldCourierContracts: { schema: 'world', fn: 'courier_contracts', args: [] },
   cmdTakeContract: {
@@ -747,6 +760,43 @@ const TABLE = {
     args: [
       { name: 'p_code', type: 'text' },
       { name: 'p_trait', type: 'text' },
+    ],
+  },
+  // 0528: your captain leads your land party (its number), or leaves it (null). Dark (captain_works_enabled): E_NOT_IN_USE.
+  cmdCaptainLand: {
+    schema: 'cmd',
+    fn: 'captain_land',
+    mutates: true,
+    invalidates: ['worldCaptains'],
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_party', type: 'int' },
+    ],
+  },
+  // 0529: open your next captain place; let a captain go. Dark (captain_places_enabled): E_NOT_IN_USE.
+  cmdCaptainPlace: { schema: 'cmd', fn: 'captain_place', mutates: true, invalidates: ['worldCaptains', 'worldPlayer'], args: [] },
+  cmdCaptainDismiss: { schema: 'cmd', fn: 'captain_dismiss', mutates: true, invalidates: ['worldCaptains'], args: [{ name: 'p_code', type: 'text' }] },
+  // 0534: a land expedition: the read (dark: {on: false}; the captain and the ask quote one Send), and the door (ask null: called home).
+  worldLandExpedition: { schema: 'world', fn: 'land_expedition', args: [{ name: 'p_code', type: 'text' }, { name: 'p_ask', type: 'jsonb' }] },
+  cmdLandExpedition: {
+    schema: 'cmd',
+    fn: 'land_expedition',
+    mutates: true,
+    invalidates: ['worldLandExpedition', 'worldCaptains', 'worldPlayer'],
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_ask', type: 'jsonb' },
+    ],
+  },
+  // 0533: a captain's next rank of an upgrade, for HONOR BADGES. Dark (honor_enabled): E_NOT_IN_USE.
+  cmdCaptainUpgrade: {
+    schema: 'cmd',
+    fn: 'captain_upgrade',
+    mutates: true,
+    invalidates: ['worldCaptains'],
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_upgrade', type: 'text' },
     ],
   },
   // 0162 (K8): promote a captain — her ship docked, her level, the items in storage there.
