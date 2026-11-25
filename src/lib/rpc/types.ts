@@ -3727,7 +3727,7 @@ export type RoundsView =
       now: string
       /** 0524: what each fleet carries home, and what a capital gives for one (null: dark). */
       artifacts?: { tiers: { tier: string; gold: number; rp: number }[]; kept: { fleet: string; tier: 'uncommon' | 'rare' | 'very_rare'; qty: number }[] } | null
-      /** 0534: the seas a docked fleet may be sent to work, the nearest base of each; its own first. */
+      /** 0535: the seas a docked fleet may be sent to work, the nearest base of each; its own first. */
       seas?: { sea: string; name: string; base: string; nm: number; pirates: boolean }[]
       runs: RoundRun[]; works: { work: string; kind: 'combat' | 'sea'; word: string; skill: string; level: number; open: boolean; terms: RoundTerms | null }[] }
 
