@@ -146,6 +146,15 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
     why: "0315 (e): the probe's sales run through the drawn good's daily cap (0.35 x stock_target; the good is drawn from the game day, a minute here) -> E_DAILY_CAP on some minutes; each probe sale now starts with a fresh allowance, inside the rolled-back probe; step (h)'s spent allowance (1e8) is kept",
   },
   {
+    file: '20260818000315_merchants_answer_requests.sql',
+    find: '    -- (c) THE FLOOR IS KEPT: sale price plus bonus under her floor, no delivery, the line refused as it always was\n',
+    replace:
+      '    -- frozenAsserts: the bid (c) and (d) set their floors by is read here, of the three units the budget pays for, not before (a) and (b) sold eight\n' +
+      "    v_bid := (select q.avg_price from world.quote(v_port, v_good, 3, 'sell', null, v_f1) q);\n" +
+      '    -- (c) THE FLOOR IS KEPT: sale price plus bonus under her floor, no delivery, the line refused as it always was\n',
+    why: "0315 (c), (d): the floors are set by a bid read before (a) and (b) sold eight units; where the drawn good (the game day's draw) is thin, those sales move its bid by more than the half bonus that separates (d)'s floor from it, so the bonus no longer lifts the sale -> E_PRICE_LIMIT (chain-baseline run 45538163401, Barley Flour; locally Rice Flour at a stock of 44, 105.80 -> 93.57). The bid is read again before (c) as the answering door reads it, inside the rolled-back probe; (c)'s refusal and (d)'s lift are the file's own",
+  },
+  {
     file: '20260818000226_a_price_is_kept_for_years_both_ways.sql',
     find: "    v_h0 := date_trunc('hour', now()) - interval '26 hours';\n",
     replace:
@@ -206,7 +215,8 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
   digestSortsBlankedRows('20260818000274_the_clear_acts_before_the_quay.sql', '0274', 'uuid,uuid,uuid'),
 ]
 
-const BY_FILE = new Map(FROZEN_ASSERT_PATCHES.map((p) => [p.file, p]))
+const BY_FILE = new Map<string, FrozenAssertPatch[]>()
+for (const p of FROZEN_ASSERT_PATCHES) BY_FILE.set(p.file, [...(BY_FILE.get(p.file) ?? []), p])
 
 /** Where the file's final `do $$` block starts, or -1. */
 function lastDoBlock(sql: string): number {
@@ -218,20 +228,27 @@ function lastDoBlock(sql: string): number {
 
 /**
  * The SQL the applier executes for `file`: the file's own text, or — for a frozen migration with a
- * patch above — that text with its one self-assert line replaced. Throws when a patch no longer fits.
+ * patch (or several) above — that text with those self-assert lines replaced. Throws when a patch no longer fits.
  */
 export function sqlToApply(file: { name: string; sql: string }): string {
-  const patch = BY_FILE.get(file.name)
-  if (!patch) return file.sql
-  const at = file.sql.indexOf(patch.find)
-  const again = at === -1 ? -1 : file.sql.indexOf(patch.find, at + 1)
+  const patches = BY_FILE.get(file.name)
+  if (!patches) return file.sql
   const block = lastDoBlock(file.sql)
-  if (at === -1 || again !== -1 || block === -1 || at < block) {
-    throw new Error(
-      `FROZEN ASSERT PATCH NO LONGER FITS: ${file.name} — the text it replaces must occur exactly once, ` +
-        `inside the file's final do $$ block (found at ${at}, again at ${again}, last do-block at ${block}). ` +
-        'A frozen migration changed, or the patch is stale: fix src/lib/db/frozenAsserts.ts.',
-    )
-  }
-  return file.sql.slice(0, at) + patch.replace + file.sql.slice(at + patch.find.length)
+  // every patch is placed on the file's OWN text (a patch can never match what another one wrote)
+  const placed = patches.map((patch) => {
+    const at = file.sql.indexOf(patch.find)
+    const again = at === -1 ? -1 : file.sql.indexOf(patch.find, at + 1)
+    if (at === -1 || again !== -1 || block === -1 || at < block) {
+      throw new Error(
+        `FROZEN ASSERT PATCH NO LONGER FITS: ${file.name} — the text it replaces must occur exactly once, ` +
+          `inside the file's final do $$ block (found at ${at}, again at ${again}, last do-block at ${block}). ` +
+          'A frozen migration changed, or the patch is stale: fix src/lib/db/frozenAsserts.ts.',
+      )
+    }
+    return { at, patch }
+  })
+  placed.sort((a, b) => b.at - a.at) // from the end, so the earlier places hold
+  let sql = file.sql
+  for (const { at, patch } of placed) sql = sql.slice(0, at) + patch.replace + sql.slice(at + patch.find.length)
+  return sql
 }

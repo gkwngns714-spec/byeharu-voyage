@@ -25,7 +25,8 @@ test('every frozen-assert patch fits its real file once, inside the final self-a
     expect(f, `${p.file} is in the chain`).toBeTruthy()
     const out = sqlToApply(f!)
     expect(out).not.toBe(f!.sql)
-    expect(out.length - f!.sql.length).toBe(p.replace.length - p.find.length)
+    const same = FROZEN_ASSERT_PATCHES.filter((x) => x.file === p.file) // a file may carry several
+    expect(out.length - f!.sql.length).toBe(same.reduce((sum, x) => sum + x.replace.length - x.find.length, 0))
     expect(out.split(p.replace).length - 1).toBeGreaterThanOrEqual(1)
     // Everything before the final do-block is untouched: the schema the file builds is the same.
     const block = Math.max(...[...f!.sql.matchAll(/\ndo \$[A-Za-z_]*\$\n/g)].map((m) => m.index!))
@@ -47,6 +48,11 @@ test('the patched asserts can still fail', async () => {
   // Cleared only below 1e6, so step (h)'s spent allowance (1e8) still refuses and its assert still fails.
   expect(sqlToApply(f315)).toContain('qty < 1000000;\n  v_res := cmd.enqueue(')
   expect(f315.sql).toContain("error_code' is distinct from 'E_DAILY_CAP'")
+  // 0315 (c), (d): only the bid is read again; both judgements after it are the file's own.
+  const out315 = sqlToApply(f315)
+  const c315 = '    -- (c) THE FLOOR IS KEPT'
+  expect(out315.slice(out315.indexOf(c315))).toBe(f315.sql.slice(f315.sql.indexOf(c315)))
+  expect(out315).toContain("v_bid := (select q.avg_price from world.quote(v_port, v_good, 3, 'sell', null, v_f1) q);@    -- (c)".replace('@', String.fromCharCode(10)))
   expect(out19).toContain("the quay predicted % out / % in and the orders moved % / %")
   // 0226: only the plant line moves, and only in UTC hour 01 (a pair planted 26 h back is 23:00 and 00:00
   // there, two days, so the day folds into two rows of n 4). Every assertion that judges the hour rows, the

@@ -8,12 +8,13 @@ import { FROZEN_ASSERT_PATCHES, sqlToApply } from '../../src/lib/db/frozenAssert
 
 const dir = process.argv[2] ?? 'supabase/migrations'
 const names = new Set(readdirSync(dir))
-for (const p of FROZEN_ASSERT_PATCHES) {
-  if (!names.has(p.file)) throw new Error(`patched file missing from ${dir}: ${p.file}`)
-  const full = path.join(dir, p.file)
+// a file may carry several patches: sqlToApply applies them all, so each file is read and written once
+for (const file of new Set(FROZEN_ASSERT_PATCHES.map((p) => p.file))) {
+  if (!names.has(file)) throw new Error(`patched file missing from ${dir}: ${file}`)
+  const full = path.join(dir, file)
   const sql = readFileSync(full, 'utf8')
-  const out = sqlToApply({ name: p.file, sql })
-  if (out === sql) throw new Error(`patch changed nothing: ${p.file}`)
+  const out = sqlToApply({ name: file, sql })
+  if (out === sql) throw new Error(`patch changed nothing: ${file}`)
   writeFileSync(full, out)
-  console.log(`patched ${p.file}: ${p.why}`)
+  for (const p of FROZEN_ASSERT_PATCHES.filter((x) => x.file === file)) console.log(`patched ${file}: ${p.why}`)
 }
