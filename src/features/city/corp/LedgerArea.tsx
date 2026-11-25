@@ -91,7 +91,7 @@ export function LedgerArea({ rate, asking = false }: { rate: HqRate | null; aski
                 <Skeleton className="h-3 w-full" />
               ) : l ? (
                 <span className="flex min-w-0 flex-1 items-center gap-3" data-testid="corp-ledger-line" data-line={l.id}>
-                  <span className="w-20 shrink-0 truncate text-t-caption text-ink-muted" title={l.word}>
+                  <span className="w-24 shrink-0 whitespace-nowrap text-t-caption text-ink-muted">
                     {l.word}
                   </span>
                   <Bar className="min-w-0 flex-1" pct={(Math.abs(l.amount) / top) * 100} tone={l.amount < 0 ? 'danger' : 'success'} label={l.word} />
