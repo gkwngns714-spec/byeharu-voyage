@@ -41,6 +41,18 @@ Pasted by the owner in chat, 2026-11-25. It outranks every earlier design docume
 >
 > For both Active and Passive methods, when you choose the final destination of the city you want to visit, the game itself will choose appropriate paths to reach that city, by visiting multiple cities for provision+crew, fix ships etc.
 
+## Addition, the same day, verbatim (trading and tax)
+
+> TRADING
+>
+> Trade goods price will grow in accordance with the distance between the two cities. You can bargain 10 times for price reduction or increase when selling. The success rate will decrease everytime you attempt.Each time you attempt will create 5% of total price reduction. This will also be enhanced by captains, and skills(level) – I am thinking NEGOTIATION skill.
+>
+> TAX
+>
+> Each city will have its own tax, with 0%~30%. Your own country or the city that has your HQ will provide less tax. TAX is only payed when only a profit is made, or when buying.
+
+Read by the lead (defaults, the owner may reverse): a SUCCESSFUL attempt moves the price 5 %, ten attempts at most, each less likely than the last; a failed one moves nothing. This answers the open question "haggling back?" (yes).
+
 ## Read by the lead (defaults, the owner may reverse)
 - "cross the atlantic ocean (left vast sea?)", west from Brazil to Korea, is the **Pacific**; "over Russia near antartica (north)" is the **Arctic**.
 - "find architect" is read as **finding sites and discoveries** (buildings, ruins); to be confirmed.
