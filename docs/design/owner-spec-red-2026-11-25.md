@@ -54,7 +54,46 @@ passive price ranges, the sea ladder (approved), automatic stops.
 
 ## 3. More sea restrictions like wave resistance (R11, R12)
 
-Research running on PC 디폴리스; this section is written next. Build nothing for it yet.
+### 3.1 What the research found (2026-11-25, web; sources in the list below)
+
+- In Uncharted Waters Origin some seas ask a minimum of: company level, **seaworthiness** (wave resistance), **ice breaking**,
+  **momentum** (pushing through), **rowing**. The FLEET'S AVERAGE counts [1]. This is official.
+- Ways to raise them [1]: an anchor on every ship (ice, momentum, seaworthiness); a ram (ice, momentum); armour and bigger ships
+  (seaworthiness); oared ships and parts (rowing; only oared ships have it).
+- Far seas are closed by a wall you cannot cross; in the beta they cost speed and hull instead [2, a wiki, not official].
+- Basic ice breaking is said to be enough for the North Sea and Scandinavia [2].
+- **Not found:** the figure each sea asks. The only map of them [3] is an image that could not be read. So no number below is copied.
+- Disasters (storm, scurvy, rats, fire, leak, seaweed, sharks, homesickness) are answered with tools and crew; they are not entry gates [4].
+
+[1] https://guide.floor.line.games/UWO/en_US/detail/1167031265223600324
+[2] https://namu.wiki/w/대항해시대%20오리진/게임%20관련%20정보 (about half of the page was read)
+[3] https://www.inven.co.kr/board/uwo/5714/352
+[4] https://guide.floor.line.games/UWO/en_US/detail/1166988222692000181
+
+### 3.2 Proposal: three more, beside Level and Wave resistance (screen words in English)
+
+All PROPOSED by Claude; the names, seas and figures are the owner's to set. Figures use wave resistance's scale and are placeholders.
+
+| Restriction | Why | Seas that ask it (code: figure) | How to raise it (R12) |
+|---|---|---|---|
+| **Wave resistance** (exists, English from now on) | Big waves | As the table in plan 0.1 | Bigger ships, Anchor, Sheathing, Ballast; storm canvas, planking, pumps |
+| **Ice resistance** (new) | Ice | ARC: 50; later `arctic-passage` and the far south: 70 | Sheathing, Hold Frames, Anchor; a new ram / ice bow; small strong hulls |
+| **Current strength** (new) | Strong currents against you | SOU-CAPE: 20, PHI-JP: 25, NRT-OPEN and STH-OPEN: 50 | Sails, Rudder, Anchor; the Handling skill line |
+| **Light wind** (new) | Seas with no wind | NOR-DOL: 20, IND-E: 20, PHI: 35 | Headsails, Sails; oared ships; the skill LIGHT_AIR (it exists) |
+
+- **No oar-only sea.** Where the reference game asks rowing, only galleys pass. "Light wind" can be met by oars OR sails, so a company never
+  needs one ship type.
+- **Europe asks none of the three**, White and Barents Seas included, so the start stays open (rung 1, 89 harbours).
+- **The Cape asks one**, and it is on the way to India and Asia. A figure there no rung-2 ship can meet would close 100+ harbours.
+
+### 3.3 What the builder must hold
+
+- **One rule.** The new asks are columns on `sea_zones`, read by the one `public.sea_refusal`; the fleet's figures are averages through
+  `world.ship_stat`, as `fleet_wave` is. No second gate. `sea_floor` and `pass-home` (0513) must cover the new asks too.
+- **Reachability is re-proved** with them (254 harbours; the counts of plan 0.1), on hulls a company of that rung can own.
+- **Do not ship the figures above unchecked:** the stat of each hull and gear piece has not been derived, so whether a ship can meet them
+  is NOT known. Derive hull figures first, as 0215 did for wave, then set the asks.
+- `seas-by-continent` (0510) and the relight do not wait for this. Slice: **`sea-asks-more`**, after 0514, dark.
 
 ## 4. The whole deck, verbatim
 
