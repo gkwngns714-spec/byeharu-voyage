@@ -48,6 +48,17 @@ test('the patched asserts can still fail', async () => {
   // Cleared only below 1e6, so step (h)'s spent allowance (1e8) still refuses and its assert still fails.
   expect(sqlToApply(f315)).toContain('qty < 1000000;\n  v_res := cmd.enqueue(')
   expect(f315.sql).toContain("error_code' is distinct from 'E_DAILY_CAP'")
+  // 0154: both arrival comparisons still judge, and the two raises and every other clause are the file's own.
+  const f154 = files.find((x) => x.name.startsWith('20260818000154_'))!
+  const out154 = sqlToApply(f154)
+  const p154 = FROZEN_ASSERT_PATCHES.filter((p) => p.file === f154.name)
+  expect(p154).toHaveLength(2)
+  let back154 = out154
+  for (const p of p154) {
+    expect(p.replace).toContain(p.find.trim().slice(3)) // the file's own comparison stands inside
+    back154 = back154.replace(p.replace, () => p.find)
+  }
+  expect(back154).toBe(f154.sql)
   // 0315 (c), (d): only the bid is read again; both judgements after it are the file's own.
   const out315 = sqlToApply(f315)
   const c315 = '    -- (c) THE FLOOR IS KEPT'

@@ -121,6 +121,37 @@ function digestSortsBlankedRows(file: string, n: string, args: string): FrozenAs
   }
 }
 
+/**
+ * 0154's probe holds the arrival voyage.arrival_at predicts to the eta voyage.settle writes. They part, by 0125's
+ * rule and not by a fault, when a FAIR_WIND falls on a day that ends at or near the arrival: the wind is rolled at that
+ * day's end, so the eta it writes lies BEFORE the instant it is known, and arrival_at answers that instant (its floor).
+ * The weather is drawn from the voyage's random id. An arrival that is not the eta must now be that floor, worked by
+ * hand from the settled days, to the millisecond; any other difference fails as written.
+ */
+function arrivalIsTheEtaOrTheFloor(passage: 'dark_voyage' | 'lit_voyage', settled: 'new' | 'one', arrival: 'arrival_new' | 'arrival'): FrozenAssertPatch {
+  const v = `v_pr->'${passage}'->'${settled}'`
+  const eta = `(${v}->'voyage'->>'eta')::timestamptz`
+  const at = `(v_pr->'${passage}'->>'${arrival}')::timestamptz`
+  const find = `     or ${eta} <> ${at}\n`
+  return {
+    file: '20260818000154_a_skill_is_paid_where_the_game_charges.sql',
+    find,
+    replace:
+      `     -- frozenAsserts: or the floor a late FAIR_WIND leaves (0125: she cannot arrive before the day that blew is over)\n` +
+      `     or (${eta} <> ${at}\n` +
+      `         and coalesce(abs(extract(epoch from ${at} - (select greatest(${eta}, max(least(\n` +
+      `               ${eta} - make_interval(secs => (q.after * 3600 / public.wc_num('time_compression'))::double precision),\n` +
+      `               now() - interval '60 days' + make_interval(secs => ((q.d * 24 + q.before) * 3600 / public.wc_num('time_compression'))::double precision))))\n` +
+      `             from (select x.d, sum(x.h) over (order by x.d rows between current row and unbounded following) as after,\n` +
+      `                          coalesce(sum(x.h) over (order by x.d rows between unbounded preceding and 1 preceding), 0) as before\n` +
+      `                     from (select (e->>'day')::int as d, coalesce((e->'payload'->>'delay_hours')::numeric, 0) as h\n` +
+      `                             from jsonb_array_elements(${v}->'events') e) x) q))), 1) > 0.001)\n`,
+    why:
+      `0154 (b, ${passage}): the predicted arrival is not the settled eta when a FAIR_WIND blows on a day that ends at the arrival (0125's floor; the weather is the random voyage id's): ` +
+      'PR #869, from zero, 2026-11-25: a wind of 20.93 h on day 50 of 52, 78.5 s apart. A difference must now be exactly that floor, worked from the settled days; anything else fails as written',
+  }
+}
+
 export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
   {
     file: '20260818000019_the_quay_names_the_port_that_pays.sql',
@@ -136,6 +167,8 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
     replace: '    if v_ms > 1200 then\n',
     why: '0108 (d5): 400 ms -> 1,200 ms a call on PGlite (426/451 ms measured on a slower PC); real Postgres keeps 400',
   },
+  arrivalIsTheEtaOrTheFloor('dark_voyage', 'new', 'arrival_new'),
+  arrivalIsTheEtaOrTheFloor('lit_voyage', 'one', 'arrival'),
   {
     file: '20260818000315_merchants_answer_requests.sql',
     find: '  v_res  jsonb;\nbegin\n  v_res := cmd.enqueue(p_player, jsonb_set(cmd.parse(p_player, p_fleet, v_line)',
