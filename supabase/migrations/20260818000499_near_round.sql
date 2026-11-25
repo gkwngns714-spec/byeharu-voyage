@@ -463,8 +463,10 @@ $h$);
   if exists (select 1 from public.players p where p.company_name = 'Casa da Ronda 0499' or p.auth_uid = c_uid) then
     raise exception '0499 self-assert FAIL: the probe left something behind';
   end if;
-  if public.wc('near_round_enabled') is distinct from 'false'::jsonb or public.wc('jobs_wait_enabled') is distinct from 'false'::jsonb then
-    raise exception '0499 self-assert FAIL: a switch is not false after the probe';
+  -- the new switch is false and every other knob is as the file found it (0498's may be lit by now)
+  if public.wc('near_round_enabled') is distinct from 'false'::jsonb
+     or (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, ''), ',' order by c.key)) from public.world_config c where c.key <> 'near_round_enabled') <> v_cfg_before then
+    raise exception '0499 self-assert FAIL: a switch is not as it was found after the probe';
   end if;
 
   if clock_timestamp() - v_t0 > interval '45 seconds' then
