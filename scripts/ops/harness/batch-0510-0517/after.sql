@@ -33,7 +33,7 @@ select json_build_object(
                                 ('public.flow_is_profit(text)', '83c113fa73af57d9404289d91d0fe535'),
                                 ('voyage.depart(uuid,jsonb,uuid,uuid,timestamp with time zone)', '3ca79062fb5f61a03683d940caf54f24'),
                                 ('public.fleet_wage(uuid,boolean,integer)', '29c4f0d1aa4c9c344070bdcad98f706a'),
-                                ('public.fleet_job_plan(uuid)', '91b3f42ae95c3ca15f1347580a35194f'),
+                                ('public.fleet_job_plan(uuid)', '12ba4230d3beb6c724f2e4a4492d065f'),
                                 ('public.sea_judge(integer,numeric,text[],integer,integer,integer,integer)', 'faee61ce117fb055996409b388ceef9f'),
                                 ('world.sea_conditions()', 'a1302112d4d3ce96389f67fae961d8a7'),
                                 ('public.sea_conditions_ready()', '542f92ad6e77dccd4d52fb45557026d1'),
