@@ -62,6 +62,8 @@ export interface MapDrawing {
 
 /** How much latitude the face's map opens on, in degrees. */
 const NEAR_LAT = 11
+/** The same under the fog (0504): her circle of sight, not the black round it. */
+const FOG_LAT = 5
 
 /** One frozen empty list, so the plan's chart — which draws NO live fleets layer — allocates nothing per frame. */
 const NO_FLEETS: readonly FleetView[] = []
@@ -190,11 +192,11 @@ export function TradeMap({
   })
   const opening = useCallback(
     (aspect: number) => {
-      const half = NEAR_LAT / 2
+      const half = (fog ? FOG_LAT : NEAR_LAT) / 2
       const wide = (half * aspect) / Math.cos((centre.lat * Math.PI) / 180) / 1.25
       return { minLat: centre.lat - half, maxLat: centre.lat + half, minLon: centre.lon - wide, maxLon: centre.lon + wide }
     },
-    [centre],
+    [centre, fog],
   )
 
   const onlyKey = [docked, fleet.voyage?.to ?? null, ...drawing.legs.flatMap((l) => [l.from, l.to]), ...drawing.ends]
