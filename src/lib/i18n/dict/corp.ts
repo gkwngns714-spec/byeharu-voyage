@@ -45,6 +45,7 @@ export const corpDict = defineDict({
     days: 'Food days',
     minProfit: 'Min profit',
     maxDamage: 'Max damage %',
+    spaceLeft: 'Cargo space',
     outOfRange: 'Out of range',
     left: 'Runs left',
     leftN: '{n} left',

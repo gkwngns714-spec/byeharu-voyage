@@ -217,7 +217,8 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
   }, [])
 
   // 0516: the settings of a fixed run, drawn while the server says they are open; they start as her running job has them
-  const settingsOpen = litWorkers(useWorkersRead().view)?.settings === true
+  const room = litWorkers(useWorkersRead().view)?.settings?.[fleet.id] ?? null
+  const settingsOpen = room !== null
   const { jobs } = useWorkers()
   const [edited, setEdited] = useState<JobSettingsDraft | null>(null)
   const draft = edited ?? draftOf(jobs?.get(fleet.id)?.params)
@@ -352,7 +353,7 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
                   {many === 'count' && <Stepper className="mt-2" value={count} onChange={setCount} min={2} max={MAX_RUNS} label={t('corp.count')} data-testid="corp-assign-count" />}
                 </Step>
               )}
-              {settingsOpen && <JobSettings draft={draft} onChange={setEdited} sells={end === 'sell'} />}
+              {room && <JobSettings draft={draft} room={room} onChange={setEdited} sells={end === 'sell'} />}
             </>
           )}
           <FleetRoles fleet={fleet.id} />

@@ -3569,6 +3569,15 @@ export interface FleetJobParams {
   stop_damage?: number
 }
 
+/** 0516: one fleet's room for a job's settings, as served: her hold, what is left of it, and the least and most crew. */
+export interface JobRoom {
+  hold: number
+  left: number
+  crew: number
+  crew_min: number
+  crew_max: number
+}
+
 /** 0481: what a job did last: a run it started (its note), a wait for nothing to do, or the code it stopped on. */
 export interface FleetJobLast {
   at: string
@@ -3756,7 +3765,7 @@ export interface WorkerRow {
 /** `world.workers()` (0496). Ask no more than once in `ask_s` seconds, and once after a command or when a stamp passes. */
 export type WorkersView =
   | { company: false; workers: [] }
-  | { company: true; now: string; ask_s: number; away_cap_hours: number; workers: WorkerRow[]; /** 0516: a fixed job may carry settings (absent: dark). */ settings?: boolean }
+  | { company: true; now: string; ask_s: number; away_cap_hours: number; workers: WorkerRow[]; /** 0516: a fixed job may carry settings (absent: dark). */ settings?: Record<string, JobRoom> }
 
 /** `world.actions(worker)` (0496): only what the server would take. Ask when the Assign sheet opens, never on a timer. */
 export type WorkerActionsView =

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT, type TKey } from '../../../lib/i18n'
-import type { FleetJobParams } from '../../../lib/rpc'
+import { formatInt } from '../../../lib/format'
+import type { FleetJobParams, JobRoom } from '../../../lib/rpc'
 import { SETTINGS, type JobSettingsDraft } from './settingsDraft'
 
 // A FIXED JOB'S SETTINGS (0516, the owner's PASSIVE METHOD): what the Assign sheet sends with a run. An empty box sends nothing. The
@@ -15,7 +16,7 @@ const WORDS: Record<(typeof SETTINGS)[number]['code'], TKey> = {
   stop_damage: 'corp.maxDamage',
 } satisfies Partial<Record<keyof FleetJobParams, TKey>>
 
-export function JobSettings({ draft, onChange, sells }: { draft: JobSettingsDraft; onChange: (d: JobSettingsDraft) => void; sells: boolean }) {
+export function JobSettings({ draft, room, onChange, sells }: { draft: JobSettingsDraft; room: JobRoom; onChange: (d: JobSettingsDraft) => void; sells: boolean }) {
   const t = useT()
   const [open, setOpen] = useState(() => Object.keys(draft).length > 0)
   return (
@@ -27,7 +28,10 @@ export function JobSettings({ draft, onChange, sells }: { draft: JobSettingsDraf
         <div className="grid grid-cols-2 gap-2" data-testid="corp-settings">
           {SETTINGS.filter((s) => sells || !s.sale).map((s) => (
             <label key={s.code} className="flex min-w-0 flex-col gap-1 text-t-caption text-ink-muted">
-              {t(WORDS[s.code])}
+              <span>
+                {t(WORDS[s.code])}
+                {s.code === 'crew' && <span className="ml-1 tabular-nums text-ink-faint">{`${formatInt(room.crew_min)}–${formatInt(room.crew_max)}`}</span>}
+              </span>
               <input
                 inputMode="decimal"
                 autoComplete="off"
@@ -38,6 +42,9 @@ export function JobSettings({ draft, onChange, sells }: { draft: JobSettingsDraf
               />
             </label>
           ))}
+          <p className="col-span-2 text-t-caption tabular-nums text-ink-muted" data-testid="corp-settings-left" data-left={room.left}>
+            {t('corp.spaceLeft')} {formatInt(room.left)} / {formatInt(room.hold)}
+          </p>
         </div>
       )}
     </div>
