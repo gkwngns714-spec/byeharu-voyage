@@ -8,6 +8,11 @@ The owner: "Each PREMIUM TRADE GOOD will be needed by one city only, and it will
 - The good's city (`goods.premium_port_id`, data) pays a company 3 to 5 times ITS OWN normal price: 3 at 500 sailed miles or fewer from the
   nearest city that offers the good (`port_goods.haul_nm`), 5 from 12,000, straight between. Any other city: the normal price.
 - 30 units a day (real, UTC) a city, for all companies together; the rest of a load at the normal price in the same quote.
+- **Only what she MADE.** The premium is paid for no more units than the company forged (`cmd.forge_good`, its FORGE on HQ) and has not yet sold
+  at a premium: `public.premium_made`, one row a company and good, server only, counted dark too. Bought units: the normal price. A count, not a
+  mark on each unit: who makes 10, sells them at the normal price and buys 10 others, sells those at the premium. Merchants never.
+- What was made before the deploy: the chain records a `FORGED` event a forging (product, quantity; 0281), so those count. The land's smith
+  (0461) writes no such record and is not counted, before or after.
 - Its base price is 1.25 times everywhere ("costs more"), buying and selling, so margins elsewhere scale with it. Merchants' prices too.
 - One place: `public.premium_left`, asked by `world.quote_priced` and the door's tally. No re-cut of `run_day`, the sale's face or never-lose.
 - Needs the closed economy and the city purses (an open economy would mint the pay).
@@ -133,10 +138,22 @@ Each city (size 3 or 5) once; never one that offers or makes the good, or whose 
 | Nacre Inlay (1 Gum Arabic + 2 Mother-of-Pearl + 2 Planks) | - | Lisbon | 13,244 | 5.00 |
 | Ukiyo-e Prints (1 Indigo + 1 Paper + 1 Planks) | Fukuoka | Bilbao | 13,739 | 5.00 |
 
+## Which list? (the owner's to choose)
+
+- **(a) made and profitable:** 85 recipes' goods are worth their materials at base, 108 with the 25 %, 219 with three times on top. The 100 above are
+  the best of these that some quay offers. **This is the default as deployed.**
+- **(b) only goods no quay sells: 17**, under 30, so it is not the default. All are cheap half-made stuff, none worth its materials at the normal
+  price (leather and yarn not even at 3 times): Rice, Wheat, Barley, Maize, Rye and Oat Flour, Cream, Malt, Ship's Biscuit, Bread, Rye Bread, Iron Bars,
+  Planks, Glass, Cake, Yarn, Leather. No quay sells them, so there is no distance (`haul_nm` is null): the near multiple, 3. On purses: 30 a day
+  of all 17 is about 120,000 a day in base prices (201,000 at 5 times) against 17.7 M for (a).
+- Honestly: **all 100 are sold at one to three quays.** 33 of them are everyday food, drink and pantry goods: Baijiu, Doenjang, Perry, Pulque,
+  Shrimp Paste, Sesame Oil, Palm Sugar, Cheese, Butter, Cider, Soy Sauce, Sake, Wine, Chianti, Sugar, Arrack, Maple Sugar, Palm Wine, Cassava Flour,
+  Toddy, Rum, Mission Wine, Caviar, Coffee, Tea, Cacao, Guayaquil Cacao, Soconusco Cacao, Dried Squid, Dried Shrimp, Dried Abalone, Trepang, Shark Fin.
+  Recommended: (a) without those 33 (67 made things stay), now that only made units are paid.
+
 ## Not verified / known
 
 - Production: digests, purses (`before-0517.sql`, `purses.sql`). Real PostgreSQL: CI.
-- The good may also be BOUGHT at a quay that offers it and carried to its city; the 25 % and the 30 units limit that.
 - The multiple is on the city's own price, which already rises with distance (haul).
 - A run's hourly figure is one game day's; the 30 units are a real day's, so once they are gone the figure falls to the normal price.
 - A run that has bought may find the day's units taken by another company on arrival: it then sells at the normal price, as with any price move.

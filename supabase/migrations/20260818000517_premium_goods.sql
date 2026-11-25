@@ -17,6 +17,9 @@
 --     (public.treasury_balance, port_treasury.reserve, public.city_floor) can pay whole: none to spare, no premium. The rest of the empty-purse
 --     rule of cmd.do_sell is unmoved. No coin is made: the sale is one SELL of public.city_pays, from that purse.
 --   A PREMIUM GOOD COSTS MORE: its base price is premium_price_lift (1.25) times, everywhere, buying and selling (world.mid_terms).
+--   ONLY WHAT SHE MADE: the units are also no more than the company made in its Forge and has not yet sold at a premium (public.premium_made:
+--     counted by cmd.forge_good, dark too; before this file by its FORGED events). What she bought at a quay is paid the normal price.
+--     A count a company and good, not a mark on each unit. What the land's smith makes is not counted.
 --   Not where the city offers the good itself (no buying and selling at one quay). A merchant and a quote with no fleet: the normal price.
 -- READ FROM ONE PLACE: public.premium_left, by THE one quote (world.quote_priced) and by the door's tally (cmd.do_sell). The sale's face, the
 --   Best cards, the boards, the day (public.run_day) and the never-lose rule (0498) ask that quote, so none is re-cut; the board's shortlist
@@ -26,11 +29,12 @@
 --   from), the dearer the good the farther its city (500 to 12,000 miles), each city of size 3 or 5 at most once, never one that offers or
 --   makes the good or whose culture refuses it. docs/dev-log/2026-11-25-premium-goods.md lists it. To move one: update goods.premium_port_id.
 -- DARK (as deployed): byte-identical answers.
--- THE HUNKS (16; each once in the live body, all reverse): world.quote_priced 3, cmd.do_sell 6, world.mid_terms 1, world.good_mids 1,
---   world.market 3, world.goods_forge 1, world.board_sell_memo 1. NEW: 9 functions, server only. KNOBS: 8. NOT CHANGED: every other.
--- ROWS: 100 goods get a value; no table. budget: none (no table, no cron job, no autovacuum setting). -- retention: none, bounded by one row a (port, good).
--- THE TICK'S COST: no tick, no beat step. Lit: one lookup by key in a company's sale quote; in the premium city four more key reads.
--- LOCKS: ALTER TABLE goods (one column, a reference), port_goods (two columns, no rewrite); CREATE OR REPLACE x7 by hunks. Under a second.
+-- THE HUNKS (17; each once in the live body, all reverse): world.quote_priced 3, cmd.do_sell 6, world.mid_terms 1, world.good_mids 1,
+--   world.market 3, world.goods_forge 1, world.board_sell_memo 1, cmd.forge_good 1. NEW: 11 functions, server only. KNOBS: 8. NOT CHANGED: every other.
+-- ROWS: 100 goods get a value; one table, public.premium_made: one row a company and good it has made (a row written a forging, none a minute).
+--   budget: none (no cron job, no autovacuum setting). -- retention: none, bounded by one row a company and made good (287 at most).
+-- THE TICK'S COST: no tick, no beat step. Lit: one lookup by key in a company's sale quote; in the premium city five more key reads.
+-- LOCKS: ALTER TABLE goods (one column, a reference), port_goods (two columns, no rewrite); CREATE TABLE x1; CREATE OR REPLACE x8 by hunks. Under a second.
 --   BUDGET: statement_timeout 45 s, lock_timeout 5 s; fails above 30 s.
 -- ROLLBACK (forward, owner only): QUICK, premium_goods_enabled false. FULL: scripts/ops/harness/premium-goods/rollback-0517.sql (a draft).
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; grants and settings unmoved; no other knob moved; the new functions server
@@ -40,8 +44,8 @@
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 do $m$
 declare
-  c_hunked constant text[] := array['world.quote_priced(uuid,uuid,numeric,text,numeric,uuid,numeric,numeric,numeric,numeric)', 'cmd.do_sell(uuid,jsonb)', 'world.mid_terms(uuid,uuid)', 'world.good_mids(uuid)', 'world.market(uuid)', 'world.goods_forge(uuid)', 'world.board_sell_memo(uuid,uuid,jsonb,jsonb)'];
-  c_new    constant text[] := array['public.premium_on()', 'public.premium_lift()', 'public.premium_mult(numeric)', 'public.premium_units(uuid,uuid)', 'public.premium_left(uuid,uuid,uuid)', 'public.premium_hold(uuid,uuid)', 'public.premium_spend(uuid,uuid,numeric)', 'public.premium_port(uuid)', 'public.premium_face(uuid)'];
+  c_hunked constant text[] := array['world.quote_priced(uuid,uuid,numeric,text,numeric,uuid,numeric,numeric,numeric,numeric)', 'cmd.do_sell(uuid,jsonb)', 'world.mid_terms(uuid,uuid)', 'world.good_mids(uuid)', 'world.market(uuid)', 'world.goods_forge(uuid)', 'world.board_sell_memo(uuid,uuid,jsonb,jsonb)', 'cmd.forge_good(uuid,uuid,integer)'];
+  c_new    constant text[] := array['public.premium_on()', 'public.premium_lift()', 'public.premium_mult(numeric)', 'public.premium_units(uuid,uuid)', 'public.premium_left(uuid,uuid,uuid)', 'public.premium_mine(uuid,uuid)', 'public.premium_count(uuid,uuid,numeric)', 'public.premium_hold(uuid,uuid)', 'public.premium_spend(uuid,uuid,uuid,numeric)', 'public.premium_port(uuid)', 'public.premium_face(uuid)'];
   c_knobs  constant text[] := array['premium_goods_enabled', 'premium_mult_near', 'premium_mult_far', 'premium_near_nm', 'premium_far_nm', 'premium_day_units', 'premium_purse_share', 'premium_price_lift'];
   c_ua     constant uuid := '00000000-0517-4000-8000-0000000000a1';
   v_t0         timestamptz := clock_timestamp();
@@ -143,6 +147,8 @@ begin
   update public.goods set premium_port_id = null where premium_port_id = v_lis or id = v_g;
   update public.goods set premium_port_id = v_lis where id = v_g;
   update public.world_config set value = 'true'::jsonb where key = 'premium_goods_enabled';
+  v_out := v_out || jsonb_build_object('bought', coalesce((select w.left_units from public.premium_left(v_fl, v_lis, v_g) w), 0));   -- not made by her
+  perform public.premium_count(v_pl, v_g, 50);
   v_out := v_out || jsonb_build_object('lift_mid', world.mid_price(v_lis, v_g, 1000000), 'lift_o', world.mid_price(v_lis, v_o, 1000),
     'lift_mids', (select m.mid from world.good_mids(v_g) m where m.port_id = v_lis),
     'lift_buy', (select q.mid_total from world.quote(v_lis, v_g, 40, 'buy', null, v_fl) q));
@@ -179,11 +185,12 @@ begin
   v_out := v_out || jsonb_build_object('sold', v_r, 'flows', (select jsonb_agg(t.ducats) from public.treasury_flows t where t.player_id = v_pl and t.port_id = v_lis and t.kind = 'SELL'),
     'world', (select p.ducats from public.players p where p.id = v_pl) + (select coalesce(sum(t.ducats), 0) from public.treasury_flows t where t.player_id = v_pl) - v_sum,
     'left', (select w.left_units from public.premium_left(v_fl, v_lis, v_g) w));
-  perform public.premium_spend(v_lis, v_g, 20);
+  perform public.premium_spend(v_pl, v_lis, v_g, 20);
   v_r := cmd.do_sell(v_fl, jsonb_build_object('good', v_g, 'qty', 4));
   v_out := v_out || jsonb_build_object('sold2', v_r, 'left2', coalesce((select w.left_units from public.premium_left(v_fl, v_lis, v_g) w), 0),
     'spent_q', (select q.mid_total from world.quote(v_lis, v_g, 8, 'sell', null, v_fl) q), 'plain_q', (select q.mid_total from world.quote(v_lis, v_g, 8, 'sell', null, null) q));
   update public.port_goods set premium_day = premium_day - 1 where port_id = v_lis and good_id = v_g;
+  v_out := v_out || jsonb_build_object('mine', public.premium_mine(v_pl, v_g));
   return v_out || jsonb_build_object('next_day', (select w.left_units from public.premium_left(v_fl, v_lis, v_g) w),
     'on_market', (select count(*) from jsonb_array_elements(world.market(v_lis)->'goods') e where e #>> '{premium,port}' = 'LIS'));
 end
@@ -208,6 +215,25 @@ $body$
   alter table public.goods add column premium_port_id uuid references public.ports(id);
   create unique index goods_premium_port_one on public.goods (premium_port_id) where premium_port_id is not null;
   alter table public.port_goods add column premium_day integer, add column premium_units numeric;
+  -- retention: none, bounded by one row a company and made good (287 at most a company); a company's rows go with it
+  create table public.premium_made (
+    player_id uuid not null references public.players(id) on delete cascade,
+    good_id   uuid not null references public.goods(id),
+    made      numeric not null default 0,
+    sold      numeric not null default 0,
+    primary key (player_id, good_id));
+  alter table public.premium_made enable row level security;
+  revoke all on table public.premium_made from public, anon, authenticated, service_role;
+  comment on table public.premium_made is '0517: units of a made good a company forged (made) and sold at a premium (sold). Writers: public.premium_count, public.premium_spend. Server only.';
+  -- what the chain records of goods made before this file: a FORGED event a forging (0281), by the product's name. Companies only, by the
+  -- events' own (player, time) index. (Not recorded: what the land's smith made.)
+  insert into public.premium_made (player_id, good_id, made)
+  select e.player_id, g.id, sum((e.payload->>'qty')::numeric)
+    from public.players pl
+    join public.events e on e.player_id = pl.id and e.kind = 'FORGED'
+    join public.goods g on g.name = e.payload->>'product' and exists (select 1 from public.goods_recipes r where r.product_id = g.id)
+   where not coalesce(pl.is_npc, false)
+   group by 1, 2;
   comment on column public.goods.premium_port_id is '0517: the ONE city that wants this made good and pays 3 to 5 times for it (premium_goods_enabled). Data: the owner may move it. One good a city.';
   comment on column public.port_goods.premium_day is '0517: the real day (public.real_day) premium_units counts. One writer: public.premium_spend.';
   comment on column public.port_goods.premium_units is '0517: the units this city took at its premium on premium_day.';
@@ -331,13 +357,49 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0517: public.premium_units for a COMPANY'S fleet; no row with no fleet or for a merchant. Asked by THE one quote and by the door's tally alone.
+-- 0517: public.premium_units for a COMPANY'S fleet, and no more than the units of it the company MADE and has not yet sold at a premium
+-- (public.premium_mine). No row with no fleet or for a merchant. Asked by THE one quote and by the door's tally alone.
+declare
+  v_player uuid;
 begin
-  if not exists (select 1 from public.goods g where g.id = p_good and g.premium_port_id = p_port)
-     or not exists (select 1 from public.fleets f join public.players pl on pl.id = f.player_id where f.id = p_fleet and not coalesce(pl.is_npc, false)) then
+  if not exists (select 1 from public.goods g where g.id = p_good and g.premium_port_id = p_port) then
     return;
   end if;
-  return query select u.mult, u.left_units from public.premium_units(p_port, p_good) u;
+  select f.player_id into v_player from public.fleets f join public.players pl on pl.id = f.player_id where f.id = p_fleet and not coalesce(pl.is_npc, false);
+  if v_player is null then
+    return;
+  end if;
+  return query select u.mult, least(u.left_units, public.premium_mine(v_player, p_good)) from public.premium_units(p_port, p_good) u;
+end
+$body$
+  $f$;
+  execute $f$
+create function public.premium_mine(p_player uuid, p_good uuid)
+returns numeric
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $body$
+-- 0517: THE units of a good a company made in its Forge and has not yet sold at a premium; 0 with no row.
+begin
+  return coalesce((select greatest(0, m.made - m.sold) from public.premium_made m where m.player_id = p_player and m.good_id = p_good), 0);
+end
+$body$
+  $f$;
+  execute $f$
+create function public.premium_count(p_player uuid, p_good uuid, p_units numeric)
+returns void
+language plpgsql
+volatile
+security definer
+set search_path = public, pg_temp
+as $body$
+-- 0517: a company's units made in the Forge (cmd.forge_good alone calls it, after they are in its Storage). Counted dark too, so what is made
+-- before the light counts.
+begin
+  insert into public.premium_made as m (player_id, good_id, made) values (p_player, p_good, p_units)
+  on conflict (player_id, good_id) do update set made = m.made + excluded.made;
 end
 $body$
   $f$;
@@ -358,15 +420,16 @@ end
 $body$
   $f$;
   execute $f$
-create function public.premium_spend(p_port uuid, p_good uuid, p_units numeric)
+create function public.premium_spend(p_player uuid, p_port uuid, p_good uuid, p_units numeric)
 returns void
 language plpgsql
 volatile
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0517: the units a sale took at the premium, on the city's day (public.real_day). THE one writer of the count.
+-- 0517: the units a sale took at the premium: on the city's day (public.real_day) and off what the company made. THE one writer of both.
 begin
+  update public.premium_made set sold = sold + p_units where player_id = p_player and good_id = p_good;
   update public.port_goods set premium_units = p_units + case when premium_day = public.real_day(now()) then coalesce(premium_units, 0) else 0 end,
          premium_day = public.real_day(now())
    where port_id = p_port and good_id = p_good;
@@ -395,17 +458,19 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0517: what a face shows of a premium good: {premium: {port, name, mult, nm, per_day, left}}; null dark, or not one.
+-- 0517: what a face shows of a premium good: {premium: {port, name, mult, nm, per_day, made, left}}; null dark, or not one. made: what the
+-- reader's company made and has not sold at a premium; left: the lesser of it and what the city still takes today.
 begin
   if not public.premium_on() then
     return null;
   end if;
   return (select jsonb_build_object('premium', jsonb_build_object('port', h.code, 'name', h.name, 'mult', u.mult, 'nm', pg.haul_nm,
-                                                                  'per_day', public.wc_num('premium_day_units'), 'left', u.left_units))
+                                                                  'per_day', public.wc_num('premium_day_units'), 'made', mine.n, 'left', least(u.left_units, mine.n)))
             from public.goods g
             join public.ports h on h.id = g.premium_port_id
             join public.port_goods pg on pg.port_id = h.id and pg.good_id = g.id
            cross join lateral public.premium_units(h.id, g.id) u
+           cross join (select public.premium_mine(public.current_player_id(), p_good) as n) mine
            where g.id = p_good);
 end
 $body$
@@ -470,7 +535,7 @@ $h$),
 $h$  -- 0255 (E6b): the units this sale took at the city's want price count against the period's cap
 $h$,
 $h$  if v_prem > 0 then   -- 0517: they count against the city's day
-    perform public.premium_spend(f.port_id, g.id, v_prem);
+    perform public.premium_spend(f.player_id, f.port_id, g.id, v_prem);
   end if;
   -- 0255 (E6b): the units this sale took at the city's want price count against the period's cap
 $h$),
@@ -522,7 +587,13 @@ $h$             where gr.product_id = g.id))
   ('world.board_sell_memo(uuid,uuid,jsonb,jsonb)', 16,
 $h$order by (c.nm is null), c.mid desc, c.nm nulls last, c.code) as rk$h$,
 $h$order by (c.nm is null), (c.id is not distinct from (select public.premium_port(p_good))) desc,   -- 0517: the city that pays the premium is always priced (dark: none)
-                                       c.mid desc, c.nm nulls last, c.code) as rk$h$);
+                                       c.mid desc, c.nm nulls last, c.code) as rk$h$),
+  ('cmd.forge_good(uuid,uuid,integer)', 17,
+$h$    perform public.storage_put(v_player, p_port, p_product, v_qty, v_basis);
+$h$,
+$h$    perform public.storage_put(v_player, p_port, p_product, v_qty, v_basis);
+    perform public.premium_count(v_player, p_product, v_qty);   -- 0517: made by her: only such units are ever paid a premium
+$h$);
 
   for x in select distinct h.fn from hunks_0517 h loop
     v_pre := (select p.def from pre_0517 p where p.fn = x.fn);
@@ -611,7 +682,7 @@ $h$order by (c.nm is null), (c.id is not distinct from (select public.premium_po
   -- the door: the quote, one SELL out of the purse, no coin made; the day's units counted, spent, new the next day
   if v_l #> '{sold,total}' is distinct from v_l #> '{l8,total}' or (v_l #>> '{sold,premium_units}')::numeric <> 8 or v_l->'flows' is distinct from jsonb_build_array(-(v_l #>> '{l8,total}')::bigint)
      or (v_l->>'world')::numeric <> 0 or (v_l->>'left')::numeric <> 22 or (v_l #>> '{sold2,premium_units}')::numeric <> 2 or (v_l->>'left2')::numeric <> 0
-     or (v_l->>'spent_q')::numeric <> (v_l->>'plain_q')::numeric or (v_l->>'next_day')::numeric <> 30 then
+     or (v_l->>'spent_q')::numeric <> (v_l->>'plain_q')::numeric or (v_l->>'next_day')::numeric <> 20 or (v_l->>'mine')::numeric <> 20 or (v_l->>'bought')::numeric <> 0 then
     raise exception '0517 self-assert FAIL: the door: %', v_l;
   end if;
   if v_l #>> '{face,premium,port}' <> 'LIS' or (v_l #>> '{face,premium,mult}')::numeric <> 4 or v_l->'on_forge' is distinct from v_l #> '{face,premium}' or (v_l->>'on_market')::int < 1 then
@@ -627,7 +698,7 @@ $h$order by (c.nm is null), (c.id is not distinct from (select public.premium_po
   if clock_timestamp() - v_t0 > interval '30 seconds' then
     raise exception '0517 self-assert FAIL: the file took % (budget 30 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0517 self-assert ok: PREMIUM GOODS (dark). 16 hunks once and reversing in seven bodies; no other function moved; nine new functions server only; eight knobs (premium_goods_enabled false), no other moved; 100 goods, one city each. DARK IDENTICAL. LIT: 8 units % -> % d. (4 times at 6,250 miles; 3 near, 5 far), paid in one SELL from the city''s purse, she gained what the cities lost; 30 a day for all, then the normal price, new the next day; a purse at its floor pays none, a small one 5 units; another city, a purchase, a quote with no fleet, a merchant, an open economy, a city that offers it: none; the base price % -> %. % ms.',
+  raise notice '0517 self-assert ok: PREMIUM GOODS (dark). 17 hunks once and reversing in eight bodies; no other function moved; eleven new functions, one table server only; eight knobs (premium_goods_enabled false), no other moved; 100 goods, one city each. DARK IDENTICAL. LIT: 8 units % -> % d. (4 times at 6,250 miles; 3 near, 5 far), paid in one SELL from the city''s purse, she gained what the cities lost; 30 a day for all, then the normal price, new the next day; a purse at its floor pays none, a small one 5 units; units she did not make, another city, a purchase, a quote with no fleet, a merchant, an open economy, a city that offers it: none; the base price % -> %. % ms.',
     v_l #> '{q8,total}', v_l #> '{l8,total}', v_l->'mid', v_l->'lift_mid', round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0517;
   drop table pre_0517;

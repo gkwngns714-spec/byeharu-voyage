@@ -1,5 +1,5 @@
 -- 0517 FORWARD ROLLBACK, A DRAFT (owner only). THE QUICK ROLLBACK NEEDS NO FILE: premium_goods_enabled false. To use this one, strip the guard line, give it
--- the next number, add "-- news: none", and withdraw 0517's proof with the same PR. It reverses 0517's 16 hunks and drops what it made.
+-- the next number, add "-- news: none", and withdraw 0517's proof with the same PR. It reverses 0517's 17 hunks and drops what it made.
 -- LOCAL PGlite WORLD ONLY while it carries this line (scripts/ops/harness/README.md): it writes.
 do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $r$
@@ -65,7 +65,7 @@ $h$  v_basis  := public.fleet_cargo_basis(p_fleet, g.code);
 $h$),
   (7, 'cmd.do_sell(uuid,jsonb)',
 $h$  if v_prem > 0 then   -- 0517: they count against the city's day
-    perform public.premium_spend(f.port_id, g.id, v_prem);
+    perform public.premium_spend(f.player_id, f.port_id, g.id, v_prem);
   end if;
   -- 0255 (E6b): the units this sale took at the city's want price count against the period's cap
 $h$,
@@ -119,7 +119,13 @@ $h$             where gr.product_id = g.id))
   (16, 'world.board_sell_memo(uuid,uuid,jsonb,jsonb)',
 $h$order by (c.nm is null), (c.id is not distinct from (select public.premium_port(p_good))) desc,   -- 0517: the city that pays the premium is always priced (dark: none)
                                        c.mid desc, c.nm nulls last, c.code) as rk$h$,
-$h$order by (c.nm is null), c.mid desc, c.nm nulls last, c.code) as rk$h$);
+$h$order by (c.nm is null), c.mid desc, c.nm nulls last, c.code) as rk$h$),
+  (17, 'cmd.forge_good(uuid,uuid,integer)',
+$h$    perform public.storage_put(v_player, p_port, p_product, v_qty, v_basis);
+    perform public.premium_count(v_player, p_product, v_qty);   -- 0517: made by her: only such units are ever paid a premium
+$h$,
+$h$    perform public.storage_put(v_player, p_port, p_product, v_qty, v_basis);
+$h$);
   for h in select * from back_0517 order by ord desc loop
     v_def := replace(pg_get_functiondef(h.fn::regprocedure), E'\r', '');
     v_n := (length(v_def) - length(replace(v_def, h.new, ''))) / length(h.new);
@@ -130,13 +136,16 @@ $h$order by (c.nm is null), c.mid desc, c.nm nulls last, c.code) as rk$h$);
   end loop;
   drop function public.premium_face(uuid);
   drop function public.premium_port(uuid);
-  drop function public.premium_spend(uuid,uuid,numeric);
+  drop function public.premium_spend(uuid,uuid,uuid,numeric);
   drop function public.premium_hold(uuid,uuid);
+  drop function public.premium_count(uuid,uuid,numeric);
   drop function public.premium_left(uuid,uuid,uuid);
+  drop function public.premium_mine(uuid,uuid);
   drop function public.premium_units(uuid,uuid);
   drop function public.premium_mult(numeric);
   drop function public.premium_lift();
   drop function public.premium_on();
+  drop table public.premium_made;
   drop index public.goods_premium_port_one;
   alter table public.goods drop column premium_port_id;
   alter table public.port_goods drop column premium_day, drop column premium_units;
