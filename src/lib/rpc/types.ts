@@ -1318,6 +1318,8 @@ export interface QueuedOrder {
   figures: RefusalFigures | null
   /** Verb-shaped result of a completed order (`{qty, good, total, avg_price}` for BUY, …). */
   result: Record<string, unknown> | null
+  /** 0500: when the order ran (a refused one: when it was refused); null while it waits. */
+  at?: string | null
 }
 
 /** 0157 — one cabin of a ship: the server's word for it, and the captain in it (null: empty). */
