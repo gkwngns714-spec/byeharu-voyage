@@ -26,14 +26,18 @@
 --   itself. With the job's range cutting the load it answers the BUY line, so 0498's own check is not asked a second time.
 -- DARK, or a job with none of the six: {} and the plan is the plan it was (asserted to the letter).
 -- NOT CHANGED: a Best job, a land haul, a hand's order; any command; any table; the tick; the ledger.
--- THE HUNKS (7; each once, each reverses): fleet_job_plan x3, fleet_job_note x2, fleet_job_set_for x1, world.workers x1. Their anchors are in
+-- A JOB STOPPED FOR HER HULL GOES ON ONCE SHE IS MENDED (public.job_damage_mended: the same reading, public.fleet_damage_pct): due again,
+--   as 0500 does for a flagship, and the stop is lifted by the note. Dark, it goes on as a plain job.
+-- world.workers() serves `settings` while lit: for each fleet her hold, what is left of it (stores in the hold: after the days her job keeps)
+--   and the least and most crew, so a screen works nothing out (public.job_settings_room).
+-- THE HUNKS (9; each once, each reverses): fleet_job_plan x3, fleet_job_note x3, fleet_jobs_due x1, fleet_job_set_for x1, world.workers x1. Their anchors are in
 --   none of 0499, 0500, 0508 or 0509's hunks. PROVISION: where a plan already has one (0508's), its days are raised, not a second line.
 -- COST: dark, one switch read a fixed plan and one a workers read. Lit, a job with settings is at most one fleet_run_quote and five world.quote
 --   a plan, instead of 0498's one quote; a waiting job is asked once in 600 s or more.
 -- ROWS: one world_config row. -- budget: none (no table, no job, no index). -- retention: none.
--- LOCKS: one INSERT, CREATE FUNCTION x4, CREATE OR REPLACE x4. TIME: a second. BUDGET: statement_timeout 60 s, lock_timeout 5 s; fails above 30 s.
+-- LOCKS: one INSERT, CREATE FUNCTION x7, CREATE OR REPLACE x5. TIME: a second. BUDGET: statement_timeout 60 s, lock_timeout 5 s; fails above 30 s.
 -- ROLLBACK (forward, owner only): QUICK, passive_settings_enabled false: a job that carries settings runs as a plain fixed job. FULL: a
---   migration reversing the hunks (OLD texts below verbatim) and dropping the four functions and the knob.
+--   migration reversing the hunks (OLD texts below verbatim) and dropping the seven functions and the knob.
 -- SELF-ASSERT: hunks once and reversing; no other function moved; grants and settings unmoved; the new functions STABLE and server only.
 --   THE PROBE (rolled back; the run is BUILT as 0498's: static rows choose the pair, its two market rows are written, the hull, the crew and
 --   the purse are set): no step asks the live market, dice or companies a sign. Proof 220 plays it through the real tick.
@@ -41,9 +45,9 @@
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 do $m$
 declare
-  c_hunked constant text[] := array['public.fleet_job_plan(uuid)', 'public.fleet_job_note(uuid,jsonb)', 'public.fleet_job_set_for(uuid,uuid,text,jsonb)', 'world.workers()'];
+  c_hunked constant text[] := array['public.fleet_job_plan(uuid)', 'public.fleet_job_note(uuid,jsonb)', 'public.fleet_job_set_for(uuid,uuid,text,jsonb)', 'world.workers()', 'public.fleet_jobs_due()'];
   c_new    constant text[] := array['public.passive_settings_on()', 'public.job_settings_param(uuid,jsonb)', 'public.job_settings_judge(uuid,text,jsonb)',
-                                    'public.job_settings_lines(jsonb,jsonb)'];
+                                    'public.job_settings_lines(jsonb,jsonb)', 'public.fleet_damage_pct(uuid)', 'public.job_damage_mended(uuid)', 'public.job_settings_room(uuid)'];
   c_knobs  constant text[] := array['passive_settings_enabled'];
   c_ua     constant uuid := '00000000-0516-4000-8000-0000000000a1';
   v_t0         timestamptz := clock_timestamp();
@@ -157,7 +161,7 @@ begin
   end if;
   select q.avg_price into v_b1 from world.quote(v_lis, v_g, 1, 'buy', null, v_fl) q;
   select q.avg_price into v_s1 from world.quote(v_dest, v_g, 1, 'sell', null, v_fl) q;
-  v_out := jsonb_build_object('rq', v_rq, 'b1', v_b1, 's1', v_s1, 'good', v_good, 'workers', world.workers()->'settings',
+  v_out := jsonb_build_object('rq', v_rq, 'b1', v_b1, 's1', v_s1, 'good', v_good, 'workers', world.workers() #> array['settings', v_fl::text], 'free', public.fleet_free_hold(v_fl),
     'plain', pg_temp.plan_0516(v_fl, v_j) #- '{version}',
     'in', pg_temp.plan_0516(v_fl, v_j || jsonb_build_object('under', v_b1 + 1000000, 'over', 0.01)),
     'dear', pg_temp.plan_0516(v_fl, v_j || jsonb_build_object('under', greatest(0.01, round(v_b1 / 2, 2)))));
@@ -190,9 +194,16 @@ begin
   update public.players set ducats = 50000000 where id = v_pl;
   -- THE HULL: half gone, a stop at 30; at 60 she goes on
   update public.ships s set durability = (select sb.durability from public.ship_base(s.id) sb) * 0.5 where s.fleet_id = v_fl;
-  v_out := v_out || jsonb_build_object('hurt', pg_temp.plan_0516(v_fl, v_j || '{"stop_damage": 30}'), 'hurt_ok', pg_temp.plan_0516(v_fl, v_j || '{"stop_damage": 60}'));
+  v_out := v_out || jsonb_build_object('hurt_ok', pg_temp.plan_0516(v_fl, v_j || '{"stop_damage": 60}'), 'hurt', pg_temp.plan_0516(v_fl, v_j || '{"stop_damage": 30}'));
   perform public.fleet_job_note(v_fl, v_out->'hurt');
-  v_out := v_out || jsonb_build_object('hurt_stop', (select j.paused_reason from public.fleet_jobs j where j.fleet_id = v_fl));
+  v_out := v_out || jsonb_build_object('hurt_stop', (select j.paused_reason from public.fleet_jobs j where j.fleet_id = v_fl),
+    'hurt_due', exists (select 1 from public.fleet_jobs_due() d where d.fleet_id = v_fl));
+  -- MENDED: she is due again, and the note lifts the stop
+  update public.ships s set durability = (select sb.durability from public.ship_base(s.id) sb) where s.fleet_id = v_fl;
+  v_out := v_out || jsonb_build_object('mend_due', exists (select 1 from public.fleet_jobs_due() d where d.fleet_id = v_fl), 'mend_plan', public.fleet_job_plan(v_fl) ? 'lines');
+  perform public.fleet_job_note(v_fl, '{"wait": "low"}');
+  v_out := v_out || jsonb_build_object('mend_stop', (select j.paused_reason from public.fleet_jobs j where j.fleet_id = v_fl), 'mend_wait', (select j.last->>'wait' from public.fleet_jobs j where j.fleet_id = v_fl));
+  update public.ships s set durability = (select sb.durability from public.ship_base(s.id) sb) * 0.5 where s.fleet_id = v_fl;
   -- AT HER SALE, with cargo: out of range she keeps it and waits; in range she sells; the hull past its stop: she sells and does not sail
   perform public.fleet_load(v_fl, v_good, 6, 1);
   update public.fleets set port_id = v_dest where id = v_fl;
@@ -272,6 +283,54 @@ end
 $body$
   $f$;
   execute $f$
+create function public.fleet_damage_pct(p_fleet uuid)
+returns numeric
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $body$
+  -- 0516: what her worst hull has lost, in whole per cent (the same reading as 0502's hull_left).
+  select coalesce(round(100 * (1 - least(1, min(sh.durability / nullif(sb.durability, 0))))), 0)
+    from public.ships sh cross join lateral public.ship_base(sh.id) sb where sh.fleet_id = p_fleet
+$body$
+  $f$;
+  execute $f$
+create function public.job_damage_mended(p_fleet uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $body$
+  -- 0516: a job stopped for her hull (E_STOP_DAMAGE) may go on: she is mended to within its figure, or the settings are dark.
+  select not public.passive_settings_on()
+         or public.fleet_damage_pct(p_fleet) <= coalesce((select (j.params->>'stop_damage')::numeric from public.fleet_jobs j where j.fleet_id = p_fleet), 100)
+$body$
+  $f$;
+  execute $f$
+create function public.job_settings_room(p_player uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $body$
+  -- 0516: for each of her fleets that lies in a port: hold (what her hulls stow), left (what is free of it now; stores in the hold: less what
+  -- the days her job keeps would still take), crew, crew_min, crew_max. world.workers() serves it while the settings are lit.
+  select coalesce(jsonb_object_agg(f.id, (
+           select jsonb_build_object('hold', round(sum(public.ship_hold_capacity(s.id))),
+                    'left', greatest(0, floor(public.fleet_free_hold(f.id) - case when public.ship_stores_separate() then 0 else coalesce(sum(t.water_t + t.food_t), 0) end)),
+                    'crew', sum(s.crew), 'crew_min', sum(c.crew_required), 'crew_max', sum((select sb.crew_max from public.ship_base(s.id) sb)))
+             from public.ships s join public.ship_classes c on c.id = s.class_id
+             left join lateral public.stores_topup(s.crew, s.water_t, s.food_t, public.ship_stores_room(s.id, public.ship_hold_capacity(s.id) - public.ship_cargo_tuns(s.id)),
+                                                   (j.params->>'days')::numeric, 0) t on j.params ? 'days'
+            where s.fleet_id = f.id)), '{}'::jsonb)
+    from public.fleets f left join public.fleet_jobs j on j.fleet_id = f.id
+   where f.player_id = p_player
+$body$
+  $f$;
+  execute $f$
 create function public.job_settings_judge(p_fleet uuid, p_at text, p_end jsonb)
 returns jsonb
 language plpgsql
@@ -332,8 +391,7 @@ begin
   v_gid := (select g.id from public.goods g where g.code = v_g);
   v_dest := (select p.id from public.ports p where p.code = j.params->>'sell' and p.kind = 'HARBOUR');
   v_aboard := coalesce(public.fleet_cargo_qty(p_fleet, v_g), 0);
-  select coalesce(round(100 * (1 - least(1, min(sh.durability / nullif(sb.durability, 0))))), 0) into v_dmg
-    from public.ships sh cross join lateral public.ship_base(sh.id) sb where sh.fleet_id = p_fleet;
+  v_dmg := public.fleet_damage_pct(p_fleet);
 
   -- AT HER SALE, WITH CARGO TO SELL
   if v_sells and p_at = j.params->>'sell' and v_aboard >= 1 then
@@ -547,6 +605,19 @@ $h$),
   ('public.fleet_job_note(uuid,jsonb)', 2,
 $h$'wait', 'low', 'sentence', coalesce(p_plan->>'sentence', 'prices low')$h$,
 $h$'wait', p_plan->>'wait', 'sentence', coalesce(p_plan->>'sentence', 'prices low')$h$),
+  ('public.fleet_job_note(uuid,jsonb)', 3,
+$h$  if p_plan ? 'pause' then
+$h$,
+$h$  -- 0516: a job stopped for her hull, asked again now that she is mended: the stop is lifted, whatever this plan says
+  update public.fleet_jobs set paused_reason = null where fleet_id = p_fleet and paused_reason = 'E_STOP_DAMAGE' and public.job_damage_mended(p_fleet);
+  if p_plan ? 'pause' then
+$h$),
+  ('public.fleet_jobs_due()', 1,
+$h$     and (j.paused_reason is null
+$h$,
+$h$     and (j.paused_reason is null
+          or (j.paused_reason = 'E_STOP_DAMAGE' and public.job_damage_mended(j.fleet_id))   -- 0516: stopped for her hull, and mended
+$h$),
   ('public.fleet_job_set_for(uuid,uuid,text,jsonb)', 1,
 $h$  -- 0506 (dark: nothing): the job setting `bargain` (false = this job does not bargain; the default is on)
 $h$,
@@ -558,8 +629,8 @@ $h$  -- 0516 (dark: nothing): a fixed job's settings (public.job_settings_param 
 $h$),
   ('world.workers()', 1,
 $h$  return jsonb_build_object('company', true, 'now', now(),$h$,
-$h$  -- 0516 (dark: no such key): a fixed job may carry settings
-  return case when public.passive_settings_on() then '{"settings": true}'::jsonb else '{}'::jsonb end ||
+$h$  -- 0516 (dark: no such key): a fixed job may carry settings; each fleet's hold and crew for them
+  return case when public.passive_settings_on() then jsonb_build_object('settings', public.job_settings_room(v_me)) else '{}'::jsonb end ||
          jsonb_build_object('company', true, 'now', now(),$h$);
 
   for x in select distinct h.fn from hunks_0516 h loop
@@ -607,7 +678,7 @@ $h$  -- 0516 (dark: no such key): a fixed job may carry settings
      or (select count(*) from public.client_write_grants()) <> 0 then
     raise exception '0516 self-assert FAIL: a new function is reachable by a client or service_role';
   end if;
-  -- NO LEVEL IS ASKED by any of the four
+  -- NO LEVEL IS ASKED by any of the seven
   if exists (select 1 from unnest(c_new) u(q) where (select position('level_' in p.prosrc) + position('player_progress' in p.prosrc) from pg_proc p where p.oid = u.q::regprocedure) > 0) then
     raise exception '0516 self-assert FAIL: a setting asks a level';
   end if;
@@ -627,7 +698,7 @@ $h$  -- 0516 (dark: no such key): a fixed job may carry settings
   drop function pg_temp.scene_0516(uuid, boolean);
   drop function pg_temp.plan_0516(uuid, jsonb);
 
-  if v_l->'plain' is distinct from v_d->'plain' or v_l->'workers' is distinct from 'true'::jsonb then
+  if v_l->'plain' is distinct from v_d->'plain' or (v_l #>> '{workers,left}')::numeric <> floor((v_l->>'free')::numeric) or (v_l #>> '{workers,crew_max}')::int < (v_l #>> '{workers,crew_min}')::int then
     raise exception '0516 self-assert FAIL: lit, a job without settings is not the plan it was: % / %', left((v_l->'plain')::text, 500), left((v_d->'plain')::text, 500);
   end if;
   -- IN RANGE: the same load; its plan ends at the sale's harbour (the sale is asked again there)
@@ -650,7 +721,8 @@ $h$  -- 0516 (dark: no such key): a fixed job may carry settings
   end if;
   -- STOPS
   if v_l #>> '{profit,pause}' is distinct from 'E_STOP_PROFIT' or not (v_l->'profit_ok' ? 'lines') or v_l #>> '{hurt,pause}' is distinct from 'E_STOP_DAMAGE'
-     or v_l #>> '{hurt,sentence}' is distinct from 'hull damage 50 %, you stop over 30 %' or v_l->>'hurt_stop' is distinct from 'E_STOP_DAMAGE' or not (v_l->'hurt_ok' ? 'lines') then
+     or v_l #>> '{hurt,sentence}' is distinct from 'hull damage 50 %, you stop over 30 %' or v_l->>'hurt_stop' is distinct from 'E_STOP_DAMAGE' or not (v_l->'hurt_ok' ? 'lines')
+     or (v_l->>'hurt_due')::boolean or not (v_l->>'mend_due')::boolean or not (v_l->>'mend_plan')::boolean or v_l->>'mend_stop' is not null or v_l->>'mend_wait' is distinct from 'low' then
     raise exception '0516 self-assert FAIL: the stops: % % % %', v_l->'profit', left((v_l->'profit_ok')::text, 200), v_l->'hurt', left((v_l->'hurt_ok')::text, 200);
   end if;
   -- a bad number is refused, each
@@ -678,7 +750,7 @@ $h$  -- 0516 (dark: no such key): a fixed job may carry settings
   if clock_timestamp() - v_t0 > interval '30 seconds' then
     raise exception '0516 self-assert FAIL: the file took % (budget 30 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0516 self-assert ok: THE PASSIVE SETTINGS (dark). Seven hunks once and reversing in four bodies; no other function moved; four new functions STABLE and server only, no level asked. Probe (rolled back): "%" and "%" wait; % of % units under the limit; "%"; "%"; %. % ms.',
+  raise notice '0516 self-assert ok: THE PASSIVE SETTINGS (dark). Nine hunks once and reversing in five bodies; no other function moved; seven new functions STABLE and server only, no level asked. Probe (rolled back): "%" and "%" wait; % of % units under the limit; "%"; "%"; %. % ms.',
     v_l #>> '{dear,sentence}', v_l #>> '{cheap,sentence}', v_l->>'cut_n', v_l->>'cut_all', v_l #>> '{profit,sentence}', v_l #>> '{hurt,sentence}',
     (select string_agg(e->>'text', ', ') from jsonb_array_elements(v_l #> '{crew,lines}') e), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0516;

@@ -21,12 +21,12 @@ Owner: `docs/design/owner-spec-red-2026-11-25.md` R9 and R10; `owner-spec-2026-1
 
 - A fixed job may carry `under`, `over`, `crew`, `days`, `stop_profit`, `stop_damage` (repeat or `times` is 0492's). No level is asked.
 - Out of range it WAITS ("buys at 391.30, your limit 195.65") in the same branch of `fleet_job_note` as 0498's "prices low". A STOP rule
-  stops it: `E_STOP_PROFIT`, `E_STOP_DAMAGE`.
+  stops it: `E_STOP_PROFIT`, `E_STOP_DAMAGE`; a job stopped for her hull starts again by itself once mended (`fleet_jobs_due`).
 - With `over` the sale is its own step, judged where she sells; out of range she keeps the cargo and waits.
 
 ## Verified (local PGlite, private cache)
 
-Self-asserts 0.24 s and 0.48 s. Proofs 219 (5), 220 (7), and 107, 113, 171, 200, 207, 208, 209, 212 green. With 0499, 0500 and 0508 stacked
+Self-asserts about 0.25 s and 0.5 s. Proofs 219 (5), 220 (7), and 107, 113, 171, 200, 207, 208, 209, 212 green. With 0499, 0500 and 0508 stacked
 under them too: every file applies, 219 and 220 green.
 
 ## For the lead

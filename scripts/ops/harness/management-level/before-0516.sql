@@ -11,9 +11,9 @@ select json_build_object(
     'io_waiting', (select count(*) from pg_stat_activity a where a.pid <> pg_backend_pid() and a.wait_event_type = 'IO' and a.state = 'active')),
   'head', (select max(version) from supabase_migrations.schema_migrations),
   'knobs', (select coalesce(json_object_agg(c.key, c.value), '{}'::json) from public.world_config c where c.key in ('passive_settings_enabled', 'level_unlocks_enabled', 'level_perks_on')),
-  'new_fns', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('passive_settings_on', 'job_settings_param', 'job_settings_judge', 'job_settings_lines')),
+  'new_fns', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('passive_settings_on', 'job_settings_param', 'job_settings_judge', 'job_settings_lines', 'fleet_damage_pct', 'job_damage_mended', 'job_settings_room')),
   'client_reach', (select coalesce(bool_or(has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute')), false)
-                     from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('passive_settings_on', 'job_settings_param', 'job_settings_judge', 'job_settings_lines')),
+                     from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('passive_settings_on', 'job_settings_param', 'job_settings_judge', 'job_settings_lines', 'fleet_damage_pct', 'job_damage_mended', 'job_settings_room')),
   'bodies', (select json_object_agg(p.proname, left(md5(replace(pg_get_functiondef(p.oid), E'\r', '')), 8))
                from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('job_settings_judge')),
   'jobs', (select json_build_object('all', count(*), 'with_settings', count(*) filter (where j.params ?| array['under', 'over', 'crew', 'days', 'stop_profit', 'stop_damage']),

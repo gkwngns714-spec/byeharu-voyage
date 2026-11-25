@@ -11,7 +11,7 @@
 -- @pass PS_RESUME  the price under her limit and her time come: the tick starts her by itself; the crew and the stores are taken on first
 -- @pass PS_SELL    the price falls at sea: she arrives, keeps her cargo and waits with the reason; the price back, she sells it; the count ends after its run
 -- @pass PS_PROFIT  a run that would leave less than her figure: the job STOPS, and says both sums
--- @pass PS_DAMAGE  a hull worse than her figure: the job STOPS, and says both
+-- @pass PS_DAMAGE  a hull worse than her figure: the job STOPS, and says both; the next tick asks nothing; mended, the tick starts her by itself
 -- ══════════════════════════════════════════════════════════════════════════════════
 do $p$
 declare
@@ -60,7 +60,7 @@ begin
   update public.world_config set value = 'true'::jsonb where key = 'passive_settings_enabled';
   v_r := cmd.set_fleet_job(v_f, 'fixed', v_j || jsonb_build_object('under', round(v_b / 2, 2), 'over', 1, 'crew', v_max, 'days', 5, 'stop_profit', 1, 'stop_damage', 90, 'times', 1));
   if not coalesce((v_r->>'ok')::boolean, false) or not (v_r->'params' ?& array['under', 'over', 'crew', 'days', 'stop_profit', 'stop_damage', 'times', 'left'])
-     or not (world.workers()->>'settings')::boolean or exists (select 1 from public.level_xp lx where lx.player_id = v_a and lx.xp > 0) then
+     or not (world.workers()->'settings') ? v_f::text or exists (select 1 from public.level_xp lx where lx.player_id = v_a and lx.xp > 0) then
     raise exception 'PS_FREE: %', v_r;
   end if;
   v_r := cmd.set_fleet_job(v_f, 'fixed', v_j || '{"under": -5}');
@@ -140,5 +140,14 @@ begin
   if v_w #>> '{stop,code}' is distinct from 'E_STOP_DAMAGE' or v_w #>> '{stop,sentence}' is distinct from 'hull damage 40 %, you stop over 30 %' then
     raise exception 'PS_DAMAGE: %', v_w;
   end if;
-  raise notice 'PASS: PS_DAMAGE - stopped: "%"', v_w #>> '{stop,sentence}';
+  call public.tick_fleet_jobs(false);
+  if (select j.paused_reason from public.fleet_jobs j where j.fleet_id = v_f) is distinct from 'E_STOP_DAMAGE' or (select f.status from public.fleets f where f.id = v_f) <> 'DOCKED' then
+    raise exception 'PS_DAMAGE: not stopped any more, unmended';
+  end if;
+  update public.ships s set durability = (select sb.durability from public.ship_base(s.id) sb) where s.fleet_id = v_f;
+  call public.tick_fleet_jobs(false);
+  if (select j.paused_reason from public.fleet_jobs j where j.fleet_id = v_f) is not null or (select f.status from public.fleets f where f.id = v_f) <> 'SAILING' then
+    raise exception 'PS_DAMAGE: mended, she did not go on: %', (select to_jsonb(j) from public.fleet_jobs j where j.fleet_id = v_f);
+  end if;
+  raise notice 'PASS: PS_DAMAGE - stopped: "%"; mended, the tick started her', v_w #>> '{stop,sentence}';
 end $p$;
