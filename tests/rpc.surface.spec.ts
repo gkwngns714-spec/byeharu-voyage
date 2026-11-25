@@ -1630,6 +1630,15 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // id; her fleets and land party, each with her action in the one shape. world.actions(worker) - a row's id; only what the doors
       // would take, priced by the server's own quotes. Both READS. The server lands first: the HQ worker list (H1) hooks them up after.
       'worldWorkers', 'worldActions',
+      // Pin moved deliberately 2026-11-25 with migration 0519 (rounds): world.rounds(fleet) - a fleet of hers or none, no player id; dark {on: false};
+      // her runs and the works with what a round costs, never odds. A read. Its two doors, none taking a player id: cmd.round_send(fleet, work,
+      // stop), cmd.round_home(fleet); a fleet not hers refused; dark E_NOT_IN_USE. The server lands first.
+      'worldRounds', 'cmdRoundSend', 'cmdRoundHome',
+      // Pin moved deliberately 2026-11-25 with migration 0534: world.round_quote(fleet, work, base, stop) - a read; her own fleet alone; dark {on: false}.
+      'worldRoundQuote',
+      // Pin moved deliberately 2026-11-25 with migration 0524 (artifacts): cmd.artifact_report(fleet) - no player id; a fleet not hers refused; dark
+      // E_NOT_IN_USE; docked in her country's capital alone.
+      'cmdArtifactReport',
       // Pin moved deliberately 2026-11-23 with migration 0483 (courier contracts): world.courier_contracts() - no argument, no player id;
       // dark {on: false}; lit her posted and carried contracts. A read. And its five doors, none taking a player id: cmd.take_contract(fleet,
       // contract, version) (HQ's card, one press), cmd.deliver_contract(contract), cmd.fail_contract(contract), cmd.post_contract(from, to,

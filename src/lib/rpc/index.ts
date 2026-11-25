@@ -100,6 +100,9 @@ import type {
   CourierOutcome,
   FleetJobKind,
   FleetJobParams,
+  RoundStop,
+  RoundTerms,
+  RoundsView,
   FleetJobSet,
   MerchantCard,
   InsuranceView,
@@ -854,6 +857,28 @@ export function worldActions(worker: string): Promise<RpcResult<WorkerActionsVie
 }
 
 /** 0481: give her fleet a standing job (best | fixed | land). Dark E_NOT_IN_USE; a fleet on a route E_ROUTE_TAKEN. */
+/** 0519: the rounds (dark {on: false}); `fleet`: one of hers, whose works and their costs are served with the runs. */
+export function worldRounds(fleet: string | null): Promise<RpcResult<RoundsView>> {
+  return call<RoundsView>('worldRounds', [fleet])
+}
+
+/** 0534: what a round would cost her from `base` with this stop rule (its fights are never served). */
+export function worldRoundQuote(fleet: string, work: string, base: string, stop: RoundStop): Promise<RpcResult<{ on: boolean; terms?: RoundTerms | null }>> {
+  return call<{ on: boolean; terms?: RoundTerms | null }>('worldRoundQuote', [fleet, work, base, stop])
+}
+
+export function cmdRoundSend(fleet: string, work: string, stop: RoundStop): Promise<RpcResult<{ ok: true; fleet: string; terms: RoundTerms }>> {
+  return call<{ ok: true; fleet: string; terms: RoundTerms }>('cmdRoundSend', [fleet, work, stop])
+}
+
+export function cmdArtifactReport(fleet: string): Promise<RpcResult<{ ok: true; fleet: string; artifacts: Record<string, number>; gold: number; rp: number }>> {
+  return call<{ ok: true; fleet: string; artifacts: Record<string, number>; gold: number; rp: number }>('cmdArtifactReport', [fleet])
+}
+
+export function cmdRoundHome(fleet: string): Promise<RpcResult<{ ok: true; fleet: string; rounds: number }>> {
+  return call<{ ok: true; fleet: string; rounds: number }>('cmdRoundHome', [fleet])
+}
+
 export function cmdSetFleetJob(fleetId: string, kind: FleetJobKind, params: FleetJobParams): Promise<RpcResult<FleetJobSet>> {
   return call<FleetJobSet>('cmdSetFleetJob', [fleetId, kind, params])
 }
