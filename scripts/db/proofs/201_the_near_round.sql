@@ -31,6 +31,15 @@ declare
   k      int;
   i      int;
 begin
+  -- THE MARKET IS PINNED (proof.pin_market, scripts/db/market-fixture.mjs: the one authority, this proof's own key) and THE SEA IS
+  -- CALMED (hazard_p_max 0, as proofs 04, 11, 157, 184). Which run pays at Lisbon, and whether four times a harbour's stock sinks
+  -- it, are facts of the market, and every from-zero apply deals another (with every quay empty, every price at its floor or no
+  -- price differing this proof went red, 2026-11-25; so did 0497's own probe on prod's market). A voyage's days are rolled on its
+  -- own id. The pinned market is drawn on the authored codes, the same in every world. Every assertion is as it was.
+  if (proof.pin_market('00000000-0498-4000-8000-000000000201'::uuid, 'proof-201') ->> 'nonzero')::int < 14000 then
+    raise exception 'PROOF 201: the market was not pinned';
+  end if;
+  update public.world_config set value = to_jsonb(0) where key = 'hazard_p_max';
   v_a := public.new_house(c_a, 'Casa da Ronda 201', 'PRT');
   select f.id, f.port_id into v_fa, v_lis from public.fleets f where f.player_id = v_a;
   update public.players p set ducats = 40000 where p.id = v_a;

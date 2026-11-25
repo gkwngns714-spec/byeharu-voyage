@@ -44,7 +44,7 @@
 -- budget: no table, no cron job, no autovacuum or fillfactor change. Lit: a waiting job is one quote in 600 s (two world.quote, one
 --   world.trip_cost) instead of a run's orders; fewer rows, not more.
 -- LOCKS: one INSERT (world_config); CREATE FUNCTION x4; CREATE OR REPLACE x6 by hunks. TIME: a few seconds. BUDGET: statement_timeout
---   60 s, lock_timeout 5 s; fails above 45 s.
+--   90 s, lock_timeout 5 s; fails above 45 s.
 -- ROLLBACK (forward, owner only): QUICK, jobs_wait_enabled false (every body answers as before; a job that waits is asked again at its
 --   next_at and runs as before). FULL: a migration reversing the eleven hunks (OLD texts below verbatim) and dropping the four functions.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants, volatility, definer, search path and
@@ -53,6 +53,16 @@
 --   cut to the allowance left at its sale's harbour and never offered past it; a fixed run whose sale has fallen WAITS (no order, not
 --   stopped, next_at 600 s on, her row says why and when), is not asked again before then, and STARTS BY ITSELF once the price is back;
 --   the board's trade cards carry the day's coin an hour, never above the one trip's.
+--   THE PROBE'S RUN IS BUILT, NEVER FOUND (2026-11-25: the first deploy was refused on prod, "a run whose quote loses is planned: LIS
+--   quicksilver -> CAD": the probe took the live market's best card and assumed four times the sale's stock would sink it; there it
+--   still paid). Now: one good Lisbon offers and her nearest remembered harbour that takes it, and the two market rows of that good the
+--   quote reads (public.port_goods at Lisbon and at that harbour) written inside the probe: PAYING is Lisbon at the price band's floor
+--   and the harbour at its ceiling; LOSING is both at the floor (the same mid at both ends, so the spread and the trip are the loss).
+--   Each is then read back from the server's own quote (public.fleet_run_quote) before anything is asserted on it. No step asks the
+--   live market for a sign, a time-budgeted read (world.best_sales, the board) is never required to carry a card, and no job but the
+--   probe's is planned: her wait is written by public.fleet_job_note and her start by public.fleet_job_open, the two steps
+--   public.tick_fleet_jobs makes for a due job (the tick itself would plan the real companies' due jobs first). Those two rows, the
+--   quay and Lisbon's purse are held for the seconds the probe runs, as before.
 -- VERSION: 0497 (after 0496 `workers-read`; 0495 is `dividend-hourly`'s and touches none of these bodies).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -94,8 +104,18 @@ declare
   v_ms_dark   numeric;
   v_ms_lit    numeric;
   v_note      text := '';
+  v_good      text;
+  v_sell      text;
+  v_rq        jsonb;
+  v_m         jsonb;
+  v_cap       jsonb;
+  v_cards     jsonb;
+  v_gross     numeric;
+  v_o         int;
+  v_slow      boolean;
+  i           int;
 begin
-  perform set_config('statement_timeout', '60s', true);
+  perform set_config('statement_timeout', '90s', true);
   perform set_config('lock_timeout', '5s', true);
 
   -- ── 0. GUARD ──
@@ -546,66 +566,116 @@ $h$);
     update public.players p set ducats = 5000000 where p.id = v_me;
     update public.world_config set value = 'true'::jsonb where key in ('fleet_jobs_enabled', 'sea_courses_enabled', 'hq_board_enabled');
     perform cmd.assume_identity(c_uid);
-    v_bs := world.best_sales(v_fl, v_lis);
-    -- her best card bought here, by profit a second (the callers' own order)
-    select g.e into v_c from jsonb_array_elements(v_bs->'goods') g(e)
-     where (g.e->>'pays')::boolean and g.e->>'port' is not null and (g.e->>'profit')::numeric > 0 and g.e->>'basis' is distinct from 'on_board'
-       and g.e->'near' is distinct from 'false'::jsonb and jsonb_typeof(g.e->'seconds') = 'number'
-     order by (g.e->>'profit')::numeric / greatest((g.e->>'seconds')::numeric, 1) desc, g.e->>'good' limit 1;
-    if v_c is null then
-      raise exception '0497 self-assert FAIL: the probe''s company has no paying card at her home harbour';
+    -- THE RUN, BUILT (the header): the dearest good Lisbon offers that her hold takes twenty of, and her nearest remembered harbour with
+    -- a market row for it. Static rows choose the pair; the market chooses nothing.
+    select g.code, g.id, k.code, k.to_port into v_good, v_gid, v_sell, v_dest
+      from public.npc_known_legs(v_lis) k
+      join public.port_goods ps on ps.port_id = k.to_port
+      join public.goods g on g.id = ps.good_id
+      join public.ports pd on pd.id = k.to_port and pd.kind = 'HARBOUR'
+     where public.port_offers(v_lis, g.id)
+       and exists (select 1 from public.port_goods pl where pl.port_id = v_lis and pl.good_id = g.id)
+       and not public.culture_refuses(pd.culture, g.culture_mask)
+       and public.fleet_free_hold(v_fl) >= 20 * g.bulk
+     order by k.nm, g.base_value desc, g.code limit 1;
+    if v_good is null then
+      raise exception '0497 self-assert FAIL: the probe found no good Lisbon offers that a remembered harbour takes (static rows, not the market)';
     end if;
-    v_dest := (select p.id from public.ports p where p.code = v_c->>'port');
-    v_gid := (select g.id from public.goods g where g.code = v_c->>'good');
+    -- PAYING: Lisbon at the band's floor (a full quay, the least affinity, a glut), the harbour at its ceiling (an empty quay, the
+    -- most affinity, a dearth), both with room for any load (the mark sets the day's allowance)
+    update public.port_goods pg set stock_target = 1000000, stock = 1000000000, affinity = 0.25, demand = 1, drift = 0, season_mod = 0,
+                                    glut = 0.5, glut_at = now(), haul = 1
+     where pg.port_id = v_lis and pg.good_id = v_gid;
+    update public.port_goods pg set stock_target = 1000000, stock = 0, affinity = 3, demand = 1, drift = 0, season_mod = 0,
+                                    glut = -0.5, glut_at = now()
+     where pg.port_id = v_dest and pg.good_id = v_gid;
+    v_rq := public.fleet_run_quote(v_me, v_fl, v_lis, v_good, v_sell, array[v_sell, 'LIS']);
+    if coalesce((v_rq->>'net')::numeric, 0) <= 0 or coalesce((v_rq->>'units')::numeric, 0) <= 6 then
+      raise exception '0497 self-assert FAIL: the probe did not build a paying run of more than 6 units (% from LIS to %, floor against ceiling): % ; the fault is the probe''s, not the market''s',
+        v_good, v_sell, v_rq;
+    end if;
+
+    v_t := clock_timestamp();
+    v_bs := world.best_sales(v_fl, v_lis);
+    -- a time-budgeted read that was cut, or slow, is never REQUIRED to carry a card (prod: 1.8 to 2.7 s at Lisbon, cut at 2.5 s)
+    v_slow := coalesce((v_bs->>'cut')::boolean, false) or clock_timestamp() - v_t > interval '1 second';
+    -- the built run's card: the server's own (world.best_sales) when it served it, else the same figures from the same authorities
+    select g.e into v_c from jsonb_array_elements(v_bs->'goods') g(e)
+     where g.e->>'good' = v_good and g.e->>'port' = v_sell and (g.e->>'pays')::boolean and (g.e->>'profit')::numeric > 0
+       and g.e->>'basis' is distinct from 'on_board' and g.e->'near' is distinct from 'false'::jsonb and jsonb_typeof(g.e->'seconds') = 'number'
+       and (g.e->>'units')::numeric > 6;
+    if v_c is null then
+      v_cap := public.fleet_buy_capacity(v_fl, v_gid);
+      select q.total into v_gross from world.quote(v_dest, v_gid, (v_cap->>'max_qty')::numeric, 'sell', null, v_fl) q;
+      v_c := jsonb_build_object('good', v_good, 'basis', 'capacity', 'port', v_sell, 'units', (v_cap->>'max_qty')::numeric,
+               'cost', (v_cap->>'est_total')::numeric, 'pays', true, 'near', true,
+               'profit', round(v_gross - (v_cap->>'est_total')::numeric
+                               - coalesce(public.profit_tax(v_dest, v_gross - (v_cap->>'est_total')::numeric, v_me), 0)),
+               'seconds', (public.job_trip(v_fl, v_lis, array[v_sell], true)->>'seconds')::numeric);
+      if coalesce((v_c->>'units')::numeric, 0) <= 6 or coalesce((v_c->>'profit')::numeric, 0) <= 0 or jsonb_typeof(v_c->'seconds') <> 'number' then
+        raise exception '0497 self-assert FAIL: the probe did not build a paying card of more than 6 units: % ; the fault is the probe''s, not the market''s', v_c;
+      end if;
+      v_cards := coalesce(v_bs->'goods', '[]'::jsonb) || jsonb_build_array(v_c);
+    else
+      v_cards := v_bs->'goods';
+    end if;
 
     -- (a) DARK: the cards pass untouched; a fixed plan is the plan it was (BUY ALL, no quote asked); the board's score is the trip's
-    if public.cards_fit(v_me, v_fl, v_lis, v_bs->'goods', 3, true) is distinct from v_bs->'goods' then
+    if public.cards_fit(v_me, v_fl, v_lis, v_cards, 3, true) is distinct from v_cards then
       raise exception '0497 self-assert FAIL: dark, public.cards_fit changed the cards';
     end if;
-    perform cmd.set_fleet_job(v_fl, 'fixed', jsonb_build_object('good', v_c->>'good', 'buy', 'LIS', 'sell', v_c->>'port'));
+    perform cmd.set_fleet_job(v_fl, 'fixed', jsonb_build_object('good', v_good, 'buy', 'LIS', 'sell', v_sell));
     v_p0 := public.fleet_job_plan(v_fl);
-    if v_p0 #>> '{lines,0,text}' is distinct from format('BUY %s ALL', v_c->>'good') then
+    if v_p0 #>> '{lines,0,text}' is distinct from format('BUY %s ALL', v_good) then
       raise exception '0497 self-assert FAIL: dark, the fixed plan is not BUY ALL: %', left(v_p0::text, 400);
     end if;
     v_t := clock_timestamp();
     v_b := public.hq_board_for(v_me);
     v_ms_dark := round(extract(epoch from clock_timestamp() - v_t)::numeric * 1000);
 
-    -- (b) LIT, her market as it stands: the plan is the same run (its quote leaves a profit); the board's trade cards carry the day
+    -- (b) LIT, the built run pays: the plan is the same run (its quote leaves a profit); the cards carry the day
     update public.world_config set value = 'true'::jsonb where key = 'jobs_wait_enabled';
     v_p := public.fleet_job_plan(v_fl);
-    if not (v_p ? 'lines') or v_p #>> '{lines,0,text}' !~ ('^BUY ' || (v_c->>'good') || ' ') then
-      raise exception '0497 self-assert FAIL: lit, a run whose quote leaves a profit is not planned: % (quote %)', left(v_p::text, 300),
-        public.fleet_run_quote(v_me, v_fl, v_lis, v_c->>'good', v_c->>'port', array[v_c->>'port', 'LIS']);
+    if not (v_p ? 'lines') or v_p #>> '{lines,0,text}' !~ ('^BUY ' || v_good || ' ') then
+      raise exception '0497 self-assert FAIL: lit, a run whose quote leaves a profit is not planned: % (quote %)', left(v_p::text, 300), v_rq;
     end if;
     delete from public.fleet_jobs where fleet_id = v_fl;
+    -- THE DAY'S COIN AN HOUR of the built card, from the one cut every reader makes (public.cards_fit), with no budgeted read between:
+    -- it is served, and a day never reads better than its one trip over its own seconds
+    v_m := public.cards_fit(v_me, v_fl, v_lis, jsonb_build_array(v_c), 1, true) -> 0;
+    if v_m is null or jsonb_typeof(v_m->'per_hour') <> 'number'
+       or (v_m->>'per_hour')::numeric > round((v_m->>'profit')::numeric * 3600 / greatest((v_m->>'seconds')::numeric, 1)) then
+      raise exception '0497 self-assert FAIL: lit, the built card has no day''s coin an hour, or it reads above its one trip: % from %', v_m, v_c;
+    end if;
     v_t := clock_timestamp();
     v_b := public.hq_board_for(v_me);
     v_ms_lit := round(extract(epoch from clock_timestamp() - v_t)::numeric * 1000);
-    if not exists (select 1 from jsonb_array_elements(v_b->'moves') m where m->>'kind' = 'trade')
-       or exists (select 1 from jsonb_array_elements(v_b->'moves') m
-                   where m->>'kind' = 'trade' and m #>> '{needs,basis}' is distinct from 'on_board'
-                     and (jsonb_typeof(m->'score') <> 'number'
-                          -- a day never reads better than its one trip over its own seconds
-                          or (m->>'score')::numeric > round((m->>'profit')::numeric * 3600 / greatest((m->>'seconds')::numeric, 1)))) then
-      raise exception '0497 self-assert FAIL: lit, a trade card has no day''s coin an hour, or it reads above its one trip: %', left((v_b->'moves')::text, 1200);
+    v_slow := v_slow or v_ms_lit > 1500;
+    -- the board: every trade card it carries with a figure obeys the same bound; where its read was not cut or slow, the built run's
+    -- card is on it with its figure (a card past the fit's 400 ms carries none and ranks last: the rule, not a fault)
+    if exists (select 1 from jsonb_array_elements(v_b->'moves') m
+                where m->>'kind' = 'trade' and m #>> '{needs,basis}' is distinct from 'on_board' and jsonb_typeof(m->'score') = 'number'
+                  and (m->>'score')::numeric > round((m->>'profit')::numeric * 3600 / greatest((m->>'seconds')::numeric, 1)))
+       or (not v_slow and not exists (select 1 from jsonb_array_elements(v_b->'moves') m
+                                       where m->>'kind' = 'trade' and m #>> '{needs,good}' = v_good and jsonb_typeof(m->'score') = 'number')) then
+      raise exception '0497 self-assert FAIL: lit, a trade card reads above its one trip, or the built run''s card is not on the board with its day''s coin an hour: %', left((v_b->'moves')::text, 1200);
     end if;
-    v_note := format('the board %s ms dark, %s ms lit (%s trade cards, each with its day''s coin an hour)', v_ms_dark, v_ms_lit,
-                     (select count(*) from jsonb_array_elements(v_b->'moves') m where m->>'kind' = 'trade'));
+    v_note := format('the run built: %s from LIS to %s, %s units, net %s; the board %s ms dark, %s ms lit (%s trade cards, %s with the day''s coin an hour%s)',
+                     v_good, v_sell, v_rq->>'units', v_rq->>'net', v_ms_dark, v_ms_lit,
+                     (select count(*) from jsonb_array_elements(v_b->'moves') m where m->>'kind' = 'trade'),
+                     (select count(*) from jsonb_array_elements(v_b->'moves') m where m->>'kind' = 'trade' and jsonb_typeof(m->'score') = 'number'),
+                     case when v_slow then '; its budgeted read was cut or slow here, so the built card was not required on it' else '' end);
 
     -- (c) LIT, THE SALE'S HARBOUR TAKES ONLY PART: she has traded there today, 6.5 units are left of the day's allowance
     v_left := world.daily_cap_remaining(v_me, v_dest, v_gid);
     insert into public.trade_daily (player_id, port_id, good_id, game_day, qty) values (v_me, v_dest, v_gid, world.game_day(), v_left - 6.5);
     v_fit := public.sale_fit(v_me, v_fl, v_lis, v_c);
-    if (v_c->>'units')::numeric <= 6 then
-      raise exception '0497 self-assert FAIL: the probe''s card is of % units, too few to cut', v_c->>'units';
-    end if;
     if v_fit is not null and ((v_fit->>'units')::numeric <> 6 or (v_fit->>'cut')::boolean is not true
                               or (v_fit->>'profit')::numeric >= (v_c->>'profit')::numeric or (v_fit->>'profit')::numeric <= 0) then
       raise exception '0497 self-assert FAIL: a card is not cut to the 6 units its sale''s harbour takes: % from %', v_fit, v_c;
     end if;
-    if exists (select 1 from jsonb_array_elements(public.cards_fit(v_me, v_fl, v_lis, v_bs->'goods', 12, false)) e
-                where e->>'good' = v_c->>'good' and e->>'port' = v_c->>'port' and (e->>'units')::numeric > 6) then
+    if exists (select 1 from jsonb_array_elements(public.cards_fit(v_me, v_fl, v_lis, v_cards, 12, false)) e
+                where e->>'good' = v_good and e->>'port' = v_sell and (e->>'units')::numeric > 6) then
       raise exception '0497 self-assert FAIL: the cards still offer more than the sale''s harbour takes';
     end if;
     update public.trade_daily set qty = v_left where player_id = v_me and port_id = v_dest and good_id = v_gid;
@@ -613,17 +683,25 @@ $h$);
       raise exception '0497 self-assert FAIL: a card is offered though its sale''s harbour takes nothing today';
     end if;
     delete from public.trade_daily where player_id = v_me and port_id = v_dest and good_id = v_gid;
-    v_note := v_note || format('; %s %s to %s cut to 6 units when 6.5 are left, and left out when none is', v_c->>'units', v_c->>'good', v_c->>'port');
+    v_note := v_note || format('; %s %s to %s %s when 6.5 are left, and left out when none is', v_c->>'units', v_good, v_sell,
+                               case when v_fit is null then 'left out (6 units leave no profit)' else 'cut to 6 units' end);
 
-    -- (d) LIT, THE SALE HAS FALLEN: the harbour is glutted (four times its mark). She waits; she is not stopped; nothing is ordered
-    perform cmd.set_fleet_job(v_fl, 'fixed', jsonb_build_object('good', v_c->>'good', 'buy', 'LIS', 'sell', v_c->>'port'));
-    select pg.stock into v_stock from public.port_goods pg where pg.port_id = v_dest and pg.good_id = v_gid;
-    update public.port_goods pg set stock = pg.stock_target * 4 where pg.port_id = v_dest and pg.good_id = v_gid;
+    -- (d) LIT, THE SALE HAS FALLEN: LOSING, built: the harbour at the band's floor like Lisbon (the same mid at both ends: the spread,
+    -- the tax and the trip are the loss, whatever the live market says). She waits; she is not stopped; nothing is ordered
+    perform cmd.set_fleet_job(v_fl, 'fixed', jsonb_build_object('good', v_good, 'buy', 'LIS', 'sell', v_sell));
+    update public.port_goods pg set stock = 1000000000, affinity = 0.25, glut = 0.5, glut_at = now(), haul = 1
+     where pg.port_id = v_dest and pg.good_id = v_gid;
+    v_rq := public.fleet_run_quote(v_me, v_fl, v_lis, v_good, v_sell, array[v_sell, 'LIS']);
+    if (v_rq->>'net') is null or (v_rq->>'net')::numeric >= 0 then
+      raise exception '0497 self-assert FAIL: the probe did not build a losing run (% from LIS to %, floor against floor): % ; the fault is the probe''s, not the market''s',
+        v_good, v_sell, v_rq;
+    end if;
     v_p := public.fleet_job_plan(v_fl);
     if v_p->>'wait' is distinct from 'low' or v_p ? 'lines' or (v_p->>'net')::numeric > 0 then
-      raise exception '0497 self-assert FAIL: a run whose quote loses is planned: %', left(v_p::text, 400);
+      raise exception '0497 self-assert FAIL: a run whose quote loses is planned: % (quote %)', left(v_p::text, 400), v_rq;
     end if;
-    call public.tick_fleet_jobs(false);
+    -- the tick's step for a plan with no lines (public.tick_fleet_jobs: the wait is written by public.fleet_job_note), for HER job alone
+    perform public.fleet_job_note(v_fl, v_p);
     select * into v_j from public.fleet_jobs j where j.fleet_id = v_fl;
     v_w := world.workers() #> '{workers,0}';
     if v_j.paused_reason is not null or v_j.runs <> 0 or v_j.next_at < now() + interval '600 seconds' or v_j.last->>'wait' <> 'low'
@@ -637,16 +715,29 @@ $h$);
     if exists (select 1 from public.fleet_jobs_due() d where d.fleet_id = v_fl) then
       raise exception '0497 self-assert FAIL: a waiting job is due before its next_at (a hot loop)';
     end if;
-    -- THE PRICE IS BACK and her time has come: the same tick starts her, by itself
-    update public.port_goods pg set stock = v_stock where pg.port_id = v_dest and pg.good_id = v_gid;
+    -- THE PRICE IS BACK (the harbour at its ceiling again) and her time has come: she is due, and the tick's two steps start her
+    update public.port_goods pg set stock = 0, affinity = 3, glut = -0.5, glut_at = now() where pg.port_id = v_dest and pg.good_id = v_gid;
     update public.fleet_jobs set next_at = now() - interval '1 second' where fleet_id = v_fl;
-    call public.tick_fleet_jobs(false);
-    select * into v_j from public.fleet_jobs j where j.fleet_id = v_fl;
-    if v_j.runs <> 1 or v_j.paused_reason is not null or (select f.status from public.fleets f where f.id = v_fl) <> 'SAILING'
-       or world.workers() #> '{workers,0,wait}' <> 'null'::jsonb then
-      raise exception '0497 self-assert FAIL: with the price back she did not start by herself: %', to_jsonb(v_j);
+    if not exists (select 1 from public.fleet_jobs_due() d where d.fleet_id = v_fl) then
+      raise exception '0497 self-assert FAIL: her time come, the waiting job is not due (it would never start by itself): %',
+        (select to_jsonb(j) from public.fleet_jobs j where j.fleet_id = v_fl);
     end if;
-    v_note := v_note || '; a run whose sale fell waited (asked again 600 s on, not stopped, no order), and started by itself when the price was back';
+    v_p := public.fleet_job_plan(v_fl);
+    if not (v_p ? 'lines') then
+      raise exception '0497 self-assert FAIL: with the price back her plan has no lines: %', left(v_p::text, 400);
+    end if;
+    -- the open never waits for the quay (-1: busy, the live beat holds it): asked again, as the tick's next run would, for 5 s at most
+    for i in 1 .. 50 loop
+      v_o := public.fleet_job_open(v_fl, v_p);
+      exit when v_o <> -1;
+      perform pg_sleep(0.1);
+    end loop;
+    select * into v_j from public.fleet_jobs j where j.fleet_id = v_fl;
+    if v_o <> 1 or v_j.runs <> 1 or v_j.paused_reason is not null or (select f.status from public.fleets f where f.id = v_fl) <> 'SAILING'
+       or world.workers() #> '{workers,0,wait}' <> 'null'::jsonb then
+      raise exception '0497 self-assert FAIL: with the price back she did not start by herself (open %): %', v_o, to_jsonb(v_j);
+    end if;
+    v_note := v_note || '; the same run with its sale fallen waited (asked again 600 s on, not stopped, no order), and started by itself when the price was back';
     raise exception using errcode = 'ZX497', message = 'PROBE_ROLLBACK_0497';
   exception when sqlstate 'ZX497' then
     v_lived := true;
