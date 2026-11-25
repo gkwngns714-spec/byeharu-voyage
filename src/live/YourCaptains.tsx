@@ -6,6 +6,7 @@ import { formatInt } from '../lib/format'
 import type { YourCaptainsFace } from './useYourCaptains'
 import { CaptainStats } from './CaptainStats'
 import { CaptainSkills } from './CaptainSkills'
+import { CaptainAshore, CaptainDismiss, CaptainPlacesLine, CaptainUpgrades, CaptainWorks } from './CaptainLand'
 import { useWorld } from './worldStore'
 import { t as tl } from '../lib/i18n'
 import { ROLE_ORDER, jobWord, roleKeyWord, roleOf, roleRank, roleWord, traitWorks } from './captainWords'
@@ -35,7 +36,7 @@ import { levelsThatMatter } from './captainMarks'
 
 /** The roster as the rows of a list panel — or the one row that says there is nobody to list. */
 export function CaptainRows({ face }: { face: YourCaptainsFace }) {
-  const { captains, press } = face
+  const { captains, press, places, honor } = face
   if (captains.length === 0) {
     // nobody hired yet: a drawn tricorne over the one line (visual pass 2), not a grey sentence alone
     return (
@@ -57,6 +58,8 @@ export function CaptainRows({ face }: { face: YourCaptainsFace }) {
     .sort(([a], [b]) => roleRank(a) - roleRank(b))
   return (
     <>
+      {/* 0529, 0530: absent while dark */}
+      <CaptainPlacesLine places={places} honor={honor} />
       {ordered.map(([role, list]) => (
         <Fragment key={role}>
           <ListHeading data-testid="captain-role" data-role={role} data-count={list.length}>
@@ -102,12 +105,12 @@ export function CaptainTray({ face }: { face: YourCaptainsFace }) {
   if (shown === null) return null
   return (
     <Tray detent={detent} onDetentChange={move} title={shown.name} data-testid="your-captain-tray">
-      <CaptainSheet key={shown.code} captain={shown} />
+      <CaptainSheet key={shown.code} captain={shown} face={face} />
     </Tray>
   )
 }
 
-function CaptainSheet({ captain }: { captain: YourCaptain }) {
+function CaptainSheet({ captain, face }: { captain: YourCaptain; face: YourCaptainsFace }) {
   const refresh = useWorld((s) => s.refresh)
   const [chosen, setChosen] = useState<readonly string[]>(captain.active)
   const [busy, setBusy] = useState(false)
@@ -152,6 +155,9 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
       {captain.levels.flatMap((l) =>
         l.cap_line ? [<span key={l.track} className="block text-t-caption text-ink-faint" data-testid={`captain-cap-${l.track}`}>{l.cap_line}</span>] : [],
       )}
+      {/* 0527 to 0534: her works, her place ashore and her land expedition; each block absent while its switch is dark */}
+      <CaptainWorks captain={captain} />
+      <CaptainAshore captain={captain} />
       {captain.homesick && <Row label={captain.homesick.line} tone="accent" data-testid="captain-homesick" />}
 
       {/* HER TRAITS AS CHIPS: a glyph and a figure each, lit gold where she uses it; a press chooses while she may change them */}
@@ -178,6 +184,8 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
       {captain.promote && <Promote captain={captain} />}
 
       <CaptainSkills code={captain.code} />
+      <CaptainUpgrades captain={captain} honor={face.honor} />
+      <CaptainDismiss captain={captain} places={face.places} />
     </div>
   )
 }

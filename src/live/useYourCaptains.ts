@@ -23,6 +23,9 @@ export function useYourCaptains() {
   const shown = captains.find((c) => c.code === open) ?? null
   return {
     captains,
+    /** 0529, 0530: the company's captain places and HONOR BADGES (undefined while dark). */
+    places: view?.places,
+    honor: view?.honor,
     /** The captain whose tray is up, by code — so the tray survives a world read that serves a new object. */
     shown,
     detent,
