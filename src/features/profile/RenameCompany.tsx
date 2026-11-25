@@ -4,7 +4,7 @@ import { cmdRenameCompany } from '../../lib/rpc'
 import type { Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { useT } from '../../lib/i18n'
-import { COMPANY_NAME_MAX, companyNameToSend } from '../found/companyName'
+import { COMPANY_NAME_MAX, companyNameToSend } from '../../domain/company'
 
 // A COMPANY TAKES A NEW NAME (0503; the owner's specification, 2026-11-25: "you can change your name again for free (1st time), but
 // later ... you will have to pay (real money currency - not decided yet)"). The server judges the name (`cmd.rename_company`, the one

@@ -6,7 +6,7 @@ import { useWorld } from '../../live/worldStore'
 import { NationPicker } from '../../live/NationPicker'
 import { useT } from '../../lib/i18n'
 import { COIN } from '../../lib/format'
-import { COMPANY_NAME_MAX, companyNameToSend } from './companyName'
+import { COMPANY_NAME_MAX, companyNameToSend } from '../../domain/company'
 
 // SIGN THE BOOK — the first thing a captain on a real server ever sees, and until 2026-08-20 it
 // did not exist.

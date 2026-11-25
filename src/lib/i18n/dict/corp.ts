@@ -103,7 +103,7 @@ export const corpDict = defineDict({
     noWork: 'Not open',
     needsLevel: 'Needs level {n}',
     mustDock: 'Dock first',
-    needGuns: 'She has no guns. Fit guns at the shipyard first.',
+    needGuns: 'She has no guns. Fit guns first.',
     notSet: 'Not set',
     showLosses: 'Show losses · {n}',
     hideLosses: 'Hide losses',

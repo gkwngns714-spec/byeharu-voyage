@@ -81,7 +81,7 @@ for (const size of [
     expect(await sideways(page)).toBe(false)
     await shot('3-waiting-row')
     await hers.click({ position: { x: 30, y: 24 } })
-    await expect(worker.getByTestId('corp-sheet-wait')).toHaveText(/^buys at [0-9,.]+, your limit 0\.01$/, { timeout: 60_000 })
+    await expect(worker.getByTestId('corp-sheet-wait')).toHaveText(/^Buys at [0-9,.]+, your limit 0\.01$/, { timeout: 60_000 })
     await shot('4-waiting-sheet')
     await page.goBack()
     await expect(worker).toHaveCount(0)

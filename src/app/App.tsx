@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { RequireAuth } from './RequireAuth'
+import { SignTheBook } from '../features/found/SignTheBook'
 import { AppShell } from './AppShell'
 import { NewVersionToast } from './NewVersionToast'
 import { HOME_TAB } from './navTabs'
@@ -82,7 +83,7 @@ export function App() {
           path="/city"
           element={
             <RequireAuth>
-              <CityScreen />
+              <CityScreen founding={<SignTheBook />} />
             </RequireAuth>
           }
         />

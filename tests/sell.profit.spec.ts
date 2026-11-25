@@ -96,8 +96,10 @@ for (const { locale, lang } of LANGS) {
         await expect(act).toBeEnabled({ timeout: 60_000 })
         const shown = Number(await lines.getAttribute('data-profit'))
         const bought = lines.getByTestId('sale-bought')
-        await expect(bought).toContainText(translate(lang, 'trade.bought'))
-        await expect(lines.getByTestId('sale-sells')).toContainText(translate(lang, 'trade.sellsFor'))
+        await expect(bought).toContainText(translate(lang, 'trade.boughtEach'))
+        // one Bought: the sum, pinned by the button; here the unit price (2026-11-25)
+        await expect(panel.getByTestId('sale-pair')).toContainText(translate(lang, 'trade.bought'))
+        await expect(lines.getByTestId('sale-sells')).toContainText(translate(lang, 'trade.sellsEach'))
         await expect(lines.getByTestId('sale-profit')).toContainText(translate(lang, 'desk.profit'))
         await expect(lines.getByTestId('sale-profit')).toContainText(formatPriceDelta(shown))
         // the pinned line by the button carries the same profit

@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import { Card, Icon, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, Skyline, skylineOf, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { ShellFrame } from '../../app/ShellFrame'
-import { SignTheBook } from '../found/SignTheBook'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
 import { useCommandDraft } from '../../domain/order'
 import { MarketLeft } from '../../live/MarketLeft'
@@ -167,7 +166,8 @@ function Plate({ icon, word, figure }: { icon: IconName; word: string; figure: P
   )
 }
 
-export function CityScreen() {
+/** `founding`: the door a captain with no house meets (App.tsx hands it in: no screen imports another). */
+export function CityScreen({ founding }: { founding: ReactNode }) {
   const t = useT()
   const [params] = useSearchParams()
   const phase = useWorld((s) => s.phase)
@@ -239,7 +239,7 @@ export function CityScreen() {
   if (unfounded)
     return gate(
       <main className="min-h-0 flex-1 overflow-hidden">
-        <SignTheBook />
+        {founding}
       </main>,
     )
   if (phase !== 'ready')

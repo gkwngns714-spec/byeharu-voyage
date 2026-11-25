@@ -194,7 +194,8 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
   const many: Runs = countOpen ? runsAsked : 'repeat'
   const all = end === 'store' ? loads : runs
   // A RUN THAT LOSES is listed only when asked for (or when a card named it)
-  const losers = all.filter((o) => (o.per_hour ?? o.net ?? 0) < 0)
+  // (a run that brings goods home sells nothing: its coin is a cost, not a loss)
+  const losers = end === 'store' ? [] : all.filter((o) => (o.per_hour ?? o.net ?? 0) < 0)
   const [lossAsked, setLoss] = useState(false)
   const withLoss = lossAsked || losers.some((o) => o.id === picked)
   const list = withLoss ? all : all.filter((o) => !losers.includes(o))
