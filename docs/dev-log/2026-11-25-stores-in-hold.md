@@ -19,3 +19,8 @@ They keep cargo and stores and load nothing until under. The light gives each la
 After it, a hull still full of cargo must sell a little before a longer sail.
 
 Not built: the client's hold bar.
+
+## The self-assert's dice (fixed 2026-11-25)
+A founding hull's hold is rolled (180 to 190 t, whole tuns); anise is 0.6 t a unit; BUY ALL left a scrap of 0 to 0.4 t, and 0.4 t of water
+and food carries a full crew past a 100 nm need. Measured on one world: 1 of 12 runs "found room for a sail's stores". The probe now makes
+its good one tun a unit (rolled back), so a full hold has no scrap. 12 of 12 after.
