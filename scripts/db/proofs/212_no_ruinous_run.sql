@@ -11,6 +11,7 @@
 -- @pass NR_WAIT    a thin purse through the real tick: no order, not stopped, asked again 600 s on, her row says why; the next tick asks nothing
 -- @pass NR_DANGER  over the hull's bound the tick starts nothing and her row says "too dangerous for her hull"
 -- @pass NR_RESUME  the coin is back and her time come: the tick starts her by itself
+-- @pass NR_LINES   stores in their own space and in the hold: a thin purse's cut changes the BUY line alone, wherever it stands; every other line is the dark plan's, and a near-full cut sails
 -- @pass NR_BEST    a Best job with a thin purse starts only a sale whose BUY leaves the need, or waits
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -49,10 +50,10 @@ begin
   end if;
   perform cmd.set_fleet_job(v_f, 'fixed', jsonb_build_object('good', v_c->>'good', 'buy', 'LIS', 'sell', v_c->>'port'));
   v_p := public.fleet_job_plan(v_f);
-  if public.run_guard_on() or v_p #>> '{lines,0,text}' is distinct from format('BUY %s ALL', v_c->>'good') then
+  if public.run_guard_on() or (select e->>'text' from jsonb_array_elements(v_p->'lines') e where e->>'text' like 'BUY %') is distinct from format('BUY %s ALL', v_c->>'good') then
     raise exception 'NR_DARK: dark, the plan moved: %', left(v_p::text, 300);
   end if;
-  raise notice 'PASS: NR_DARK — dark, purse 3,000: "%" is planned as before', v_p #>> '{lines,0,text}';
+  raise notice 'PASS: NR_DARK — dark, purse 3,000: "%" is planned as before', (select e->>'text' from jsonb_array_elements(v_p->'lines') e where e->>'text' like 'BUY %');
 
   -- NR_HERS, NR_BUY, NR_COST: her state on the morning of the 25th, rolled back after
   begin
@@ -114,6 +115,51 @@ begin
     null;
   end;
 
+  -- NR_LINES: the same fixed plan dark and lit, the stores in their own space and in the hold (0508 over this file puts a PROVISION first)
+  begin
+    update public.world_config set value = '1000000'::jsonb where key = 'run_guard_hull_share';
+    update public.ships set water_t = 0, food_t = 0 where fleet_id = v_f;   -- empty casks: 0508 takes her stores on first
+    foreach v_v in array array[1, 0] loop
+      update public.world_config set value = to_jsonb(v_v = 1) where key = 'ship_stores_separate';
+      update public.players p set ducats = 40000 where p.id = v_a;
+      update public.players p set ducats = ceil((public.fleet_buy_capacity(v_f, (select g.id from public.goods g where g.code = v_c->>'good'))->>'est_total')::numeric) where p.id = v_a;   -- the ALL takes every coin
+      update public.world_config set value = 'false'::jsonb where key = 'run_guard_enabled';
+      v_p := public.fleet_job_plan(v_f);
+      update public.world_config set value = 'true'::jsonb where key = 'run_guard_enabled';
+      v_w := public.fleet_job_plan(v_f);
+      if not (v_w ? 'lines') or (select count(*) from jsonb_array_elements(v_w->'lines') e where e->>'text' ~ ('^BUY ' || (v_c->>'good') || ' [0-9.]+$')) <> 1
+         or public.run_cut(v_w->'lines', format('BUY %s ALL', v_c->>'good')) is distinct from v_p->'lines' then
+        raise exception 'NR_LINES: separate %: the cut moved another line: % from %', v_v, left(v_w::text, 400), left(v_p::text, 400);
+      end if;
+      raise notice 'TIMING: stores %: %', case v_v when 1 then 'in their own space' else 'in the hold' end,
+        (select string_agg(e->>'text', ' / ') from jsonb_array_elements(v_w->'lines') e);
+    end loop;
+    -- in the hold, a deep purse: the ALL is what fits beside the stores; then the same run 200 coin short of its need sails
+    update public.players p set ducats = 50000000 where p.id = v_a;
+    v_n2 := public.run_need(v_a, v_f, v_lis, v_p->'lines');
+    if v_n2 ? 'line' or not coalesce((v_n2->>'ok')::boolean, false) then
+      raise exception 'NR_LINES: a deep purse is cut or held: %', v_n2;
+    end if;
+    raise notice 'TIMING: in the hold, a deep purse: % units, the hold free takes %', v_n2->>'units',
+      floor(public.fleet_free_hold(v_f) / (select g.bulk from public.goods g where g.code = v_c->>'good'));
+    update public.players p set ducats = (v_n2->>'buy')::numeric + (v_n2->>'need')::numeric - 200 where p.id = v_a;
+    v_w := public.fleet_job_plan(v_f);
+    update public.fleet_jobs set next_at = null where fleet_id = v_f;
+    call public.tick_fleet_jobs(false);
+    if exists (select 1 from public.orders o where o.fleet_id = v_f and o.status = 'failed') or (select f.status from public.fleets f where f.id = v_f) <> 'SAILING'
+       or public.fleet_cargo_qty(v_f, v_c->>'good') < 1 then
+      raise exception 'NR_LINES: the near-full cut did not sail: % / %', (select jsonb_agg(to_jsonb(o)) from public.orders o where o.fleet_id = v_f), (select to_jsonb(j) from public.fleet_jobs j where j.fleet_id = v_f);
+    end if;
+    raise notice 'TIMING: 200 coin short: % ; sailed with % aboard', (select string_agg(e->>'text', ' / ') from jsonb_array_elements(v_w->'lines') e), public.fleet_cargo_qty(v_f, v_c->>'good');
+    if to_regprocedure('public.fleet_trip_stores(uuid,uuid,text[])') is not null and v_w #>> '{lines,0,text}' !~ '^PROVISION DAYS ' then
+      raise exception 'NR_LINES: 0508 is here and the plan has no PROVISION first: the scene proves nothing: %', left(v_w::text, 300);
+    end if;
+    raise notice 'PASS: NR_LINES — the BUY line alone is cut, with the stores in their own space and in the hold';
+    raise exception using errcode = 'ZN213', message = 'lines scene rolled back';
+  exception when sqlstate 'ZN213' then
+    null;
+  end;
+
   -- NR_WAIT, through the tick (a purse under one repair)
   update public.world_config set value = 'true'::jsonb where key = 'run_guard_enabled';
   update public.world_config set value = '1000000'::jsonb where key = 'run_guard_hull_share';
@@ -167,7 +213,7 @@ begin
       if not coalesce((v_n->>'ok')::boolean, false) or v_n ? 'line' or coalesce((v_n->>'after')::numeric, -1) < 0 then
         raise exception 'NR_BEST: purse %: a run that leaves less than its need is planned: % / %', v_v, left(v_p::text, 300), v_n;
       end if;
-      raise notice 'TIMING: purse %: "%" to %, spends %, need %, free %, hull %', v_v, v_p #>> '{lines,0,text}', v_p #>> '{note,to}', v_n->>'buy', v_n->>'need', v_n->>'after', v_n->>'hull';
+      raise notice 'TIMING: purse %: "%" to %, spends %, need %, free %, hull %', v_v, (select e->>'text' from jsonb_array_elements(v_p->'lines') e where e->>'text' like 'BUY %'), v_p #>> '{note,to}', v_n->>'buy', v_n->>'need', v_n->>'after', v_n->>'hull';
     elsif v_p->>'wait' not in ('purse', 'danger', 'nothing') then
       raise exception 'NR_BEST: purse %: %', v_v, left(v_p::text, 300);
     else
