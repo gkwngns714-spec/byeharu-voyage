@@ -36,6 +36,17 @@ One company, one fleet docked at Island of Mozambique (towed there after a ranso
 - The door refuses a new job for her, with the figures.
 - The Inn's price (`public.crew_hire_cost`): one hand at Island of Mozambique for a starter Barca is 100 coin (local).
 
+## D: "Order 200 was refused ... Gaivota is free", read six hours late (the owner, 24 Nov about 23:43 UTC)
+
+- Where: the note at the head of a fleet's queue (`src/features/command/Queue.tsx`: her sheet over HQ, the Trade desk).
+- Why "late": it was not late. A refused order stays in the served queue until dismissed (0186; `cmd.queue` serves pending, active
+  and failed rows) and the note announced any failed row each time the sheet opened, with no time. Order 200 failed at 17:40; she
+  was repaired at 23:36; at 23:43 the record still read as news.
+- Server half, here: `cmd.queue` serves `at` (`orders.executed_at`) on every row (one hunk). No other key moves.
+- Client half, branch `stale-refusal`: a refusal whose cause is mended (the flagship has a hull, no ship lacks hands) or that is
+  older than her standing job is a row with its time, not a note and not a "stuck" dot; a fresh one names the fleet (no order
+  number) and carries Repair / Hire crew.
+
 ## The fix (one rule, no second one)
 
 - **`public.fleet_unfit(fleet)`**: the sail's own flagship gate, lifted whole out of `voyage.sail_refusal`, which now asks it (one
@@ -53,7 +64,7 @@ One company, one fleet docked at Island of Mozambique (towed there after a ranso
 - **`world.workers`:** not hunked. Her row already serves `wait` from the job's `last` and `next_at` (0497): it reads
   `wait {code: E_FLAGSHIP_DISABLED, sentence, retry_at}`, state `waiting`, `worker_state` wrecked. A job stopped on the code keeps
   `stop {code, sentence}`.
-- Fourteen hunks over eight bodies, two new STABLE server-only functions (with C above).
+- Fifteen hunks over nine bodies, two new STABLE server-only functions (with C and D above).
 
 ## What a wrecked company must do today (read in the bodies; proof 202 plays it)
 
@@ -111,8 +122,8 @@ One company, one fleet docked at Island of Mozambique (towed there after a ranso
 
 - 0499's self-assert on the snapshot at 0498: passed (434 ms). The scene before and after: a healthy fleet's plan identical
   (`33139d1d`, the seven SAILs); the sail's refusal reads as it did.
-- Proof 202: 9/9 (FS_CREW, FS_NO_HANDS added). Proofs 150, 183, 184, 185, 186, 195, 197, 199, 200, 201: all pass with 0499 (run one at a time through
-  `hq-figures/q.mjs`, which writes no snapshot and prunes nothing).
+- Proof 202: 10/10 (FS_CREW, FS_NO_HANDS, FS_QUEUE_AT added). Proofs 29, 143, 150, 183, 184, 185, 186, 195, 197, 198, 199, 200, 201 pass with 0499 on the chain rebased onto `near-round` (0495-0498). Proofs 02, 05, 09, 61 and 65 (they touch crew or the queue) were NOT run: they need `proof.mjs`'s own helper schema or several statements, which this reader does not give; CI runs them. (All run one at a time through
+  `hq-figures/q.mjs`, which writes no snapshot and prunes nothing.)
 - `tsc -b`, eslint, `db.budget`, `news.lint`: see the commit.
 - The before / after reads: `scripts/ops/harness/fit-to-sail/before-0499.sql`, `after-0499.sql` (their selects run on the local
   world).

@@ -1,6 +1,6 @@
 -- 0499 FIT TO SAIL, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
 --   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/fit-to-sail/before-0499.sql
--- Expect: head 20260818000498; new_fns 0; hunked 8 (the eight bodies 0499 hunks are there); flag_rule 1 (voyage.sail_refusal still
+-- Expect: head 20260818000498; new_fns 0; hunked 9 (the nine bodies 0499 hunks are there); flag_rule 1 (voyage.sail_refusal still
 --   reads her flagship itself: the text the hunk replaces, once). `stopped_unfit`: the jobs stopped on E_FLAGSHIP_DISABLED or
 --   E_CREW_SHORT today (the reported ones), each with the hands on her quay: after the deploy each stays stopped until her repair or
 --   her hire, then goes on by itself. `unfit_due`: jobs the next run would
@@ -18,7 +18,7 @@ select json_build_object(
   'head', (select max(version) from supabase_migrations.schema_migrations),
   'new_fns', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where (n.nspname, p.proname) in (('public', 'fleet_unfit'), ('public', 'port_hires'))),
   'hunked', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-              where (n.nspname, p.proname) in (('voyage', 'sail_refusal'), ('cmd', 'do_hire'), ('public', 'fleet_job_plan'), ('public', 'fleet_job_note'), ('public', 'fleet_jobs_due'),
+              where (n.nspname, p.proname) in (('voyage', 'sail_refusal'), ('cmd', 'do_hire'), ('cmd', 'queue'), ('public', 'fleet_job_plan'), ('public', 'fleet_job_note'), ('public', 'fleet_jobs_due'),
                                                ('public', 'fleet_job_set_for'), ('public', 'fleet_job_open'), ('public', 'tick_fleet_jobs'))),
   'flag_rule', (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                  where n.nspname = 'voyage' and p.proname = 'sail_refusal'

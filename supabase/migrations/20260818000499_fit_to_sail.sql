@@ -7,6 +7,9 @@
 --      first was refused when it ran (voyage.sail_refusal), cmd.release_failed cancelled the rest, and the next plan read that
 --      failed order and stopped the job. A stop on that code waited for the player for ever.
 --   B. that tick took 10,659 ms (its plan 3,055 ms) against 40-120 ms.
+--   D. (the owner, 24 Nov about 23:43 UTC) read "Order 200 was refused: the flagship is not fit to sail ... Gaivota is free": order
+--      200 had failed at 17:40 and she had been repaired at 23:36. A refused order stays in her served queue until dismissed (0186),
+--      and the queue serves no time, so the client could not tell an old record from news. cmd.queue now serves when each order ran.
 --   C. (the lead, 25 Nov) a job stopped on E_CREW_SHORT ("Crew 7 / 8" after a raid) is the same class: the sail's other gate that
 --      no harbour between mends. She waits where crew can be hired, and goes on once manned.
 --   Dev log docs/dev-log/2026-11-25-fit-to-sail.md. Reproduced locally to the letter before the hunks (this file's own scene).
@@ -38,9 +41,11 @@
 --   public.tick_fleet_jobs        (6 hunks) THE RECEIPT NAMES ITS PARTS: a step carries collect_ms (a land job's collect, inside
 --                                 plan_ms as before), wait_ms (the wait for the gap after the beat) and quay_ms (the wait for the
 --                                 quay, inside open_ms as before) beside plan_ms and open_ms. Nothing else in the tick moves.
+--   cmd.queue                     (1 hunk) each served order carries `at`: when it ran (a refused one: when it was refused; null while
+--                                 it waits). One key more; nothing else of the queue moves.
 --   world.workers                 NOT HUNKED: her row already serves `wait` from the job's own `last` and next_at (0497), so it reads
 --                                 wait {code: E_FLAGSHIP_DISABLED, sentence, retry_at}; a job stopped on that code reads `stop` as before.
--- THE HUNKS (14; each once in the live body, each reverses): voyage.sail_refusal x1, cmd.do_hire x1, fleet_job_plan x1,
+-- THE HUNKS (15; each once in the live body, each reverses): voyage.sail_refusal x1, cmd.do_hire x1, cmd.queue x1, fleet_job_plan x1,
 --   fleet_job_note x2, fleet_jobs_due x1, fleet_job_set_for x1, fleet_job_open x1, tick_fleet_jobs x6. NEW: public.fleet_unfit,
 --   public.port_hires.
 -- THE TICK'S COST. The reported tick could NOT be reproduced: the same scene on the chain's world (PGlite) is 45-95 ms, cold plans
@@ -51,9 +56,9 @@
 --   column or cron job; world.workers and every client read's shape (a receipt step gains three keys).
 -- ROWS: no new row kind. A wrecked fleet's job no longer writes its plan's orders (seven SAILs in the report) nor counts a run.
 -- budget: no table, no cron job, no autovacuum or fillfactor change.
--- LOCKS: CREATE OR REPLACE x8 by hunks (seven functions, one procedure), CREATE FUNCTION x2. TIME: about a second. BUDGET:
+-- LOCKS: CREATE OR REPLACE x9 by hunks (eight functions, one procedure), CREATE FUNCTION x2. TIME: about a second. BUDGET:
 --   statement_timeout 60 s, lock_timeout 5 s; fails above 45 s.
--- ROLLBACK (forward, owner only): a migration reversing the fourteen hunks (OLD texts below verbatim) and dropping the two functions. QUICK:
+-- ROLLBACK (forward, owner only): a migration reversing the fifteen hunks (OLD texts below verbatim) and dropping the two functions. QUICK:
 --   none of its own; fleet_jobs_enabled false stops every job, as before.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants, volatility, definer, search path and
 --   owner unmoved; no knob moved; the new function STABLE and server only. THE SCENE (rolled back), before the hunks and after: a
@@ -68,7 +73,7 @@
 
 do $m$
 declare
-  c_hunked constant text[] := array['voyage.sail_refusal(uuid,uuid,jsonb,numeric,jsonb)', 'cmd.do_hire(uuid,jsonb)', 'public.fleet_job_plan(uuid)', 'public.fleet_job_note(uuid,jsonb)',
+  c_hunked constant text[] := array['voyage.sail_refusal(uuid,uuid,jsonb,numeric,jsonb)', 'cmd.do_hire(uuid,jsonb)', 'cmd.queue(uuid)', 'public.fleet_job_plan(uuid)', 'public.fleet_job_note(uuid,jsonb)',
                                     'public.fleet_jobs_due()', 'public.fleet_job_set_for(uuid,uuid,text,jsonb)', 'public.fleet_job_open(uuid,jsonb)',
                                     'public.tick_fleet_jobs(boolean)'];
   c_new    constant text[] := array['public.fleet_unfit(uuid)', 'public.port_hires(uuid)'];
@@ -292,6 +297,11 @@ $h$  -- 0499: THE ONE FITNESS RULE (public.fleet_unfit: her crew, then her flags
   ('cmd.do_hire(uuid,jsonb)', 1,
 $h$  if v_pool <= 0 and v_urg = v_count then$h$,
 $h$  if not public.port_hires(f.port_id) and v_urg = v_count then   -- 0499: the one reading of "crew can be hired here"$h$),
+  ('cmd.queue(uuid)', 1,
+$h$           'result', o.result) order by o.seq), '[]'::jsonb)$h$,
+$h$           'result', o.result,
+           'at', o.executed_at)   -- 0499: when it ran (a refused order: when it was refused), so a screen can tell an old record from news
+           order by o.seq), '[]'::jsonb)$h$),
   ('public.fleet_job_plan(uuid)', 1,
 $h$    return jsonb_build_object('wait', 'busy');
   end if;$h$,
@@ -508,6 +518,10 @@ $h$'plan_ms', v_pm, 'open_ms', v_om, 'open', v_b, 'collect_ms', v_cm, 'wait_ms',
        or (select count(*) from public.orders o where o.fleet_id = v_fa) <> 1
        or (select w #>> '{stop,code}' from jsonb_array_elements(world.workers()->'workers') w where w->>'fleet' = v_fa::text) is distinct from 'E_FLAGSHIP_DISABLED' then
       raise exception '0499 self-assert FAIL: a job stopped on E_FLAGSHIP_DISABLED was asked while she is wrecked, or her row lost its stop';
+    end if;
+    -- the served queue says when her refused order ran (null here: this probe's row was written with no time; the key is there)
+    if (select count(*) from jsonb_array_elements(cmd.queue(v_fa)) q where q ? 'at' and q->>'status' = 'failed') <> 1 then
+      raise exception '0499 self-assert FAIL: cmd.queue does not serve when a refused order ran: %', cmd.queue(v_fa);
     end if;
     -- mended, and the plan that is asked says "nothing": the stop and the failed plan are lifted all the same (no loop on the old failure)
     update public.ships s set durability = (select b.durability from public.ship_base(s.id) b) where s.fleet_id = v_fa;

@@ -10,6 +10,7 @@
 -- @pass FS_ROW      world.workers: state waiting, wait {code E_FLAGSHIP_DISABLED, sentence, retry_at}, no stop, worker_state wrecked (the one state rule)
 -- @pass FS_DOOR     the job door refuses a new job for her with the same code and sentence, and the job she has is untouched
 -- @pass FS_PURSE    an empty purse cannot pay the yard (E_INSUFFICIENT_FUNDS, the price in its figures), nothing is mended, she still waits; REPAIR TO a small per cent is cheaper
+-- @pass FS_QUEUE_AT a refused order's row in the served queue (cmd.queue) carries `at`, when it was refused; an order that waits carries null
 -- @pass FS_REPAIR   the yard's quote (cmd.preview) is the price cmd.issue 'REPAIR' takes; in the yard she is not asked; out of it the very next run starts her, harbour by harbour, one run
 -- @pass FS_STOPPED  a job ALREADY stopped on E_FLAGSHIP_DISABLED (prod's row) is not asked while she is wrecked and goes on at the first run after her repair
 -- @pass FS_CREW     short of crew (the same class): where crew can be hired her job WAITS with E_CREW_SHORT ("Crew 7 / 8"), nothing issued; the Inn's quote (cmd.preview 'HIRE n') is the price cmd.issue takes; manned, the very next run starts her
@@ -97,6 +98,14 @@ begin
      or (select f.status from public.fleets f where f.id = v_fa) <> 'DOCKED' then
     raise exception 'FS_PURSE: an empty purse was not refused: % / %', v_r, left(v_q1::text, 400);
   end if;
+  -- FS_QUEUE_AT: that refused REPAIR stands in her served queue with its time
+  if (select count(*) from jsonb_array_elements(cmd.queue(v_fa)) q
+       where q->>'status' = 'failed' and q->>'error_code' = 'E_INSUFFICIENT_FUNDS' and (q->>'at')::timestamptz = now()) <> 1
+     or exists (select 1 from jsonb_array_elements(cmd.queue(v_fa)) q where not (q ? 'at'))
+     or exists (select 1 from jsonb_array_elements(cmd.queue(v_fa)) q where q->>'status' = 'pending' and q->>'at' is not null) then
+    raise exception 'FS_QUEUE_AT: the served queue does not say when her refused order ran: %', cmd.queue(v_fa);
+  end if;
+  raise notice 'PASS: FS_QUEUE_AT — %', (select jsonb_agg(jsonb_build_object('text', q->'text', 'status', q->'status', 'at', q->'at')) from jsonb_array_elements(cmd.queue(v_fa)) q);
   update public.orders set status = 'cancelled' where fleet_id = v_fa and status in ('pending', 'active', 'failed');
   call public.tick_fleet_jobs(false);
   if (select j.paused_reason is not null or j.runs <> 0 from public.fleet_jobs j where j.fleet_id = v_fa) then
