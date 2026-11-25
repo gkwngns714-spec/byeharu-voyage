@@ -68,7 +68,7 @@ export function WorkerRow({ row, names, nowMs, onPress, pill, fixCost, fixKind, 
             {name}
           </span>
           <span className="break-words text-t-caption leading-tight text-ink-muted" data-testid="corp-worker-action">
-            {note ?? actionWord(row.action, t, names)}
+            {note ?? row.stopSaid ?? actionWord(row.action, t, names)}
           </span>
         </span>
         {pill ? (

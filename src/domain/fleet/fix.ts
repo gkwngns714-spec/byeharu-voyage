@@ -7,7 +7,7 @@
 export type WorkerFix = 'repair' | 'hire' | 'assign' | 'storage' | 'wreck'
 
 export function fixOf(code: string | null | undefined): WorkerFix | null {
-  return code === 'E_FLAGSHIP_DISABLED' ? 'repair' : code === 'E_CREW_SHORT' ? 'hire' : code === 'E_LEG_TOO_FAR' ? 'assign' : code === 'E_SHED_FULL' ? 'storage' : null
+  return code === 'E_FLAGSHIP_DISABLED' || code === 'E_STOP_DAMAGE' ? 'repair' : code === 'E_CREW_SHORT' ? 'hire' : code === 'E_LEG_TOO_FAR' ? 'assign' : code === 'E_SHED_FULL' ? 'storage' : null
 }
 
 /** THE PRESS A FLEET'S OWN SERVED STATE ASKS FOR, where no job's code names one (0497; the owner's fleet lay wrecked at Diego Garcia

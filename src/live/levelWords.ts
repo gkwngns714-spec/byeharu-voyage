@@ -42,6 +42,8 @@ const MARKS: Record<string, LevelMark> = {
   investment: { icon: 'stats' },
   // a hull turning away, her wake behind her (0453)
   evasion: { paths: ['M14.5 3.5 20.5 9.5 16 14 10 8Z', 'M10.5 12.5 6 17', 'M8 10 3.5 14.5', 'M13 15 8.5 19.5'] },
+  // two pennants (0515)
+  management: { paths: ['M5 20V4', 'M5 4.5 13 7l-8 2.5', 'M14 20v-9', 'M14 11.5 21 13.5l-7 2'] },
   // 0455: the land's first skill, the kit's pick (the Land tab's own mark)
   mining: { icon: 'pick' },
   // 0531: an axe in a trunk

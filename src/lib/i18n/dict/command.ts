@@ -76,6 +76,7 @@ export const commandDict = defineDict({
     lvRoutes: 'Routes',
     lvInvestment: 'Investment',
     lvEvasion: 'Evasion',
+    lvManagement: 'Management',
     // 0455: the land's first skill (docs/design/land-2026-11.md); a land skill's gift is every fifth level
     lvMining: 'Mining',
     // 0461: the land's first making skill (land slice L2, behind land_smith_enabled)
@@ -131,6 +132,10 @@ export const commandDict = defineDict({
     lvPerk_trade_routes: 'Routes +{n}',
     lvPerk_fleet_ships: 'Ships per fleet +{n}',
     lvPerk_yard_fee: 'Yard fee −{n}%',
+    lvPerk_fleet_wage: 'Crew wages −{n}%',
+    lvPerk_job_wait: 'Waiting jobs ask {n}% sooner',
+    lvPerk_trade_profit: 'Profit kept +{n}% (less city tax)',
+    lvPerk_trade_bargain: 'Bargain chance +{n}%',
     lvAct_trade: 'Buy or sell goods',
     lvAct_give: 'Invest in or donate to a city',
     lvAct_mayor: 'Be mayor for a day',
@@ -148,6 +153,7 @@ export const commandDict = defineDict({
     lvAct_forged: 'Produce a good',
     lvAct_lap: 'Finish a route lap at a profit',
     lvAct_share: 'Invest in a city',
+    lvAct_job_sail: 'A sail made by a fleet job',
     lvAct_run_away: 'Escape a pirate raid by running',
     lvAct_dig: 'Dig at a mine',
     lvAct_smith: 'Work at the forge',

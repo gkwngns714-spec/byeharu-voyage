@@ -212,6 +212,8 @@ export const codesDict = defineDict({
     E_ROUND_SHORT: 'Too few supplies or crew.',
     E_NO_PIRATES: 'No pirates here.',
     E_LEVEL: 'Level too low.',
+    E_STOP_PROFIT: 'Profit too low.',
+    E_STOP_DAMAGE: 'Hull too damaged.',
     E_LAND_OUT: 'Party is out.',
     E_LAND_HAVE: 'Already have it.',
     E_NO_SUCH_JOB: 'No such job.',

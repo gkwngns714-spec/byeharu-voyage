@@ -8,10 +8,12 @@ import { useT } from '../../../lib/i18n'
 import { cmdLandHome, cmdLandSend, type FleetJobParams, type FleetView, type Refusal, type WorkerAction as ServedAction } from '../../../lib/rpc'
 import { clearFleetJob, setFleetJob, useJobEdits } from '../../../live/useAwayReport'
 import { litRoles, useShipRoles } from '../../../live/useShipRoles'
-import { litActions, useActionsRead, useWorkEdits, type LitActions } from '../../../live/useWorkers'
+import { litActions, litWorkers, useActionsRead, useWorkEdits, useWorkersRead, type LitActions } from '../../../live/useWorkers'
 import { useWorld } from '../../../live/worldStore'
 import { RoleControl } from '../board/RoleControl'
 import { WorkerFixButton } from '../../../live/FixButton'
+import { JobSettings } from './JobSettings'
+import { draftOf, settingsOf, type JobSettingsDraft } from './settingsDraft'
 import { PARTY, actionWord, figureWord, rateWords, servedId, stateWord, useWorkers, type ActionNames, type WorkerRow } from './workerRows'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -214,8 +216,16 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
     el.scrollIntoView({ block: 'center' })
   }, [])
 
+  // 0516: the settings of a fixed run, drawn while the server says they are open; they start as her running job has them
+  const room = litWorkers(useWorkersRead().view)?.settings?.[fleet.id] ?? null
+  const settingsOpen = room !== null
+  const { jobs } = useWorkers()
+  const [edited, setEdited] = useState<JobSettingsDraft | null>(null)
+  const draft = edited ?? draftOf(jobs?.get(fleet.id)?.params)
+  const settings = settingsOpen && mode === 'fixed' ? settingsOf(draft, end === 'sell') : {}
+
   const times = many === 'repeat' ? null : many === 'once' ? 1 : count
-  const choiceOf = (n: number | null) => `${mode}:${picked}:${end}:${n}`
+  const choiceOf = (n: number | null) => `${mode}:${picked}:${end}:${n}:${JSON.stringify(settings)}`
   const choice = choiceOf(times)
   const refusal = !pending && tried === choice ? refused : null
   const send = async () => {
@@ -226,7 +236,7 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
     else if (option?.job) {
       // the served job as it stands; a count rides only when she chose one (0492), and a counted sale names its end
       const counted = times === null ? {} : end === 'store' ? { times } : { end, times }
-      ok = await setFleetJob(fleet.id, option.job.kind, { ...(option.job.params as FleetJobParams), ...counted }, key)
+      ok = await setFleetJob(fleet.id, option.job.kind, { ...(option.job.params as FleetJobParams), ...counted, ...settings }, key)
     }
     if (ok) return stepBack()
     // the door says counts are not open: they leave the sheet, and its sentence stands over the plain choice
@@ -343,6 +353,7 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
                   {many === 'count' && <Stepper className="mt-2" value={count} onChange={setCount} min={2} max={MAX_RUNS} label={t('corp.count')} data-testid="corp-assign-count" />}
                 </Step>
               )}
+              {room && <JobSettings draft={draft} room={room} onChange={setEdited} sells={end === 'sell'} />}
             </>
           )}
           <FleetRoles fleet={fleet.id} />
@@ -606,6 +617,12 @@ export function WorkerSheet({ worker, onClose }: { worker: string; onClose: () =
             </Row>
           )}
           {row.kind === 'fleet' && <FleetRoles fleet={worker} />}
+          {/* 0498, 0516: a job that waits (not stopped) says why, in the server's words */}
+          {row.wait && !row.why && (
+            <Note tone="neutral" data-testid="corp-sheet-wait" data-wait={row.wait.code}>
+              {row.wait.sentence}
+            </Note>
+          )}
           {row.why && (
             <Note tone="danger" data-testid="corp-sheet-why">
               {row.why}
