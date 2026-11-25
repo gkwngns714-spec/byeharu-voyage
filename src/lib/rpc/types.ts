@@ -3406,6 +3406,26 @@ export type LogbookView =
       reward: { rep: number; region_cut: number; kind_cut: number }
     }
 
+/** `world.chart()` (0504, the fog). Dark `{on: false}`: the map is drawn whole. Lit with no company `{on, company: false}`. Lit, hers:
+ *  how far her fleets see, her charted squares and the harbours of her logbook. The client draws them; prices are not gated by it. */
+export type ChartFogView =
+  | { on: false }
+  | { on: true; company: false }
+  | {
+      on: true
+      company: true
+      /** The radius of sight round each of her fleets, in nautical miles (the knob and her NAVIGATION level; the server's). */
+      sight_nm: number
+      rows: number
+      cols: number
+      /** Her bitmap in base64, 8,100 bytes: bit row * 360 + col, row = floor(90 - lat), col = floor(lon + 180), low bit first.
+       *  Null before her first arrival or backfill. */
+      cells: string | null
+      backfilled: boolean
+      /** The harbour codes of her logbook: the cities she has made. */
+      cities: string[]
+    }
+
 /** One good on her mastery ladder (0479): its level 1-10, her units sold of it, the units its level began at and the next level's
  *  (null at the top). */
 export interface GoodMastery {
