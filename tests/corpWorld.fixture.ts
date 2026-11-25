@@ -29,6 +29,8 @@ const LIT = [
  *  `home`: 0492's switch lit too (assign_home_enabled: Bring home and the run count). */
 export const corpWorld = ({ courses = false, home = false, near = false, nearLow = false, slow = false, wreck = false }: { courses?: boolean; home?: boolean; near?: boolean; nearLow?: boolean; slow?: boolean; wreck?: boolean } = {}) =>
   patchedWorldImage(`hq-corp${courses ? '-courses' : ''}${home ? '-home' : ''}${near ? '-near' : ''}${nearLow ? '-low' : ''}${slow ? '-slow' : ''}${wreck ? '-wreck' : ''}`, async (pg) => {
+    // (0500: her job then WAITS for her repair. A tab has no cron, so the yard's work done is followed by the jobs' tick, as the next
+    // two minutes would: the trigger at the foot of this world.)
     // `wreck`: the FIRST SAIL order ever queued finds its flagship a wreck (her hull put at nought as the order is written, once), so
     // the server refuses it E_FLAGSHIP_DISABLED and her job stops on it: prod's case of 24 Nov, without a fight.
     if (wreck)
@@ -41,6 +43,14 @@ export const corpWorld = ({ courses = false, home = false, near = false, nearLow
           end if;
           return null;
         end $f$;
+        -- the run's cargo may have taken all her coin (its good is the day's market's): when the sail is refused she has the yard's price
+        create function public.spec_wreck_coin() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
+        begin
+          perform public.credit(new.player_id, 'PROOF', 20000, null);
+          return null;
+        end $f$;
+        create trigger spec_wreck_coin after update of status on public.orders for each row
+          when (new.status = 'failed' and new.error_code = 'E_FLAGSHIP_DISABLED' and old.status <> 'failed') execute function public.spec_wreck_coin();
         create trigger spec_wreck_once after insert on public.orders for each row when (new.verb = 'SAIL') execute function public.spec_wreck_once();`)
     // `slow`: world.actions' FIRST answer is its last resort, closed E_SLOW (the read took too long), and every later one is the real
     // read: the real function is kept under another name and a spec's own door counts its calls.
@@ -78,4 +88,17 @@ export const corpWorld = ({ courses = false, home = false, near = false, nearLow
       end $f$;
       create trigger spec_tick_fleet_jobs after insert or update of since on public.fleet_jobs
         for each statement execute function public.spec_tick_fleet_jobs();`)
+    if (wreck)
+      await pg.exec(`
+        -- the yard works for seconds here, not minutes (nothing of it is asserted)
+        update public.world_config set value = '0.04'::jsonb where key = 'repair_sim_hours_per_pct';
+        create function public.spec_tick_repaired() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
+        begin
+          if old.status = 'REPAIRING' and new.status = 'DOCKED' then
+            call public.tick_fleet_jobs(false);
+          end if;
+          return null;
+        end $f$;
+        create constraint trigger spec_tick_repaired after update of status on public.fleets deferrable initially deferred
+          for each row execute function public.spec_tick_repaired();`)
   })

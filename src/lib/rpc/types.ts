@@ -3467,6 +3467,23 @@ export interface HqRate {
   top?: string[]
   /** Running lines first, then one time; in each the largest loss first. */
   lines?: HqRateLine[]
+  /** 0501 (cargo_at_cost_enabled lit; absent dark): her cargo read at cost. The trade line is then her sales less the recorded cost
+   *  of what she sold, and `net_24h + one_time_24h + cargo.net_24h = all_24h`. */
+  cargo?: HqRateCargo
+}
+
+/** `rate.cargo` (0501, `public.cargo_rate_for`): the coin she put into goods in the last 24 hours that is neither sold nor lost. */
+export interface HqRateCargo {
+  /** bought - cost_sold - lost, floored at 0: the goods she bought and still holds, at what she paid. */
+  at_cost: number
+  /** The same figure as the ledger signs it (coin out is negative); positive when she sold or lost goods bought before the window. */
+  net_24h: number
+  bought: number
+  cost_sold: number
+  lost: number
+  /** Lost cargo is recorded from this instant (0501's deploy); `exact` once the whole window lies after it. */
+  exact_since: string
+  exact: boolean
 }
 
 /** `world.hq_board()` (0480). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her board, ranked by the server. */
@@ -3649,7 +3666,7 @@ export interface ActionItem {
 
 /** THE ONE SHAPE of an action (`public.action_shape`): a sea run, a land job, a make job. */
 export interface WorkerAction {
-  /** sea:best | sea:near (0498) | sea:fixed:<good>:<buy>:<sell>:<sell|store> | sea:haul:<yard> | land:<job>. A running action and its option share it. */
+  /** sea:best | sea:near (0499) | sea:fixed:<good>:<buy>:<sell>:<sell|store> | sea:haul:<yard> | land:<job>. A running action and its option share it. */
   id: string
   kind: 'sea' | 'gather' | 'make'
   skill: string
@@ -3692,7 +3709,7 @@ export interface WorkerAction {
   sell?: string
   end?: 'sell' | 'store'
   units?: number
-  /** 0498, the near round (sea:near): the miles of her round, the harbour she comes back to (a CODE), and its plain words
+  /** 0499, the near round (sea:near): the miles of her round, the harbour she comes back to (a CODE), and its plain words
    *  ("Trade near Lisbon"). It carries no rate (basis none) until her own runs give one. */
   within?: number
   base?: string
@@ -3739,6 +3756,8 @@ export interface WorkerRow {
   progress: WorkerProgress | null
   stop: { code: string; sentence: string | null } | null
   /** 0498: why a job that is NOT stopped waits, and when it is asked again (low: the run's quote leaves no profit now). Absent before 0498. */
+  /** 0500: code E_FLAGSHIP_DISABLED (her flagship cannot sail) or E_CREW_SHORT (a ship lacks hands, where crew can be hired): the job
+   *  waits for her repair or her hire and goes on by itself. */
   wait?: { code: string; sentence: string; retry_at: string } | null
   runs: number
   /** Whole runs of hers the `runs` basis was read from (0: not enough yet). */
