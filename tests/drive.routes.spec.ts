@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { ready, reachable, settled } from './appReady.fixture'
-import { serveRoutesOn } from './routesOn.fixture'
+import { serveRoutesOnInClearWeather } from './routesOn.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DRIVE AUDIT, 2026-11-08 — A ROUTE THAT SAILS BY ITSELF, DRIVEN AS THE OWNER WOULD
@@ -12,7 +12,8 @@ import { serveRoutesOn } from './routesOn.fixture'
 // come back and the route count a lap on its own. This one sets the route up the way the owner does
 // (the desk's Trade face, two stops), starts it, and then only WATCHES: the row's all-time laps and
 // History's own line. The tab plays the arrivals and the lap starts itself (localBackend.ts), and a
-// voyage in this world lasts seconds, so a lap that never closes is a finding.
+// voyage in this world lasts seconds, so a lap that never closes is a finding. The weather is off: one storm on the way is 675 s, longer
+// than the whole watch (main's red of 2026-11-25), and it says nothing about the route.
 
 const OUT = 'docs/dev-log/2026-11-08-drive-audit'
 const WIDE = { width: 1280, height: 800 }
@@ -22,7 +23,7 @@ test.use({ deviceScaleFactor: 2 })
 test('Routes: a two-stop route started on the desk closes a lap by itself, and History says so (row 106)', async ({ page, request, baseURL }) => {
   test.setTimeout(900_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-  await serveRoutesOn(page)
+  await serveRoutesOnInClearWeather(page)
   await page.setViewportSize(WIDE)
   await page.goto('command')
   await ready(page)

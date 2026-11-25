@@ -901,6 +901,12 @@ test('world.contracts() posts requests for goods a port does not sell, and cmd.f
   const port = snap.ports.find((p) => p.code === fleet.port)!
   const market = expectOk(await worldMarket(port.id))
 
+  // THE BOARD IS THIS DAY'S OWN. The chain leaves four requests at Lisbon, posted before 0285 multiplied their money by five, each to its own
+  // rounding: 20 clocks at 653.60 (13,072) under a budget of 13,070, which pays for 19. Such a row is no request of the rule asserted below (its
+  // budget is not its lot's bonus), and it is open only in a world built from zero within four game days (16 hours): main's red of
+  // 2026-11-25, 2,573 paid for the 29 units a budget of 2,660 covers. No live row is one: they lapsed days after 0285.
+  await db.pg.query('delete from public.trade_contracts')
+
   // (1) THE BOARD, wound by the read. Every field TradeRequest declares, off a real payload.
   const board = expectOk(await worldContracts(port.id))
   expect(board.port).toBe(port.code)
