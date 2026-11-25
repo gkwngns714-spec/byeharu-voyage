@@ -5,7 +5,7 @@ import { useT, type TKey } from '../../../lib/i18n'
 import type { FleetView } from '../../../lib/rpc'
 import { setFleetJob, useJobEdits } from '../../../live/useAwayReport'
 import { useRoundQuote, type LitRounds } from '../../../live/useRounds'
-import { Foot, FootLine, Step } from './assignParts'
+import { ChoiceRow, FigureLine, Foot, FootLine, SettingBox, Step } from './assignParts'
 import type { ActionNames } from './workerRows'
 
 // COMBAT AND EXPEDITION ON THE ASSIGN SHEET (owner R3, R5, R6; slide 5). A work of her kind, a sea (served, by the nearest base of each), WHAT A ROUND COSTS there
@@ -23,22 +23,6 @@ const num = (s: string | undefined): number | undefined => {
   return v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined
 }
 const numbers = (d: Record<string, string>): Record<string, number> => Object.fromEntries(Object.entries(d).flatMap(([k, v]) => (num(v) === undefined ? [] : [[k, num(v)!]])))
-
-function Box({ word, value, onChange, testid }: { word: string; value: string; onChange: (v: string) => void; testid: string }) {
-  return (
-    <label className="flex min-w-0 flex-col gap-1 text-t-caption text-ink-muted">
-      {word}
-      <input
-        inputMode="numeric"
-        autoComplete="off"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="min-h-11 w-full min-w-0 rounded-control bg-surface px-3 text-base tabular-nums text-ink ring-1 ring-inset ring-edge focus:ring-accent"
-        data-testid={testid}
-      />
-    </label>
-  )
-}
 
 export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetView; kind: Kind; lit: LitRounds; names: ActionNames; onDone: () => void }) {
   const t = useT()
@@ -86,20 +70,18 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
               {seas.map((s) => {
                 const none = kind === 'combat' && !s.pirates
                 return (
-                  <button
+                  <ChoiceRow
                     key={s.sea}
-                    type="button"
-                    aria-pressed={s.base === base}
+                    on={s.base === base}
                     disabled={none || s.far}
                     onClick={() => setBase(s.base)}
-                    className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-control px-3 text-left transition ${s.base === base ? 'bg-accent-soft ring-1 ring-inset ring-accent' : 'bg-surface hover:bg-surface-2'} disabled:opacity-45`}
                     data-testid="round-sea"
                     data-base={s.base}
                     data-far={s.far}
                   >
                     <span className="min-w-0 break-words text-t-body text-ink">{s.name}</span>
                     <span className="shrink-0 text-t-caption tabular-nums text-ink-muted">{none ? t('corp.noPirates') : s.nm === 0 ? names.port(s.base) : `${s.far ? t('corp.far') : names.port(s.base)} · ${formatMiles(s.nm)} · ${formatRealShort(s.seconds * 1000)}`}</span>
-                  </button>
+                  </ChoiceRow>
                 )
               })}
             </div>
@@ -107,14 +89,14 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
           <Step word={t('corp.take')}>
             <div className="grid grid-cols-3 gap-2" data-testid="round-take-boxes">
               {TAKES.filter((k) => kind === 'combat' || k !== 'ammo').map((k) => (
-                <Box key={k} word={t(TAKE_WORD[k])} value={take[k] ?? ''} onChange={(v) => setTake({ ...take, [k]: v })} testid={`round-take-${k}`} />
+                <SettingBox key={k} word={t(TAKE_WORD[k])} value={take[k] ?? ''} onChange={(v) => setTake({ ...take, [k]: v })} testid={`round-take-${k}`} />
               ))}
             </div>
           </Step>
           <Step word={t('corp.stopAt')}>
             <div className="grid grid-cols-2 gap-2" data-testid="round-stop-boxes">
               {STOPS.filter((k) => kind === 'combat' || k !== 'hull').map((k) => (
-                <Box key={k} word={t(STOP_WORD[k])} value={stop[k] ?? ''} onChange={(v) => setStop({ ...stop, [k]: v })} testid={`round-stop-${k}`} />
+                <SettingBox key={k} word={t(STOP_WORD[k])} value={stop[k] ?? ''} onChange={(v) => setStop({ ...stop, [k]: v })} testid={`round-stop-${k}`} />
               ))}
             </div>
           </Step>
@@ -138,11 +120,11 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
           shut !== null ? null : terms ? (
             <div data-testid="round-cost" data-hull={terms.hull} data-crew={terms.crew} data-food={terms.food} data-water={terms.water} data-ammo={terms.ammo}>
               <FootLine word={t('corp.perRound')} figure={<span className="text-t-caption tabular-nums text-ink-muted">{formatRealShort(terms.seconds * 1000)}</span>} />
-              <p className="flex flex-wrap gap-x-3 text-t-caption tabular-nums text-ink-muted">
+              <FigureLine>
                 {cells.map((c) => (
                   <span key={c.key} data-cost={c.key}>{`${t(c.word)} ${c.text}`}</span>
                 ))}
-              </p>
+              </FigureLine>
             </div>
           ) : (
             <FootLine word={t('corp.perRound')} figure={null} />

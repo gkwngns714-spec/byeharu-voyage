@@ -26,7 +26,7 @@ select json_build_object(
                                 ('public.captain_seat_put(uuid,uuid,integer)', '29cef6872d8bc5ed40d4df386b9fdf1b'),
                                 ('public.new_house(uuid,text,text,text,text,text,text,bigint,boolean)', 'f404cfef610ebb13667bc661d0fa9e6b'),
                                 ('public.sea_closed(uuid,uuid)', 'e55f5d04c4895a6a39cb61da567d3351'),
-                                ('public.fleet_job_plan(uuid)', '33daf008de8ff534e86622a514db380a'),
+                                ('public.fleet_job_plan(uuid)', '60a5f8d7f7b5c2fe4c39639573255373'),
                                 ('world.sea_conditions()', '17f4c8486126f9065e5a17372e2bd010'),
                                 ('cmd.refusal_line(text,jsonb)', 'ee4c71eacb18f252cd6196af413e26fc'),
                                 ('public.fleet_census(uuid)', 'c7b558643cd9abf28c5c1593ebea126a'),

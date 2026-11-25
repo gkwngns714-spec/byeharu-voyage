@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { GroupHeading, Note } from '../../../components/ui'
 import type { Refusal } from '../../../lib/rpc'
 
@@ -11,6 +11,53 @@ export function Step({ word, children }: { word: string; children: ReactNode }) 
       <GroupHeading>{word}</GroupHeading>
       {children}
     </div>
+  )
+}
+
+/** One choice of a list: a full-width row of 44 px, lit while it is picked. */
+export function ChoiceRow({ on, ...rest }: { on: boolean } & Omit<ComponentProps<'button'>, 'className' | 'type'>) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-control px-3 text-left transition ${on ? 'bg-accent-soft ring-1 ring-inset ring-accent' : 'bg-surface hover:bg-surface-2'} disabled:opacity-45`}
+      {...rest}
+    />
+  )
+}
+
+/** A number she sets, under its word; empty sends nothing. */
+export function SettingBox({ word, value, onChange, mode = 'numeric', testid }: { word: ReactNode; value: string; onChange: (v: string) => void; mode?: 'numeric' | 'decimal'; testid: string }) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1 text-t-caption text-ink-muted">
+      <span>{word}</span>
+      <input
+        inputMode={mode}
+        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-h-11 w-full min-w-0 rounded-control bg-surface px-3 text-base tabular-nums text-ink ring-1 ring-inset ring-edge focus:ring-accent"
+        data-testid={testid}
+      />
+    </label>
+  )
+}
+
+/** A quiet line that opens what stands under it. */
+export function FoldPress({ open, onToggle, children, testid }: { open: boolean; onToggle: () => void; children: ReactNode; testid: string }) {
+  return (
+    <button type="button" aria-expanded={open} onClick={onToggle} className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-t-caption text-ink-muted" data-testid={testid}>
+      {children}
+    </button>
+  )
+}
+
+/** Small figures side by side, a word and its figure each. */
+export function FigureLine({ children, testid }: { children: ReactNode; testid?: string }) {
+  return (
+    <p className="flex flex-wrap gap-x-3 gap-y-1 text-t-caption tabular-nums text-ink-muted" data-testid={testid}>
+      {children}
+    </p>
   )
 }
 

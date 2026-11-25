@@ -34,7 +34,7 @@ select json_build_object(
                                 ('public.flow_is_profit(text)', 'd8112860e2455a7b4b42e82f8ef7f8fc'),
                                 ('voyage.depart(uuid,jsonb,uuid,uuid,timestamp with time zone)', '230e8716f2711d8930a97f642211dab0'),
                                 ('public.fleet_wage(uuid,boolean,integer)', '8b6ff54d4c1b3f7936778cab02b7285d'),
-                                ('public.fleet_job_plan(uuid)', '01ab8247874f0c80f0cc8a3cd115358d'),
+                                ('public.fleet_job_plan(uuid)', '3314a40c43244545443b5450fc1d4703'),
                                 ('public.bargain_p1(uuid,uuid,uuid,uuid)', '83b4750eec39ae7f9d28f9046dc91eca'),
                                 ('public.sea_judge(integer,numeric,text[],integer,integer,integer,integer)', 'c6dee3f0792a101cc4a57c5041747e4a'),
                                 ('world.sea_conditions()', '048ef286e6ebcc3e2aca2009acd8c71f'),
@@ -54,7 +54,7 @@ select json_build_object(
                                 ('public.company_rate_line(text)', '935e4105e87d2a1dcbfd465bf68c3b3e'),
                                 ('public.tax_home_half(uuid,uuid,numeric,numeric)', 'e4f27883a61ed55603b8df7d910207e1'),
                                 ('public.sea_gate(uuid,uuid,uuid,jsonb)', 'bd12541b95e57a0bc52496745b9f5fb6'),
-                                ('public.fleet_job_note(uuid,jsonb)', '7d7077dd393d3446c9ed77b8dcf01266'),
+                                ('public.fleet_job_note(uuid,jsonb)', 'e2c6905f09415dfeadb77afe0b3f5010'),
                                 ('world.good_mids(uuid)', 'e771e478c68d705091b1b6d6c981dadf')) w(fn, want)
                   cross join lateral (select md5(replace(pg_get_functiondef(to_regprocedure(w.fn)), E'', '')) as have) h
                   where h.have is distinct from w.want),

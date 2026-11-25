@@ -7,6 +7,7 @@ import { clearFleetJob, useAwayReport, litAway } from '../../../live/useAwayRepo
 import { useWorkEdits } from '../../../live/useWorkers'
 import { carried, litRounds, runOf, salvageOf, useRounds } from '../../../live/useRounds'
 import { useWorld } from '../../../live/worldStore'
+import { FigureLine, FoldPress } from './assignParts'
 
 // A FLEET'S RUN ON HER SHEET AND WHILE AWAY (0518 to 0524): the rounds done and the next one's clock, what a round costs, what she has in hand, the last 20 lines
 // of the log, Come home; her artifacts, and Give where she lies in her capital. Every figure is the served one.
@@ -56,12 +57,12 @@ export function RoundTake({ run }: { run: RoundRun }) {
   const parts = salvageOf(run)
   if (!gold && !rp && !due && parts.length === 0) return null
   return (
-    <p className="flex flex-wrap gap-x-3 gap-y-1 text-t-caption tabular-nums text-ink-muted" data-testid="round-take">
+    <FigureLine testid="round-take">
       {gold ? <span className="text-success">{`${t('corp.gold')} ${formatDucats(gold)}`}</span> : null}
       {due ? <span>{`${t('corp.goldDue')} ${formatDucats(due)}`}</span> : null}
       {rp ? <span>{`${t('corp.reputation')} ${formatInt(rp)}`}</span> : null}
       {parts.length > 0 && <span data-testid="round-wrecks">{`${t('corp.wrecks')}: ${parts.map((p) => `${goodByCode[p.good]?.name ?? p.good} ${formatInt(p.qty)}`).join(', ')}`}</span>}
-    </p>
+    </FigureLine>
   )
 }
 
@@ -144,10 +145,10 @@ export function RoundsAway({ fleet }: { fleet: string }) {
   if (!run) return null
   return (
     <div className="flex flex-col gap-1 pl-8" data-testid="rounds-away" data-fleet={fleet}>
-      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-t-caption text-ink-muted" data-testid="rounds-away-open">
+      <FoldPress open={open} onToggle={() => setOpen(!open)} testid="rounds-away-open">
         <span className="tabular-nums">{`${run.sea} · ${t('corp.roundsN', { n: formatInt(run.rounds) })}${run.state === 'home' && run.ended && ENDED[run.ended] ? ` · ${t(ENDED[run.ended])}` : ''}`}</span>
         <span>{t('corp.log')}</span>
-      </button>
+      </FoldPress>
       <RoundTake run={run} />
       {open && <RoundLog run={run} />}
     </div>

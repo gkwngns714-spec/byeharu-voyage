@@ -25,7 +25,8 @@ test('every frozen-assert patch fits its real file once, inside the final self-a
     expect(f, `${p.file} is in the chain`).toBeTruthy()
     const out = sqlToApply(f!)
     expect(out).not.toBe(f!.sql)
-    expect(out.length - f!.sql.length).toBe(p.replace.length - p.find.length)
+    const same = FROZEN_ASSERT_PATCHES.filter((x) => x.file === p.file) // a file may carry several
+    expect(out.length - f!.sql.length).toBe(same.reduce((sum, x) => sum + x.replace.length - x.find.length, 0))
     expect(out.split(p.replace).length - 1).toBeGreaterThanOrEqual(1)
     // Everything before the final do-block is untouched: the schema the file builds is the same.
     const block = Math.max(...[...f!.sql.matchAll(/\ndo \$[A-Za-z_]*\$\n/g)].map((m) => m.index!))
@@ -47,6 +48,22 @@ test('the patched asserts can still fail', async () => {
   // Cleared only below 1e6, so step (h)'s spent allowance (1e8) still refuses and its assert still fails.
   expect(sqlToApply(f315)).toContain('qty < 1000000;\n  v_res := cmd.enqueue(')
   expect(f315.sql).toContain("error_code' is distinct from 'E_DAILY_CAP'")
+  // 0154: both arrival comparisons still judge, and the two raises and every other clause are the file's own.
+  const f154 = files.find((x) => x.name.startsWith('20260818000154_'))!
+  const out154 = sqlToApply(f154)
+  const p154 = FROZEN_ASSERT_PATCHES.filter((p) => p.file === f154.name)
+  expect(p154).toHaveLength(2)
+  let back154 = out154
+  for (const p of p154) {
+    expect(p.replace).toContain(p.find.trim().slice(3)) // the file's own comparison stands inside
+    back154 = back154.replace(p.replace, () => p.find)
+  }
+  expect(back154).toBe(f154.sql)
+  // 0315 (c), (d): only the bid is read again; both judgements after it are the file's own.
+  const out315 = sqlToApply(f315)
+  const c315 = '    -- (c) THE FLOOR IS KEPT'
+  expect(out315.slice(out315.indexOf(c315))).toBe(f315.sql.slice(f315.sql.indexOf(c315)))
+  expect(out315).toContain("v_bid := (select q.avg_price from world.quote(v_port, v_good, 3, 'sell', null, v_f1) q);@    -- (c)".replace('@', String.fromCharCode(10)))
   expect(out19).toContain("the quay predicted % out / % in and the orders moved % / %")
   // 0226: only the plant line moves, and only in UTC hour 01 (a pair planted 26 h back is 23:00 and 00:00
   // there, two days, so the day folds into two rows of n 4). Every assertion that judges the hour rows, the
@@ -77,6 +94,13 @@ test('the patched asserts can still fail', async () => {
       "      raise exception '0367 self-assert FAIL: both fleets of an armada do not sail at the slower fleet''s speed';\n",
   )
   expect(out367.split('\n').length).toBe(f367.sql.split('\n').length + 1)
+  // 0473: only the probe harbour is chosen (a trial that rolls back); everything from v_open on is the file's own.
+  const f473 = files.find((x) => x.name.startsWith('20260818000473_'))!
+  const out473 = sqlToApply(f473)
+  const from473 = f473.sql.slice(f473.sql.indexOf('    v_open := (select count(*)'))
+  expect(out473.endsWith(from473)).toBe(true)
+  expect(from473).toContain("raise exception '0473 self-assert FAIL: lit, the probe harbour did not post two hold jobs within reach'")
+  expect(from473).toContain("raise exception '0473 self-assert FAIL: a hold job''s source is not a seller within reach")
   const was = f226.sql.split('\n')
   const now = out226.split('\n')
   expect(now.length).toBe(was.length)

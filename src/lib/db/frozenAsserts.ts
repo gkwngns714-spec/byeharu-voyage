@@ -121,6 +121,37 @@ function digestSortsBlankedRows(file: string, n: string, args: string): FrozenAs
   }
 }
 
+/**
+ * 0154's probe holds the arrival voyage.arrival_at predicts to the eta voyage.settle writes. They part, by 0125's
+ * rule and not by a fault, when a FAIR_WIND falls on a day that ends at or near the arrival: the wind is rolled at that
+ * day's end, so the eta it writes lies BEFORE the instant it is known, and arrival_at answers that instant (its floor).
+ * The weather is drawn from the voyage's random id. An arrival that is not the eta must now be that floor, worked by
+ * hand from the settled days, to the millisecond; any other difference fails as written.
+ */
+function arrivalIsTheEtaOrTheFloor(passage: 'dark_voyage' | 'lit_voyage', settled: 'new' | 'one', arrival: 'arrival_new' | 'arrival'): FrozenAssertPatch {
+  const v = `v_pr->'${passage}'->'${settled}'`
+  const eta = `(${v}->'voyage'->>'eta')::timestamptz`
+  const at = `(v_pr->'${passage}'->>'${arrival}')::timestamptz`
+  const find = `     or ${eta} <> ${at}\n`
+  return {
+    file: '20260818000154_a_skill_is_paid_where_the_game_charges.sql',
+    find,
+    replace:
+      `     -- frozenAsserts: or the floor a late FAIR_WIND leaves (0125: she cannot arrive before the day that blew is over)\n` +
+      `     or (${eta} <> ${at}\n` +
+      `         and coalesce(abs(extract(epoch from ${at} - (select greatest(${eta}, max(least(\n` +
+      `               ${eta} - make_interval(secs => (q.after * 3600 / public.wc_num('time_compression'))::double precision),\n` +
+      `               now() - interval '60 days' + make_interval(secs => ((q.d * 24 + q.before) * 3600 / public.wc_num('time_compression'))::double precision))))\n` +
+      `             from (select x.d, sum(x.h) over (order by x.d rows between current row and unbounded following) as after,\n` +
+      `                          coalesce(sum(x.h) over (order by x.d rows between unbounded preceding and 1 preceding), 0) as before\n` +
+      `                     from (select (e->>'day')::int as d, coalesce((e->'payload'->>'delay_hours')::numeric, 0) as h\n` +
+      `                             from jsonb_array_elements(${v}->'events') e) x) q))), 1) > 0.001)\n`,
+    why:
+      `0154 (b, ${passage}): the predicted arrival is not the settled eta when a FAIR_WIND blows on a day that ends at the arrival (0125's floor; the weather is the random voyage id's): ` +
+      'PR #869, from zero, 2026-11-25: a wind of 20.93 h on day 50 of 52, 78.5 s apart. A difference must now be exactly that floor, worked from the settled days; anything else fails as written',
+  }
+}
+
 export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
   {
     file: '20260818000019_the_quay_names_the_port_that_pays.sql',
@@ -136,6 +167,8 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
     replace: '    if v_ms > 1200 then\n',
     why: '0108 (d5): 400 ms -> 1,200 ms a call on PGlite (426/451 ms measured on a slower PC); real Postgres keeps 400',
   },
+  arrivalIsTheEtaOrTheFloor('dark_voyage', 'new', 'arrival_new'),
+  arrivalIsTheEtaOrTheFloor('lit_voyage', 'one', 'arrival'),
   {
     file: '20260818000315_merchants_answer_requests.sql',
     find: '  v_res  jsonb;\nbegin\n  v_res := cmd.enqueue(p_player, jsonb_set(cmd.parse(p_player, p_fleet, v_line)',
@@ -144,6 +177,15 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
       '  delete from public.trade_daily where player_id = p_player and qty < 1000000;\n' +
       '  v_res := cmd.enqueue(p_player, jsonb_set(cmd.parse(p_player, p_fleet, v_line)',
     why: "0315 (e): the probe's sales run through the drawn good's daily cap (0.35 x stock_target; the good is drawn from the game day, a minute here) -> E_DAILY_CAP on some minutes; each probe sale now starts with a fresh allowance, inside the rolled-back probe; step (h)'s spent allowance (1e8) is kept",
+  },
+  {
+    file: '20260818000315_merchants_answer_requests.sql',
+    find: '    -- (c) THE FLOOR IS KEPT: sale price plus bonus under her floor, no delivery, the line refused as it always was\n',
+    replace:
+      '    -- frozenAsserts: the bid (c) and (d) set their floors by is read here, of the three units the budget pays for, not before (a) and (b) sold eight\n' +
+      "    v_bid := (select q.avg_price from world.quote(v_port, v_good, 3, 'sell', null, v_f1) q);\n" +
+      '    -- (c) THE FLOOR IS KEPT: sale price plus bonus under her floor, no delivery, the line refused as it always was\n',
+    why: "0315 (c), (d): the floors are set by a bid read before (a) and (b) sold eight units; where the drawn good (the game day's draw) is thin, those sales move its bid by more than the half bonus that separates (d)'s floor from it, so the bonus no longer lifts the sale -> E_PRICE_LIMIT (chain-baseline run 45538163401, Barley Flour; locally Rice Flour at a stock of 44, 105.80 -> 93.57). The bid is read again before (c) as the answering door reads it, inside the rolled-back probe; (c)'s refusal and (d)'s lift are the file's own",
   },
   {
     file: '20260818000226_a_price_is_kept_for_years_both_ways.sql',
@@ -178,6 +220,26 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
       "    v_city := (select count(*) from public.trade_contracts t where t.port_id = v_port and t.status = 'open');\n",
     why: "0466 (8): the probe's two hold jobs at LIS are drawn from the game day (4 real hours); on about 1 game day in 10 there (12 of 120 measured) the drawn good is dear or its allowance thin, the lot falls under hold_request_units_min and the writer posts nothing (main, run 45180194236, the growth test from zero, 2026-11-23 14:41 UTC). The probe now runs at the first harbour, LIS first, whose two posts land today, tried in a rolled-back block; if none does, it stays at LIS and fails as written",
   },
+  {
+    file: '20260818000473_a_job_says_where_to_buy.sql',
+    find: "    v_open := (select count(*) from public.trade_contracts t where t.port_id = v_port and t.status = 'open' and t.size = 'hold');\n",
+    replace:
+      '    -- frozenAsserts: the probe harbour is the first, LIS first, whose two jobs today post (tried in a rolled-back block)\n' +
+      "    for x in select p.id from public.ports p where p.kind = 'HARBOUR' order by (p.id = v_port) desc, p.code loop\n" +
+      '      begin\n' +
+      "        v_open := (select count(*) from public.trade_contracts t where t.port_id = x.id and t.status = 'open' and t.size = 'hold');\n" +
+      "        update public.world_config set value = to_jsonb(v_open + 2) where key = 'hold_request_open_max';\n" +
+      "        v_now := public.clock_start('game_day', world.game_day()) + interval '1 second';\n" +
+      '        v_n := public.hold_request_post(x.id, v_now);\n' +
+      '        v_n := v_n + public.hold_request_post(x.id, v_now);\n' +
+      "        raise exception sqlstate 'BV474';\n" +
+      "      exception when sqlstate 'BV474' then null;\n" +
+      '      end;\n' +
+      '      if v_n = 2 then v_port := x.id; exit; end if;\n' +
+      '    end loop;\n' +
+      "    v_open := (select count(*) from public.trade_contracts t where t.port_id = v_port and t.status = 'open' and t.size = 'hold');\n",
+    why: "0473 (7): 0466's dice again. The probe's two hold jobs at LIS are drawn from the game day (4 real hours); v_now is the day's first second, so the hour of day moves nothing, but on 14 of 240 game days measured there a drawn good is dear or thin, the lot falls under hold_request_units_min and the writer posts nothing (main, run 45529660879, from zero, 2026-11-25 02:46 UTC; game days 623208, 623242, 623274 and 623292 fail locally as written and pass patched). The probe now runs at the first harbour, LIS first, whose two posts land today, tried in a rolled-back block; if none does, it stays at LIS and fails as written",
+  },
   digestSortsBlankedRows('20260818000266_a_lap_starts_in_its_own_job.sql', '0266', 'uuid,uuid,uuid'),
   digestSortsBlankedRows('20260818000269_the_quay_writes_down_its_long_holds.sql', '0269', 'uuid,uuid,uuid'),
   digestSortsBlankedRows('20260818000270_the_clear_replans_her_lines_before_the_quay.sql', '0270', 'uuid,uuid,uuid'),
@@ -186,7 +248,8 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
   digestSortsBlankedRows('20260818000274_the_clear_acts_before_the_quay.sql', '0274', 'uuid,uuid,uuid'),
 ]
 
-const BY_FILE = new Map(FROZEN_ASSERT_PATCHES.map((p) => [p.file, p]))
+const BY_FILE = new Map<string, FrozenAssertPatch[]>()
+for (const p of FROZEN_ASSERT_PATCHES) BY_FILE.set(p.file, [...(BY_FILE.get(p.file) ?? []), p])
 
 /** Where the file's final `do $$` block starts, or -1. */
 function lastDoBlock(sql: string): number {
@@ -198,20 +261,27 @@ function lastDoBlock(sql: string): number {
 
 /**
  * The SQL the applier executes for `file`: the file's own text, or — for a frozen migration with a
- * patch above — that text with its one self-assert line replaced. Throws when a patch no longer fits.
+ * patch (or several) above — that text with those self-assert lines replaced. Throws when a patch no longer fits.
  */
 export function sqlToApply(file: { name: string; sql: string }): string {
-  const patch = BY_FILE.get(file.name)
-  if (!patch) return file.sql
-  const at = file.sql.indexOf(patch.find)
-  const again = at === -1 ? -1 : file.sql.indexOf(patch.find, at + 1)
+  const patches = BY_FILE.get(file.name)
+  if (!patches) return file.sql
   const block = lastDoBlock(file.sql)
-  if (at === -1 || again !== -1 || block === -1 || at < block) {
-    throw new Error(
-      `FROZEN ASSERT PATCH NO LONGER FITS: ${file.name} — the text it replaces must occur exactly once, ` +
-        `inside the file's final do $$ block (found at ${at}, again at ${again}, last do-block at ${block}). ` +
-        'A frozen migration changed, or the patch is stale: fix src/lib/db/frozenAsserts.ts.',
-    )
-  }
-  return file.sql.slice(0, at) + patch.replace + file.sql.slice(at + patch.find.length)
+  // every patch is placed on the file's OWN text (a patch can never match what another one wrote)
+  const placed = patches.map((patch) => {
+    const at = file.sql.indexOf(patch.find)
+    const again = at === -1 ? -1 : file.sql.indexOf(patch.find, at + 1)
+    if (at === -1 || again !== -1 || block === -1 || at < block) {
+      throw new Error(
+        `FROZEN ASSERT PATCH NO LONGER FITS: ${file.name} — the text it replaces must occur exactly once, ` +
+          `inside the file's final do $$ block (found at ${at}, again at ${again}, last do-block at ${block}). ` +
+          'A frozen migration changed, or the patch is stale: fix src/lib/db/frozenAsserts.ts.',
+      )
+    }
+    return { at, patch }
+  })
+  placed.sort((a, b) => b.at - a.at) // from the end, so the earlier places hold
+  let sql = file.sql
+  for (const { at, patch } of placed) sql = sql.slice(0, at) + patch.replace + sql.slice(at + patch.find.length)
+  return sql
 }

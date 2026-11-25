@@ -15,7 +15,7 @@ import { RoleControl } from '../board/RoleControl'
 import { WorkerFixButton } from '../../../live/FixButton'
 import { JobSettings } from './JobSettings'
 import { draftOf, settingsOf, type JobSettingsDraft } from './settingsDraft'
-import { Foot, FootLine, Step } from './assignParts'
+import { ChoiceRow, Foot, FootLine, Step } from './assignParts'
 import { RoundAssign } from './RoundAssign'
 import { RoundCard } from './RoundCard'
 import { PARTY, actionWord, figureWord, rateWords, servedId, stateWord, useWorkers, type ActionNames, type WorkerRow } from './workerRows'
@@ -284,13 +284,11 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
                       const on = o.id === picked
                       const losing = (o.per_hour ?? o.net ?? 0) < 0
                       return (
-                        <button
+                        <ChoiceRow
                           key={o.id}
                           ref={o.id === asked && on ? showFilled : undefined}
-                          type="button"
-                          aria-pressed={on}
+                          on={on}
                           onClick={() => setPicked(o.id)}
-                          className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-control px-3 text-left transition ${on ? 'bg-accent-soft ring-1 ring-inset ring-accent' : 'bg-surface hover:bg-surface-2'}`}
                           data-testid="corp-assign-run"
                           data-id={o.id}
                           data-good={o.good}
@@ -314,7 +312,7 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
                               <span className={losing ? 'text-danger' : 'text-success'}>{t('corp.perHour', { n: formatDucatsDelta(o.per_hour) })}</span>
                             ) : null}
                           </span>
-                        </button>
+                        </ChoiceRow>
                       )
                     })}
                   </div>
