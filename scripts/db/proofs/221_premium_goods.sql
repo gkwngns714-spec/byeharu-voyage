@@ -6,8 +6,9 @@
 --   written here, so no sign hangs on the market, the dice, the companies or the world's age. Rolled back by proof.mjs.
 --
 -- @pass PG_DARK      dark (as deployed): the plain price, no premium on the Forge's recipes
--- @pass PG_LIST      the default list: 100 made goods, one city each, none offered where it is wanted; near 3, far 5, straight between
+-- @pass PG_LIST      the default list: 67 made goods, one city each, none offered where it is wanted; near 3, far 5, straight between
 -- @pass PG_FORGE     made in the Forge out of Storage (its recipe names the city and the pay) and sold there: 4 times at 6,250 miles, the quote to the coin
+-- @pass PG_MADE      units bought at a quay are paid the normal price at the same city; the Forge counts what she makes, the premium sale takes it off
 -- @pass PG_WORLD     the world's sum (players, cities, flows) is the same before and after the sale: no coin made
 -- @pass PG_LIMIT     a day's 30 units are shared by two companies; the rest is the normal price; the next day 30 again
 -- @pass PG_PURSE     a purse at its floor pays no premium; whatever it holds above, a sale takes at most its share at the premium and never empties it
@@ -67,15 +68,15 @@ begin
   raise notice 'PASS: PG_DARK - 4 % at Lisbon: % d., the plain price', v_code, v_x;
 
   -- ── THE LIST ──
-  if (select count(*) from public.goods where premium_port_id is not null) <> 100
-     or (select count(distinct premium_port_id) from public.goods) <> 100
+  if (select count(*) from public.goods where premium_port_id is not null) <> 67
+     or (select count(distinct premium_port_id) from public.goods) <> 67
      or exists (select 1 from public.goods g where g.premium_port_id is not null
                  and (public.port_offers(g.premium_port_id, g.id) or not exists (select 1 from public.goods_recipes r where r.product_id = g.id)
                       or public.culture_refuses((select h.culture from public.ports h where h.id = g.premium_port_id), g.culture_mask)))
      or public.premium_mult(500) <> 3 or public.premium_mult(6250) <> 4 or public.premium_mult(12000) <> 5 or public.premium_mult(20000) <> 5 then
     raise exception 'PROOF 221 FAIL: the list or the pay by distance';
   end if;
-  raise notice 'PASS: PG_LIST - 100 made goods, one city each; 3 times at 500 miles, 4 at 6,250, 5 from 12,000';
+  raise notice 'PASS: PG_LIST - 67 made goods, one city each; 3 times at 500 miles, 4 at 6,250, 5 from 12,000';
 
   -- ── LIT: made in the Forge, sold at its city ──
   update public.goods set premium_port_id = null where premium_port_id = v_lis or id = v_g;
@@ -86,7 +87,7 @@ begin
   select v_pl, v_lis, r.ingredient_id, r.qty * 4, 5 from public.goods_recipes r where r.product_id = v_g;
   v_r := cmd.forge_good(v_lis, v_g, 4);
   v_p := (select e->'premium' from jsonb_array_elements(world.goods_forge(v_lis)->'recipes') e where e->>'product' = v_code);
-  if v_r->>'ok' <> 'true' or v_p->>'port' <> 'LIS' or (v_p->>'mult')::numeric <> 4 or (v_p->>'left')::numeric <> 30 then
+  if v_r->>'ok' <> 'true' or v_p->>'port' <> 'LIS' or (v_p->>'mult')::numeric <> 4 or (v_p->>'left')::numeric <> 4 or (v_p->>'made')::numeric <> 4 then
     raise exception 'PROOF 221 FAIL: the Forge: % %', v_r, v_p;
   end if;
   perform cmd.do_take(v_fl, jsonb_build_object('good', v_g, 'qty', 4));
@@ -106,10 +107,20 @@ begin
   end if;
   raise notice 'PASS: PG_WORLD - Lisbon''s purse % -> %; the world''s sum moved by nothing', v_b0, public.treasury_balance(v_lis);
 
-  -- ── THE DAILY LIMIT, SHARED ──
-  perform public.premium_spend(v_lis, v_g, 24);   -- 4 and 24 sold: two left
+  -- ── ONLY WHAT SHE MADE ──
+  v_x := (select q.mid_total from world.quote(v_lis, v_g, 5, 'sell', null, v_fl) q) / (select q.mid_total from world.quote(v_lis, v_g, 5, 'sell', null, null) q);
   perform cmd.assume_identity(c_b);
-  perform public.fleet_load(v_fl2, v_code, 5, 5);
+  perform public.fleet_load(v_fl2, v_code, 5, 5);   -- bought, not made
+  v_y := (select q.mid_total from world.quote(v_lis, v_g, 5, 'sell', null, v_fl2) q) / (select q.mid_total from world.quote(v_lis, v_g, 5, 'sell', null, null) q);
+  if public.premium_mine(v_pl, v_g) <> 0 or round(v_x, 2) <> 1 or round(v_y, 2) <> 1 then
+    raise exception 'PROOF 221 FAIL: a unit not made was paid the premium: % % %', public.premium_mine(v_pl, v_g), v_x, v_y;
+  end if;
+  raise notice 'PASS: PG_MADE - her 4 made and sold: no more at a premium; 5 bought by another company: the price';
+  perform public.premium_count(v_pl, v_g, 100);
+  perform public.premium_count(v_pl2, v_g, 1000);
+
+  -- ── THE DAILY LIMIT, SHARED ──
+  perform public.premium_spend(v_pl, v_lis, v_g, 24);   -- 4 and 24 sold: two left
   v_x := (select q.mid_total from world.quote(v_lis, v_g, 5, 'sell', null, v_fl2) q) / (select q.mid_total from world.quote(v_lis, v_g, 5, 'sell', null, null) q);
   v_r := cmd.do_sell(v_fl2, jsonb_build_object('good', v_g, 'qty', 5));
   v_y := (select q.mid_total from world.quote(v_lis, v_g, 5, 'sell', null, v_fl) q) / (select q.mid_total from world.quote(v_lis, v_g, 5, 'sell', null, null) q);
@@ -186,6 +197,10 @@ begin
   v_p := public.fleet_job_plan(v_fl);
   v_r := public.fleet_run_quote(v_pl, v_fl, v_lis, v_code, v_sell, array[v_sell, 'LIS']);
   update public.world_config set value = 'true'::jsonb where key = 'premium_goods_enabled';
+  if (public.fleet_job_plan(v_fl))->>'wait' is distinct from 'low' then
+    raise exception 'PROOF 221 FAIL: a run of bought units sails for a premium she did not earn';
+  end if;
+  perform public.premium_count(v_pl, v_g, 1000);
   v_d := public.fleet_run_quote(v_pl, v_fl, v_lis, v_code, v_sell, array[v_sell, 'LIS']);
   if v_p->>'wait' is distinct from 'low' or (v_r->>'net')::numeric >= 0 or (v_d->>'net')::numeric <= 0
      or (v_d->>'gross')::numeric <> (select q.total from world.quote(v_dest, v_g, (v_d->>'units')::numeric, 'sell', null, v_fl) q)
