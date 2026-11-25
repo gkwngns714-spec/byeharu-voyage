@@ -1,10 +1,10 @@
--- PROOF 245 - THE JOB TICK WAITS OFF THE CROWD, FOR pg_cron ALONE  (migration 0536; docs/dev-log/2026-11-25-best-sales-fast.md)
+-- PROOF 245 - THE JOB TICK WAITS OFF THE CROWD, FOR pg_cron ALONE  (migration 0516)
 -- @pass TW_RULE   to second 25 for pg_cron's session; nothing past it, nothing for any other session, nothing for none
 -- @pass TW_HAND   a run by hand (p_commit false) with a job due does not wait, whoever the session says it is; the job is started
 -- @pass TW_SHAPE  in the procedure the wait is only when p_commit and a job is due, each second its own transaction, and what is due is read after it
 do $p$
 declare
-  c_a  constant uuid := '00000000-0536-4000-8000-000000000245';
+  c_a  constant uuid := '00000000-0516-4000-8000-000000000245';
   v_a  uuid;
   v_f  uuid;
   v_t  timestamptz;

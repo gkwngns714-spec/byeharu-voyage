@@ -5,6 +5,7 @@
 --   matrix_is_harbours true; steps 5, hq.past_first 0; payers >= 1 (one company a file is founded and rolled back); long_tx 0.
 --   fleets_of_companies: 0514's self-assert reads each once (80 ms locally, perhaps 250 on prod): over about 150 fleets it may pass its 45 s; then it
 --   refuses. pair_rows about 64,516: 0510 rewrites 40,736 of them once. hq.moves_home: SHOW THE OWNER before hq_cities_enabled is lit.
+--   cron_app names a session beginning pg_cron (0516's tick waits for that name alone; read while a cron job runs).
 -- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, the catalog, world_config by key, small tables by count. Only STABLE functions are
 --   called, none writes. The digests are of the local chain's world (PGlite, migrations to 0517).
 begin transaction read only;
@@ -44,6 +45,7 @@ select json_build_object(
                                 ('public.npc_sea_floor(uuid)', 'b4eed07f50b95a35f4cf2004e3b57976'),
                                 ('public.level_arrival(uuid,uuid)', '40bc8597d2a74a2b9a73b9f11e1bb436'),
                                 ('cmd.refusal_line(text,jsonb)', '8bea2e1f7f059a1397314b257bade3e6'),
+                                ('public.tick_fleet_jobs(boolean)', '97b92b12ee33e6a793169e20511c1175'),
                                 ('world.board_sell_memo(uuid,uuid,jsonb,jsonb)', 'd1365af1af4640fc6cc3f63f161df36f'),
                                 ('public.tax_home_half(uuid,uuid,numeric,numeric)', 'e4f27883a61ed55603b8df7d910207e1'),
                                 ('public.level_benefits(text,integer)', '54562cb0fdb87c8d3ba890bd51154bfe'),
@@ -63,7 +65,7 @@ select json_build_object(
                                 ('world.good_mids(uuid)', 'e771e478c68d705091b1b6d6c981dadf')) w(fn, want)
                   cross join lateral (select md5(replace(pg_get_functiondef(to_regprocedure(w.fn)), E'', '')) as have) h
                   where h.have is distinct from w.want),
-  'new_there', (select coalesce(json_agg(u.s), '[]'::json) from unnest(array['public.sea_closed(uuid,uuid)', 'voyage.happenings_on()', 'voyage.freeze_happenings(jsonb,boolean)', 'public.sea_passes(uuid,uuid)', 'public.sea_beyond(uuid,uuid,text[])', 'public.sea_passes_lit(uuid,uuid)', 'public.management_on()', 'public.trade_tax_cut(uuid,numeric)', 'public.job_wait_s(uuid)', 'public.job_sail_xp(uuid,uuid)', 'public.job_damage_mended(uuid)', 'public.job_settings_room(uuid)', 'public.premium_on()', 'public.premium_lift()', 'public.premium_mult(numeric)', 'public.seas_kept(uuid)', 'voyage.happening_takes(uuid,integer,uuid,text,numeric,numeric)', 'voyage.crew_share(uuid,jsonb)', 'public.total_level(uuid)', 'public.hq_at(uuid,uuid)', 'public.hq_open_refusal(uuid,uuid)', 'world.hq_open(text)', 'cmd.open_hq(text)', 'public.sea_home(uuid)', 'public.sea_lies(uuid)', 'public.seas_relit_ready()', 'public.seas_relit_light(text)', 'public.passive_settings_on()', 'public.job_settings_param(uuid,jsonb)', 'public.job_settings_judge(uuid,text,jsonb)', 'public.job_settings_lines(jsonb,jsonb)', 'public.fleet_damage_pct(uuid)', 'public.premium_units(uuid,uuid)', 'public.premium_left(uuid,uuid,uuid)', 'public.premium_mine(uuid,uuid)', 'public.premium_count(uuid,uuid,numeric)', 'public.premium_hold(uuid,uuid)', 'public.premium_spend(uuid,uuid,uuid,numeric)', 'public.premium_port(uuid)', 'public.premium_face(uuid)']) u(s) where to_regprocedure(u.s) is not null),
+  'new_there', (select coalesce(json_agg(u.s), '[]'::json) from unnest(array['public.sea_closed(uuid,uuid)', 'voyage.happenings_on()', 'voyage.freeze_happenings(jsonb,boolean)', 'public.sea_passes(uuid,uuid)', 'public.sea_beyond(uuid,uuid,text[])', 'public.sea_passes_lit(uuid,uuid)', 'public.management_on()', 'public.trade_tax_cut(uuid,numeric)', 'public.job_wait_s(uuid)', 'public.job_sail_xp(uuid,uuid)', 'public.fleet_damage_pct(uuid)', 'public.job_damage_mended(uuid)', 'public.premium_on()', 'public.premium_lift()', 'public.premium_mult(numeric)', 'public.premium_units(uuid,uuid)', 'public.premium_left(uuid,uuid,uuid)', 'public.premium_mine(uuid,uuid)', 'public.premium_count(uuid,uuid,numeric)', 'public.premium_hold(uuid,uuid)', 'public.premium_spend(uuid,uuid,uuid,numeric)', 'public.premium_port(uuid)', 'public.premium_face(uuid)', 'public.seas_kept(uuid)', 'voyage.happening_takes(uuid,integer,uuid,text,numeric,numeric)', 'voyage.crew_share(uuid,jsonb)', 'public.total_level(uuid)', 'public.hq_at(uuid,uuid)', 'public.hq_open_refusal(uuid,uuid)', 'world.hq_open(text)', 'cmd.open_hq(text)', 'public.sea_home(uuid)', 'public.sea_lies(uuid)', 'public.seas_relit_ready()', 'public.seas_relit_light(text)', 'public.passive_settings_on()', 'public.job_settings_param(uuid,jsonb)', 'public.job_settings_judge(uuid,text,jsonb)', 'public.job_settings_lines(jsonb,jsonb)', 'public.job_settings_room(uuid)', 'public.job_tick_wait_s(numeric,text)']) u(s) where to_regprocedure(u.s) is not null),
   'knobs_there', (select coalesce(json_agg(c.key), '[]'::json) from public.world_config c where c.key in ('management_level_enabled', 'trade_benefits_enabled', 'trade_tax_keep', 'seas_by_continent_at', 'happenings_bite', 'happenings_terms', 'passive_settings_enabled', 'premium_goods_enabled', 'premium_mult_near', 'premium_mult_far', 'premium_near_nm', 'premium_far_nm', 'premium_day_units', 'premium_purse_share', 'premium_price_lift')),
   'switches', (select json_object_agg(c.key, c.value) from public.world_config c where c.key in ('economy_closed', 'city_treasury_enabled', 'jobs_wait_enabled', 'wreck_sells_enabled', 'fleet_jobs_enabled', 'influence_enabled')),
   'payers', (select count(*) from public.port_treasury t where t.ducats - t.reserve >= 40000),
@@ -76,6 +78,9 @@ select json_build_object(
   'fleets_of_companies', (select count(*) from public.fleets f join public.players p on p.id = f.player_id where not p.is_npc),
   'hq', (select json_build_object('rows', count(*), 'past_first', count(*) filter (where h.slot > 1), 'moves_home', count(*) filter (where h.slot = 1 and h.port_id is distinct from public.home_port_of(h.player_id))) from public.company_hqs h),
   'steps', (select count(*) from public.hq_steps),
-  'player_voyages_at_sea', (select count(*) from public.voyages v join public.players p on p.id = v.player_id and not p.is_npc where v.status = 'SAILING')
+  'player_voyages_at_sea', (select count(*) from public.voyages v join public.players p on p.id = v.player_id and not p.is_npc where v.status = 'SAILING'),
+  'cron_app', (select coalesce(json_agg(distinct a.application_name || ' / ' || a.backend_type), '[]'::json) from pg_stat_activity a where a.application_name ilike '%cron%' or a.backend_type ilike '%cron%'),
+  'tick', (select json_build_object('per_tick', public.wc_int('fleet_jobs_per_tick'), 'budget_ms', public.wc_num('fleet_jobs_budget_ms'), 'longest_ms', (select max(r.ms) from public.fleet_job_runs r))),
+  'slow_waits', (select count(*) from public.fleet_jobs j where j.last->>'wait' in ('slow', 'unpriced'))
 );
 rollback;

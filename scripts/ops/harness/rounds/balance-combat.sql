@@ -1,4 +1,5 @@
 -- THE ROUNDS BALANCE: LOCAL ONLY, never production (it lights switches, founds houses and fills purses). docs/dev-log/2026-11-25-rounds-balance.md
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 create temp table bal(fleet text, sea numeric, n int, rounds numeric, gold numeric, salv numeric, rep numeric, sto numeric, amm numeric, net numeric, why text);
 do $$
 declare v_pl uuid; f uuid; v_sea uuid; c record; n int; d numeric; r record; k int; rep int; u uuid; v_out text; o jsonb; rc numeric; sc numeric; am numeric; sv numeric; h numeric; v_code text;
