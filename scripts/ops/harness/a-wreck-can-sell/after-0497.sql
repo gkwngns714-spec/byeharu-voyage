@@ -5,7 +5,7 @@
 -- LIT LATER (the owner's switch, never thrown here): `wrecks` lists each player's UNABLE_TO_SAIL fleet with `alongside` (true where
 --   she lies in a port with a ship) and her waiting orders: after her next press her SELL / STORE / TAKE rows are gone from
 --   `waiting` and her SAILs are still there; `sold_15m` counts the SELL orders such fleets ran in the last 15 minutes.
--- ROLLBACK (forward, owner only): wreck_sells_enabled false; or a migration reversing the eight hunks and dropping the four functions.
+-- ROLLBACK (forward, owner only): wreck_sells_enabled false; or a migration reversing the nine hunks and dropping the four functions.
 -- Reads: arrivals_beats (5 minutes), pg_class, pg_stat_activity, world_config by key, the catalog, the UNABLE_TO_SAIL fleets (a
 --   handful) with their ships, port, player and orders by key. public.fleet_alongside is STABLE. Nothing to roll back.
 begin transaction read only;
