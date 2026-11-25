@@ -137,6 +137,12 @@ of section 3.
   of a run is her sailing x (1 + her `run` %) over theirs, squared, x `chase_base` 15 %, within 1 to 50 % (docs/design/evasion-skill.md;
   docs/design/tick-combat.md section 6). A ship of the world sails with her hull's level as her Evasion level (`public.evasion_of`).
 
+### Management (granted, 0515: dark behind `management_level_enabled`)
+- **Raises it:** a sail made by a fleet's standing job, **5**, at arrival (`public.level_arrival` -> `public.job_sail_xp`, key `job:<voyage>`).
+- **Limits:** 20 miles or more, a port made, the job not stopped; once a voyage; 300 a day.
+- **Gives:** Reputation; **every fleet's crew wages 2 % less at 4, 8, 12, 16, 20** (10 %); **a waiting job asks again 6 % sooner at 3, 7, 11, 15,
+  19** (30 %, never under 600 s). It locks nothing: a company commands every fleet it owns from the first minute.
+
 **Anti-abuse, in all:** a merchant earns nothing (one probe of `players.is_npc`, then out). Every granted level has its limit a
 day, read on `public.real_day`, the game's one day. A ship and a lap pay once. A lap pays only at a profit. Past the limit
 nothing is written, so the limit also bounds the book.
@@ -200,6 +206,10 @@ so what a screen quotes and what a door charges are the same number.
 yard order's fee 10 % less at 5, 8, 10, 12, 14, 16, 18, 20: `public.hull_order_price`); with the fleet rungs at 3 and 6 that is one
 thing a level. A Trading step is read at the level last paid (`public.house_level_marks`, the LEVEL_UP moment), not by
 `public.player_progress`. Dark, `public.level_perk` answers 0 for them and the page lists none. docs/dev-log/2026-11-22-level-unlocks.md.
+
+**0515: Trading also gives** (dark behind `trade_benefits_enabled`, beside 0468's steps, which stay): **1 point more of each profit kept at 4, 8,
+12, 16, 20** (`trade_profit`: the city's tax rate that much less, never under half of it; `world.tax_rate`) and **1 point on the first
+bargain at 2, 6, 10, 14, 18** (`trade_bargain`). A step may wait for its own switch: `level_perks.lit_by`.
 
 On the page, a level's detail says what each benefit is worth to her NOW (or the level it begins at), and the experience table
 shows every step at its level with the figure it reaches there.
