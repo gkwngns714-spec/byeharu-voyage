@@ -1764,6 +1764,8 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // code, no player id; null when the caller keeps no such captain), and THE STEP, cmd.captain_skill_up(code, skill): one step of one skill bought with Reputation
       // (no player id; only ashore or in port; refused by the same reading the read prints). Landed WITH the rows that print and press them (src/live/CaptainSkills.tsx).
       'worldCaptainSkills', 'cmdCaptainSkillUp',
+      // Pin moved deliberately 2026-11-25 with migration 0528 (dark): A CAPTAIN LEADS A LAND PARTY, cmd.captain_land(code, party). Her own captain only (no player id).
+      'cmdCaptainLand',
       // Pin moved deliberately 2026-10-18 with migration 0163 (docs/SHIPS_AND_SKILLS.md S16): AUGMENT A
       // FITTING with a perk the player chooses, paid in kits. Takes a ship (the caller's own,
       // E_NOT_YOUR_SHIP otherwise), the item, the perk and the rank; no player id. Only docked at a level 3
