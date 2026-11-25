@@ -3559,6 +3559,14 @@ export interface FleetJobParams {
   times?: number | null
   /** 0492: the runs still to start, as served (counted down from `times`). */
   left?: number | null
+  /** 0519: a job of rounds: the work, the base (a port CODE), what she takes, when she stops, and what then. */
+  work?: string
+  base?: string
+  crew?: number
+  days?: number
+  ammo?: number
+  stop?: RoundStop
+  then?: 'repeat' | 'home'
 }
 
 /** 0518: the stop rule a run is sent with: the least hands, the days of stores kept, the rounds. */
@@ -3580,6 +3588,8 @@ export interface RoundTerms {
   /** 0520: units of Gunpowder and of Shot and Ball a round; 0521: the mean share of her hull a combat round costs. */
   ammo?: number
   hull?: number
+  /** 0521: her guns' attack in a combat quote (0: none). */
+  guns?: number
   min: number
   days: number
   most: number

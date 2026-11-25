@@ -48,6 +48,8 @@ export const historyDict = defineDict({
     dismissed: '{who} dismissed from {fleet}{stay}.',
     hullPoints: '{n} hull points',
     repairing: '{fleet} in repair{what}.',
+    roundsDone: '{fleet}: {n} rounds done',
+    artifactsGiven: '{fleet} gave artifacts: {amount}',
     repaired: '{fleet} repaired.',
     battle: '{fleet} fought a battle.',
     battleLoot: '{fleet} fought a battle and took {amount}.',

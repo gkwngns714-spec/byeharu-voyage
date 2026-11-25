@@ -51,6 +51,8 @@ export type WorkerAction =
   | { kind: 'fixed'; good: string; buy: string; sell: string; end: 'sell' | 'store' }
   /** 0481 `land`: she carries the Land's goods to a yard. */
   | { kind: 'haul'; to: string | null }
+  /** 0519 a job of rounds: the work's code and the base (a port CODE). */
+  | { kind: 'round'; work: string; base: string }
   /** No standing job: a voyage sent by hand. */
   | { kind: 'sail'; to: string | null }
   /** The party's job: the good, and the land it is worked on (null: at home). */
@@ -115,6 +117,7 @@ function actionOf(a: ServedAction | null, w: ServedRow): WorkerAction {
   if (a.id === 'sea:best') return { kind: 'best' }
   if (a.id === 'sea:near') return { kind: 'near', base: a.base ?? null }
   if (a.id.startsWith('sea:fixed:') && a.good && a.buy && a.sell) return { kind: 'fixed', good: a.good, buy: a.buy, sell: a.sell, end: a.end === 'store' ? 'store' : 'sell' }
+  if (a.id.startsWith('round:')) return { kind: 'round', work: a.id.split(':')[1], base: a.id.split(':')[2] }
   if (a.id.startsWith('sea:haul:')) return { kind: 'haul', to: a.sell ?? null }
   if (a.id.startsWith('land:') && a.good) return { kind: 'land', good: a.good, region: a.home ? null : (a.region ?? null) }
   return { kind: 'none' }
@@ -222,6 +225,8 @@ export function actionWord(a: WorkerAction, t: (key: TKey, vars?: Record<string,
       return a.base ? t('corp.nearOf', { port: n.port(a.base) }) : t('corp.near')
     case 'fixed':
       return `${n.good(a.good)} · ${n.port(a.buy)} → ${n.port(a.sell)} · ${t(a.end === 'store' ? 'corp.store' : 'corp.sell')}`
+    case 'round':
+      return `${t(a.work === 'pirates' ? 'corp.combat' : 'corp.expedition')} · ${n.port(a.base)}`
     case 'haul':
       return a.to ? `${t('corp.haul')} · ${n.port(a.to)}` : t('corp.haul')
     case 'sail':

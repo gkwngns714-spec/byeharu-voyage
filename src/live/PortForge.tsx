@@ -15,6 +15,7 @@ import {
 import { useWorld } from './worldStore'
 import { formatInt } from '../lib/format'
 import { cmdForgeGood, type FleetView, type ForgeRecipe, type ForgeView, type Refusal } from '../lib/rpc'
+import { WrecksLine } from './WrecksLine'
 import { useT, t as tNow } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -107,6 +108,7 @@ export function PortForge({
 
   return (
     <div data-testid="port-forge">
+      <WrecksLine />
       {!fleet && (
         <Note tone="warning" className="mb-3">
           {t('city.forgeNoFleet')}

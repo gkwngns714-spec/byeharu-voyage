@@ -1,17 +1,21 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { create } from 'zustand'
-import { Bar, Button, Countdown, DetailPage, Figure, GroupHeading, Icon, Note, Row, Segmented, Skeleton, Stepper, Tile, TileField, goodIcon } from '../../../components/ui'
+import { Bar, Button, Countdown, DetailPage, Figure, Icon, Note, Row, Segmented, Skeleton, Stepper, Tile, TileField, goodIcon } from '../../../components/ui'
 import { openHq, type HqAsk } from '../../../app/hqPlace'
 import { useShellState } from '../../../app/shellState'
 import { formatDucats, formatDucatsDelta, formatInt, formatRealShort, formatRelative, instantMs } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { cmdLandHome, cmdLandSend, type FleetJobParams, type FleetView, type Refusal, type WorkerAction as ServedAction } from '../../../lib/rpc'
 import { clearFleetJob, setFleetJob, useJobEdits } from '../../../live/useAwayReport'
+import { litRounds, useRounds } from '../../../live/useRounds'
 import { litRoles, useShipRoles } from '../../../live/useShipRoles'
 import { litActions, useActionsRead, useWorkEdits, type LitActions } from '../../../live/useWorkers'
 import { useWorld } from '../../../live/worldStore'
 import { RoleControl } from '../board/RoleControl'
 import { WorkerFixButton } from '../../../live/FixButton'
+import { Foot, FootLine, Step } from './assignParts'
+import { RoundAssign } from './RoundAssign'
+import { RoundCard } from './RoundCard'
 import { PARTY, actionWord, figureWord, rateWords, servedId, stateWord, useWorkers, type ActionNames, type WorkerRow } from './workerRows'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -54,45 +58,6 @@ type AssignAsk = Extract<HqAsk, { sheet: 'assign' }>
 /** The step back that closes the sheet (useBackLayer: the close comes through the one door). */
 const stepBack = () => window.history.back()
 
-/** A step's heading and its choices. */
-function Step({ word, children }: { word: string; children: ReactNode }) {
-  return (
-    <div className="mb-4">
-      <GroupHeading>{word}</GroupHeading>
-      {children}
-    </div>
-  )
-}
-
-/** One line of the foot: what it is, and its figure at the edge. */
-function FootLine({ word, figure }: { word: ReactNode; figure: ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="min-w-0 break-words text-t-body text-ink">{word}</span>
-      <span className="shrink-0">{figure}</span>
-    </div>
-  )
-}
-
-/** The foot: the figures, the refusal's place and the press, standing under the choices on every glass. */
-function Foot({ figures, refusal, press }: { figures: ReactNode; refusal: Refusal | null; press: ReactNode }) {
-  return (
-    <div className="sticky -bottom-6 -mx-gutter bg-bg px-gutter pb-6 pt-3" data-testid="corp-assign-foot">
-      <div className="flex min-h-[5.25rem] flex-col justify-center gap-0.5" data-testid="corp-assign-figures">
-        {figures}
-      </div>
-      <div className="min-h-6">
-        {refusal && (
-          <Note tone="danger" code={refusal.code} figures={refusal.figures} data-testid="corp-assign-refusal">
-            {refusal.sentence}
-          </Note>
-        )}
-      </div>
-      {press}
-    </div>
-  )
-}
-
 /** A served coin an hour, toned by its sign. */
 function Rate({ perHour, text }: { perHour: number; text: string }) {
   return (
@@ -110,10 +75,28 @@ export function AssignSheet({ ask, onClose }: { ask: AssignAsk; onClose: () => v
   // THE ONE READ OF THE SHEET, asked once when it opens
   const read = useActionsRead(servedId(ask.worker))
   const view = litActions(read.view)
+  // COMBAT, EXPEDITION OR TRADING (slide 5): the served works of rounds (0518 on) give a fleet the first two; dark, trading is the sheet as it was
+  const rounds = litRounds(useRounds(fleet?.id ?? null, fleet !== null).view)
+  const kinds = (['combat', 'sea'] as const).filter((k) => rounds?.works.some((w) => w.kind === k))
+  const [asked, setAct] = useState<'trading' | 'combat' | 'sea'>('trading')
+  const act = fleet !== null && asked !== 'trading' && kinds.includes(asked) ? asked : 'trading'
   const title = ask.worker === PARTY ? t('corp.party') : (fleet?.name ?? '')
   return (
     <DetailPage title={t('corp.assign')} word={title} onClose={onClose} data-testid="hq-sheet-assign">
-      {!view ? (
+      {fleet !== null && kinds.length > 0 && (
+        <Step word={t('corp.action')}>
+          <Segmented<'trading' | 'combat' | 'sea'>
+            segments={[{ id: 'trading', label: t('corp.trading') }, ...kinds.map((k) => ({ id: k, label: t(k === 'combat' ? 'corp.combat' : 'corp.expedition') }))]}
+            value={act}
+            onChange={setAct}
+            label={t('corp.action')}
+            columns={(kinds.length + 1) as 2 | 3}
+          />
+        </Step>
+      )}
+      {fleet !== null && act !== 'trading' && rounds ? (
+        <RoundAssign key={act} fleet={fleet} kind={act} lit={rounds} names={names} onDone={stepBack} />
+      ) : !view ? (
         read.loading || read.view === null ? (
           <Skeleton className="h-28 w-full" />
         ) : (
@@ -605,6 +588,7 @@ export function WorkerSheet({ worker, onClose }: { worker: string; onClose: () =
               </span>
             </Row>
           )}
+          {row.kind === 'fleet' && <RoundCard fleet={worker} nowMs={nowMs} />}
           {row.kind === 'fleet' && <FleetRoles fleet={worker} />}
           {row.why && (
             <Note tone="danger" data-testid="corp-sheet-why">

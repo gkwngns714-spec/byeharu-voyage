@@ -7,6 +7,7 @@ import { seenAwayReport, useJobEdits } from '../../../live/useAwayReport'
 import { useWorld } from '../../../live/worldStore'
 import { fixOf } from '../../../domain/fleet'
 import { WorkerFixButton } from '../../../live/FixButton'
+import { RoundsAway } from '../corp/RoundCard'
 import { jobCode } from '../corp/workerRows'
 import { JOB_ICON, JOB_STATE_TONE, JOB_STATE_WORD, JOB_KIND_WORD } from './jobMarks'
 
@@ -71,6 +72,7 @@ export function JobsAway({ report, sea = [] }: { report: Extract<FleetJobsReport
                   {why}
                 </span>
               )}
+              {j.kind === 'round' && <RoundsAway fleet={j.fleet} />}
               {j.state === 'stopped' && fixOf(jobCode(j)) && (
                 <span className="flex flex-col items-start gap-2 pl-8 pt-1" data-testid="hq-away-fix">
                   <WorkerFixButton fix={fixOf(jobCode(j))} worker={j.fleet} />
