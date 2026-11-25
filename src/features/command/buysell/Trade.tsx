@@ -282,7 +282,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const events = <WorldEventsLine city={city} onCity={pressCity} near={nearEvent} />
   // FROM HERE (roadmap slice 4; X3 folded the Routes tab into it): where she lies, the best sale to each of up to three harbours,
   // read off the board's own cards; a tile pressed is that card pressed. Only where she lies: a city pressed elsewhere is not "here".
-  // So it stands UNDER the city chips (and on a phone under the board), never above them: it comes and goes with a chip press, and a
+  // So it stands UNDER the city chips (and on a phone under the orders), never above them: it comes and goes with a chip press, and a
   // chip press moves no chip and nothing under the chips (tests/trade.flow.spec.ts T8; it stood above them from #822 and pulled the
   // chips 174 px up when another city was pressed).
   const fromHere = here ? <FromHere sales={sales} open={tripNow ? { good: tripNow.good, sellAt: tripNow.sellAt } : null} onBest={pressBest} /> : null
@@ -461,7 +461,6 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
                 {mapRow}
               </div>
               {board}
-              {fromHere}
             </>
           ),
           main: (
@@ -475,6 +474,8 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
             <div className="mt-2">
               {routeRow}
               {ordersRow}
+              {/* last, as on the wide glass: it lands late, and above them it moved Route and Orders */}
+              <div className="-mb-2 mt-2">{fromHere}</div>
             </div>
           ),
         },

@@ -24,7 +24,7 @@ a map, showing no NPCs but only locations, where you can click them for info –
   whether or not a sale has landed. Without it, changing the fleet changed the cards' height (182 to 166 px at 390). Nothing else
   came over: that branch's one trade list is this tab's own board hosted on HQ, and it deletes the tab, the picker and the strip.
 
-- **Wide glass: the "From here" block stands under the doors.** Above them it moved Cargo, Map, Route and Orders by 174 px when the
+- **The "From here" block stands last, under the orders, at both widths.** On a phone it moved Route and Orders 44 px or more. On a wide glass it moved Cargo, Map, Route and Orders by 174 px when the
   fleet changed and again when her best sales landed.
 - **"No gain" stands beside its red figure** (it took a line of its own and made its row of cards 18 px taller).
 
