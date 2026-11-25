@@ -85,6 +85,7 @@ import type {
   FirstVoyages,
   EarlySighting,
   LogbookView,
+  ChartFogView,
   GoodsMasteryView,
   HqBoardView,
   NationRaceView,
@@ -799,6 +800,11 @@ export function worldEarlySighting(): Promise<RpcResult<EarlySighting>> {
 /** 0478: the logbook: her firsts by region, kind and family, the seas and captains, the sets done. Dark: `{on: false}`. */
 export function worldLogbook(): Promise<RpcResult<LogbookView>> {
   return call<LogbookView>('worldLogbook', [])
+}
+
+/** 0504: the chart for the fog: her sight in nautical miles, her charted squares, the harbours of her logbook. Dark: `{on: false}`. */
+export function worldChart(): Promise<RpcResult<ChartFogView>> {
+  return call<ChartFogView>('worldChart', [])
 }
 
 /** 0479: goods mastery: each good she has sold with its level 1-10, her specialty, the ladder. Dark: `{on: false}`. */

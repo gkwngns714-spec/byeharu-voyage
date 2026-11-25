@@ -10,6 +10,8 @@ import { LabelsLayer } from './LabelsLayer'
 import { PortsLayer } from './PortsLayer'
 import { RoadsteadsLayer } from './RoadsteadsLayer'
 import { DaylightSheet } from './DaylightSheet'
+import { FogLayer } from './FogLayer'
+import type { ChartFog } from './fog'
 import { DaySeaLayer, GraticuleLayer, SEA_VIEWBOX, SeaLayer } from './SeaLayer'
 import { DOT_SPAN_DEG, LANE_SPAN_DEG } from './chartView'
 import { portMarks, quietHarbours, type ChartModel, type PortRole } from './chartModel'
@@ -140,6 +142,7 @@ export function ChartCanvas({
   fights = NO_FIGHTS,
   events = NO_EVENT_MARKS,
   inFight,
+  fog = null,
   selection,
   keepOut,
   plannedD = null,
@@ -180,6 +183,10 @@ export function ChartCanvas({
   events?: readonly MapEventMark[]
   /** 0435 — every fleet in a battle being fought (`fleetsInFight`): drawn on a red ground (./FleetsLayer.tsx). */
   inFight?: ReadonlySet<string>
+  /** 0504 — THE FOG (./fog.ts, ./FogLayer.tsx): black where she has never been, grey where she has, clear round her fleets, over
+   *  everything on this chart. Null — the default — is the chart exactly as it was. The caller hands in only the ports and
+   *  merchants she may see: this component draws what it is given. */
+  fog?: ChartFog | null
   selection: MapSelection
   /**
    * OPAQUE CHROME THE SCREEN HAS PUT OVER THIS CHART, in CSS pixels from the chart's top-left
@@ -533,6 +540,8 @@ export function ChartCanvas({
         {/* THE NAMES — one plan over the whole glass, drawn once, over every copy. */}
         <LabelsLayer labels={labels} unitsPerPx={unitsPerPx} sun={sun} />
       </svg>
+      {/* 0504: THE FOG, over the whole picture (her own fleets stand in the circles it clears). */}
+      {fog && <FogLayer fog={fog} box={box} unitsPerPx={unitsPerPx} />}
     </div>
   )
 }
