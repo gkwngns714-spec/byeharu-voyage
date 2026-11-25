@@ -3647,7 +3647,7 @@ export interface ActionItem {
 
 /** THE ONE SHAPE of an action (`public.action_shape`): a sea run, a land job, a make job. */
 export interface WorkerAction {
-  /** sea:best | sea:fixed:<good>:<buy>:<sell>:<sell|store> | sea:haul:<yard> | land:<job>. A running action and its option share it. */
+  /** sea:best | sea:near (0499) | sea:fixed:<good>:<buy>:<sell>:<sell|store> | sea:haul:<yard> | land:<job>. A running action and its option share it. */
   id: string
   kind: 'sea' | 'gather' | 'make'
   skill: string
@@ -3690,6 +3690,11 @@ export interface WorkerAction {
   sell?: string
   end?: 'sell' | 'store'
   units?: number
+  /** 0499, the near round (sea:near): the miles of her round, the harbour she comes back to (a CODE), and its plain words
+   *  ("Trade near Lisbon"). It carries no rate (basis none) until her own runs give one. */
+  within?: number
+  base?: string
+  sentence?: string
   /** Sea: false for the Best run (one way: its next run starts where it sold). */
   returns?: boolean
   /** Sea: true for the Best run (each run picks its own sale; the figures are the sale it would take now). */
