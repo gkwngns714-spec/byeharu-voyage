@@ -57,3 +57,12 @@ sail was refused (wreck); mended, the plan bought again: E_HOLD_FULL, the rest c
 would wait "nothing to buy" for ever. 390 drew a run that left room. Now a fixed job at its buy harbour with its good aboard and no unit more to be had
 sails and sells what she has; a land haul the same. Proof 242: 6/6, red on the old body (LD_FULL).
 Not changed: a hold full of OTHER goods still refuses the BUY and stops her. With 0516's `under` price lit, a laden fleet may still wait on it (`range`).
+
+## Live (0509 head): the whole read is not faster on prod, and what was measured next (2026-11-26)
+
+`split.sql`'s out / back are her CARDS' harbours, and they moved between the runs. Asked of the SAME harbours (batch 2's chain, prod's switches and the seas lit, the bodies
+before 0504 beside 0504's, PostgreSQL 18 / 17): direct out 3.9 -> 3.3 / 5.9 -> 4.9 ms; two legs out 75 -> 73 / 97 -> 93; priced back 77 -> 72 / 101 -> 97. So 0504 did not slow a
+trip; one with a harbour between is one `voyage.reach_passage`, 184 ms on prod. The memo is an argument (no set_config, no temp state).
+But WITH THE SEAS LIT her read gains next to nothing: Lisbon 375 -> 375, Colombo 364 -> 347, Guayaquil 431 -> 412 (18); 419 -> 409, 400 -> 402, 520 -> 505 (17). 0504's 1.5 to 1.7
+was measured with sea_conditions_bite DARK (longer trips, more shared legs): it does not describe prod. 0536 halves the pathfinder: two legs out 73 -> 41 / 93 -> 46, her read
+375 -> 291, 347 -> 245, 412 -> 318 (18); 409 -> 353, 402 -> 295, 505 -> 365 (17). `trips.sql`: twelve fixed harbours, legs and ms.
