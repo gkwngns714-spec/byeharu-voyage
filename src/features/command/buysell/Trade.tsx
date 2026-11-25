@@ -360,10 +360,15 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   // THE MAP OF PLACES STANDS ON THE FACE (owner, 2026-11-25: "In the trade tab there should be a map"). Its box is fixed, so nothing
   // under it moves; while the big map's page is open the box stands empty (two charts never draw at once).
   const faceMap = (
-    <div className="mb-2 h-[260px] lg:h-[max(16rem,calc(100dvh-32rem))]" data-testid="trade-face-map-box">
+    <div className="relative mb-2 h-[260px] lg:h-[max(16rem,calc(100dvh-32rem))]" data-testid="trade-face-map-box">
       {page !== 'map' && (
         <TradeMap fleet={fleet} plan={null} pick={null} onClose={() => choose(null)} scrollOnPick={false} city={city} onCity={pressPlace} goTo={goTo} face />
       )}
+      {/* over the southern sea, where no harbour is under them; at the top while a good's panel covers the lower half of a phone */}
+      <div className={`absolute left-2 flex gap-1.5 ${wide ? 'bottom-2 max-w-[70%]' : panel ? 'right-16 top-2' : 'bottom-2 right-16'}`}>
+        {!wide && <div>{cargoRow}</div>}
+        <div>{mapRow}</div>
+      </div>
     </div>
   )
   const prices = pricesOpen && city && !pickNow && (
@@ -421,10 +426,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
               {status}
               {events}
               {faceMap}
-              <div className="mb-2 grid grid-cols-2 gap-2">
-                {cargoRow}
-                {mapRow}
-              </div>
+              <div className="mb-2">{cargoRow}</div>
               {chips}
               {routeRow}
               {ordersRow}
@@ -476,10 +478,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
               {faceMap}
               <div className="min-h-[12.5rem]">{board}</div>
               {events}
-              <div className="my-2 grid grid-cols-2 gap-2">
-                {cargoRow}
-                {mapRow}
-              </div>
+              <div className="mb-2" />
               {chips}
             </>
           ),

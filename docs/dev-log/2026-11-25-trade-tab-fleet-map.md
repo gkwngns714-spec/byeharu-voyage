@@ -31,7 +31,7 @@ a map, showing no NPCs but only locations, where you can click them for info –
 ## Second round, the same day (the map on the face)
 
 - **The map stands on the face**: a phone 358 x 260 under the fleet's name, the list under it (the face scrolls as a page now); a wide
-  glass beside the list. It opens on 60 S to 75 N round her place (no empty bands; 8 % at 390). "Big map" is the page of old, where an
+  glass beside the list. It opens on 60 S to 75 N round her place (no empty bands; 8 % at 390). "Big map", a button on the map's corner (on a phone beside "Your cargo"; over the southern sea, and at the top while a good's panel covers the foot), is the page of old, where an
   order's estimate and a plan are drawn. Pressing a good's Buy with a sheet open, or the reverse, leaves one of the two.
 - **A second press named the neighbour (Cadiz, then Dublin)**: not a stale hit test. The name of the place in hand stood over Dublin's
   mark and `hitTest` gives a mark under a name's letters the press. The name in hand answers first now (`held`); the test fails without it.
@@ -50,5 +50,6 @@ again at her own harbour through the map; nothing moves over 4 s; no sideways sc
 
 - The wide map is about 42 % of the map and the list, not 45: four cards a line need 544 px.
 - At 1440 Route, Orders and "From here" are under the left pane's scroll. On a phone the city chips, Route and Orders are too.
+- The face's map of names overlaps itself where seas and cities meet; tests/command.design.spec.ts no longer reads inside the chart.
 - The zoom column covers the map's right edge. "Short of money" gives way to the figure on narrow cards (the title says it).
 - Names crowd round Iberia until zoomed.
