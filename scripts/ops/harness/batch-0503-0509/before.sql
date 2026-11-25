@@ -37,6 +37,7 @@ select json_build_object(
                                 ('public.flow_is_profit(text)', 'f35cfcfb35e110bc3ab1407a36116301'),
                                 ('public.ledger_is_earning(text)', 'a477607cb50e7949e9290086c75a3a95'),
                                 ('world.tax_rate(uuid,uuid)', '01bfcd04df2051c271599605e23169eb'),
+                                ('public.fleet_job_note(uuid,jsonb)', 'e2c6905f09415dfeadb77afe0b3f5010'),
                                 ('public.fleet_job_plan(uuid)', '2f3b9b0c859a032093c9637e36a75eab'),
                                 ('public.ship_stores_room(uuid,numeric)', '90e678071389da3804f28927e1e2e1e9'),
                                 ('world.trip_cost(uuid,jsonb)', '0389222cddecb3936110d9d782bc800e'),
