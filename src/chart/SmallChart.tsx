@@ -127,6 +127,7 @@ export function SmallChart({
   still = false,
   frame,
   wholeWorld = false,
+  opening,
   onPort,
   fog = null,
   goTo = null,
@@ -165,6 +166,9 @@ export function SmallChart({
   frame?: (aspect: number) => GeoBounds
   /** Row 207: open at 0 % zoom, the whole world on the glass, instead of framing the choice. */
   wholeWorld?: boolean
+  /** With `wholeWorld`: what it opens on instead of the whole sheet, for a glass that is not 2:1 (the sheet would stand between two
+   *  empty bands). Stable. */
+  opening?: (aspect: number) => GeoBounds
   /** Row 218: a harbour tapped (THE map tab's hit test) — the caller selects that city. Absent: no tap. */
   onPort?: (code: string) => void
   /** 0504 — the fog over this chart (./fog.ts); null, the default, is the chart as it was. */
@@ -209,9 +213,9 @@ export function SmallChart({
           ? frame(aspect)
           : WORLD_BOUNDS
         : wholeWorld
-          ? WORLD_BOUNDS
+          ? (opening?.(aspect) ?? WORLD_BOUNDS)
           : openingBounds(frameModel.focusPoints, frameModel.motionPoints, framePorts, aspect),
-    [frameModel, framePorts, wholeWorld, still, frame],
+    [frameModel, framePorts, wholeWorld, still, frame, opening],
   )
   // THE SURFACE COMES BEFORE THE DRAWN MODEL (2026-11-14): the ports that are drawn are set on the shore
   // on the glass (./useChartShore.ts), which is the view's. So the tap is handed over as one stable
@@ -246,10 +250,10 @@ export function SmallChart({
       const minTier = minTierForSpan(view.width)
       const tappable = visiblePorts(chartPorts, model.portRoles, view, minTier)
       const dots = dotPorts(chartPorts, model.portRoles, view, minTier)
-      const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx, [], placedNames())
+      const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx, [], placedNames(), highlight)
       if (hit?.kind === 'port') onPort(hit.code)
     },
-    [still, onPort, chartPorts, model],
+    [still, onPort, chartPorts, model, highlight],
   )
   useEffect(() => {
     tapRef.current = onTap
@@ -311,7 +315,7 @@ export function SmallChart({
       // tab. `overflow-hidden` clips only the picture; the one control (ViewControls) is in a
       // corner slot, which cannot be panned or clipped away, so the reach law has nothing to bite
       // on. `bv-sea` paints the water for the frames before the box is measured.
-      className={`bv-sea relative overflow-hidden rounded-md border border-edge select-none ${surface.touchClass} ${className}`}
+      className={`bv-sea relative overflow-clip rounded-md border border-edge select-none ${surface.touchClass} ${className}`}
       data-testid="small-chart"
     >
       {box && surface.view ? (
@@ -333,7 +337,8 @@ export function SmallChart({
           plannedD={plannedD}
           pathStops={stops}
           ariaLabel={ariaLabel}
-          className="pointer-events-none absolute inset-0 h-full w-full"
+          // (`contain-paint`: the names past the sheet's edge are not the box's own overflow)
+          className="pointer-events-none absolute inset-0 h-full w-full [contain:paint]"
         />
       ) : (
         <p className={fineClass('absolute inset-0 flex items-center justify-center')}>

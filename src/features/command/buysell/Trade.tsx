@@ -19,6 +19,7 @@ import { useDeskPlan } from '../plans/planDraft'
 import { TradeMap, type OrderPick } from '../plans/TradeMap'
 import { useTripBoard } from '../plans/useTripBoard'
 import { CargoBest } from './CargoBest'
+import { CityPrices } from './CityPrices'
 import { ShipInfo } from './ShipInfo'
 import { CityChips, TradeBoard } from './TradeBoard'
 import { FromHere } from './FromHere'
@@ -158,10 +159,25 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const choose = (p: OrderPick | null) => setOrderPick(p ? { ...p, fleet: fleet.id } : null)
 
   // A CITY PRESSED (the map, the chip strip, a cargo row): it is the city in hand, and the map glides to it (row 231)
-  const [goTo, setGoTo] = useState<{ code: string; n: number } | null>(null)
+  const [goTo, setGoTo] = useState<{ code: string; n: number; fleet: string } | null>(null)
   const pressCity = (code: string) => {
     setFocus(code)
-    setGoTo((g) => ({ code, n: (g?.n ?? 0) + 1 }))
+    setGoTo((g) => ({ code, n: (g?.n ?? 0) + 1, fleet: fleet.id }))
+  }
+  // A PLACE PRESSED ON THE MAP (owner 2026-11-25: "click them for info – price info"): it is the city in hand, as it was, and
+  // its prices stand over the map (CityPrices.tsx, the board's own read and rows). Shut by its own close, by "Trade here"
+  // (the map closes on that city's board) and with the map's page.
+  const [pricesOpen, setPricesOpen] = useState(false)
+  const pressPlace = (code: string) => {
+    pressCity(code)
+    // one thing over the foot of the glass at a time: a good's panel gives way to the place's prices
+    pickGood(null)
+    // with an order's estimate up the press only takes the city in hand, as before: a sheet shut now would open by itself when the estimate closes
+    setPricesOpen(orderPick?.fleet !== fleet.id)
+  }
+  const closePage = () => {
+    setPricesOpen(false)
+    setPage(null)
   }
   // a cargo row: that city and that good, ready to go — it is a SELL there (CargoBest is the sell aid, owner row 231).
   // It always OPENS for that city — never the board buttons' toggle (a second row for the same good must switch the
@@ -268,7 +284,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const events = <WorldEventsLine city={city} onCity={pressCity} near={nearEvent} />
   // FROM HERE (roadmap slice 4; X3 folded the Routes tab into it): where she lies, the best sale to each of up to three harbours,
   // read off the board's own cards; a tile pressed is that card pressed. Only where she lies: a city pressed elsewhere is not "here".
-  // So it stands UNDER the city chips (and on a phone under the board), never above them: it comes and goes with a chip press, and a
+  // So it stands UNDER the city chips (and on a phone under the orders), never above them: it comes and goes with a chip press, and a
   // chip press moves no chip and nothing under the chips (tests/trade.flow.spec.ts T8; it stood above them from #822 and pulled the
   // chips 174 px up when another city was pressed).
   const fromHere = here ? <FromHere sales={sales} open={tripNow ? { good: tripNow.good, sellAt: tripNow.sellAt } : null} onBest={pressBest} /> : null
@@ -277,7 +293,6 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const status = <TradeStatus fleet={fleet} />
   const board = (
     <TradeBoard
-      strip={wide ? undefined : chips}
       city={city}
       docked={here}
       quay={quay}
@@ -340,17 +355,38 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   // chevron says it; docs/design/visual-overhaul-2026-11-23.md, slice 1). So the Map door carries the city it opens on at every
   // width: alone it would read "Map", the nav's own cell (tests/consistency.spec.ts: two controls never share a label).
   const cargoRow = <SummaryRow title={t('desk.cargo')} onClick={() => setPage('cargo')} data-testid="cargo-open" />
-  const mapRow = <SummaryRow title={t('shell.tab_Map')} figure={mapFigure ?? t('desk.atSea')} onClick={() => setPage('map')} data-testid="trade-map-open" />
+  const mapRow = <SummaryRow title={t('desk.bigMap')} onClick={() => setPage('map')} data-testid="trade-map-open" />
   const ordersRow = <SummaryRow title={t('desk.orders')} figure={formatInt(fleet.queue.length)} onClick={() => setPage('orders')} data-testid="command-queue" />
+  // THE MAP OF PLACES STANDS ON THE FACE (owner, 2026-11-25: "In the trade tab there should be a map"). Its box is the glass's (on a
+  // phone its middle, where a pressed place glides, stays above a sheet over the lower half, 667 px tall included), so nothing
+  // under it moves; while the big map's page is open the box stands empty (two charts never draw at once).
+  const faceMap = (
+    <div className="mb-2 h-[clamp(10rem,calc(100dvh-30rem),260px)] lg:h-[max(16rem,calc(100dvh-32rem))]" data-testid="trade-face-map-box">
+      {page !== 'map' && (
+        <TradeMap key={fleet.id} fleet={fleet} plan={null} pick={null} onClose={() => choose(null)} scrollOnPick={false} city={city} onCity={pressPlace} goTo={goTo?.fleet === fleet.id ? goTo : null} face />
+      )}
+    </div>
+  )
+  // THE DOORS UNDER THE MAP, at both sizes, and nothing moves them
+  const doors = (
+    <div className="mb-2 grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2">
+      <div>{cargoRow}</div>
+      <div>{mapRow}</div>
+    </div>
+  )
+  const prices = pricesOpen && city && !pickNow && (
+    <CityPrices city={city} docked={here} quay={quay} rows={rows} onTrade={closePage} onClose={() => setPricesOpen(false)} pane={page === null} />
+  )
   const pages = (
     <>
+      {!wide && page === null && prices}
       {page === 'cargo' && (
         <DetailPage title={t('desk.cargo')} figure={cargoFigure} onClose={() => setPage(null)} data-testid="cargo-open-page">
           {cargo}
         </DetailPage>
       )}
       {page === 'map' && (
-        <DetailPage title={t('shell.tab_Map')} figure={mapFigure} onClose={() => setPage(null)} data-testid="trade-map-open-page">
+        <DetailPage title={t('shell.tab_Map')} figure={mapFigure} onClose={closePage} data-testid="trade-map-open-page">
           <TradeMap
             fleet={fleet}
             plan={trip.drawing}
@@ -358,9 +394,11 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
             onClose={() => choose(null)}
             scrollOnPick={!wide}
             city={city}
-            onCity={pressCity}
+            onCity={pressPlace}
             goTo={goTo}
           />
+          {/* the place's prices, inside the page so they stand over it; not while an order's estimate is up (its map takes no press) */}
+          {prices}
         </DetailPage>
       )}
       {page === 'orders' && (
@@ -390,12 +428,13 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
             <>
               {status}
               {events}
+              {faceMap}
+              {doors}
               {chips}
-              {fromHere}
-              {cargoRow}
-              {mapRow}
               {routeRow}
               {ordersRow}
+              {/* last: it stands only once her best sales land, so above the doors it moved them on every change of fleet (2026-11-25) */}
+              {fromHere}
             </>
           ),
           main: (
@@ -405,7 +444,10 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
               {pages}
             </>
           ),
-          side: panel ? (
+          // a place's prices stand in the right pane, so they cover neither the map nor the list
+          side: prices && page === null ? (
+            <div className="h-full min-h-0">{prices}</div>
+          ) : panel ? (
             <div className="h-full min-h-0" data-testid="here-tray">
               {panel}
             </div>
@@ -436,13 +478,12 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
                   spare. The goods card is 14 px taller since its best sale's city is printed whole, and the cards' pane must
                   hold a whole row of them (TradeBoard.tsx); with the doors on one line the face still fits the glass without
                   scrolling (tests/onepage.spec.ts), with 22 px in hand. */}
+              {faceMap}
+              {doors}
+              <div className="min-h-[12.5rem]">{board}</div>
               {events}
-              <div className="mb-2 grid grid-cols-2 gap-2">
-                {cargoRow}
-                {mapRow}
-              </div>
-              {board}
-              {fromHere}
+              <div className="mb-2" />
+              {chips}
             </>
           ),
           main: (
@@ -456,6 +497,8 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
             <div className="mt-2">
               {routeRow}
               {ordersRow}
+              {/* last, as on the wide glass: it lands late, and above them it moved Route and Orders */}
+              <div className="-mb-2 mt-2">{fromHere}</div>
             </div>
           ),
         },

@@ -76,9 +76,9 @@ export function DeskPanes({
     // middle had 432 px: Trade's ten goods cards stood two to a line, five lines, 934 px in a 626-px pane. With 544 px the cards
     // stand four to a line (TradeBoard.tsx) and the pane does not scroll. The left pane gives the room (17 rem at 1,280, its
     // words grid keeps every name whole at any width); the right keeps its 20 rem, a phone's width, for the trade panel. From
-    // 1,440 the three panes are as they were (352 / 560 / 352).
+    // 1,440 the left pane takes the room (2026-11-25): the Trade tab's map stands in it, about 45 % of the map and the list.
     <div
-      className="grid min-h-0 flex-1 grid-cols-[minmax(19rem,22rem)_minmax(16rem,1fr)_minmax(20rem,22rem)] xl:grid-cols-[minmax(17rem,22rem)_minmax(34rem,1fr)_minmax(20rem,22rem)] gap-3 px-3 pb-3 min-[90rem]:gap-4 min-[90rem]:px-6 min-[90rem]:pb-4"
+      className="grid min-h-0 flex-1 grid-cols-[minmax(19rem,22rem)_minmax(16rem,1fr)_minmax(20rem,22rem)] xl:grid-cols-[minmax(17rem,4fr)_minmax(34rem,5fr)_20rem] gap-3 px-3 pb-3 min-[90rem]:gap-4 min-[90rem]:px-6 min-[90rem]:pb-4"
       data-testid={testid}
       data-desk-frame=""
       data-face={face}
@@ -116,7 +116,7 @@ export function DeskMainPane({ scroll = true, children }: { scroll?: boolean; ch
   return (
     <Card flush className="min-h-0 overflow-hidden">
       <section
-        className={scroll ? 'bv-scroll h-full min-h-0 overflow-y-auto p-5 min-[90rem]:p-6' : 'flex h-full min-h-0 flex-col p-5 min-[90rem]:p-6'}
+        className={scroll ? 'bv-scroll h-full min-h-0 overflow-y-auto p-5 min-[100rem]:p-6' : 'flex h-full min-h-0 flex-col p-5 min-[90rem]:p-6'}
         data-testid="desk-pane-chart"
       >
         {children}

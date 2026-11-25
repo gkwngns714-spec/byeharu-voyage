@@ -34,6 +34,9 @@ import { LegLines } from '../../../live/LegLines'
 //   · the standing route: its stops' served courses, the route board's served miles a lap (route_nm) and average
 //     lap net (route_earnings), and the last closed lap's served bought / supplies / wages;
 //   · a raw SAIL (no good traded): the route and the time only, and one line saying no money estimate is served.
+// PLACES ONLY (owner, 2026-11-25: *"a map, showing no NPCs but only locations, where you can click them for info – price
+// info"*): with no order pressed the map draws harbours and nothing else, no merchant (this chart is handed no traffic) and
+// no ship; a place pressed is the city in hand and Trade.tsx opens its prices over the map (buysell/CityPrices.tsx).
 // THE CITIES (owner row 218, 2026-10-26: *"in mini map in command, show cities, when pressed upon, show trade goods
 // with prices, and charts"*): with no order pressed the map draws EVERY harbour the Map tab draws (no `only`), the
 // city in hand ringed and named (`highlight`), and a harbour pressed is handed to `onCity` (SmallChart's `onPort`,
@@ -57,6 +60,9 @@ export interface MapDrawing {
   board?: GoodBoard | null
 }
 
+/** How much latitude the face's map opens on, in degrees. */
+const NEAR_LAT = 11
+
 /** One frozen empty list, so the plan's chart — which draws NO live fleets layer — allocates nothing per frame. */
 const NO_FLEETS: readonly FleetView[] = []
 
@@ -69,10 +75,13 @@ export function TradeMap({
   city,
   onCity,
   goTo = null,
+  face = false,
 }: {
   fleet: FleetView
   /** Row 231: the last city PRESSED (map, chip strip, cargo list) and a press count — the map glides to it. */
   goTo?: { code: string; n: number } | null
+  /** It stands on the Trade tab's face, not on its page: the map of places only, in a box the face sizes. */
+  face?: boolean
   /** Row 218: the city in hand (ringed, named). */
   city: string | null
   /** Row 218: a harbour pressed on the map. */
@@ -173,6 +182,21 @@ export function TradeMap({
     return out
   }, [planMap, plan, t])
 
+  // ON THE FACE it opens on her neighbourhood (11 degrees of latitude: from Lisbon, Iberia to Ceuta), her place in the middle. The place is
+  // read once: Trade.tsx mounts one face map a fleet, so it is centred again on a change of fleet and never by itself as she sails.
+  const [centre] = useState<LatLon>(() => {
+    const at = portByCode[docked ?? ''] ?? fleet.voyage?.position ?? portByCode[fleet.voyage?.to ?? '']
+    return at ? { lat: at.lat, lon: at.lon } : { lat: 38, lon: -9 }
+  })
+  const opening = useCallback(
+    (aspect: number) => {
+      const half = NEAR_LAT / 2
+      const wide = (half * aspect) / Math.cos((centre.lat * Math.PI) / 180) / 1.25
+      return { minLat: centre.lat - half, maxLat: centre.lat + half, minLon: centre.lon - wide, maxLon: centre.lon + wide }
+    },
+    [centre],
+  )
+
   const onlyKey = [docked, fleet.voyage?.to ?? null, ...drawing.legs.flatMap((l) => [l.from, l.to]), ...drawing.ends]
     .filter((c): c is string => !!c)
     .filter((c, i, all) => all.indexOf(c) === i)
@@ -196,10 +220,12 @@ export function TradeMap({
   }, [pickKey, scrollOnPick])
 
   return (
-    <section ref={boxRef} className="mb-4 scroll-mt-28" data-testid="trade-map" data-cities={only ? only.join(' ') : '*'}>
+    <section ref={boxRef} className={face ? 'relative h-full' : 'mb-4 scroll-mt-28'} data-testid={face ? 'trade-face-map' : 'trade-map'} data-cities={only ? only.join(' ') : '*'}>
       <SmallChart
         ports={snapshot?.ports ?? []}
-        fleets={planMap ? NO_FLEETS : [fleet]}
+        // PLACES ONLY until an order is pressed (owner 2026-11-25: "showing no NPCs but only locations"): no ship is drawn
+        // on the map of places, hers included; her own ship and course are drawn with the order, the voyage or the route pressed
+        fleets={planMap || !pick ? NO_FLEETS : [fleet]}
         considering={considering}
         highlight={planMap ? null : pick ? null : city}
         only={only}
@@ -207,16 +233,17 @@ export function TradeMap({
         stops={pathStops}
         still={planMap}
         frame={frame}
-        // 0504: under the fog the whole world is mostly black, so the map opens on her fleet instead
-        wholeWorld={!planMap && !fog}
+        // 0504: under the fog the whole world is mostly black, so the map opens on her fleet instead (the face always does: `opening`)
+        wholeWorld={!planMap && (face || !fog)}
         onPort={planMap ? undefined : pressCity}
         fog={fog}
         goTo={planMap ? null : goTo}
         ariaLabel={t(planMap ? 'desk.routeChart' : pick ? 'desk.mapChart' : 'desk.citiesChart')}
-        className="aspect-[2/1] w-full"
+        opening={face ? opening : undefined}
+        className={face ? 'h-full w-full' : 'aspect-[2/1] w-full'}
       />
       {fog && unseen && !planMap && !pick && (
-        <Hint data-testid="trade-map-unseen">
+        <Hint className={face ? 'absolute inset-x-2 bottom-2 rounded-md bg-surface/90 px-2 py-1' : undefined} data-testid="trade-map-unseen">
           {name(unseen)} · {t('map.fogKnown')}
         </Hint>
       )}

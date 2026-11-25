@@ -223,7 +223,8 @@ export function TradeBoard({
             quay.refusal ? (
               <Note tone="danger">{quay.refusal.sentence}</Note>
             ) : (
-              <div className={CARDS_GRID}>
+              // on a phone no taller than the one row of cards it stands for: it pushed all under it 152 px down on a city press
+              <div className={`max-h-[12.5rem] overflow-hidden lg:max-h-none ${CARDS_GRID}`}>
                 {Array.from({ length: 6 }, (_, i) => (
                   <Skeleton key={i} className="h-28 w-full" />
                 ))}

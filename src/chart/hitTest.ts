@@ -84,6 +84,9 @@ export function hitTest(
    *  reach is weighed: the name is the thing the thumb was on, and its far end lies beyond the
    *  mark's reach on a long name (PR #198 measured taps on a name's tail opening open water). */
   names: readonly PlacedName[] = [],
+  /** THE HARBOUR IN HAND (2026-11-25): its name is drawn over everything, so on its letters nothing under them is seen. On a phone
+   *  "Cadiz" stood over Dublin's mark (the same longitude, 15 px north), and a second press on the word opened Dublin. */
+  held: string | null = null,
 ): MapSelection {
   // ON A NAME, OR WITHIN ITS FEW PIXELS OF MARGIN (./placedNames.ts: a tap just under "Gibraltar" was nearer Ceuta's mark and
   // opened Ceuta). Where two margins meet, the name whose box is nearer wins; inside a box the distance is 0.
@@ -98,6 +101,7 @@ export function hitTest(
   // opened Tenerife; one step out, Safi's word took it (tests/map.routebuilder.spec.ts, red since). A press within the names' own
   // margin (5 px, `pad`) of a full mark's centre is on the mark, whoever's letters run across it; anywhere else on the word the
   // name still answers. Only the full half is asked: a dot stays behind the names (the Cádiz/Sanlúcar rule in the header).
+  if (onName && onName.d === 0 && onName.code === held) return { kind: 'port', code: onName.code }
   if (onName && onName.pad > 0) {
     const mark = nearestOf(ports, at, onName.pad)
     if (mark && mark.port.code !== onName.code) return { kind: 'port', code: mark.port.code }

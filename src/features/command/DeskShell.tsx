@@ -125,7 +125,7 @@ export function DeskShell<F extends string>({
           <Clip>{title}</Clip>
         </h1>
       </header>
-      <div className={`flex flex-col ${scrollRegionClass}`} data-testid="desk-scroll">
+      <div className={`flex flex-col ${scrollRegionClass}`} data-testid="desk-scroll" data-sheet-layout={board ? 'page' : undefined}>
         {/* WHERE SHE IS stands beside her name (2026-11-11, the trade-flow slice): in port, or under way to where and until
             when. In the picker's own row, on every face, so turning a face moves nothing; on Trade its second line also says
             when the board is another city's. */}
