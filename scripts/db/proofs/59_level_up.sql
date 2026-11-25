@@ -258,8 +258,9 @@ begin
   -- early; the level itself stays derived (the checks above).
   -- 0472: public.first_hour_near_seconds reads it too, only to order a newcomer's Trade card (a near sale first under Trading 5); no level is read from it.
   -- 0515: public.trade_tax_cut asks only whether a Trading mark exists (a merchant has none: out at once); no level is read from it.
+  -- 0518: public.round_level reads a record-kept level at the level she was last paid for (as 0468 does): a round's work can only open late, never early.
   -- 0476: public.first_voyage_have reads it too, only to tick a starter step done (Trading 3 reached); no level is read from it.
-  if v_names is distinct from 'public.first_hour_near_seconds,public.first_voyage_have,public.level_marks_settle,public.level_perk,public.reputation_card,public.trade_tax_cut' then
+  if v_names is distinct from 'public.first_hour_near_seconds,public.first_voyage_have,public.level_marks_settle,public.level_perk,public.reputation_card,public.round_level,public.trade_tax_cut' then
     raise exception 'PROOF 59 FAILED: the marks table is named by: %', v_names;
   end if;
   if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
