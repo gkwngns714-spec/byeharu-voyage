@@ -1,4 +1,4 @@
-# 2026-11-25: `assign-fast`: 0503 (a repair; nothing dark) and the Assign sheet's quiet retry
+# 2026-11-25: `assign-fast`: 0504 (a repair; nothing dark) and the Assign sheet's quiet retry
 
 Owner's live bug: Assign said "the quotes are slow just now: ask again in a moment" (public.sea_actions_for past its 5 s guard).
 
@@ -17,7 +17,7 @@ a price step is 8 us here, so quotes weigh more in PGlite than on prod.
 | B: 3,000,000 purse, largest hull, jobs wait and near round lit | GUA 1,560 -> 911 (worst after: BUS 933) | 701 -> 456 ms |
 | Colombo, A with jobs wait | 521 -> 417 | |
 
-The part beside best_sales is about 0.4 to 0.5 of what it was (the sweeps ran the same bodies while they stood in 0499; 0503's own assert compares her whole read in 14 worlds). The 800 ms target holds in A and NOT in B's worst (933): what is left there is
+The part beside best_sales is about 0.4 to 0.5 of what it was (the sweeps ran the same bodies while they stood in 0499; 0504's own assert compares her whole read in 14 worlds). The 800 ms target holds in A and NOT in B's worst (933): what is left there is
 world.best_sales (about 500), which this file does not touch. Measured with 0499's dark switches as named.
 
 ## Contention
