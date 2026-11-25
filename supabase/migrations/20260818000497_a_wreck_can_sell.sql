@@ -43,7 +43,8 @@
 --   verbatim) and dropping the four functions.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants, volatility, definer, search path and
 --   owner unmoved; the new functions server only; one knob added (false), no other moved. THE PROBE (rolled back; its own company, a
---   good chosen by asking the server what its home quay buys: nothing of prod's market or companies is counted): dark, a wreck's
+--   good chosen by asking the server what its home quay buys: nothing of prod's market or companies is counted; where the quay buys
+--   nothing today the law is read on the quay's own refusal: scripts/ops/harness/a-wreck-can-sell/perturb.mjs plays such worlds): dark, a wreck's
 --   SELL is queued as before and a docked fleet's dry run is what it was; lit, the wreck's SELL runs past her pending SAILs (coin in,
 --   cargo out, the SAILs still pending), STORE and TAKE run, BUY and SAIL are refused and not queued, a wreck at sea, an empty
 --   fleet and a merchant's wreck are not alongside and run nothing, and a docked fleet's dry run is still what it was.
@@ -103,6 +104,7 @@ declare
   v_fl   uuid;
   v_port uuid;
   v_g    text;
+  v_g0   text;      -- the first good that goes aboard at all: the scene's good when her quay buys nothing today
   v_r    jsonb;
   v_dock jsonb;
   v_prev jsonb;
@@ -134,10 +136,13 @@ begin
   end if;
   perform cmd.assume_identity(p_uid);
   -- THE GOOD: the first, by its code, that her home quay takes from her today (the server's own dry run says so; nothing here
-  -- knows a price). 20 units of it go aboard at a cost of 1.
+  -- knows a price). 20 units of it go aboard at a cost of 1. A WORLD WHOSE QUAY BUYS NOTHING TODAY (its purse empty, its rows
+  -- gone, the day's limit spent) IS STILL A WORLD THIS FILE MUST APPLY IN: then the first good that goes aboard is the scene's, and
+  -- the law is read on the quay's own refusal instead of on a sale (the wreck is refused as a docked fleet is, never queued).
   for g in select x.code from public.goods x where x.bulk > 0 order by x.code limit 60 loop
     begin
       perform public.fleet_load(v_fl, g.code, 20, 1);
+      v_g0 := coalesce(v_g0, g.code);
       v_r := cmd.preview(v_fl, format('SELL %s ALL', g.code));
       if (v_r->>'ok')::boolean and (v_r #>> '{estimate,qty}')::numeric >= 10 and (v_r #>> '{estimate,net}')::numeric > 0 then
         v_g := g.code;
@@ -149,7 +154,11 @@ begin
     end;
   end loop;
   if v_g is null then
-    raise exception '0497 scene: no good of the first sixty sells at her home quay';
+    if v_g0 is null then
+      raise exception '0497 scene: none of the first sixty goods can be put aboard a ship';
+    end if;
+    v_g := v_g0;
+    perform public.fleet_load(v_fl, v_g, 20, 1);
   end if;
   -- (docked) her dry run, and what twenty of them cost in time
   v_dock := cmd.preview(v_fl, format('SELL %s 5', v_g));
@@ -200,8 +209,8 @@ begin
                                 'refusal', public.wreck_order_refusal(v_nf, 'BUY'));
   end if;
   return jsonb_build_object(
-    'good', v_g, 'dock', v_dock - 'parsed', 'dock_ms', v_ms,
-    'prev', v_prev - 'parsed', 'sell', jsonb_build_object('ok', v_sell->'ok', 'code', v_sell->'error_code', 'order', jsonb_build_object('status', v_sell #> '{order,status}')), 'sold', v_c0 - v_c1, 'coin', v_p1 - v_p0, 'orders', v_ord,
+    'good', v_g, 'dock', v_dock - 'parsed' - 'fixes', 'dock_ms', v_ms,
+    'prev', v_prev - 'parsed' - 'fixes', 'sell', jsonb_build_object('ok', v_sell->'ok', 'code', v_sell->'error_code', 'order', jsonb_build_object('status', v_sell #> '{order,status}')), 'sold', v_c0 - v_c1, 'coin', v_p1 - v_p0, 'orders', v_ord,
     'store', jsonb_build_object('ok', v_store->'ok', 'status', v_store #> '{order,status}', 'code', v_store->'error_code'),
     'take', jsonb_build_object('ok', v_take->'ok', 'status', v_take #> '{order,status}', 'code', v_take->'error_code'),
     'buy', jsonb_build_object('ok', v_buy->'ok', 'code', v_buy->'error_code', 'msg', v_buy->'error_message', 'queued', v_buy->'queued',
@@ -228,7 +237,7 @@ $body$
   end;
   -- THE REPORT, BEFORE: a wreck's SELL is "queued" by the dry run, taken with ok by the door, and never runs
   if v_d0 #>> '{prev,queued}' is distinct from 'true' or v_d0 #>> '{sell,ok}' is distinct from 'true' or v_d0 #>> '{sell,order,status}' is distinct from 'pending'
-     or (v_d0->>'sold')::numeric <> 0 or (v_d0->>'coin')::numeric <> 0 or v_d0 #>> '{dock,ok}' is distinct from 'true' or v_d0->>'state' is distinct from 'wrecked' then
+     or (v_d0->>'sold')::numeric <> 0 or (v_d0->>'coin')::numeric <> 0 or v_d0 #>> '{dock,error_code}' = 'E_NOT_DOCKED' or v_d0->>'state' is distinct from 'wrecked' then
     raise exception '0497 self-assert FAIL: before the hunks a wreck''s SELL was not the silent queue the lead reported: %', left(v_d0::text, 1500);
   end if;
 
@@ -440,12 +449,27 @@ $h$  -- 0497: a wreck's order that cannot run is refused here, never queued to w
   if v_d2->'dock' is distinct from v_d0->'dock' or v_d2->>'good' is distinct from v_d0->>'good' then
     raise exception '0497 self-assert FAIL: lit, a docked fleet''s dry run moved: before % / after %', v_d0->'dock', v_d2->'dock';
   end if;
-  -- the wreck's SELL: a real dry run, then it runs past her pending SAIL: cargo out, coin in, the SAIL still pending, she still wrecked
-  if v_d2 #>> '{prev,ok}' is distinct from 'true' or v_d2 #> '{prev,queued}' is not null or (v_d2 #>> '{prev,estimate,qty}')::numeric <> 5
-     or v_d2 #>> '{sell,ok}' is distinct from 'true' or v_d2 #>> '{sell,order,status}' is distinct from 'done'
-     or (v_d2->>'sold')::numeric <> 5 or (v_d2->>'coin')::numeric <= 0 or v_d2->'orders' is distinct from '["SAIL:pending", "SELL:done"]'::jsonb
+  -- the wreck's SELL: HER DRY RUN IS A DOCKED FLEET'S (the same quote, or the same refusal of the quay: never "queued"); then it runs
+  -- past her pending SAIL, which is neither run nor cancelled, and she is still wrecked
+  if v_d2 #> '{prev,queued}' is not null or v_d2 #>> '{prev,ok}' is distinct from v_d2 #>> '{dock,ok}'
+     or v_d2 #>> '{prev,error_code}' is distinct from v_d2 #>> '{dock,error_code}' or v_d2 #>> '{prev,error_code}' = 'E_NOT_DOCKED'
+     or v_d2 #> '{prev,estimate,qty}' is distinct from v_d2 #> '{dock,estimate,qty}'
      or v_d2->>'state' is distinct from 'wrecked' or v_d2->>'status' is distinct from 'UNABLE_TO_SAIL' then
-    raise exception '0497 self-assert FAIL: lit, the wreck''s SELL did not run past her pending SAIL: %', left(v_d2::text, 1500);
+    raise exception '0497 self-assert FAIL: lit, the wreck''s dry run is not a docked fleet''s: %', left(v_d2::text, 1500);
+  end if;
+  if (v_d2 #>> '{dock,ok}')::boolean then
+    -- her quay buys it: cargo out, coin in
+    if v_d2 #>> '{sell,ok}' is distinct from 'true' or v_d2 #>> '{sell,order,status}' is distinct from 'done'
+       or (v_d2->>'sold')::numeric <> 5 or (v_d2->>'coin')::numeric <= 0 or v_d2->'orders' is distinct from '["SAIL:pending", "SELL:done"]'::jsonb then
+      raise exception '0497 self-assert FAIL: lit, the wreck''s SELL did not run past her pending SAIL: %', left(v_d2::text, 1500);
+    end if;
+  else
+    -- her quay buys nothing today: the order RAN and was refused by the quay's own rule (the docked fleet's code), not left waiting
+    if v_d2 #>> '{sell,ok}' is distinct from 'false' or v_d2 #>> '{sell,order,status}' is distinct from 'failed'
+       or v_d2 #>> '{sell,code}' is distinct from v_d2 #>> '{dock,error_code}'
+       or (v_d2->>'sold')::numeric <> 0 or v_d2->'orders' is distinct from '["SAIL:pending", "SELL:failed"]'::jsonb then
+      raise exception '0497 self-assert FAIL: lit, where her quay buys nothing the wreck''s SELL was not refused as a docked fleet''s is: %', left(v_d2::text, 1500);
+    end if;
   end if;
   -- STORE and TAKE run, or are refused by their own door for a reason that is not her state
   if v_d2 #>> '{store,status}' = 'pending' or v_d2 #>> '{take,status}' = 'pending'
@@ -474,9 +498,9 @@ $h$  -- 0497: a wreck's order that cannot run is refused here, never queued to w
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0497 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0497 self-assert ok: A WRECK CAN SELL (dark). % hunks once and reversing; no other function moved; the hunked bodies'' grants and volatility unmoved; one knob added (false), no other moved; four new functions server only. Probes (rolled back, good %): before and dark, a wreck''s SELL is dry-run "queued", taken ok and left % (sold %); lit, dry run qty %, the order %, sold % for % coin past her pending SAIL (%), STORE % TAKE %, BUY % "%" (queued %), SAIL %, at sea %, empty fleet alongside %, a merchant''s wreck %. A docked dry run: identical; % ms before, % dark, % lit (mean of 20). % ms.',
+  raise notice '0497 self-assert ok: A WRECK CAN SELL (dark). % hunks once and reversing; no other function moved; the hunked bodies'' grants and volatility unmoved; one knob added (false), no other moved; four new functions server only. Probes (rolled back, good %): before and dark, a wreck''s SELL is dry-run "queued", taken ok and left % (sold %); lit, dry run % qty %, the order % %, sold % for % coin past her pending SAIL (%), STORE % TAKE %, BUY % "%" (queued %), SAIL %, at sea %, empty fleet alongside %, a merchant''s wreck %. A docked dry run: identical; % ms before, % dark, % lit (mean of 20). % ms.',
     (select count(*) from hunks_0497), v_d2->>'good', v_d0 #>> '{sell,order,status}', v_d0->>'sold',
-    v_d2 #>> '{prev,estimate,qty}', v_d2 #>> '{sell,order,status}', v_d2->>'sold', v_d2->>'coin', v_d2->'orders', v_d2 #>> '{store,status}', v_d2 #>> '{take,status}',
+    coalesce(v_d2 #>> '{prev,error_code}', 'ok'), coalesce(v_d2 #>> '{prev,estimate,qty}', '-'), v_d2 #>> '{sell,order,status}', coalesce(v_d2 #>> '{sell,code}', ''), v_d2->>'sold', v_d2->>'coin', v_d2->'orders', v_d2 #>> '{store,status}', v_d2 #>> '{take,status}',
     v_d2 #>> '{buy,code}', v_d2 #>> '{buy,msg}', v_d2 #>> '{buy,queued}', v_d2 #>> '{sail,code}', v_d2 #>> '{sea,sell,error_code}', v_d2->>'empty', v_d2->'npc',
     v_d0->>'dock_ms', v_d1->>'dock_ms', v_d2->>'dock_ms', round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;
