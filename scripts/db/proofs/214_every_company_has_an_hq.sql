@@ -18,7 +18,11 @@ begin
   for x in select n.code, n.capital_port_code as cap from public.nations n where public.nation_joinable(n.id) order by n.code loop
     i := i + 1;
     perform cmd.assume_identity(('00000000-0509-4000-8000-0000000004' || lpad(i::text, 2, '0'))::uuid);
-    v_r := cmd.found_house('Casa Prova 214 ' || i, x.code);
+    if public.nation_in_europe((select n.id from public.nations n where n.code = x.code)) then
+      v_r := cmd.found_house('Casa Prova 214 ' || i, x.code);
+    else   -- 0512: no door founds one outside Europe now; the companies that are stay, and have their HQ
+      v_r := jsonb_build_object('ok', true, 'player_id', public.new_house(auth.uid(), 'Casa Prova 214 ' || i, x.code, x.cap));
+    end if;
     if not (v_r->>'ok')::boolean or world.player()->'player'->'hq'->>'at' is distinct from x.cap then
       raise exception 'HQ_FIRST: % %', x.code, v_r;
     end if;
