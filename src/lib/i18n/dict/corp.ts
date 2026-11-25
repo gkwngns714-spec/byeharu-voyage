@@ -87,8 +87,6 @@ export const corpDict = defineDict({
     take: 'Take',
     stopAt: 'Stop at',
     goHome: 'Go home',
-    crew: 'Crew',
-    days: 'Food days',
     ammo: 'Ammo',
     food: 'Food',
     water: 'Water',

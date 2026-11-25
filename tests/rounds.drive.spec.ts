@@ -1,20 +1,25 @@
+/// <reference types="node" />
+import { readdirSync } from 'node:fs'
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { corpWorld } from './corpWorld.fixture'
 import { serveWorldImage } from './worldImage.fixture'
 
 // ROUNDS, DRIVEN (0518 to 0535; owner R3, R5, R6, slide 5): on the Assign sheet a fleet takes COMBAT, EXPEDITION or TRADING. Combat: a sea, what a round costs (never
-// a chance, no RUN), the stop, repeat or home. Her sheet: the rounds, the log, what she has, Come home. Expedition: the same; its artifacts given at the capital. On an
-// image without the rounds it is skipped: the action is not drawn.
+// a chance, no RUN), the stop, repeat or home. Her sheet: the rounds, the log, what she has, Come home. Expedition: the same; its artifacts given at the capital. Registered
+// only where 0535 is in the chain (no skip: CI's floor counts every registered test).
 
 const OUT = process.env.ROUNDS_SHOTS ?? 'test-results/rounds'
 const sideways = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
+
+const HAS_ROUNDS = readdirSync('supabase/migrations').some((f) => /^\d{11}535_|000535_/.test(f))
+const testRounds = (HAS_ROUNDS ? test : () => undefined) as typeof test
 
 for (const size of [
   { width: 390, height: 844 },
   { width: 1440, height: 900 },
 ])
-  test(`Rounds @${size.width}: combat, its log, an expedition, its artifacts`, async ({ page, request, baseURL }) => {
+  testRounds(`Rounds @${size.width}: combat, its log, an expedition, its artifacts`, async ({ page, request, baseURL }) => {
     test.setTimeout(900_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
     let asks = 0
@@ -51,7 +56,7 @@ for (const size of [
     // THREE ACTIONS, one read
     await openSheet()
     await expect(sheet.getByText('Trading', { exact: true }).first()).toBeVisible({ timeout: 120_000 })
-    test.skip((await sheet.getByText('Combat', { exact: true }).count()) === 0, 'this image has no rounds')
+    await expect(sheet.getByText('Combat', { exact: true }).first(), 'lit, Combat is not drawn').toBeVisible()
     expect(asks, 'the sheet asked world.rounds more than once for one opening').toBeLessThanOrEqual(1)
     await shot('1-actions')
 

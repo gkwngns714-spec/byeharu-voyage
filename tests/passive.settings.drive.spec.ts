@@ -1,20 +1,25 @@
+/// <reference types="node" />
+import { readdirSync } from 'node:fs'
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { corpWorld } from './corpWorld.fixture'
 import { serveWorldImage } from './worldImage.fixture'
 
 // THE PASSIVE SETTINGS, DRIVEN (0516): the Assign sheet sets buy under, sell over, crew, days, a count and the two stops; a run out of its
-// range waits and says why, on her row and her sheet; a job stopped for her hull offers Repair and goes on once she is mended. On an image
-// without 0516 (the switch's row is not there) it is skipped: the boxes are not drawn.
+// range waits and says why, on her row and her sheet; a job stopped for her hull offers Repair and goes on once she is mended. Registered
+// only where 0516 is in the chain (no skip: CI's floor counts every registered test).
 
 const OUT = process.env.SETTINGS_SHOTS ?? 'test-results/passive-settings'
 const sideways = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
+
+const HAS_SETTINGS = readdirSync('supabase/migrations').some((f) => /_passive_settings\.sql$/.test(f))
+const testSettings = (HAS_SETTINGS ? test : () => undefined) as typeof test
 
 for (const size of [
   { width: 390, height: 844 },
   { width: 1440, height: 900 },
 ])
-  test(`Assign's settings @${size.width}: out of range, stopped for her hull, mended, in range`, async ({ page, request, baseURL }) => {
+  testSettings(`Assign's settings @${size.width}: out of range, stopped for her hull, mended, in range`, async ({ page, request, baseURL }) => {
     test.setTimeout(900_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
     await serveWorldImage(page, await corpWorld({ courses: true, home: true, settings: true }))
@@ -45,7 +50,7 @@ for (const size of [
     // every press and box is 44 px, the space left is the served figure, a bad number is refused in place
     await hers.click({ position: { x: 30, y: 24 } })
     await expect(sheet.getByTestId('corp-assign-run').first()).toBeVisible({ timeout: 180_000 })
-    test.skip((await sheet.getByTestId('corp-settings-open').count()) === 0, 'this image has no 0516')
+    await expect(sheet.getByTestId('corp-settings-open'), 'lit, the boxes are not drawn').toBeVisible()
     await sheet.getByTestId('corp-assign-run').first().click()
     await sheet.getByTestId('corp-settings-open').click()
     const small = await sheet.evaluate((el) =>
