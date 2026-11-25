@@ -29,6 +29,7 @@ import { SEA_KIND_WORD, seaChoiceOf, seaOptionWord } from '../../live/seaChoiceO
 //   TOWED         {fleet, from, to, nm, fee}                  (0152 — from / to are CODES)
 //   FLEET_RENAMED {from, to}                                  (0354)
 //   COMPANY_RENAMED {from, to}                                (0503)
+//   COMPANY_CLOSED {company, nation, port, ducats}            (0509 — port is a CODE)
 //   ROOM_OPENED   {kind, step, price, room}                   (0354 — kind is FLEET or SHIP)
 //   ARMADA_FORMED {armada, fleets}  ARMADA_DISBANDED {armada}  ARMADA_SAILED {armada, fleets, dest, eta}   (0367 — fleets are names, or a count on SAILED; dest is a CODE)
 //   SIGNED_OFFICER {officer, code, specialty, bonus_pct, cost}   (0015:231 — NO fleet key)
@@ -189,6 +190,9 @@ export function headline(
     // 0503: the company took a new name.
     case 'COMPANY_RENAMED':
       return t('history.companyRenamed', { from: str(p, 'from') ?? '', to: str(p, 'to') ?? '' })
+    // 0509: the company closed (its player restarted).
+    case 'COMPANY_CLOSED':
+      return t('history.companyClosed', { company: str(p, 'company') ?? '' })
     // 0367: an armada formed, disbanded, sent on one order.
     case 'ARMADA_FORMED': {
       const names = Array.isArray(p['fleets']) ? p['fleets'].filter((x): x is string => typeof x === 'string').join(', ') : ''

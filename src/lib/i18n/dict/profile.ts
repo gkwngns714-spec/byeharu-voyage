@@ -25,6 +25,11 @@ export const profileDict = defineDict({
     renameSave: 'Save',
     renameOnce: 'Your first rename is free. Choose with care.',
     renameUsed: 'Your free rename is used. Another rename is not available yet.',
+    // 0509: close the company and found again
+    restart: 'Restart',
+    restartTitle: 'Restart company',
+    restartWarning: 'Your company closes for good: ships, cargo, supplies, captains, shares and levels go. Your coin goes to your capital. You begin again with the usual start. Once a day.',
+    restartConfirm: 'Type {name} to confirm',
   },
   ko: {
     since: '{date} 설립',
