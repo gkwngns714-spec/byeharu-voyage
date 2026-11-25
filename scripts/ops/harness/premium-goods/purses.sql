@@ -1,8 +1,8 @@
--- 0517: WHAT THE LEAD READS ON PROD BEFORE LIGHTING (after the deploy, dark). One read-only statement over 100 cities; the owner sees it.
+-- 0517: WHAT THE LEAD READS ON PROD BEFORE LIGHTING (after the deploy, dark). One read-only statement over 67 cities; the owner sees it.
 --   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/premium-goods/purses.sql
 -- cities: each premium city's spare coin (purse less the greater of its reserve and its floor), the units its share lets it pay now, and the
---   most a day of 30 units costs it. Ask the owner before lighting if: `none` (cities that could pay nothing) is over 25, `over_third`
---   (a full day is over a third of the spare coin) is over 10, or `full_day` is over 2 % of `all_purses`.
+--   most a day of 30 units costs it. Ask the owner before lighting if: `none` (cities that could pay nothing) is over 17, `over_third`
+--   (a full day is over a third of the spare coin) is over 7, or `full_day` is over 2 % of `all_purses`.
 begin transaction read only;
 with c as (
   select g.code as good, h.code as city, public.treasury_balance(h.id) as purse,

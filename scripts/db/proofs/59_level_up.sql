@@ -257,8 +257,9 @@ begin
   -- never stands above the derived level (Trading never falls; the settle raises a mark only to it), so it can only open a step late, never
   -- early; the level itself stays derived (the checks above).
   -- 0472: public.first_hour_near_seconds reads it too, only to order a newcomer's Trade card (a near sale first under Trading 5); no level is read from it.
+  -- 0515: public.trade_tax_cut asks only whether a Trading mark exists (a merchant has none: out at once); no level is read from it.
   -- 0476: public.first_voyage_have reads it too, only to tick a starter step done (Trading 3 reached); no level is read from it.
-  if v_names is distinct from 'public.first_hour_near_seconds,public.first_voyage_have,public.level_marks_settle,public.level_perk,public.reputation_card' then
+  if v_names is distinct from 'public.first_hour_near_seconds,public.first_voyage_have,public.level_marks_settle,public.level_perk,public.reputation_card,public.trade_tax_cut' then
     raise exception 'PROOF 59 FAILED: the marks table is named by: %', v_names;
   end if;
   if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace

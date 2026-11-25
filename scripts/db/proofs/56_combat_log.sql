@@ -94,8 +94,8 @@ $h$),
 $h$, $h$  return voyage.raid_report(p_voyage, p_day, p_raider, voyage.escort_score(p_fleet), voyage.fleet_hulls(p_fleet),   -- 0323: the side, cut to its own leaf
                             voyage.raid_opts(p_voyage, p_day, p_fleet));   -- 0353: {} for a merchant; a company's log and her frozen order
 $h$),
-  ('voyage.depart(uuid,jsonb,uuid,uuid,timestamp with time zone)', 1, $h$  values (p_fleet, v_player, voyage.freeze_raiders(voyage.freeze_danger(p_segments, p_at), p_fleet), v_total, v_profile, p_at,   -- 0330: each segment keeps the danger of its sea as she left; 0339: and the pirate ship cruising it, if any
-$h$, $h$  values (p_fleet, v_player, voyage.freeze_order(voyage.freeze_raiders(voyage.freeze_danger(p_segments, p_at), p_fleet), p_fleet), v_total, v_profile, p_at,   -- 0330: each segment keeps the danger of its sea as she left; 0339: and the pirate ship cruising it, if any; 0353: and her standing order, if she has one
+  ('voyage.depart(uuid,jsonb,uuid,uuid,timestamp with time zone)', 1, $h$  values (p_fleet, v_player, voyage.freeze_happenings(voyage.freeze_raiders(voyage.freeze_danger(p_segments, p_at), p_fleet), v_npc), v_total, v_profile, p_at,   -- 0330: each segment keeps the danger of its sea as she left; 0339: and the pirate ship cruising it, if any
+$h$, $h$  values (p_fleet, v_player, voyage.freeze_happenings(voyage.freeze_order(voyage.freeze_raiders(voyage.freeze_danger(p_segments, p_at), p_fleet), p_fleet), v_npc), v_total, v_profile, p_at,   -- 0330: each segment keeps the danger of its sea as she left; 0339: and the pirate ship cruising it, if any; 0353: and her standing order, if she has one
 $h$),
   ('voyage.settle(uuid,timestamp with time zone)', 1, $h$      if v_pirate is not null and v_outcome = 'RANSOM' then   -- 0339: paid off a named raider$h$, $h$      if coalesce((v_fight->>'paid')::boolean, false) then   -- 0353: she chose to pay (her standing order): the same share, to the raider's home or, for an anonymous raid, the Brethren's capital (public.raid_ransom)
         v_ransom := public.raid_ransom(v_pirate, f.player_id, public.fleet_stock_at_cost(p_fleet));

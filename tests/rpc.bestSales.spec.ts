@@ -429,7 +429,7 @@ test('0351: the cap authority\'s bisect is its walk, on fixed cases (public.flee
         where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%fleet_buy_capacity(%' and p.oid <> 'public.fleet_buy_capacity(uuid,uuid)'::regprocedure order by 1`,
     )
   ).rows.map((r) => r.fn)
-  expect(callers).toEqual(['cmd.resolve_qty', 'public.fleet_job_ends', 'public.fleet_run_quote', 'public.run_need', 'public.sea_actions_for', 'world.best_sales', 'world.buy_capacity', 'world.trade_routes'])
+  expect(callers).toEqual(['cmd.resolve_qty', 'public.fleet_job_ends', 'public.fleet_run_quote', 'public.job_settings_judge', 'public.run_need', 'public.sea_actions_for', 'world.best_sales', 'world.buy_capacity', 'world.trade_routes'])
 })
 
 test('her cargo reads as cargo, beside the goods bought here, and is the Sail & sell row', async () => {

@@ -690,6 +690,9 @@ export interface PremiumCity {
   /** Sailed miles from the good's nearest maker. */
   nm: number | string
   per_day: number | string
+  /** Units your company made and has not sold at a premium. */
+  made: number | string
+  /** The lesser of `made` and what the city still takes today. */
   left: number | string
 }
 

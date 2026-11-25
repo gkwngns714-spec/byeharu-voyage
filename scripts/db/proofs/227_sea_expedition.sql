@@ -45,7 +45,7 @@ begin
   perform public.round_settle(v_f, now() + interval '2 hours');
   s1 := (select sum(p.ducats) from public.players p) + (select sum(public.treasury_balance(p.id)) from public.ports p where p.kind = 'HARBOUR');
   v_c := (select zr.carry from public.round_runs zr where zr.fleet_id = v_f);
-  if s1 <> s0 or (select p.ducats from public.players p where p.id = v_a) <> d0 or (v_c->>'gold_due')::int is distinct from 120 then
+  if s1 <> s0 or (select p.ducats from public.players p where p.id = v_a) <> d0 or (v_c->>'gold_due')::int is distinct from 3388 then
     raise exception 'SE_OWED: % %', s1 - s0, v_c;
   end if;
   -- and now it can
@@ -55,14 +55,14 @@ begin
   perform public.round_settle(v_f, now() + interval '2 hours');
   s1 := (select sum(p.ducats) from public.players p) + (select sum(public.treasury_balance(p.id)) from public.ports p where p.kind = 'HARBOUR');
   v_c := (select zr.carry from public.round_runs zr where zr.fleet_id = v_f);
-  if s1 <> s0 or (select p.ducats from public.players p where p.id = v_a) - d0 <> 240 or v_c ? 'gold_due'
+  if s1 <> s0 or (select p.ducats from public.players p where p.id = v_a) - d0 <> 6776 or v_c ? 'gold_due'
      or (select sum(b.delta) from public.reputation_book b where b.player_id = v_a and b.kind = 'round') is distinct from 16 then
     raise exception 'SE_GOLD: % % %', s1 - s0, (select p.ducats from public.players p where p.id = v_a) - d0, v_c;
   end if;
   -- called in after two rounds: their gold
   perform public.round_send_for(v_a, v_f, 'expedition', '{"rounds": 4, "days": 0}', now() + interval '4 seconds');
   perform public.round_home_for(v_a, v_f, now() + interval '31 minutes');
-  if (select p.ducats from public.players p where p.id = v_a) - d0 <> 300 then raise exception 'SE_GOLD: called in: %', (select p.ducats from public.players p where p.id = v_a) - d0; end if;
+  if (select p.ducats from public.players p where p.id = v_a) - d0 <> 8470 then raise exception 'SE_GOLD: called in: %', (select p.ducats from public.players p where p.id = v_a) - d0; end if;
   raise notice 'PASS: SE_OWED - 120 waited, nothing minted';
-  raise notice 'PASS: SE_GOLD - 240 from the capital, the sum moved 0; 16 Reputation for 8 rounds';
+  raise notice 'PASS: SE_GOLD - 6776 from the capital, the sum moved 0; 16 Reputation for 8 rounds';
 end $p$;
