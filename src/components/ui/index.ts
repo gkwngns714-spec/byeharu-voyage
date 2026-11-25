@@ -230,6 +230,8 @@ export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
 // has its OWN drawn glyph — see goodIcons.ts for the table and for why seven was the wrong answer.
 export { goodIcon, categoryLabel } from './goodIcons'
 export { Skeleton } from './Skeleton'
+// The room a block had last time, held while its read is asked: the answer fills a place already there (HeldRoom.tsx).
+export { HeldRoom } from './HeldRoom'
 // The tap-away plane an inline tray stands on — ONE recipe for the NavBar and the City page's rail.
 export { TapAway } from './TapAway'
 // The two faces of THE ONE CLOCK: the real time now, and the time until a served instant —
