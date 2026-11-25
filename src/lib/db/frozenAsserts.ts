@@ -178,6 +178,26 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
       "    v_city := (select count(*) from public.trade_contracts t where t.port_id = v_port and t.status = 'open');\n",
     why: "0466 (8): the probe's two hold jobs at LIS are drawn from the game day (4 real hours); on about 1 game day in 10 there (12 of 120 measured) the drawn good is dear or its allowance thin, the lot falls under hold_request_units_min and the writer posts nothing (main, run 45180194236, the growth test from zero, 2026-11-23 14:41 UTC). The probe now runs at the first harbour, LIS first, whose two posts land today, tried in a rolled-back block; if none does, it stays at LIS and fails as written",
   },
+  {
+    file: '20260818000473_a_job_says_where_to_buy.sql',
+    find: "    v_open := (select count(*) from public.trade_contracts t where t.port_id = v_port and t.status = 'open' and t.size = 'hold');\n",
+    replace:
+      '    -- frozenAsserts: the probe harbour is the first, LIS first, whose two jobs today post (tried in a rolled-back block)\n' +
+      "    for x in select p.id from public.ports p where p.kind = 'HARBOUR' order by (p.id = v_port) desc, p.code loop\n" +
+      '      begin\n' +
+      "        v_open := (select count(*) from public.trade_contracts t where t.port_id = x.id and t.status = 'open' and t.size = 'hold');\n" +
+      "        update public.world_config set value = to_jsonb(v_open + 2) where key = 'hold_request_open_max';\n" +
+      "        v_now := public.clock_start('game_day', world.game_day()) + interval '1 second';\n" +
+      '        v_n := public.hold_request_post(x.id, v_now);\n' +
+      '        v_n := v_n + public.hold_request_post(x.id, v_now);\n' +
+      "        raise exception sqlstate 'BV474';\n" +
+      "      exception when sqlstate 'BV474' then null;\n" +
+      '      end;\n' +
+      '      if v_n = 2 then v_port := x.id; exit; end if;\n' +
+      '    end loop;\n' +
+      "    v_open := (select count(*) from public.trade_contracts t where t.port_id = v_port and t.status = 'open' and t.size = 'hold');\n",
+    why: "0473 (7): 0466's dice again. The probe's two hold jobs at LIS are drawn from the game day (4 real hours); v_now is the day's first second, so the hour of day moves nothing, but on 14 of 240 game days measured there a drawn good is dear or thin, the lot falls under hold_request_units_min and the writer posts nothing (main, run 45529660879, from zero, 2026-11-25 02:46 UTC; game days 623208, 623242, 623274 and 623292 fail locally as written and pass patched). The probe now runs at the first harbour, LIS first, whose two posts land today, tried in a rolled-back block; if none does, it stays at LIS and fails as written",
+  },
   digestSortsBlankedRows('20260818000266_a_lap_starts_in_its_own_job.sql', '0266', 'uuid,uuid,uuid'),
   digestSortsBlankedRows('20260818000269_the_quay_writes_down_its_long_holds.sql', '0269', 'uuid,uuid,uuid'),
   digestSortsBlankedRows('20260818000270_the_clear_replans_her_lines_before_the_quay.sql', '0270', 'uuid,uuid,uuid'),

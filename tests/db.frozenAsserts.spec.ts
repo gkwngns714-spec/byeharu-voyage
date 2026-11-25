@@ -77,6 +77,13 @@ test('the patched asserts can still fail', async () => {
       "      raise exception '0367 self-assert FAIL: both fleets of an armada do not sail at the slower fleet''s speed';\n",
   )
   expect(out367.split('\n').length).toBe(f367.sql.split('\n').length + 1)
+  // 0473: only the probe harbour is chosen (a trial that rolls back); everything from v_open on is the file's own.
+  const f473 = files.find((x) => x.name.startsWith('20260818000473_'))!
+  const out473 = sqlToApply(f473)
+  const from473 = f473.sql.slice(f473.sql.indexOf('    v_open := (select count(*)'))
+  expect(out473.endsWith(from473)).toBe(true)
+  expect(from473).toContain("raise exception '0473 self-assert FAIL: lit, the probe harbour did not post two hold jobs within reach'")
+  expect(from473).toContain("raise exception '0473 self-assert FAIL: a hold job''s source is not a seller within reach")
   const was = f226.sql.split('\n')
   const now = out226.split('\n')
   expect(now.length).toBe(was.length)
