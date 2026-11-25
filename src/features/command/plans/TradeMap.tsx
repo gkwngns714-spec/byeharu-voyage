@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { openingBounds, SmallChart, type PathStop } from '../../../chart'
 import { Button, Figure, Hint, Icon, Row } from '../../../components/ui'
 import { routeOfFleet } from '../../../domain/route'
@@ -58,6 +58,9 @@ export interface MapDrawing {
   /** Row 191: the board the plan's legs were read from — its rows' served `sea` is the legs' tag. */
   board?: GoodBoard | null
 }
+
+/** How much latitude the face's map opens on, in degrees. */
+const NEAR_LAT = 11
 
 /** One frozen empty list, so the plan's chart — which draws NO live fleets layer — allocates nothing per frame. */
 const NO_FLEETS: readonly FleetView[] = []
@@ -162,12 +165,19 @@ export function TradeMap({
     return out
   }, [planMap, plan, t])
 
-  // ON THE FACE the glass is not 2:1, so it opens on the inhabited band (60 S to 75 N) as tall as the box, her place in the middle:
-  // no empty bands, and half the world at twice the size.
-  const homeLon = portByCode[docked ?? fleet.voyage?.to ?? '']?.lon ?? 0
+  // ON THE FACE it opens on her neighbourhood (11 degrees of latitude: from Lisbon, Iberia to Ceuta), her place in the middle. The place is
+  // read once: Trade.tsx mounts one face map a fleet, so it is centred again on a change of fleet and never by itself as she sails.
+  const [centre] = useState<LatLon>(() => {
+    const at = portByCode[docked ?? ''] ?? fleet.voyage?.position ?? portByCode[fleet.voyage?.to ?? '']
+    return at ? { lat: at.lat, lon: at.lon } : { lat: 38, lon: -9 }
+  })
   const opening = useCallback(
-    (aspect: number) => ({ minLat: -60, maxLat: 75, minLon: homeLon - 67.5 * aspect, maxLon: homeLon + 67.5 * aspect }),
-    [homeLon],
+    (aspect: number) => {
+      const half = NEAR_LAT / 2
+      const wide = (half * aspect) / Math.cos((centre.lat * Math.PI) / 180) / 1.25
+      return { minLat: centre.lat - half, maxLat: centre.lat + half, minLon: centre.lon - wide, maxLon: centre.lon + wide }
+    },
+    [centre],
   )
 
   const onlyKey = [docked, fleet.voyage?.to ?? null, ...drawing.legs.flatMap((l) => [l.from, l.to]), ...drawing.ends]

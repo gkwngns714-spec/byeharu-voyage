@@ -117,8 +117,7 @@ for (const locale of LOCALES) {
         // From 1,024, the terminal's smallest glass: the centre pane must keep its names and its Buy and Sell readable (2026-11-05: at 1,024 the
         // centre pane was ~350 px and cut to three card columns, so a name stood one letter wide and, in Korean, Buy stood over Sell).
         const flat = await readGlass(page, 'desk-pane-chart', 'trade-good', '[data-testid="command"]')
-        // (the map on the face is a window on a sheet: its names run past its edge and a sea's name passes under a city's, by the chart's own law)
-        failures.push(...phoneLaws(where, flat).filter((m) => !/— (small-chart|chart) "/.test(m)).map((m) => m.replace(/: \([abcd]\) /, ': (b) ')))
+        failures.push(...phoneLaws(where, flat).map((m) => m.replace(/: \([abcd]\) /, ': (b) ')))
         const rows = await page.evaluate(() => [...document.querySelectorAll('[data-testid="trade-good"]')].slice(0, 12).map((c) => {
           const r = (id: string) => c.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect()
           const n = r('trade-good-name'), b = r('trade-buy'), s = r('trade-sell')

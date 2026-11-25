@@ -106,6 +106,7 @@ export async function arrivedAtEdge(
  * popping up"*) puts every block's detail on a full-screen `DetailPage`; its test id is `${row}-page`.
  */
 export async function openDetail(page: import('@playwright/test').Page, testid: string) {
+  await page.getByTestId(testid).evaluate((e) => e.scrollIntoView({ block: 'start' }))
   await page.getByTestId(testid).click()
   await expect(page.getByTestId(`${testid}-page`)).toBeVisible()
 }

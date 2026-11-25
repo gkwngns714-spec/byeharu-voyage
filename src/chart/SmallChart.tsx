@@ -304,7 +304,7 @@ export function SmallChart({
       // tab. `overflow-hidden` clips only the picture; the one control (ViewControls) is in a
       // corner slot, which cannot be panned or clipped away, so the reach law has nothing to bite
       // on. `bv-sea` paints the water for the frames before the box is measured.
-      className={`bv-sea relative overflow-hidden rounded-md border border-edge select-none ${surface.touchClass} ${className}`}
+      className={`bv-sea relative overflow-clip rounded-md border border-edge select-none ${surface.touchClass} ${className}`}
       data-testid="small-chart"
     >
       {box && surface.view ? (
@@ -325,7 +325,8 @@ export function SmallChart({
           plannedD={plannedD}
           pathStops={stops}
           ariaLabel={ariaLabel}
-          className="pointer-events-none absolute inset-0 h-full w-full"
+          // (`contain-paint`: the names past the sheet's edge are not the box's own overflow)
+          className="pointer-events-none absolute inset-0 h-full w-full [contain:paint]"
         />
       ) : (
         <p className={fineClass('absolute inset-0 flex items-center justify-center')}>

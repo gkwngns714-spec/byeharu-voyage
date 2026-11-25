@@ -10,6 +10,8 @@ import { expect, type Locator, type Page } from '@playwright/test'
 /** THE MAP IS A PAGE (owner, 2026-10-31): a spec that drives it presses its summary row and works
  *  inside the full-screen page, then closes it before touching the face behind. */
 export async function openTradeMap(face: Locator): Promise<void> {
+  // under the map: a phone's open panel covers its line until the page is scrolled, as a player scrolls it
+  await face.getByTestId('trade-map-open').evaluate((e) => e.scrollIntoView({ block: 'start' }))
   await face.getByTestId('trade-map-open').click()
   await expect(face.getByTestId('trade-map-open-page')).toBeVisible()
 }

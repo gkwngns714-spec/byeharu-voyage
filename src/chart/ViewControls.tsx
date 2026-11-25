@@ -82,9 +82,11 @@ export function ViewControls({
   return (
     <div
       {...CHART_CHROME}
+      // ON A SHORT GLASS the column turns (a second one to its left): past the box's foot it was cut, and the box could be scrolled
+      // inside itself, so a press named the neighbour (Cadiz, Seville at 390x667, 2026-11-25).
       // ONE RIGHT EDGE (2026-11-14): everything in the column ends on the glass's own inset. The percent used to
       // stretch to the width of the word under it and the three buttons hung left of both, a ragged stack.
-      className={`pointer-events-auto absolute z-10 ${cornerSlotClass('top-right')} flex flex-col items-end gap-1`}
+      className={`pointer-events-auto absolute z-10 ${cornerSlotClass('top-right')} flex max-h-[calc(100%-1rem)] flex-col flex-wrap-reverse content-start items-end gap-1`}
       data-testid={testId}
     >
       {/* HOW FAR IN YOU ARE (owner, 2026-10-12: *"show me in map how much i zoomed in and zoomed

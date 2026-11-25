@@ -159,10 +159,10 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const choose = (p: OrderPick | null) => setOrderPick(p ? { ...p, fleet: fleet.id } : null)
 
   // A CITY PRESSED (the map, the chip strip, a cargo row): it is the city in hand, and the map glides to it (row 231)
-  const [goTo, setGoTo] = useState<{ code: string; n: number } | null>(null)
+  const [goTo, setGoTo] = useState<{ code: string; n: number; fleet: string } | null>(null)
   const pressCity = (code: string) => {
     setFocus(code)
-    setGoTo((g) => ({ code, n: (g?.n ?? 0) + 1 }))
+    setGoTo((g) => ({ code, n: (g?.n ?? 0) + 1, fleet: fleet.id }))
   }
   // A PLACE PRESSED ON THE MAP (owner 2026-11-25: "click them for info – price info"): it is the city in hand, as it was, and
   // its prices stand over the map (CityPrices.tsx, the board's own read and rows). Shut by its own close, by "Trade here"
@@ -357,18 +357,21 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const cargoRow = <SummaryRow title={t('desk.cargo')} onClick={() => setPage('cargo')} data-testid="cargo-open" />
   const mapRow = <SummaryRow title={t('desk.bigMap')} onClick={() => setPage('map')} data-testid="trade-map-open" />
   const ordersRow = <SummaryRow title={t('desk.orders')} figure={formatInt(fleet.queue.length)} onClick={() => setPage('orders')} data-testid="command-queue" />
-  // THE MAP OF PLACES STANDS ON THE FACE (owner, 2026-11-25: "In the trade tab there should be a map"). Its box is fixed, so nothing
+  // THE MAP OF PLACES STANDS ON THE FACE (owner, 2026-11-25: "In the trade tab there should be a map"). Its box is the glass's (on a
+  // phone its middle, where a pressed place glides, stays above a sheet over the lower half, 667 px tall included), so nothing
   // under it moves; while the big map's page is open the box stands empty (two charts never draw at once).
   const faceMap = (
-    <div className="relative mb-2 h-[260px] lg:h-[max(16rem,calc(100dvh-32rem))]" data-testid="trade-face-map-box">
+    <div className="mb-2 h-[clamp(10rem,calc(100dvh-30rem),260px)] lg:h-[max(16rem,calc(100dvh-32rem))]" data-testid="trade-face-map-box">
       {page !== 'map' && (
-        <TradeMap fleet={fleet} plan={null} pick={null} onClose={() => choose(null)} scrollOnPick={false} city={city} onCity={pressPlace} goTo={goTo} face />
+        <TradeMap key={fleet.id} fleet={fleet} plan={null} pick={null} onClose={() => choose(null)} scrollOnPick={false} city={city} onCity={pressPlace} goTo={goTo?.fleet === fleet.id ? goTo : null} face />
       )}
-      {/* over the southern sea, where no harbour is under them; at the top while a good's panel covers the lower half of a phone */}
-      <div className={`absolute left-2 flex gap-1.5 ${wide ? 'bottom-2 max-w-[70%]' : panel ? 'right-16 top-2' : 'bottom-2 right-16'}`}>
-        {!wide && <div>{cargoRow}</div>}
-        <div>{mapRow}</div>
-      </div>
+    </div>
+  )
+  // THE DOORS UNDER THE MAP, at both sizes, and nothing moves them
+  const doors = (
+    <div className="mb-2 grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2">
+      <div>{cargoRow}</div>
+      <div>{mapRow}</div>
     </div>
   )
   const prices = pricesOpen && city && !pickNow && (
@@ -426,7 +429,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
               {status}
               {events}
               {faceMap}
-              <div className="mb-2">{cargoRow}</div>
+              {doors}
               {chips}
               {routeRow}
               {ordersRow}
@@ -476,6 +479,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
                   hold a whole row of them (TradeBoard.tsx); with the doors on one line the face still fits the glass without
                   scrolling (tests/onepage.spec.ts), with 22 px in hand. */}
               {faceMap}
+              {doors}
               <div className="min-h-[12.5rem]">{board}</div>
               {events}
               <div className="mb-2" />
