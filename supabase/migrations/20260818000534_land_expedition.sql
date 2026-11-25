@@ -628,13 +628,22 @@ begin
   select po.id into v_po from public.player_officers po join public.officers o on o.id = po.officer_id where po.player_id = v_me and o.code = upper(btrim(coalesce(p_code, '')));
   return jsonb_build_object('on', true, 'company', true, 'now', now(), 'raids', public.land_raids_on(),
     'runs', (select coalesce(jsonb_agg(jsonb_build_object(
-               'party', lp.ord, 'captain', o.code, 'name', o.name, 'crew', lp.crew, 'stores', lp.stores_t, 'work', r.work, 'word', r.terms->'word', 'target', r.terms->'target',
+               'party', lp.ord, 'captain', o.code, 'name', o.name, 'crew', lp.crew - z.hands, 'stores', greatest(0, lp.stores_t - z.ate * coalesce((r.terms->>'use')::numeric, 0)), 'work', r.work, 'word', r.terms->'word', 'target', r.terms->'target',
                'state', case when r.state = 'out' and now() >= r.stop_at then 'home' else r.state end, 'ended', r.ended, 'sent_at', r.sent_at, 'home_at', r.stop_at,
-               'rounds', greatest(r.booked, least((r.terms->>'most')::int, (select k.n from public.round_clock(r.sent_at + make_interval(secs => (r.terms->>'lead')::double precision), (r.terms->>'seconds')::numeric, now(),
-                                   r.sent_at + make_interval(secs => ((r.terms->>'lead')::numeric + (r.terms->>'most')::int * (r.terms->>'seconds')::numeric)::double precision)) k))),
+               'rounds', z.n,
                'most', r.terms->'most', 'why', r.terms->>'why', 'seconds', r.terms->'seconds', 'lead', r.terms->'lead', 'min', r.terms->'min', 'then', r.terms->>'then', 'cost', r.terms->'cost',
-               'carry', r.carry, 'log', r.log, 'waiting', lp.found_waiting) order by lp.ord), '[]'::jsonb)
+               'carry', r.carry || jsonb_build_object('xp', coalesce((r.carry->>'xp')::int, 0) + z.xp, 'gold', coalesce((r.carry->>'gold')::int, 0) + z.gold, 'units', coalesce((r.carry->>'units')::int, 0) + z.units,
+                                                              'hands', coalesce((r.carry->>'hands')::int, 0) + z.hands),
+               -- the last 20 rounds that have passed, booked or not: the round is pure in the terms, so a read shows what a settle will write
+               'log', (select coalesce(jsonb_agg(jsonb_build_object('r', q.n, 'at', r.sent_at + make_interval(secs => ((r.terms->>'lead')::numeric + q.n * (r.terms->>'seconds')::numeric)::double precision),
+                                'crew', e.hands, 'xp', e.xp, 'gold', e.gold, 'units', e.units, 'fed', e.fed, 'result', e.result) order by q.n), '[]'::jsonb)
+                         from generate_series(greatest(1, z.n - 19), z.n) q(n) cross join lateral public.land_expedition_round(r.terms, q.n) e), 'waiting', lp.found_waiting) order by lp.ord), '[]'::jsonb)
                from public.land_parties lp join public.round_runs r on r.party_id = lp.id
+               cross join lateral (select greatest(r.booked, case when r.state = 'home' then r.booked else least((r.terms->>'most')::int,
+                     (select k.n from public.round_clock(r.sent_at + make_interval(secs => (r.terms->>'lead')::double precision), (r.terms->>'seconds')::numeric, now(), r.stop_at) k)) end)::int as n) z0
+               cross join lateral (select z0.n, coalesce(sum(e.hands), 0)::int as hands, coalesce(sum(e.xp), 0)::int as xp, coalesce(sum(e.gold), 0)::int as gold, coalesce(sum(e.units), 0)::int as units,
+                                          count(*) filter (where not e.fed)::int as ate
+                                     from generate_series(r.booked + 1, z0.n) q(n) cross join lateral public.land_expedition_round(r.terms, q.n) e) z
                left join public.player_officers po on po.id = (r.terms->>'captain')::uuid left join public.officers o on o.id = po.officer_id
               where lp.player_id = v_me)) ||
     case when v_po is null then '{}'::jsonb else jsonb_build_object(
@@ -865,6 +874,13 @@ $h$);
        or cmd.land_expedition(v_code, '{"work": "land_raid", "target": "probe_straw", "crew": 5}')->>'error_code' <> 'E_LAND_OUT' or cmd.captain_upgrade(v_code, 'drill')->>'error_code' <> 'E_LAND_OUT' then
       raise exception '0534 self-assert FAIL: she could be moved while out';
     end if;
+    -- THE READ shows the rounds that have passed though nobody settled them (the Send set three hours back, the read, put back)
+    update public.round_runs set sent_at = sent_at - interval '3 hours', stop_at = stop_at - interval '3 hours' where party_id = v_pa;
+    v_t := world.land_expedition() #> '{runs,0}';
+    if jsonb_array_length(v_t->'log') <> least(12, (v_t->>'rounds')::int) or (v_t->>'rounds')::int < 10 or (v_t #>> '{carry,xp}')::int <> 8 * (v_t->>'rounds')::int or (select rr.booked from public.round_runs rr where rr.party_id = v_pa) <> 0 then
+      raise exception '0534 self-assert FAIL: the read of a run under way: %', v_t;
+    end if;
+    update public.round_runs set sent_at = sent_at + interval '3 hours', stop_at = stop_at + interval '3 hours' where party_id = v_pa;
     -- BOOKED in one go as in nine: the same run settled both ways (the first rolled back)
     begin
       v_r := public.land_expedition_settle(v_pa, r1.stop_at);
