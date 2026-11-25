@@ -81,6 +81,7 @@ export const hqDict = defineDict({
     jobBest: 'Best run',
     jobFixed: 'Fixed run',
     jobLand: 'Land haul',
+    jobRound: 'Rounds',
     jobWorking: 'Working',
     jobWaiting: 'Waiting',
     jobStopped: 'Stopped',
