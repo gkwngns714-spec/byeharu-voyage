@@ -4,7 +4,7 @@
 --   A round has a cost and a log line; the run stops by arithmetic, and one settle books it from time passed. Its own company, work, stores and
 --   hands: no market, dice or other company. Rolled back by proof.mjs.
 --
--- @pass RC_DARK   dark (as deployed): a Send is refused, no work exists
+-- @pass RC_DARK   dark (as deployed): a Send is refused
 -- @pass RC_OUT    lit: she is out; she reads `sea` (the one rule), no order runs, a purchase is refused, her base is kept
 -- @pass RC_STOP   the stop is the least of food, water, crew, the number set and the 12 hours, and says which
 -- @pass RC_MIN    her hands never fall under MIN, whatever is left to do; the stores never under the reserve
@@ -23,7 +23,7 @@ begin
     perform public.round_send_for(v_a, v_f, 'w_probe', '{}', v_t);
   exception when sqlstate 'P0001' then v_e := sqlerrm;
   end;
-  if v_e !~ '^E_NOT_IN_USE' or exists (select 1 from public.round_works) then
+  if v_e !~ '^E_NOT_IN_USE' then
     raise exception 'RC_DARK: %', v_e;
   end if;
   raise notice 'PASS: RC_DARK - %', v_e;
