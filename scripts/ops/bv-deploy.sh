@@ -56,7 +56,7 @@ echo "push_rc=$rc head=$head want=$want jobs=$(Q "select count(*) filter (where 
 g=$(gate); echo "GATE after (the one after-check): $(gline "$g") ok=$(echo "$g" | grep -o '"gate_ok": *[a-z]*' | grep -o '[a-z]*$')"
 echo "gate after: $(gline "$g")" >> $LOG
 cd ~/dev/byeharu-voyage && git worktree remove --force ~/dev/bv-deploy
-if [ "$rc" = 0 ] && [ "$head" = "$want" ]; then gh pr merge $PR --squash 2>&1 | tail -1; gh pr merge $PR --squash --auto >/dev/null 2>&1; sleep 5; gh pr view $PR --json state --jq '"merged: "+.state'; else echo "NOT MERGING: push failed or head != $want"; exit 2; fi
+if [ "$rc" = 0 ] && [ "$head" = "$want" ]; then gh pr merge $PR --squash --body "Deployed with bv-deploy.sh (PR #$PR)." 2>&1 | tail -1; gh pr merge $PR --squash --auto --body "Deployed with bv-deploy.sh (PR #$PR)." >/dev/null 2>&1; sleep 5; gh pr view $PR --json state --jq '"merged: "+.state'; else echo "NOT MERGING: push failed or head != $want"; exit 2; fi
 # AFTER THE MERGE, MAIN'S OWN NET (2026-10-25: 0218 merged green on its scoped PR run and turned main red on
 # desk.plan; the PR run is not main's full suite). Wait for main's Acceptance on the merge commit and say it.
 sha=$(gh pr view $PR --json mergeCommit --jq .mergeCommit.oid 2>/dev/null)
