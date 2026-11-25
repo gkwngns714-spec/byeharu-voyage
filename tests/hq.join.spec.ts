@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
+import { readdirSync } from 'node:fs'
 import { ready, reachable } from './appReady.fixture'
 import { corpWorld } from './corpWorld.fixture'
 import { serveWorldImage } from './worldImage.fixture'
@@ -13,8 +14,10 @@ import { serveWorldImage } from './worldImage.fixture'
 //     (the strip, While away, the workers, the best moves, Storage, the Ledger); there is ONE per-hour figure of the company (the
 //     strip's), ONE While away, and no second Fleets section; checked while she lies idle and again once she works;
 //   * THE BOARD IS READ ONCE: one world.hq_board request by the time the page stands;
-//   * 0492, its switch lit: Assign offers Bring home and Once / Repeat / a count; a run bought away and brought home, once, is taken
-//     by the server and her row says "... · Store";
+//   * ASSIGN IS world.actions' ANSWER (0496), asked once for each opening: a card opens it on the card's own run where the server
+//     offers that run; every run is within her purse; the runs stand in the order of the served coin an hour;
+//   * 0492, its switch lit: Assign offers Once / Repeat / a count, and Bring home WHERE THE SERVER OFFERS IT (never at home: the
+//     server offers none there); a run bought away and brought home, once, is taken by the server and her row says "... · Store";
 //   * 0492, its switch dark: the first press that asks for a count is refused in the server's words, the two choices leave the
 //     sheet, and the plain run then commits.
 
@@ -75,8 +78,8 @@ async function fullShot(page: Page, path: string, size: { width: number; height:
   await page.setViewportSize(size)
 }
 
-async function open(page: Page, size: { width: number; height: number }, home: boolean) {
-  await serveWorldImage(page, await corpWorld({ courses: true, home }))
+async function open(page: Page, size: { width: number; height: number }, home: boolean, near: { near?: boolean; nearLow?: boolean } = {}) {
+  await serveWorldImage(page, await corpWorld({ courses: true, home, ...near }))
   await page.setViewportSize(size)
   await page.goto('city')
   await ready(page)
@@ -85,6 +88,13 @@ async function open(page: Page, size: { width: number; height: number }, home: b
 }
 
 const fleetRow = (page: Page) => page.locator('[data-testid="corp-worker"][data-kind="fleet"]').first()
+
+/** The sheet stands on a run: the card's own where the server offers it, else the first the server offers. */
+async function onARun(sheet: Locator) {
+  await expect(sheet.getByTestId('corp-assign-runs').or(sheet.getByTestId('corp-assign-norun'))).toBeVisible({ timeout: 180_000 })
+  if ((await sheet.getByTestId('corp-assign-quote').count()) === 0) await sheet.getByTestId('corp-assign-run').first().click()
+  await expect(sheet.getByTestId('corp-assign-quote')).toBeVisible({ timeout: 60_000 })
+}
 
 /** Assign's press, and whether the server took it (the sheet closed) or refused it (its words stand). */
 async function pressGo(sheet: Locator): Promise<boolean> {
@@ -99,8 +109,10 @@ for (const size of SIZES) {
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
     // every ask the page makes prints one debug line (src/lib/rpc/backend.ts): the board's are counted
     let boardAsks = 0
+    let actionAsks = 0
     page.on('console', (m) => {
       if (m.type() === 'debug' && m.text().includes('world.hq_board(')) boardAsks++
+      if (m.type() === 'debug' && m.text().includes('world.actions(')) actionAsks++
     })
     await open(page, size, false)
     await expect(page.locator('[data-testid="hq-moves"] [data-testid="hq-move"]').first()).toBeVisible({ timeout: 180_000 })
@@ -130,11 +142,14 @@ for (const size of SIZES) {
     const card = page.locator('[data-testid="hq-moves"] [data-testid="hq-move"][data-kind="trade"][data-act="cmd.issue_lines"]')
     const cards = await card.count()
     let assigned = false
+    let opened = 0
     for (let i = 0; i < cards && !assigned; i++) {
       await card.nth(i).click()
+      opened++
       const sheet = page.getByTestId('hq-sheet-assign')
       await expect(sheet).toBeVisible({ timeout: 60_000 })
-      await expect(sheet.getByTestId('corp-assign-quote')).toBeVisible({ timeout: 120_000 })
+      await onARun(sheet)
+      expect(actionAsks, 'Assign did not ask world.actions once for each opening').toBe(opened)
       assigned = await pressGo(sheet)
       if (!assigned) {
         await page.keyboard.press('Escape')
@@ -157,43 +172,56 @@ for (const size of SIZES) {
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
     await open(page, size, true)
     const sheet = page.getByTestId('hq-sheet-assign')
-    const card = page.locator('[data-testid="hq-moves"] [data-testid="hq-move"][data-kind="trade"][data-act="cmd.issue_lines"]')
-    await expect(card.first()).toBeVisible({ timeout: 180_000 })
-    const cards = await card.count()
+    // AT HOME the server offers no Bring home (there is nothing to bring home from home), so the sheet offers none; Once is offered
+    const row0 = fleetRow(page)
+    await row0.click()
+    await expect(sheet.getByTestId('corp-assign-run').first()).toBeVisible({ timeout: 180_000 })
+    await expect(sheet.getByRole('tab', { name: 'Bring home' }), 'Bring home is offered at home').toHaveCount(0)
+    // she sails ONE run to the nearest sale, the shortest the server offers, and lies there
+    const spans = await sheet.getByTestId('corp-assign-run').evaluateAll((els) => els.map((el) => Number(el.getAttribute('data-interval'))))
+    const order = spans.map((v, i) => ({ v, i })).sort((x, y) => x.v - y.v)
+    let away = false
+    for (const { i } of order) {
+      await sheet.getByTestId('corp-assign-run').nth(i).click()
+      await sheet.getByRole('tab', { name: 'Once' }).click()
+      await expect(sheet.getByTestId('corp-assign-go')).toHaveAttribute('data-times', '1')
+      away = await pressGo(sheet)
+      if (away) break
+    }
+    expect(away, 'no run could be sailed once').toBe(true)
+    await expect(row0).toHaveAttribute('data-action', 'fixed', { timeout: 120_000 })
+    await expect(row0.getByTestId('corp-worker-bar'), 'she did not sail').toHaveAttribute('data-on', 'true', { timeout: 180_000 })
+    await expect(row0, 'she did not arrive at her sale').toHaveAttribute('data-waiting', 'true', { timeout: 600_000 })
 
-    // a card's good, bought at a harbour away from home: from home itself there is nothing to bring home, and the sheet says so
+    // AWAY FROM HOME: her sheet's Change opens Assign, and the server offers Bring home
     let assigned = false
     const said: string[] = []
-    for (let c = 0; c < cards && !assigned; c++) {
-      await card.nth(c).click()
-      await expect(sheet.getByTestId('corp-assign-quote')).toBeVisible({ timeout: 120_000 })
-      await sheet.getByRole('tab', { name: 'Bring home' }).click()
-      await expect(sheet.getByTestId('corp-assign-athome'), 'buying at home and bringing it home is offered').toBeVisible()
-      await expect(sheet.getByTestId('corp-assign-go')).toBeDisabled()
-      const away = sheet.locator('[data-testid="corp-assign-buy"][aria-pressed="false"]')
-      if ((await away.count()) > 0) {
-        await away.first().click()
-        const quote = sheet.locator('[data-testid="corp-assign-quote"][data-end="store"]')
-        await expect(quote, 'no quote for a run brought home').toBeVisible({ timeout: 120_000 })
-        expect(Number(await quote.getAttribute('data-units')), 'the quote has no units').toBeGreaterThan(0)
-        await sheet.getByRole('tab', { name: 'Once' }).click()
-        await expect(sheet.getByTestId('corp-assign-go')).toHaveAttribute('data-end', 'store')
-        await expect(sheet.getByTestId('corp-assign-go')).toHaveAttribute('data-times', '1')
-        expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), 'Assign scrolls sideways').toBe(false)
-        await page.screenshot({ path: `${OUT}/assign-home-${size.width}.png` })
-        assigned = await pressGo(sheet)
-        if (!assigned) {
-          const words = await sheet.getByTestId('corp-assign-refusal').innerText()
-          expect(words, 'the lit door refused Bring home as not open').not.toContain('not open')
-          said.push(words)
-        }
-      }
+    await row0.click()
+    await page.getByTestId('hq-sheet-worker').getByTestId('corp-sheet-change').click()
+    await expect(sheet.getByTestId('corp-assign-run').first()).toBeVisible({ timeout: 180_000 })
+    await sheet.getByRole('tab', { name: 'Bring home' }).click()
+    const loads = sheet.locator('[data-testid="corp-assign-runs"][data-end="store"] [data-testid="corp-assign-run"]')
+    await expect(loads.first(), 'the server offers nothing to bring home away from home').toBeVisible({ timeout: 60_000 })
+    const n = await loads.count()
+    for (let c = 0; c < n && !assigned; c++) {
+      await loads.nth(c).click()
+      const quote = sheet.locator('[data-testid="corp-assign-quote"][data-end="store"]')
+      await expect(quote, 'no quote for a run brought home').toBeVisible({ timeout: 60_000 })
+      expect(Number(await quote.getAttribute('data-units')), 'the quote has no units').toBeGreaterThan(0)
+      expect(await quote.getAttribute('data-units'), 'the units of the foot are not the served option\u2019s').toBe(await loads.nth(c).getAttribute('data-units'))
+      await sheet.getByRole('tab', { name: 'Once' }).click()
+      await expect(sheet.getByTestId('corp-assign-go')).toHaveAttribute('data-end', 'store')
+      await expect(sheet.getByTestId('corp-assign-go')).toHaveAttribute('data-times', '1')
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), 'Assign scrolls sideways').toBe(false)
+      if (c === 0) await page.screenshot({ path: `${OUT}/assign-home-${size.width}.png` })
+      assigned = await pressGo(sheet)
       if (!assigned) {
-        await page.keyboard.press('Escape')
-        await expect(sheet).toHaveCount(0)
+        const words = await sheet.getByTestId('corp-assign-refusal').innerText()
+        expect(words, 'the lit door refused Bring home as not open').not.toContain('not open')
+        said.push(words)
       }
     }
-    expect(assigned, `no card's good could be bought away and brought home: ${said.join(' | ')}`).toBe(true)
+    expect(assigned, `nothing the server offered could be brought home: ${said.join(' | ')}`).toBe(true)
     const row = fleetRow(page)
     await expect(row).toHaveAttribute('data-action', 'fixed', { timeout: 120_000 })
     await expect(row.getByTestId('corp-worker-action')).toHaveText(/.+ · .+ → .+ · Store$/)
@@ -210,7 +238,7 @@ test("Assign: 0492's switch dark: a count is refused in the server's words, leav
   await expect(card).toBeVisible({ timeout: 180_000 })
   await card.click()
   const sheet = page.getByTestId('hq-sheet-assign')
-  await expect(sheet.getByTestId('corp-assign-quote')).toBeVisible({ timeout: 120_000 })
+  await onARun(sheet)
   await expect(sheet.getByTestId('corp-assign-sea')).toHaveAttribute('data-home-open', 'true')
   await sheet.getByRole('tab', { name: 'Once' }).click()
   await sheet.getByTestId('corp-assign-go').click()
@@ -228,30 +256,148 @@ test("Assign: 0492's switch dark: a count is refused in the server's words, leav
   await expect(fleetRow(page)).toHaveAttribute('data-action', 'fixed', { timeout: 120_000 })
 })
 
-test('Assign: where she lies, a run is quoted for what her purse can buy, never for the bare hold', async ({ page, request, baseURL }) => {
+test('Assign: every run the server offers is within her purse, in the order of the served coin an hour, from one request', async ({ page, request, baseURL }) => {
   test.setTimeout(900_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+  let actionAsks = 0
+  page.on('console', (m) => {
+    if (m.type() === 'debug' && m.text().includes('world.actions(')) actionAsks++
+  })
   await open(page, SIZES[0], false)
   const purse = Number((await page.getByTestId('purse').innerText()).replace(/[^0-9]/g, ''))
   expect(purse, 'no purse on the top bar').toBeGreaterThan(0)
-  // from her row (no card's units): the sheet asks the server what she can buy (world.buy_capacity) and quotes that
+  // from her row: the sheet draws what world.actions served, and asks nothing else of the market
   await fleetRow(page).click()
   const sheet = page.getByTestId('hq-sheet-assign')
-  await expect(sheet.getByTestId('corp-assign-good').first()).toBeVisible({ timeout: 120_000 })
-  const goods = await sheet.getByTestId('corp-assign-good').count()
-  let quoted = 0
-  for (let g = 0; g < goods; g++) {
-    await sheet.getByTestId('corp-assign-good').nth(g).click()
-    await expect(sheet.getByTestId('corp-assign-sales').or(sheet.getByTestId('corp-assign-nosale')).or(sheet.getByTestId('corp-assign-nobuy'))).toBeVisible({ timeout: 120_000 })
-    if ((await sheet.getByTestId('corp-assign-sale').count()) === 0) continue
-    await sheet.getByTestId('corp-assign-sale').first().click()
+  const runs = sheet.getByTestId('corp-assign-run')
+  await expect(runs.first()).toBeVisible({ timeout: 180_000 })
+  const n = await runs.count()
+  const rates: number[] = []
+  for (let g = 0; g < n; g++) {
+    await runs.nth(g).click()
     const quote = sheet.getByTestId('corp-assign-quote')
-    await expect(quote).toBeVisible()
+    await expect(quote).toHaveAttribute('data-id', (await runs.nth(g).getAttribute('data-id'))!)
     const cost = Number(await quote.getAttribute('data-cost'))
-    expect(Number(await quote.getAttribute('data-units')), `good ${g}: a quote for no units`).toBeGreaterThan(0)
-    expect(cost, `good ${g}: the run is quoted at ${cost}, more than her purse of ${purse}`).toBeLessThanOrEqual(purse)
-    await expect(quote).toHaveAttribute('data-over', 'false')
-    quoted++
+    expect(Number(await quote.getAttribute('data-units')), `run ${g}: a quote for no units`).toBeGreaterThan(0)
+    expect(cost, `run ${g}: quoted at ${cost}, more than her purse of ${purse}`).toBeLessThanOrEqual(purse)
+    // the coin an hour drawn is the served figure, digit for digit
+    const rate = quote.getByTestId('corp-assign-rate')
+    const servedRate = Number(await rate.getAttribute('data-per-hour'))
+    expect((await rate.innerText()).replace(/[^0-9]/g, ''), `run ${g}: the coin an hour drawn is not the served one`).toBe(String(Math.abs(servedRate)))
+    rates.push(servedRate)
   }
-  expect(quoted, 'no good was quoted').toBeGreaterThan(0)
+  expect(n, 'no run was offered').toBeGreaterThan(0)
+  expect(rates, 'the runs are not in the order of the served coin an hour').toEqual([...rates].sort((x, y) => y - x))
+  await expect(sheet.locator('[data-over]'), 'an over-purse mark is drawn').toHaveCount(0)
+  expect(actionAsks, 'the sheet asked world.actions more than once').toBe(1)
+  await page.screenshot({ path: `${OUT}/assign-runs-${SIZES[0].width}.png` })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 0498 THE NEAR ROUND AND 0497 THE WAIT, where their switches are lit
+// ═══════════════════════════════════════════════════════════════════════════════
+//   * "Trade nearby" is Assign's FIRST choice and the one the sheet opens on; its words are the served base's ("Trade near Lisbon");
+//     no rate is drawn (the server serves none); one world.actions request; assigned, her row says it and she sails;
+//   * a job that waits for a price is NOT shown as stopped: her row says "Prices low" with the clock to the server's next ask.
+/** 0498 is in this chain (so in the built image): without it the server serves no near round and no wait, and those two tests do not run. */
+const HAS_NEAR = readdirSync('supabase/migrations').some((f) => /^\d+0498_/.test(f))
+// NOT REGISTERED where they cannot run (no skip: CI's floor counts every registered test; the way tests/korean.paused.ts does it)
+const testNear = (HAS_NEAR ? test : () => undefined) as typeof test
+const testUnless = (HAS_NEAR ? () => undefined : test) as typeof test
+
+testUnless('Assign: where the server serves no near round, Trade nearby is not drawn', async ({ page, request, baseURL }) => {
+  test.setTimeout(900_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+  await open(page, SIZES[0], false)
+  await fleetRow(page).click()
+  const sheet = page.getByTestId('hq-sheet-assign')
+  await expect(sheet.getByTestId('corp-assign-run').first()).toBeVisible({ timeout: 180_000 })
+  await expect(sheet.getByRole('tab', { name: 'Trade nearby' })).toHaveCount(0)
+  await expect(sheet.getByRole('tab').first()).toHaveText('Sea trade')
+  await expect(page.locator('[data-testid="corp-worker"][data-wait]'), 'a row says it waits for a price though the server serves no wait').toHaveCount(0)
+})
+
+test('Assign: a read that took too long says so in plain words, and Try again asks once more', async ({ page, request, baseURL }) => {
+  test.setTimeout(900_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+  let actionAsks = 0
+  page.on('console', (m) => {
+    if (m.type() === 'debug' && m.text().includes('world.actions(')) actionAsks++
+  })
+  await serveWorldImage(page, await corpWorld({ courses: true, slow: true }))
+  await page.setViewportSize(SIZES[0])
+  await page.goto('city')
+  await ready(page)
+  await expect(page.getByTestId('corp-worker-list')).toBeVisible({ timeout: 300_000 })
+  await fleetRow(page).click()
+  const sheet = page.getByTestId('hq-sheet-assign')
+  const slow = sheet.getByTestId('corp-assign-slow')
+  await expect(slow).toBeVisible({ timeout: 180_000 })
+  await expect(slow.getByTestId('corp-assign-closed')).toContainText('slow')
+  expect((await sheet.innerText()).match(/E_[A-Z_]+/g) ?? [], 'a code is printed in Assign').toEqual([])
+  await expect(sheet.getByTestId('corp-assign-run'), 'a shorter list is drawn beside the slow answer').toHaveCount(0)
+  expect(actionAsks).toBe(1)
+  const retry = slow.getByTestId('corp-assign-retry')
+  const box = (await retry.boundingBox())!
+  expect(box.height, 'Try again is under 44 px').toBeGreaterThanOrEqual(43.5)
+  await page.screenshot({ path: `${OUT}/assign-slow-${SIZES[0].width}.png` })
+  await retry.click()
+  await expect(sheet.getByTestId('corp-assign-run').first(), 'Try again did not bring the runs').toBeVisible({ timeout: 180_000 })
+  await expect(slow).toHaveCount(0)
+  expect(actionAsks, 'Try again did not ask world.actions exactly once more').toBe(2)
+})
+
+for (const size of SIZES) {
+  testNear(`Assign @${size.width}: Trade nearby is the first choice; assigned, she works a near round`, async ({ page, request, baseURL }) => {
+    test.setTimeout(900_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+    let actionAsks = 0
+    page.on('console', (m) => {
+      if (m.type() === 'debug' && m.text().includes('world.actions(')) actionAsks++
+    })
+    await open(page, size, false, { near: true })
+    await fleetRow(page).click()
+    const sheet = page.getByTestId('hq-sheet-assign')
+    const tabs = sheet.getByRole('tab')
+    await expect(tabs.first()).toHaveText('Trade nearby', { timeout: 180_000 })
+    await expect(tabs.first(), 'the sheet does not open on Trade nearby').toHaveAttribute('aria-selected', 'true')
+    const foot = sheet.getByTestId('corp-assign-near')
+    await expect(foot).toContainText('Trade near Lisbon')
+    await expect(foot).toHaveAttribute('data-basis', 'none')
+    await expect(sheet.getByTestId('corp-assign-rate'), 'a rate is drawn for the near round, which serves none').toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), 'Assign scrolls sideways').toBe(false)
+    await page.screenshot({ path: `${OUT}/assign-near-${size.width}.png` })
+    expect(await pressGo(sheet), 'the server refused the near round it offered').toBe(true)
+    expect(actionAsks, 'Assign asked world.actions more than once').toBe(1)
+    const row = fleetRow(page)
+    await expect(row).toHaveAttribute('data-action', 'near', { timeout: 120_000 })
+    await expect(row.getByTestId('corp-worker-action')).toHaveText('Trade near Lisbon')
+    await expect(row.getByTestId('corp-worker-bar'), 'she did not sail on her round').toHaveAttribute('data-on', 'true', { timeout: 180_000 })
+    await expect(row.locator('[data-testid="corp-worker-rate"]'), 'a rate is drawn where none is served').toHaveCount(0)
+    await page.getByTestId('corp-workers').scrollIntoViewIfNeeded()
+    await page.screenshot({ path: `${OUT}/near-working-${size.width}.png` })
+  })
+
+  testNear(`HQ @${size.width}: a job that waits for a price says "Prices low" with its retry clock, and is not stopped`, async ({ page, request, baseURL }) => {
+    test.setTimeout(900_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+    await open(page, size, false, { near: true, nearLow: true })
+    await fleetRow(page).click()
+    const sheet = page.getByTestId('hq-sheet-assign')
+    await expect(sheet.getByTestId('corp-assign-near')).toBeVisible({ timeout: 180_000 })
+    expect(await pressGo(sheet), 'the server refused the near round it offered').toBe(true)
+    const row = fleetRow(page)
+    await expect(row, 'her row does not say she waits for a price').toHaveAttribute('data-wait', 'low', { timeout: 180_000 })
+    await expect(row, 'a waiting job is drawn as stopped').toHaveAttribute('data-state', 'working')
+    await expect(row.getByTestId('corp-worker-state')).toHaveText('Prices low')
+    const retry = row.getByTestId('corp-worker-retry')
+    await expect(retry, 'no clock to the next ask').toBeVisible()
+    const c0 = await retry.innerText()
+    expect(c0, 'the retry clock is empty').toMatch(/\d/)
+    await expect.poll(async () => retry.innerText(), { timeout: 30_000, message: 'the retry clock does not move' }).not.toBe(c0)
+    await expect(row.getByTestId('corp-worker-bar')).toHaveAttribute('data-on', 'false')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), 'HQ scrolls sideways').toBe(false)
+    await page.getByTestId('corp-workers').scrollIntoViewIfNeeded()
+    await page.screenshot({ path: `${OUT}/prices-low-${size.width}.png` })
+  })
+}

@@ -11,7 +11,7 @@ import { sortWorkers, useWorkers, type WorkerRow as Row } from './workerRows'
 
 // THE ONE WORKER LIST (docs/design/hq-corp-2026-11-24.md A2, C1; slice H1; the owner, 2026-11-24: *"it is like madevor's rs3 jagex game
 // idle game, but instead of doing with only 1 player, i do it with multiple"*): every worker of hers on one screen, one row each, each
-// on one action with its bar; the idle ones first, with Assign.
+// on one action with its bar and her served coin and XP an hour (0496: world.workers(), workerRows.ts); the idle ones first, with Assign.
 // THE ORDER IS SET WHEN THE PAGE OPENS (idle, then stopped, then working) and never under the pointer: a worker who changes state
 // keeps her place, and a new one joins at the foot. The list waits for its reads, so it is ordered once, on what is true.
 // 0499: a worker whose job stopped or waits on a code that one press mends wears that press (WorkerFix.tsx): Repair, Assign, Storage.
