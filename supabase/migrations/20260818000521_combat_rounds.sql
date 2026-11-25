@@ -432,7 +432,7 @@ $h$);
       v_seq := jsonb_build_object(
         'hull', public.round_sequence(v_fl, '{"most": 72, "why": "cap", "crew0": 100, "min": 10}', '[{"l": 0.05, "w": true, "b": false}]', '{"hull": 70}', now()),
         'beaten', public.round_sequence(v_fl, '{"most": 72, "why": "cap", "crew0": 100, "min": 10}', '[{"l": 0.16, "w": false, "b": true}]', '{}', now()),
-        'crew', public.round_sequence(v_fl, '{"most": 72, "why": "cap", "crew0": 100, "min": 92}', '[{"l": 0.02, "w": true, "b": false}]', '{"hull": 10}', now()),
+        'crew', public.round_sequence(v_fl, '{"most": 72, "why": "cap", "crew0": 100, "min": 92}', '[{"l": 0.1, "w": true, "b": false}]', '{"hull": 10}', now()),
         'cap', public.round_sequence(v_fl, '{"most": 5, "why": "food", "crew0": 100, "min": 10}', '[{"l": 0.0, "w": true, "b": false}]', '{}', now()));
       update public.seas q set piracy_index = 0 where q.id = v_sea;
       begin
