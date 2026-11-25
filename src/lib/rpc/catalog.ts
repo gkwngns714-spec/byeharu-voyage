@@ -469,6 +469,19 @@ const TABLE = {
   // Reads; no switch of their own. world.actions prices (the server's quotes): asked when the Assign sheet opens, never on a timer.
   worldWorkers: { schema: 'world', fn: 'workers', args: [] },
   worldActions: { schema: 'world', fn: 'actions', args: [{ name: 'p_worker', type: 'text' }] },
+  // 0519 ROUNDS (dark: {on: false} / E_NOT_IN_USE): her fleets' runs and, for a fleet named, the works; and its two doors
+  worldRounds: { schema: 'world', fn: 'rounds', args: [{ name: 'p_fleet', type: 'uuid' }] },
+  cmdRoundSend: {
+    schema: 'cmd',
+    fn: 'round_send',
+    mutates: true,
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_work', type: 'text' },
+      { name: 'p_stop', type: 'jsonb' },
+    ],
+  },
+  cmdRoundHome: { schema: 'cmd', fn: 'round_home', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }] },
   // 0483 — COURIER CONTRACTS (dark: the doors E_NOT_IN_USE, the read {on: false})
   worldCourierContracts: { schema: 'world', fn: 'courier_contracts', args: [] },
   cmdTakeContract: {

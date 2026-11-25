@@ -1037,7 +1037,7 @@ export interface HaggleAttempt {
 
 // ── world.fleets() ─────────────────────────────────────────────────────────────────────────────
 
-export type FleetStatus = 'DOCKED' | 'ANCHORED' | 'SAILING' | 'REPAIRING' | 'ADRIFT' | 'UNABLE_TO_SAIL' | 'IN_BATTLE'
+export type FleetStatus = 'DOCKED' | 'ANCHORED' | 'SAILING' | 'REPAIRING' | 'ADRIFT' | 'UNABLE_TO_SAIL' | 'IN_BATTLE' | 'ROUNDS'
 
 /** 0074 — one fitting mounted on a hull. It has LEFT the player's store at the port to be here. */
 export interface MountedFitting {
@@ -3658,7 +3658,7 @@ export type CourierContractsView =
     }
 
 /** 0481: a standing fleet job's kind: repeat her best run, a fixed route, carry the Land's output to the yard. */
-export type FleetJobKind = 'best' | 'fixed' | 'land'
+export type FleetJobKind = 'best' | 'fixed' | 'land' | 'round'
 
 /** 0481: a job's settings as served (each kind its own): a fixed route's good and harbours, the Land haul's yard and good. */
 export interface FleetJobParams {
@@ -3675,6 +3675,54 @@ export interface FleetJobParams {
   /** 0492: the runs still to start, as served (counted down from `times`). */
   left?: number | null
 }
+
+/** 0518: the stop rule a run is sent with: the least hands, the days of stores kept, the rounds. */
+export interface RoundStop {
+  crew?: number
+  days?: number
+  rounds?: number
+}
+
+/** 0519: what a Send would freeze: the cost of one round (hands a fraction, food and water in tuns) and the most rounds, and what stops them. */
+export interface RoundTerms {
+  seconds: number
+  crew0: number
+  crew: number
+  food: number
+  water: number
+  min: number
+  days: number
+  most: number
+  why: 'food' | 'water' | 'crew' | 'rounds' | 'cap'
+  level: number
+}
+
+/** 0519: one fleet's run as served (world.rounds). No odds are served. */
+export interface RoundRun {
+  fleet: string
+  work: string
+  kind: 'combat' | 'sea'
+  word: string
+  sea: string
+  state: 'out' | 'home'
+  sent_at: string
+  stop_at: string
+  ended: string | null
+  rounds: number
+  most: number
+  why: string
+  next_at: string | null
+  seconds: number
+  cost: { food: number; water: number; crew: number }
+  stop: RoundStop
+  carry: Record<string, unknown>
+  log: { r: number; at: string; crew: number }[]
+}
+
+export type RoundsView =
+  | { on: false }
+  | { on: true; company: false }
+  | { on: true; company: true; now: string; runs: RoundRun[]; works: { work: string; kind: 'combat' | 'sea'; word: string; skill: string; level: number; open: boolean; terms: RoundTerms | null }[] }
 
 /** 0481: what a job did last: a run it started (its note), a wait for nothing to do, or the code it stopped on. */
 export interface FleetJobLast {
