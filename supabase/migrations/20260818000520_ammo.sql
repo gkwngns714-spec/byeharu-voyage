@@ -5,7 +5,7 @@
 -- AMMO IS TWO GOODS IN THE HOLD: Gunpowder and Shot and Ball. A round of a work that shoots (round_works.ammo) spends `ammo` units of EACH for
 --   every 100 points of attack her hulls have (public.round_ammo_need); what is aboard is one more bound on the most rounds (public.round_terms:
 --   `ammo`), so a run never starts a round it cannot shoot. Only rounds spend it: a raid and a battle of today spend none (the owner's default).
--- 0.2 a round a 100 attack, about 175 coin at the goods' base values (a design figure of 20 would cost 17,000): data on the work's row.
+-- 0.01 a round a 100 attack, about 9 coin at the goods' base values (tuned 2026-11-25, docs/dev-log/2026-11-25-rounds-balance.md): data on the work's row.
 -- A job of rounds may carry `ammo` (units of each to hold): at her base it BUYS the two, where the quay sells them and as far as she can.
 -- NOT CHANGED: prices, the quay, any fight. ROWS: none. -- budget: none. -- retention: none (no table).
 -- LOCKS: ALTER TABLE round_works (a column), CREATE FUNCTION x3, CREATE OR REPLACE x5 by hunks. BUDGET: 60 s, 5 s; fails above 30 s.
