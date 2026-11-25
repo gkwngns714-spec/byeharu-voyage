@@ -1,4 +1,4 @@
-# 2026-11-25: `best-sales-fast`: 0504 (PLACEHOLDER number; a repair, nothing dark), stacked on `assign-fast` (0503)
+# 2026-11-25: `best-sales-fast`: 0536 (PLACEHOLDER number; a repair, nothing dark), stacked on batch 2
 
 Asked: world.best_sales at least FOUR times faster, byte-identical. **Delivered: 1.25 to 1.4 times. Four times is not reached.**
 
@@ -23,9 +23,9 @@ About 37 ms of what is left is `power()` (4,500 price steps at 8 us in WASM; nat
 | lit, 3,000,000, the largest hull | 280 -> 224 | 628 -> 548 |
 | lit, 5,000, two hulls | 201 -> 142 | 353 -> 246 |
 | lit, 3,000,000, two hulls, cargo aboard | 291 -> 231 | 670 -> 584 |
-| dark, cargo aboard | @E |
+| dark, cargo aboard | 162 -> 121 | 341 -> 223 |
 
-(The largest-hull worlds are quotes' price steps, which 0504 does not touch.)
+(The largest-hull worlds are quotes' price steps, which 0536 does not touch.)
 
 ## Why not four times
 
@@ -50,3 +50,9 @@ About 37 ms of what is left is `power()` (4,500 price steps at 8 us in WASM; nat
 ## Prod files (not run)
 
 `scripts/ops/harness/best-sales-fast/plans.sql` (statistics, indexes, settings, catalog only) and `explain.sql` (EXPLAIN without ANALYZE).
+
+## Checks
+
+0536's self-assert: 14 of 15 perturbed worlds (the other is the known founding refusal). The 254-harbour sweeps ran the same bodies by hand on 0503's
+chain, before batch 2 was merged in. Proofs 07, 101, 105, 113, 134, 157, 162, 165, 175, 177, 178, 182-188, 194, 200, 62, 241 green. 190 and 191 pinned the
+text of `stores_need_days`, `best_sales` and `board_sell_memo`: each puts that text back first (amended here). Not run: `vite build`, the browser specs, PostgreSQL 17.

@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════════════════════════════
--- 0504 - THE BEST SALES, FASTER  (a repair; no switch, no knob, no table; not one answer moves)
+-- 0536 - THE BEST SALES, FASTER  (a repair; no switch, no knob, no table; not one answer moves)
 -- ════════════════════════════════════════════════════════════════════════════════════════════════════
 -- THE LEAD, 2026-11-25: world.best_sales is 2.7 s on prod at Lisbon (Assign, Trade, HQ and the job tick all wait on it). Profiled locally with
 --   prod's switches lit (docs/dev-log/2026-11-25-best-sales-fast.md). What repeated:
@@ -22,8 +22,8 @@
 --   days of stores and the price of stores over a grid; a leg's walk over a grid of lengths, with and without the top-up; the passages from six harbours
 --   with her cap, a short cap and none; each the same text. Her whole read is compared with its clock budgets set off (the old and the new both
 --   copied under the session's schema with an hour): the same text. Nothing of the market is judged.
--- news: this file posts its own UPDATE row (public.news_update('0504', ...)).
--- VERSION: 0504, a PLACEHOLDER (after 0503 `assign-fast`).
+-- news: this file posts its own UPDATE row (public.news_update('0536', ...)).
+-- VERSION: 0536, a PLACEHOLDER (stacked on batch 2).
 -- ════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -62,7 +62,7 @@ declare
                                     'world.board_origin(uuid)',
                                     'world.board_passages(uuid,uuid,uuid,numeric)',
                                     'world.board_sell(uuid,uuid,jsonb)'];
-  c_uid    constant uuid := '00000000-0504-4000-8000-00000000bf01';
+  c_uid    constant uuid := '00000000-0536-4000-8000-00000000bf01';
   v_t0        timestamptz := clock_timestamp();
   v_h         record;
   x           record;
@@ -91,11 +91,11 @@ begin
 
   -- ── 0. GUARD ──
   if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname || '.' || p.proname = any (c_new)) then
-    raise exception '0504 refuses: it has been applied once';
+    raise exception '0536 refuses: it has been applied once';
   end if;
   foreach v_q in array c_hunked loop
     if to_regprocedure(v_q) is null then
-      raise exception '0504 refuses: % is not in this world', v_q;
+      raise exception '0536 refuses: % is not in this world', v_q;
     end if;
   end loop;
 
@@ -113,7 +113,7 @@ begin
   foreach v_q in array c_chain loop
     v_def := replace(pg_get_functiondef(v_q::regprocedure), E'\r', '');
     for x in select distinct split_part(u.q, '(', 1) as nm from unnest(c_chain) u(q) loop
-      v_def := replace(v_def, x.nm || '(', 'pg_temp.was_0504_' || split_part(x.nm, '.', 2) || '(');
+      v_def := replace(v_def, x.nm || '(', 'pg_temp.was_0536_' || split_part(x.nm, '.', 2) || '(');
     end loop;
     execute replace(v_def, $q$c_budget  constant interval := interval '2.5 seconds'$q$, $q$c_budget  constant interval := interval '1 hour'$q$);
   end loop;
@@ -277,7 +277,7 @@ end $body$
 
   execute $mk$
 create function world.legs_rank(p_legs jsonb) returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $body$
--- 0504: WHAT A HARBOUR IS RANKED AND FITTED BY, of world.board_legs' rows, each column one array as its text (`k`: the row's place in them),
+-- 0536: WHAT A HARBOUR IS RANKED AND FITTED BY, of world.board_legs' rows, each column one array as its text (`k`: the row's place in them),
 -- so world.board_sell_memo reads them whole and takes the rest of a row only for the rows it keeps. Nothing is worked out. Server only.
 begin
   return (select jsonb_build_object('id', array_agg(l.id order by l.k)::text, 'nm', array_agg(l.nm order by l.k)::text, 'max_leg', array_agg(l.max_leg order by l.k)::text,
@@ -292,8 +292,8 @@ end $body$
   end loop;
 
   -- ── 3. THE HUNKS (each OLD text once in the live body; each reverses) ──
-  create temp table hunks_0504 (fn text, ord int, old text, new text) on commit drop;
-  insert into hunks_0504 values
+  create temp table hunks_0536 (fn text, ord int, old text, new text) on commit drop;
+  insert into hunks_0536 values
   ('public.stores_topup(numeric,numeric,numeric,numeric,numeric,numeric)', 1,
 $h$
 -- 0150: THE top-up of one hull's stores. p_room = her hold less her cargo (what water and food may
@@ -344,7 +344,7 @@ begin
   return next;
 end $h$,
 $h$
--- 0150: THE top-up of one hull's stores (0504: its arithmetic is public.stores_topup_of, moved there whole; the two knobs are read here)
+-- 0150: THE top-up of one hull's stores (0536: its arithmetic is public.stores_topup_of, moved there whole; the two knobs are read here)
 begin
   select t.water_t, t.food_t, t.days into water_t, food_t, days
     from public.stores_topup_of(p_crew, p_water, p_food, p_room, p_days, p_full, public.wc_num('water_per_crew_day'), public.wc_num('food_per_crew_day')) t;
@@ -366,7 +366,7 @@ end
 $h$,
 $h$
 begin
-  -- 0203: THE DAYS OF STORES A PASSAGE OF p_nm AT p_speed ASKS (0504: its arithmetic is voyage.stores_need_days_of, moved there whole)
+  -- 0203: THE DAYS OF STORES A PASSAGE OF p_nm AT p_speed ASKS (0536: its arithmetic is voyage.stores_need_days_of, moved there whole)
   return voyage.stores_need_days_of(p_nm, p_speed, public.wc_num('endurance_margin'));
 end
 $h$),
@@ -384,7 +384,7 @@ begin
 end $h$,
 $h$
 begin
-  -- 0142: THE price of stores (0504: its reads are public.stores_cost_terms, its arithmetic public.stores_cost_of, moved there whole)
+  -- 0142: THE price of stores (0536: its reads are public.stores_cost_terms, its arithmetic public.stores_cost_of, moved there whole)
   return public.stores_cost_of(p_water_t, p_food_t, public.stores_cost_terms(p_player));
 end $h$),
   ('world.trip_leg(jsonb,jsonb,numeric,boolean,numeric)', 1,
@@ -442,7 +442,7 @@ end
 $h$,
 $h$
 -- 0361 / 0454 / 0459: ONE LEG OF A TRIP, AS THE GAME SAILS IT: topped up before it as cmd.do_sail tops her (p_top), her speed as she leaves, the
--- days settled. 0504: the walk is world.trip_leg_of, moved there whole, on her hulls in arrays (world.trip_arrays); here they are unpacked and put back.
+-- days settled. 0536: the walk is world.trip_leg_of, moved there whole, on her hulls in arrays (world.trip_arrays); here they are unpacked and put back.
 declare
   a record;
   x record;
@@ -460,23 +460,23 @@ end
 $h$),
   ('voyage.ship_speed_of(jsonb,numeric)', 1,
 $h$  return round((p_parts ->> 'k')::numeric * (1 - public.wc_num('load_speed_penalty') * v_fill), 4);$h$,
-$h$  return voyage.ship_speed_fill((p_parts ->> 'k')::numeric, v_fill, public.wc_num('load_speed_penalty'));   -- 0504: its arithmetic, moved there$h$),
+$h$  return voyage.ship_speed_fill((p_parts ->> 'k')::numeric, v_fill, public.wc_num('load_speed_penalty'));   -- 0536: its arithmetic, moved there$h$),
   ('world.board_trips(uuid,jsonb,jsonb)', 1,
 $h$  m_h       jsonb[] := '{}';
 $h$,
-$h$  m_w       numeric[] := '{}';       -- 0504: her hulls' casks there, one element a hull (v_hn a way)
+$h$  m_w       numeric[] := '{}';       -- 0536: her hulls' casks there, one element a hull (v_hn a way)
   m_f       numeric[] := '{}';
 $h$),
   ('world.board_trips(uuid,jsonb,jsonb)', 2,
 $h$  v_h       jsonb;
 $h$,
-$h$  -- 0504 (2): the old walk kept its state here
+$h$  -- 0536 (2): the old walk kept its state here
 $h$),
   ('world.board_trips(uuid,jsonb,jsonb)', 3,
 $h$  ti        int;
 $h$,
 $h$  ti        int;
-  -- 0504: her hulls in arrays, the knobs and her house's price of stores read once, so a leg is arithmetic alone (world.trip_leg_of)
+  -- 0536: her hulls in arrays, the knobs and her house's price of stores read once, so a leg is arithmetic alone (world.trip_leg_of)
   v_kn      numeric[] := world.trip_knobs();
   v_sc      numeric[] := public.stores_cost_terms(v_player);
   a         record;                  -- world.trip_arrays of her hulls as she sails from v_origin
@@ -527,13 +527,13 @@ $h$m_w := m_w || v_cw; m_f := m_f || v_cf; $h$),
 $h$  v_w       numeric;
   v_f       numeric;
 $h$,
-$h$  -- 0504 (9): the old walk kept its state here
+$h$  -- 0536 (9): the old walk kept its state here
 $h$),
   ('voyage.reach_passage(uuid,uuid,uuid,numeric)', 1,
 $h$  v_shut  boolean := false;   -- 0231: the cap left a harbour unreached
 $h$,
 $h$  v_shut  boolean := false;   -- 0231: the cap left a harbour unreached
-  -- 0504: THE OPEN LEGS, KEPT AS A LIST: only a leg no longer than the search's limit is asked of the seas and looked at again (v_at: their
+  -- 0536: THE OPEN LEGS, KEPT AS A LIST: only a leg no longer than the search's limit is asked of the seas and looked at again (v_at: their
   -- places in the matrix, row by row; e_j, e_w: the open ones' ends and miles; e_s: where a harbour's begin), and the next harbour is looked
   -- for among those reached and not yet settled (v_f). The same legs in the same order, the same choice on a tie: the same passages
   v_lim   float8;
@@ -549,7 +549,7 @@ $h$),
   ('voyage.reach_passage(uuid,uuid,uuid,numeric)', 2,
 $h$  -- 0216: THE SEA, ONCE A CALL.$h$,
 $h$  v_lim := v_reach;
-  loop   -- 0504: twice at most: within her cap, and (0231) within her navigation when the cap left a harbour unreached
+  loop   -- 0536: twice at most: within her cap, and (0231) within her navigation when the cap left a harbour unreached
   if v_lim is null then
     select array_agg(x.o::int order by x.o), array_agg(x.w order by x.o) into v_at, v_aw from unnest(d) with ordinality x(w, o) where x.w is not null;
   else
@@ -660,7 +660,7 @@ $h$        v_shut := true;
     end loop;
   end if;
   exit when not v_shut;
-  v_lim := v_nav;   -- 0504: once more, the legs within her navigation
+  v_lim := v_nav;   -- 0536: once more, the legs within her navigation
   ok := null;
   end loop;
 $h$),
@@ -728,7 +728,7 @@ $h$  v_taxon   boolean := public.city_treasury_on();
 begin
 $h$,
 $h$  v_taxon   boolean := public.city_treasury_on();
-  v_rank    jsonb := p_ctx->'rank';   -- 0504: the legs' figures a harbour is ranked by (world.legs_rank), when the caller has them
+  v_rank    jsonb := p_ctx->'rank';   -- 0536: the legs' figures a harbour is ranked by (world.legs_rank), when the caller has them
 begin
 $h$),
   ('world.board_sell_memo(uuid,uuid,jsonb,jsonb)', 2,
@@ -746,7 +746,7 @@ $h$           l.nm, l.stops, l.direct_nm, l.max_leg, l.shut_leg,
            l.t_sea, l.t_sup, l.t_stop, l.t_pre, l.t_post,   -- 0361: the trip there, as the game will charge it (world.board_legs)
            l.t_sail, l.t_days, l.t_arrive   -- 0459: and its time as walked (world.board_trips)
 $h$,
-$h$           l.nm, l.max_leg, l.shut_leg, l.sn_fits, l.sn_hold, l.k   -- 0504: what a harbour is ranked and fitted by; `ranked` reads the rest of its leg
+$h$           l.nm, l.max_leg, l.shut_leg, l.sn_fits, l.sn_hold, l.k   -- 0536: what a harbour is ranked and fitted by; `ranked` reads the rest of its leg
 $h$),
   ('world.board_sell_memo(uuid,uuid,jsonb,jsonb)', 4,
 $h$      join jsonb_to_recordset(v_legs) l(id uuid, nm numeric, stops text[], direct_nm numeric, max_leg numeric, shut_leg numeric,
@@ -768,7 +768,7 @@ $h$      from cand c
 $h$,
 $h$      from cand c
   ), ranked as materialized (
-    -- 0504: the rest of a harbour's leg, read of the rows kept (lean: the priced ones): 0225; 0361: the trip there as the game will charge it
+    -- 0536: the rest of a harbour's leg, read of the rows kept (lean: the priced ones): 0225; 0361: the trip there as the game will charge it
     -- (world.board_legs); 0459: and its time as walked (world.board_trips)
     select r0.*, l.*
       from ranked0 r0
@@ -788,7 +788,7 @@ $h$),
 $h$  v_legs_own jsonb;                 -- 0350: world.board_legs for her cargo, asked once
 $h$,
 $h$  v_legs_own jsonb;                 -- 0350: world.board_legs for her cargo, asked once
-  v_rank_buy jsonb;                 -- 0504: world.legs_rank of the two, asked once
+  v_rank_buy jsonb;                 -- 0536: world.legs_rank of the two, asked once
   v_rank_own jsonb;
 $h$),
   ('world.best_sales(uuid,uuid)', 2,
@@ -812,30 +812,30 @@ $h$        v_legs_buy := world.board_legs(p_fleet, v_ctx || jsonb_build_object('
       v_ctx := v_ctx || jsonb_build_object('legs', v_legs_buy, 'rank', v_rank_buy);
 $h$);
 
-  for v_h in select h.fn from hunks_0504 h group by h.fn order by h.fn loop
+  for v_h in select h.fn from hunks_0536 h group by h.fn order by h.fn loop
     v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'\r', '');
     v_pre := v_def;
-    for x in select * from hunks_0504 h where h.fn = v_h.fn order by h.ord loop
+    for x in select * from hunks_0536 h where h.fn = v_h.fn order by h.ord loop
       v_n := (length(v_def) - length(replace(v_def, x.old, ''))) / length(x.old);
       if v_n <> 1 then
-        raise exception '0504 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', x.ord, x.fn, v_n;
+        raise exception '0536 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', x.ord, x.fn, v_n;
       end if;
       v_def := replace(v_def, x.old, x.new);
     end loop;
     execute v_def;
     v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'\r', '');
-    for x in select * from hunks_0504 h where h.fn = v_h.fn order by h.ord desc loop
+    for x in select * from hunks_0536 h where h.fn = v_h.fn order by h.ord desc loop
       if (length(v_def) - length(replace(v_def, x.new, ''))) / length(x.new) <> 1 then
-        raise exception '0504 self-assert FAIL: hunk % of % is not in the new body once', x.ord, x.fn;
+        raise exception '0536 self-assert FAIL: hunk % of % is not in the new body once', x.ord, x.fn;
       end if;
       v_def := replace(v_def, x.new, x.old);
     end loop;
     if v_def <> v_pre then
-      raise exception '0504 self-assert FAIL: % does not reverse to its pre-image', v_h.fn;
+      raise exception '0536 self-assert FAIL: % does not reverse to its pre-image', v_h.fn;
     end if;
   end loop;
 
-  perform public.news_update('0504', 'Trade, HQ and Assign open sooner', 'Trade, HQ and Assign open sooner');
+  perform public.news_update('0536', 'Trade, HQ and Assign open sooner', 'Trade, HQ and Assign open sooner');
 
   -- ── 4. SELF-ASSERT: the catalog, the grants, the knobs ──
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')) || ':' || coalesce(p.proacl::text, ''), ',' order by p.oid::regprocedure::text))
@@ -843,23 +843,23 @@ $h$);
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
          and n.nspname || '.' || p.proname <> all (c_new)
          and p.oid <> all (array(select u.q::regprocedure::oid from unnest(c_hunked) u(q)))) <> v_fn_before then
-    raise exception '0504 self-assert FAIL: another function moved';
+    raise exception '0536 self-assert FAIL: another function moved';
   end if;
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text, ',' order by p.oid::regprocedure::text))
         from pg_proc p where p.oid = any (array(select u.q::regprocedure::oid from unnest(c_hunked) u(q)))) <> v_meta then
-    raise exception '0504 self-assert FAIL: the grants, volatility, definer, settings or owner of a cut body moved';
+    raise exception '0536 self-assert FAIL: the grants, volatility, definer, settings or owner of a cut body moved';
   end if;
   if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
               where n.nspname || '.' || p.proname = any (c_new)
                 and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('service_role', p.oid, 'execute')))
      or (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname || '.' || p.proname = any (c_new)) <> cardinality(c_new)
      or (select count(*) from public.client_write_grants()) <> 0 then
-    raise exception '0504 self-assert FAIL: a new function is reachable by a client or service_role, or is there twice';
+    raise exception '0536 self-assert FAIL: a new function is reachable by a client or service_role, or is there twice';
   end if;
 
   -- ── 5. THE PROBE, rolled back by a raised sentinel (its own company's rows alone) ──
   begin
-    v_me := public.new_house(c_uid, 'Casa Depressa 0504', 'PRT');
+    v_me := public.new_house(c_uid, 'Casa Depressa 0536', 'PRT');
     select f.id, f.port_id into v_fl, v_lis from public.fleets f where f.player_id = v_me;
     update public.world_config set value = 'true'::jsonb where key in ('fleet_jobs_enabled', 'sea_courses_enabled');
     perform cmd.assume_identity(c_uid);
@@ -870,63 +870,63 @@ $h$);
     if exists (select 1 from unnest(array[0, 0.5, 3, 8, 40]::numeric[]) c(v) cross join unnest(array[0, 1.25, 7.5, 30]::numeric[]) w(v) cross join unnest(array[0, 2.5, 9]::numeric[]) f(v)
                 cross join unnest(array[0, 5, 26, 120]::numeric[]) m(v) cross join unnest(array[null, 0, 3, 40]::numeric[]) d(v)
                 cross join lateral public.stores_topup(c.v, w.v, f.v, m.v, d.v, m.v * 0.8) n
-                cross join lateral pg_temp.was_0504_stores_topup(c.v, w.v, f.v, m.v, d.v, m.v * 0.8) o
+                cross join lateral pg_temp.was_0536_stores_topup(c.v, w.v, f.v, m.v, d.v, m.v * 0.8) o
                 where (n.water_t::text, n.food_t::text, n.days::text) is distinct from (o.water_t::text, o.food_t::text, o.days::text))
        or exists (select 1 from unnest(array[0, 1, 137.4, 1630, 9000]::numeric[]) a(v) cross join unnest(array[0.1, 4.25, 11]::numeric[]) b(v)
-                   where voyage.stores_need_days(a.v, b.v)::text is distinct from pg_temp.was_0504_stores_need_days(a.v, b.v)::text
-                      or public.stores_cost(v_me, a.v / 100, b.v)::text is distinct from pg_temp.was_0504_stores_cost(v_me, a.v / 100, b.v)::text
-                      or public.stores_cost(null, a.v / 100, null)::text is distinct from pg_temp.was_0504_stores_cost(null, a.v / 100, null)::text)
+                   where voyage.stores_need_days(a.v, b.v)::text is distinct from pg_temp.was_0536_stores_need_days(a.v, b.v)::text
+                      or public.stores_cost(v_me, a.v / 100, b.v)::text is distinct from pg_temp.was_0536_stores_cost(v_me, a.v / 100, b.v)::text
+                      or public.stores_cost(null, a.v / 100, null)::text is distinct from pg_temp.was_0536_stores_cost(null, a.v / 100, null)::text)
        or exists (select 1 from jsonb_array_elements(v_s->'hulls') h(e) cross join unnest(array[null, 0, 0.5, 1, 2]::numeric[]) q(v)
-                   where voyage.ship_speed_of(h.e, q.v)::text is distinct from pg_temp.was_0504_ship_speed_of(h.e, q.v)::text) then
-      raise exception '0504 self-assert FAIL: the top-up, the days of stores, their price or a hull''s speed is not what it was';
+                   where voyage.ship_speed_of(h.e, q.v)::text is distinct from pg_temp.was_0536_ship_speed_of(h.e, q.v)::text) then
+      raise exception '0536 self-assert FAIL: the top-up, the days of stores, their price or a hull''s speed is not what it was';
     end if;
     if exists (select 1 from unnest(array[0, 60, 731.2, 1630, 5200]::numeric[]) a(v) cross join (values (true, null::numeric), (false, null), (false, 3), (true, 2)) m(t, s)
-                cross join lateral world.trip_leg(v_s, v_hl, a.v, m.t, m.s) n cross join lateral pg_temp.was_0504_trip_leg(v_s, v_hl, a.v, m.t, m.s) o
+                cross join lateral world.trip_leg(v_s, v_hl, a.v, m.t, m.s) n cross join lateral pg_temp.was_0536_trip_leg(v_s, v_hl, a.v, m.t, m.s) o
                 where to_jsonb(n)::text is distinct from to_jsonb(o)::text) then
-      raise exception '0504 self-assert FAIL: a leg is not walked as it was';
+      raise exception '0536 self-assert FAIL: a leg is not walked as it was';
     end if;
     -- the passages
     for x in select p.id, p.code from (select p0.id, p0.code, row_number() over (order by p0.code) as i from public.ports p0 where p0.kind = 'HARBOUR') p where p.i % 50 = 9 or p.id = v_lis loop
       foreach v_q in array array['700', '1900', ''] loop
         select jsonb_agg(to_jsonb(r) order by r.code) into v_a from voyage.reach_passage(v_me, v_fl, x.id, nullif(v_q, '')::numeric) r;
-        select jsonb_agg(to_jsonb(r) order by r.code) into v_b from pg_temp.was_0504_reach_passage(v_me, v_fl, x.id, nullif(v_q, '')::numeric) r;
+        select jsonb_agg(to_jsonb(r) order by r.code) into v_b from pg_temp.was_0536_reach_passage(v_me, v_fl, x.id, nullif(v_q, '')::numeric) r;
         if v_a::text is distinct from v_b::text then
-          raise exception '0504 self-assert FAIL: the passages from % (cap %) are not what they were', x.code, v_q;
+          raise exception '0536 self-assert FAIL: the passages from % (cap %) are not what they were', x.code, v_q;
         end if;
       end loop;
     end loop;
     -- her whole read, its clock budget an hour on both sides
-    v_def := replace(replace(pg_get_functiondef('world.best_sales(uuid,uuid)'::regprocedure), E'\r', ''), 'world.best_sales(', 'pg_temp.now_0504_best_sales(');
+    v_def := replace(replace(pg_get_functiondef('world.best_sales(uuid,uuid)'::regprocedure), E'\r', ''), 'world.best_sales(', 'pg_temp.now_0536_best_sales(');
     execute replace(v_def, $q$c_budget  constant interval := interval '2.5 seconds'$q$, $q$c_budget  constant interval := interval '1 hour'$q$);
     v_c := clock_timestamp();
-    v_a := pg_temp.was_0504_best_sales(v_fl, v_lis);
+    v_a := pg_temp.was_0536_best_sales(v_fl, v_lis);
     v_ms0 := round(extract(epoch from clock_timestamp() - v_c) * 1000);
     v_c := clock_timestamp();
-    v_b := pg_temp.now_0504_best_sales(v_fl, v_lis);
+    v_b := pg_temp.now_0536_best_sales(v_fl, v_lis);
     v_ms1 := round(extract(epoch from clock_timestamp() - v_c) * 1000);
     if v_a::text is distinct from v_b::text then
-      raise exception '0504 self-assert FAIL: her best sales are not what they were: % / %', left(v_b::text, 900), left(v_a::text, 900);
+      raise exception '0536 self-assert FAIL: her best sales are not what they were: % / %', left(v_b::text, 900), left(v_a::text, 900);
     end if;
     v_note := format('the arithmetic, the walk, the passages and her read (%s cards) the same to the letter; best_sales %s ms before, %s ms now', jsonb_array_length(v_b->'goods'), v_ms0, v_ms1);
-    raise exception using errcode = 'ZX504', message = 'PROBE_ROLLBACK_0504';
-  exception when sqlstate 'ZX504' then
+    raise exception using errcode = 'ZX536', message = 'PROBE_ROLLBACK_0536';
+  exception when sqlstate 'ZX536' then
     v_lived := true;
   end;
   -- what stood before, kept for the probe, goes
-  for x in select p.oid::regprocedure::text as fn from pg_proc p where p.pronamespace = pg_my_temp_schema() and (p.proname like 'was\_0504\_%' or p.proname like 'now\_0504\_%') loop
+  for x in select p.oid::regprocedure::text as fn from pg_proc p where p.pronamespace = pg_my_temp_schema() and (p.proname like 'was\_0536\_%' or p.proname like 'now\_0536\_%') loop
     execute 'drop function ' || x.fn;
   end loop;
   if not v_lived then
-    raise exception '0504 self-assert FAIL: the probe did not run to its end';
+    raise exception '0536 self-assert FAIL: the probe did not run to its end';
   end if;
-  if exists (select 1 from public.players p where p.company_name = 'Casa Depressa 0504' or p.auth_uid = c_uid)
+  if exists (select 1 from public.players p where p.company_name = 'Casa Depressa 0536' or p.auth_uid = c_uid)
      or (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, ''), ',' order by c.key)) from public.world_config c) <> v_cfg_before then
-    raise exception '0504 self-assert FAIL: the probe left something behind, or a knob moved';
+    raise exception '0536 self-assert FAIL: the probe left something behind, or a knob moved';
   end if;
 
   if clock_timestamp() - v_t0 > interval '60 seconds' then
-    raise exception '0504 self-assert FAIL: the file took % (budget 60 s)', clock_timestamp() - v_t0;
+    raise exception '0536 self-assert FAIL: the file took % (budget 60 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0504 self-assert ok: THE BEST SALES, FASTER. % hunks once and reversing; % new functions server only; no other function moved; no knob moved. Probe (rolled back): %. % ms.',
-    (select count(*) from hunks_0504), cardinality(c_new), v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
+  raise notice '0536 self-assert ok: THE BEST SALES, FASTER. % hunks once and reversing; % new functions server only; no other function moved; no knob moved. Probe (rolled back): %. % ms.',
+    (select count(*) from hunks_0536), cardinality(c_new), v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;
