@@ -7,15 +7,17 @@
 --     she lies): {sea, name, base, nm, pirates}. `base` is what cmd.set_fleet_job {work, base} takes. No strength and no odds are served.
 --   world.round_quote(fleet, work, base, stop)   what a Send from that base would cost a round there, and the most rounds (public.round_terms, with `base` in its
 --     stop: one hunk). Asked when she picks a sea or a work. The fights it plays are the Send's own (0521), never served.
+--   THE LOG WHILE SHE IS OUT: a run's card (public.round_run_card, one hunk) lists the rounds that have passed whether or not they are booked yet (public.round_log_of:
+--     the lines the settle will write, from the frozen terms), so the log moves while she works and no read writes.
 -- A read; writes nothing. ROWS: none. -- budget: none. -- retention: none.
--- LOCKS: CREATE FUNCTION x2, CREATE OR REPLACE x3 by hunks. BUDGET: statement_timeout 60 s, lock_timeout 5 s; fails above 30 s.
+-- LOCKS: CREATE FUNCTION x3, CREATE OR REPLACE x4 by hunks. BUDGET: statement_timeout 60 s, lock_timeout 5 s; fails above 30 s.
 -- ROLLBACK (forward, owner only): a migration reversing the hunks.
 -- VERSION: 0534 (stacked on 0524; 0531 is the land's, whose hunks are in other bodies or other lines).
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 do $m$
 declare
-  c_hunked constant text[] := array['public.round_terms(uuid,text,jsonb)', 'world.rounds(uuid)', 'public.client_rpc_entry_points()']::text[];
-  c_new    constant text[] := array['public.round_seas_for(uuid)']::text[];
+  c_hunked constant text[] := array['public.round_terms(uuid,text,jsonb)', 'world.rounds(uuid)', 'public.client_rpc_entry_points()', 'public.round_run_card(uuid)']::text[];
+  c_new    constant text[] := array['public.round_seas_for(uuid)', 'public.round_log_of(uuid,integer)']::text[];
   c_doors  constant text[] := array['world.round_quote(uuid,text,text,jsonb)']::text[];
   c_knobs  constant text[] := array[]::text[];
   c_ua     constant uuid := '00000000-0534-4000-8000-0000000000a1';
@@ -72,6 +74,28 @@ as $body$
 $body$
   $f$;
   execute $f$
+create function public.round_log_of(p_fleet uuid, p_rounds integer)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $body$
+  -- 0534: the last 20 lines of a run with the rounds passed and not booked yet (the settle's own lines, from the frozen terms). Writes nothing.
+  select coalesce(jsonb_agg(z.l order by z.o), '[]'::jsonb)
+    from (select q.l, q.o from public.round_runs r cross join lateral (
+            select e.l, e.o from jsonb_array_elements(r.log) with ordinality e(l, o)
+            union all
+            select jsonb_build_object('r', g, 'at', r.sent_at + make_interval(secs => (g * (r.terms->>'seconds')::numeric)::double precision),
+                                      'crew', (floor((r.terms->>'crew')::numeric * g) - floor((r.terms->>'crew')::numeric * (g - 1)))::int)
+                   || case when r.terms ? 'fight' then jsonb_build_object('crew', r.terms #> array['fight', 'c', (g - 1)::text], 'hull', r.terms #> array['fight', 'l', (g - 1)::text],
+                                                                          'won', r.terms #> array['fight', 'w', (g - 1)::text]) else '{}'::jsonb end, 1000000 + g
+              from generate_series(greatest(r.booked + 1, p_rounds - 19), least(p_rounds, (r.terms->>'most')::int)) g
+             where r.state = 'out') q
+           where r.fleet_id = p_fleet order by q.o desc limit 20) z
+$body$
+  $f$;
+  execute $f$
 create function world.round_quote(p_fleet uuid, p_work text, p_base text, p_stop jsonb default '{}'::jsonb)
 returns jsonb
 language plpgsql
@@ -109,6 +133,11 @@ $h$,
 $h$    -- 0534: in the sea of a named base (world.round_quote), else of the harbour she lies in
     v_x := public.round_fights(p_fleet, coalesce((select h.sea_id from public.ports h where h.code = p_stop->>'base' and h.kind = 'HARBOUR'),
                                                  (select h.sea_id from public.fleets f join public.ports h on h.id = f.port_id where f.id = p_fleet)));
+$h$),
+  ('public.round_run_card(uuid)', 1,
+$h$'log', r.log)
+$h$,
+$h$'log', public.round_log_of(r.fleet_id, (p->>'rounds')::int))   -- 0534: with the rounds not booked yet
 $h$),
   ('world.rounds(uuid)', 1,
 $h$           'works', case when exists (select 1 from public.fleets f where f.id = p_fleet and f.player_id = v_me) then public.round_works_for(v_me, p_fleet) else '[]'::jsonb end);
@@ -173,7 +202,7 @@ $h$);
   -- ── THE PROBE ──
   begin
     declare
-      v_pl uuid; v_fl uuid; d jsonb; a jsonb; q0 jsonb; q1 jsonb; v_sea uuid; v_far jsonb; v_o jsonb;
+      v_pl uuid; v_fl uuid; d jsonb; a jsonb; q0 jsonb; q1 jsonb; v_sea uuid; v_far jsonb; v_o jsonb; v_log jsonb; v_log2 jsonb;
     begin
       v_pl := public.new_house(c_ua, 'Casa da Prova 0534', 'PRT');
       select f.id, h.sea_id into v_fl, v_sea from public.fleets f join public.ports h on h.id = f.port_id where f.player_id = v_pl;
@@ -189,14 +218,18 @@ $h$);
       update public.seas set piracy_index = 0.4 where id = (v_far->>'sea')::uuid;
       q0 := world.round_quote(v_fl, 'pirates', 'LIS', '{"days": 0}');
       q1 := world.round_quote(v_fl, 'pirates', v_far->>'base', '{"days": 0}');
+      perform public.round_send_for(v_pl, v_fl, 'pirates', '{"days": 0, "hull": 10}', now() - interval '25 minutes');
+      v_log := world.rounds(null) #> '{runs,0,log}';
+      perform public.round_settle(v_fl, now());
+      v_log2 := world.rounds(null) #> '{runs,0,log}';
       v_o := world.round_quote(gen_random_uuid(), 'pirates', 'LIS', '{}');
-      raise exception using errcode = 'ZX534', message = jsonb_build_object('dark', d, 'seas', jsonb_array_length(a), 'first', a->0, 'q0', q0, 'q1', q1, 'other', v_o, 'bad', world.round_quote(v_fl, 'pirates', 'LIS', '{"days": "x"}'))::text;
+      raise exception using errcode = 'ZX534', message = jsonb_build_object('dark', d, 'seas', jsonb_array_length(a), 'first', a->0, 'q0', q0, 'q1', q1, 'other', v_o, 'lines', jsonb_array_length(v_log), 'same', v_log = v_log2, 'bad', world.round_quote(v_fl, 'pirates', 'LIS', '{"days": "x"}'))::text;
     end;
   exception when sqlstate 'ZX534' then v_l := sqlerrm::jsonb;
   end;
   if v_l is null or not coalesce(v_l->'dark' = '{"on": false}'::jsonb and (v_l->>'seas')::int >= 2 and (v_l #>> '{first,nm}')::numeric = 0 and v_l #>> '{first,base}' is not null
        and (v_l #>> '{q1,terms,hull}')::numeric > (v_l #>> '{q0,terms,hull}')::numeric and not (v_l #> '{q1,terms}') ?| array['fights', 'fight', 'strength']
-       and v_l #> '{other,terms}' = 'null'::jsonb and v_l #> '{bad,terms}' = 'null'::jsonb, false) then
+       and (v_l->>'lines')::int between 1 and 2 and (v_l->>'same')::boolean and v_l #> '{other,terms}' = 'null'::jsonb and v_l #> '{bad,terms}' = 'null'::jsonb, false) then
     raise exception '0534 self-assert FAIL: the probe: %', v_l;
   end if;
   if exists (select 1 from public.players p where p.company_name = 'Casa da Prova 0534') or public.rounds_on() then
@@ -205,7 +238,7 @@ $h$);
   if clock_timestamp() - v_t0 > interval '30 seconds' then
     raise exception '0534 self-assert FAIL: the file took % (budget 30 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0534 self-assert ok: ROUNDS, BY SEA (dark). Three hunks once and reversing; no other function moved; one function server only, one read for the signed-in company. Probe (rolled back): % seas from Lisbon; a round''s hull % here, % in another sea (%). % ms.',
+  raise notice '0534 self-assert ok: ROUNDS, BY SEA (dark). Four hunks once and reversing; no other function moved; two functions server only, one read for the signed-in company. Probe (rolled back): % seas from Lisbon; a round''s hull % here, % in another sea (%). % ms.',
     v_l->>'seas', v_l #>> '{q0,terms,hull}', v_l #>> '{q1,terms,hull}', v_l #>> '{q1,terms,kind}', round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0534;
   drop table pre_0534;
