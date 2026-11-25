@@ -10,6 +10,7 @@ import { useShellState } from '../../app/shellState'
 import { tabWord } from '../../app/navTabs'
 import { properName, useLocale, useT } from '../../lib/i18n'
 import { RenameCompany } from './RenameCompany'
+import { RestartCompany } from './RestartCompany'
 
 // PROFILE (in Cabin) — docs/UI_DIRECTION.md §6:
 //
@@ -142,6 +143,9 @@ export function ProfileScreen() {
                 />
               )}
             </Card>
+
+            {/* 0509: served only while the owner's switch is on; dark draws nothing */}
+            {player?.restart && <RestartCompany name={player.company_name} card={player.restart} />}
           </>
         }
       />

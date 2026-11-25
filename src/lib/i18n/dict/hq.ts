@@ -5,6 +5,9 @@ import { defineDict } from '../define'
 export const hqDict = defineDict({
   en: {
     rank: 'Rank',
+    cities: 'HQ cities',
+    shown: 'Shown',
+    show: 'Show',
     rankStep: 'Rank {n} / {of}',
     perHour: '{n} / hour',
     rateDay: '24 h, per hour',

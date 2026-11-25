@@ -1741,6 +1741,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-25 with migration 0503 (the owner's specification, docs/design/owner-spec-plan-2026-11-25.md A1): A COMPANY TAKES A NEW NAME. The name
       // alone, no player id: the caller's own company (E_NO_HOUSE otherwise). Landed WITH the face (src/features/profile/RenameCompany.tsx).
       'cmdRenameCompany',
+      // Pin moved deliberately 2026-11-25 with migration 0509 (docs/dev-log/2026-11-25-restart-company.md): THE CALLER'S COMPANY IS CLOSED AND A NEW ONE FOUNDED. Her name typed, a
+      // name, a country; no player id. Dark (E_NOT_IN_USE) until restart_enabled. Landed WITH the face (src/features/profile/RestartCompany.tsx).
+      'cmdRestartCompany',
       // Pin moved deliberately 2026-11-13 with migration 0367 (docs/ARMADA.md; owner row 323): AN ARMADA, two to six of the caller's fleets as one: the read (no arguments), and the
       // doors to form (her fleet ids and a name), disband, send on one order to a port, and that order's dry run (the real order, run and thrown away). None takes a player id:
       // each acts on the caller's own (E_NO_SUCH_FLEET, E_NO_SUCH_ARMADA otherwise). Landed WITH the faces (src/features/fleets/Armadas.tsx, src/features/map/SendArmadaRow.tsx).

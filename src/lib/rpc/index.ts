@@ -167,6 +167,7 @@ import type {
   LandDone,
   FleetRenamed,
   CompanyRenamed,
+  CompanyRestarted,
   FineReceipt,
   TaxSet,
   NationStandings,
@@ -1171,6 +1172,11 @@ export function cmdLandRepeat(on: boolean): Promise<RpcResult<LandDone>> {
  *  first rename is free and a later one is refused in plain words until the owner decides the payment. */
 export function cmdRenameCompany(name: string): Promise<RpcResult<CompanyRenamed>> {
   return call<CompanyRenamed>('cmdRenameCompany', [name])
+}
+
+/** Close your company and found again (0509). `confirm` is your company's name, typed; the new name and country are the server's to judge. */
+export function cmdRestartCompany(confirm: string, name: string, nation: string): Promise<RpcResult<CompanyRestarted>> {
+  return call<CompanyRestarted>('cmdRestartCompany', [confirm, name, nation])
 }
 
 /** Rename a fleet of yours (0354). The name's rules are the server's: 3 to 24 letters, not one you already use. */

@@ -55,6 +55,7 @@ export const historyDict = defineDict({
     shipMoved: '{ship} moved from {from} to {to}.',
     fleetRenamed: '{from} renamed {to}.',
     companyRenamed: 'Company renamed {to}.',
+    companyClosed: '{company} closed.',
     armadaFormed: 'Armada {armada} formed: {fleets}.',
     armadaDisbanded: 'Armada {armada} disbanded.',
     armadaSailed: 'Armada {armada} departed{bound}.',
