@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Card, Icon, KEEP_WORDS_CLASS, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, Skyline, skylineOf, type IconName, type LoadStep } from '../../components/ui'
+import { Card, Icon, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, Skyline, skylineOf, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { ShellFrame } from '../../app/ShellFrame'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
@@ -11,6 +11,7 @@ import { PortProduction } from '../../live/PortProduction'
 import { useCityKinds } from '../../live/useCityKind'
 import { useTownHall } from '../../live/useTownHall'
 import { PortFlag } from '../../live/PortFlag'
+import { HqCitiesPage, HqCityName } from './HqCities'
 import { CityFlag } from '../../live/CityFlag'
 import { portNameOf, portNationOf, useWorld } from '../../live/worldStore'
 import { useWorldBeat } from '../../live/worldStore'
@@ -194,11 +195,16 @@ export function CityScreen() {
   const portByCode = useWorld((s) => s.portByCode)
   const draftFleetId = useCommandDraft((s) => s.fleetId)
 
-  // THE CITY IN HAND: an explicit `?port=`, else the port of the fleet in hand (its docked port,
-  // or where she is bound), else the house's — `housePortCode` is domain/fleet's one answer.
+  // THE CITY HQ SHOWS: an explicit `?port=` (the HQ city chosen, or the Map's "HQ here"), else HER HQ CITY as the server serves it
+  // (0509: `world.player().hq`, slot 1) and never a fleet's place. Only where the server names none (before 0509) the old answer
+  // stands: the port of the fleet in hand (docked, or where she is bound), else the house's (domain/fleet's `housePortCode`).
+  const hqNow = useWorld((s) => s.player?.hq?.at ?? null)
+  // a house read that failed leaves `player` null until the next beat: HQ keeps the city it showed, and does not move by itself
+  const [hqAt, setHqAt] = useState(hqNow)
+  if (hqNow !== null && hqNow !== hqAt) setHqAt(hqNow)
   const explicit = params.get('port')
   const draftPort = fleets.find((f) => f.id === draftFleetId)
-  const code = explicit ?? (draftPort ? fleetPortCode(draftPort) : null) ?? housePortCode(fleets)
+  const code = explicit ?? hqAt ?? (draftPort ? fleetPortCode(draftPort) : null) ?? housePortCode(fleets)
   const port = code ? (portByCode[code] ?? null) : null
 
   const gate = (body: ReactNode) => (
@@ -418,8 +424,11 @@ function CityFrame({
     report: null,
   }
 
+  const [hqList, setHqList] = useState(false)
+
   return (
     <>
+      {hqList && <HqCitiesPage here={port.code} onClose={() => setHqList(false)} />}
       {/* THE PAGE (2026-11-04, owner row 267: *"everything is on left, too packed"* — the HQ takes the pattern Stats set, `Sheet layout="page"`,
           docs/dev-log/2026-11-04-hq-design.md): the city's name for the title, the day or night beside it, then the six places as a row of
           cards across the page, then MAIN | SIDE — MAIN the plan (the market's chart when the market is open), SIDE the tray's column: your purse
@@ -446,9 +455,7 @@ function CityFrame({
             <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5" data-testid="city-header">
               <span className="flex min-w-0 items-center gap-3">
                 <PortFlag code={port.code} size="title" />
-                <span className={KEEP_WORDS_CLASS} data-testid="city-name">
-                  {port.name}
-                </span>
+                <HqCityName port={port} onOpen={() => setHqList(true)} />
               </span>
               {kind && (
                 <span className="whitespace-nowrap text-t-label font-normal text-ink-muted" data-testid="city-kind">

@@ -1,4 +1,4 @@
--- ASSIGN, WHERE ITS TIME GOES (0503). A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
+-- ASSIGN, WHERE ITS TIME GOES (0504). A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
 --   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/assign-fast/split.sql
 -- Run it once before the deploy and once after. ONE run costs about what two Assign sheets cost (5 to 10 s before): not in a full minute's first
 -- ten seconds. For the newest docked, idle company fleet (her identity set for this transaction alone: set_config, local).
@@ -6,8 +6,8 @@
 --   `out_ms` public.job_trip there, the miles alone, one a harbour; `back_ms` the priced trip back, one a harbour; `home_ms` her home and back
 --   (null while she has none); `reach_ms` one voyage.reach_passage from where she lies; `course_ms` 20 courses read; `segments_ms` the same 20
 --   measured by voyage.segments_from_course; `judge_ms` the same 20 judged (public.fleet_job_leg_shut); `run_day_ms` a day of each card.
---   The parts asked alone share nothing with each other, so their sum is above sea_actions_ms once 0503's memo is in.
--- Expect after 0503: sea_actions_ms less best_sales_ms at 60 % of its before or less (locally 0.4 to 0.5), `closed` null, options as before.
+--   The parts asked alone share nothing with each other, so their sum is above sea_actions_ms once 0504's memo is in.
+-- Expect after 0504: sea_actions_ms less best_sales_ms at 60 % of its before or less (locally 0.4 to 0.5), `closed` null, options as before.
 -- Reads: the catalog, players, fleets, ports, orders, port_goods, goods, and STABLE reads. Nothing is written. ROLLBACK: nothing.
 begin transaction read only;
 with who as materialized (

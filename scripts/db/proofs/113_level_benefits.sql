@@ -127,7 +127,8 @@ begin
   select count(*) into v_n from jsonb_array_elements(v_r) e cross join jsonb_array_elements(e -> 'benefits') b where b ->> 'kind' = 'perk';
   -- 0468: a step of a level counted from the record (Trading's unlocks) is listed only while level_unlocks_enabled
   if v_n <> (select count(*) from public.level_perks k join public.level_skills s on s.code = k.skill
-              where s.kept = 'book' or public.wc('level_unlocks_enabled') = 'true'::jsonb)
+              where (s.kept = 'book' or public.wc('level_unlocks_enabled') = 'true'::jsonb)
+                and (s.side <> 'sea' or s.lit_by is null or public.wc(s.lit_by) = 'true'::jsonb))   -- 0506: a level that waits for its switch is not listed
      or exists (select 1 from jsonb_array_elements(v_r) e cross join jsonb_array_elements(e -> 'benefits') b
                  where b ->> 'kind' = 'perk'
                    and not exists (select 1 from public.level_perks k where k.skill = e ->> 'code' and k.perk = b ->> 'perk' and k.level = (b ->> 'level')::int

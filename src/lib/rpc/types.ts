@@ -955,6 +955,30 @@ export interface HaggleOnQuay {
   at_floor: boolean
   /** "the next trade of this good at this port, or the day's end" — the server's own words. */
   spent_on: string
+  /** 0506 — present only while `bargain_total_enabled` is lit: a bargain is then a share of HER TOTAL
+   *  (5 % a win, ten tries a day), not of the spread. Absent: the fields above are the whole rule. */
+  bargain?: HaggleBargain
+}
+
+/** 0506 — `world.haggle_state`'s `bargain` key (`public.bargain_state`). Every figure is the server's. */
+export interface HaggleBargain {
+  /** What a win is a share of: her total for that trade. */
+  of: 'total'
+  /** What one won try adds, and the most ten can add, in per cent of her total. */
+  step_pct: number
+  most_pct: number
+  /** What she holds unspent now, in per cent of her total. */
+  held_pct: number
+  /** The side the day's row is on (one side a good a city a day); null before her first try. */
+  side: 'buy' | 'sell' | null
+  /** The chance of her FIRST try of a day (each later try is half the one before). */
+  first_odds: number
+  /** What her buy and her sale of this good here are multiplied by now (1 = no bargain; the other
+   *  side of a won bargain is charged it back the same day). */
+  buy_factor: number
+  sell_factor: number
+  /** The tries a standing job of this fleet may make a day (0: none, or below Negotiation 8). */
+  job_tries: number
 }
 
 export type HaggleState = HaggleAshore | HaggleOnQuay
@@ -1294,7 +1318,7 @@ export interface QueuedOrder {
   figures: RefusalFigures | null
   /** Verb-shaped result of a completed order (`{qty, good, total, avg_price}` for BUY, …). */
   result: Record<string, unknown> | null
-  /** 0499: when the order ran (a refused one: when it was refused); null while it waits. Absent before 0499. */
+  /** 0500: when the order ran (a refused one: when it was refused); null while it waits. */
   at?: string | null
 }
 
@@ -2019,12 +2043,43 @@ export interface PlayerHouse {
   levels: PlayerLevels
   /** 0143 — when the company may next change its country (`cmd.change_country`), or null: it may now. */
   nation_change_at: string | null
+  /** 0503: how many times the company has taken a new name (`cmd.rename_company`). Absent before 0503. */
+  renames?: number
+  /** 0503: true while her next rename is free (the first is; a later one waits for the owner's decision on payment). Absent before 0503. */
+  rename_free?: boolean
+  /** 0509: her HQ cities (`public.hq_card`). Absent before 0509. */
+  hq?: HqCard
+  /** 0509: the Restart press (`public.restart_card`); null while dark, absent before 0509. */
+  restart?: RestartCard | null
   /** 0241 (owner row 230): what the company owes the cities (dock fees, a SAIL's stores on credit) — absent at 0. */
   owed?: number
   /** 0241: true while a SAIL's stores may run on credit (the economy closed) — absent otherwise. */
   on_credit?: boolean
   /** 0352 — her Reputation (`public.reputation_card`). Absent before 0352. */
   reputation?: ReputationCard
+}
+
+/** 0509 — `public.hq_card`: `at` the first HQ's harbour code (null: none on record), `list` every one in slot order, `next` what the
+ *  next HQ asks (null while dark). */
+export interface HqCard {
+  at: string | null
+  list: { slot: number; port: string; since: string }[]
+  next: { slot: number; total_level: number; ducats: number; reputation: number } | null
+}
+
+/** 0509 — `public.restart_card`. `refusal` null: she may restart now; else why not, in the server's words. `nations`: codes. */
+export interface RestartCard {
+  refusal: { code: string; sentence: string } | null
+  nations: string[]
+}
+
+/** 0509 — `cmd.restart_company`: the new company, and what the closed one left. Refusals: E_NOT_IN_USE, E_CONFIRM, E_NOT_EUROPE,
+ *  E_BAD_NAME, E_NAME_TAKEN, E_RESTART_TODAY, E_IN_BATTLE, E_CONTRACT_OUT, E_NO_HARBOUR, E_BUSY. */
+export interface CompanyRestarted {
+  player_id: string
+  company_name: string
+  nation: string
+  closed: { ducats: number; port: string; debts_paid: number; dividends: number; requests: number; contracts_cancelled: number; contracts_failed: number; fleets: number; ships: number }
 }
 
 /** 0352 — one row of the Reputation book, as the card serves it. `delta` is positive for an earn, negative for a spend. */
@@ -4188,6 +4243,17 @@ export interface ArmadaSailed {
   cost: number
   on_credit: number
   voyages: { fleet_id: string; fleet: string; voyage_id: string; total_nm: number }[]
+}
+
+/** 0503: `cmd.rename_company`. `changed` false: her own name again, nothing written and nothing counted. Refusals: E_BAD_NAME
+ *  (not 3 to 24 letters and digits with single spaces), E_NAME_TAKEN (a country, a place, a trade good or another company, in any
+ *  case), E_RENAME_PAID (her free rename is used; a later one is not available yet). */
+export interface CompanyRenamed {
+  from: string
+  to: string
+  changed: boolean
+  renames: number
+  rename_free: boolean
 }
 
 /** 0354: `cmd.rename_fleet`. `changed` false: the same name again, nothing written. */

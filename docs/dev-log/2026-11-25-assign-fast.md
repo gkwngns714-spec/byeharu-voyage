@@ -1,4 +1,4 @@
-# 2026-11-25: `assign-fast`: 0503 (a repair; nothing dark) and the Assign sheet's quiet retry
+# 2026-11-25: `assign-fast`: 0504 (a repair; nothing dark) and the Assign sheet's quiet retry
 
 Owner's live bug: Assign said "the quotes are slow just now: ask again in a moment" (public.sea_actions_for past its 5 s guard).
 
@@ -17,7 +17,7 @@ a price step is 8 us here, so quotes weigh more in PGlite than on prod.
 | B: 3,000,000 purse, largest hull, jobs wait and near round lit | GUA 1,560 -> 911 (worst after: BUS 933) | 701 -> 456 ms |
 | Colombo, A with jobs wait | 521 -> 417 | |
 
-The part beside best_sales is about 0.4 to 0.5 of what it was (the sweeps ran the same bodies while they stood in 0499; 0503's own assert compares her whole read in 14 worlds). The 800 ms target holds in A and NOT in B's worst (933): what is left there is
+The part beside best_sales is about 0.4 to 0.5 of what it was (the sweeps ran the same bodies while they stood in 0499; 0504's own assert compares her whole read in 14 worlds). The 800 ms target holds in A and NOT in B's worst (933): what is left there is
 world.best_sales (about 500), which this file does not touch. Measured with 0499's dark switches as named.
 
 ## Contention
@@ -40,3 +40,12 @@ E_SLOW is asked again by itself after 2, 5 and 10 s while the sheet stands (its 
 ## Not verified
 
 Prod (nothing was read): `scripts/ops/harness/assign-fast/split.sql` splits the time there; what the crowd at each full minute adds.
+
+## Unanswered is not "nothing pays" (added 2026-11-25 on batch 2, the owner's fleet idle at Kollam)
+
+The plan never read best_sales' `cut`. Now cut with no usable card waits `slow` and is asked at the next tick; cut with one takes the best answered (a cut
+may have hidden a better one). Proof 241, red on the old body (UN_CUT: {nothing}, 15 minutes), green. Best_sales' walk is `order by g.code`, so a cut
+drops the last codes; a plan of {nothing} while `coir` pays needs the cut before coir, so most likely before the first good (her passages ate the
+budget at :00): not observed. The top-up's budget branch leaves a card without `top` (its own sale is whole); `src_cut` is not a clock: the way to the
+buy city is past her stores. Neither makes a "nothing". Moving the tick off :00 without cron: it could sleep to second 15 and commit before its first read (one
+session held 15 s in 120; prod's crowd is 3 to 8 s): not built.
