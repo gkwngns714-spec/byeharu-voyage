@@ -3465,6 +3465,23 @@ export interface HqRate {
   top?: string[]
   /** Running lines first, then one time; in each the largest loss first. */
   lines?: HqRateLine[]
+  /** 0501 (cargo_at_cost_enabled lit; absent dark): her cargo read at cost. The trade line is then her sales less the recorded cost
+   *  of what she sold, and `net_24h + one_time_24h + cargo.net_24h = all_24h`. */
+  cargo?: HqRateCargo
+}
+
+/** `rate.cargo` (0501, `public.cargo_rate_for`): the coin she put into goods in the last 24 hours that is neither sold nor lost. */
+export interface HqRateCargo {
+  /** bought - cost_sold - lost, floored at 0: the goods she bought and still holds, at what she paid. */
+  at_cost: number
+  /** The same figure as the ledger signs it (coin out is negative); positive when she sold or lost goods bought before the window. */
+  net_24h: number
+  bought: number
+  cost_sold: number
+  lost: number
+  /** Lost cargo is recorded from this instant (0501's deploy); `exact` once the whole window lies after it. */
+  exact_since: string
+  exact: boolean
 }
 
 /** `world.hq_board()` (0480). Dark `{on: false}`; lit with no company `{on, company: false}`; lit her board, ranked by the server. */
