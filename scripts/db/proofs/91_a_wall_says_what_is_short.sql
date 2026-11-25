@@ -63,7 +63,7 @@ begin
      or (v_ra -> 'figures' ->> 'title')::int <> 1 or (v_ra -> 'figures' ->> 'wave')::numeric <> 12 or (v_rb -> 'figures' ->> 'wave')::numeric <> 39
      or (select count(*) from jsonb_object_keys(v_ra -> 'figures')) <> 8
      -- 0433: the sentence says what she has and what is needed (cmd.refusal_line)
-     or (v_ra ->> 'sentence') <> format('%s closed. Title 1 / %s. Waves 12 / %s.',
+     or (v_ra ->> 'sentence') <> format('%s closed. Title 1 / %s. Wave resistance 12 / %s.',
                                         v_ra -> 'figures' ->> 'zone_name', v_ra -> 'figures' ->> 'needs_title', v_ra -> 'figures' ->> 'needs_wave') then
     raise exception 'PROOF 91 FAIL: lit, the gate on a course into the ocean: barca % ; nau %', v_ra, v_rb;
   end if;

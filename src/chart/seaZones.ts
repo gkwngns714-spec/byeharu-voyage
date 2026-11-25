@@ -31,6 +31,8 @@ export interface ZoneLabel {
   readonly name: string
   /** Where the name may stand, deepest water first (`zoneAnchors`): it is set at the first one on the glass. */
   readonly at: readonly LatLon[]
+  /** 0514: a second, smaller line (the sea is closed to the fleet in hand); none while the seas ask nothing. */
+  readonly note?: string
   /** The zone the player pressed: always named. */
   readonly selected?: boolean
 }
@@ -264,6 +266,7 @@ export function zoneNameRequests(labels: readonly ZoneLabel[], view: ViewBox): L
       placement: 'centred',
       slackLines: 3,
       sizePx: GLYPH.zoneNameSize,
+      ...(zone.note ? { note: zone.note, noteSizePx: GLYPH.zoneNameSize * 0.85 } : {}),
     })
   }
   return out
