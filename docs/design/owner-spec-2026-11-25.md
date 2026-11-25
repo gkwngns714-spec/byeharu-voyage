@@ -53,6 +53,21 @@ Pasted by the owner in chat, 2026-11-25. It outranks every earlier design docume
 
 Read by the lead (defaults, the owner may reverse): a SUCCESSFUL attempt moves the price 5 %, ten attempts at most, each less likely than the last; a failed one moves nothing. This answers the open question "haggling back?" (yes).
 
+## The owner's answers, 2026-11-25, verbatim
+
+> 1. YES as well as pacific, artic. Start with EUROPE, then AFRICA, THEN USA then BRAZIL, THEN INDIA, THEN ASIA etc - continent wise. 2. Yes to both. riot does not cause losing all cargo, but some. 3. trading 3 is good. Number of fleet you can choose to passive trading. 4. BY TOTAl level, gold, reputation etc. 5. 3-5 times, with daily limits yes. 6. YES. 7. doesnt cost nothing. passive can. 8. no. 9. yes. leave as it is. 10. YES. 11. LATER. 13. 0-3% is okay. 13. YES.
+
+Read by the lead:
+
+1. ORDINARY seas ask a level too, continent by continent: Europe, Africa, USA (North America), Brazil (South America), India, Asia, then the rest; Pacific and Arctic (and far south) also. Replaces the default "only the sealed oceans ask a level".
+2. Food and water take cargo space; a riot loses SOME cargo, never all.
+3. Passive trading opens at Trading 3; the NUMBER of fleets that may trade passively is limited and grows.
+4. A further HQ is opened by total level, gold and Reputation (as crew slots, hq-corp A2.6).
+5. Premium goods pay 3 to 5 times, with a daily limit. 6. "Find architect" is an artifact carried home.
+7 and 13. A failed bargain costs nothing; PASSIVE orders MAY bargain. 12 (written "13. 0-3% is okay"): the buy tax is 0 to 3 %.
+8. Honour does not fall for bad conduct. 9. Fleet room stays as it is. 10. "Sales" is fine. 11. Stories later.
+Not answered, so not done: the one-off payment (A), the rescue of a wrecked company (B), the price of a second rename (C).
+
 ## Read by the lead (defaults, the owner may reverse)
 - "cross the atlantic ocean (left vast sea?)", west from Brazil to Korea, is the **Pacific**; "over Russia near antartica (north)" is the **Arctic**.
 - "find architect" is read as **finding sites and discoveries** (buildings, ruins); to be confirmed.
