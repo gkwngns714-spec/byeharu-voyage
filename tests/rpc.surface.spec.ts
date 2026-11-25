@@ -1768,6 +1768,8 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       'cmdCaptainLand',
       // Pin moved deliberately 2026-11-25 with migration 0529 (dark): the next captain place, and a captain let go (no player id).
       'cmdCaptainPlace', 'cmdCaptainDismiss',
+      // Pin moved deliberately 2026-11-25 with migration 0533 (dark): a captain's upgrade for HONOR BADGES (no player id).
+      'cmdCaptainUpgrade',
       // Pin moved deliberately 2026-10-18 with migration 0163 (docs/SHIPS_AND_SKILLS.md S16): AUGMENT A
       // FITTING with a perk the player chooses, paid in kits. Takes a ship (the caller's own,
       // E_NOT_YOUR_SHIP otherwise), the item, the perk and the rank; no player id. Only docked at a level 3

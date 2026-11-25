@@ -55,3 +55,28 @@ tsc, eslint, `db.budget`. **0508's own self-assert failed once more while the ch
 
 ## Not verified
 As above. E_CAPTAIN_ROOM and E_NOT_ENOUGH_HONOR have no words in the client's dictionary yet (the client slice).
+
+# 0532, 0533 (dark: `land_raids_enabled`, `honor_enabled`), proof 237
+
+## 0532 `land-raids`: the fight, and only the fight
+- `land_foes` (7, data), a party as one hull, the crew cap (10 + 2 a COMBAT level above 1), `land_raid_terms` (16 `tick_fight`s frozen at Send),
+  `land_raid_round` (one of the 16, whole hands, pure in terms, party and round), `land_raid_card` (the mean hands a round; no chance, no result).
+- **The Send, stores, log, gold from the capital and badges are 0531's**: the rounds' tables are keyed by fleet and know `combat` and `sea` alone
+  (0518), so a party cannot be sent on them yet. 0532 is what 0531's Send and settle call. No door, no body cut.
+- Foe figures tuned on the local fight knobs (20 fights each, a captain of the foe's level): 10 hands win Wolves 0.75 and Boar 0.85, lose to
+  Brigands (0.10); 20 hands win Brigands and Bear (1.00), Deserters 0.60, Great beast 0.10; 48 hands win all. **Production's fight knobs were not
+  read**; they decide it. A defeat is the fight's own break-off (15 % of the party's strength). `land_raid_crew_share` 0.15.
+- A Send's 16 fights: 145 ms here. COMBAT is not raised by a raid.
+
+## 0533 `captain-upgrades`
+Four upgrades, five ranks, 350 badges each (10, 30, 60, 100, 150); `cmd.captain_upgrade`; they change `captain_work_perk` alone, which no body at sea
+reads (asserted). Surgeon's hand and the level together can take 80 % of the crew lost (50 + 30), Pathfinder and the level 40 % of the time (25 + 15).
+
+## Restart (0509): nothing to add for 0532 and 0533
+`captain_upgrades` goes with the signing; `land_foes` is data.
+
+## Checked
+Self-asserts 0.1 s; proof 237 6/6, 236 6/6, 235 7/7; perturb 18 worlds over all six files (16 pass, 2 known). tsc, eslint.
+
+## Not verified
+The six files over 0518 and 0519 (`rounds-log`): they cut other bodies but for the registry, on other lines; not run together. `rpc.surface`, `vite build`.

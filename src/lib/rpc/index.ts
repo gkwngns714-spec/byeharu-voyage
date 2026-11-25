@@ -64,6 +64,7 @@ import type {
   CaptainAshore,
   CaptainDismissed,
   CaptainPlaceOpened,
+  CaptainUpgraded,
   CaptainSkillUp,
   TraitsSet,
   PromotedCaptain,
@@ -708,6 +709,11 @@ export function cmdCaptainPlace() {
 /** 0529: let a captain of yours go (ashore, docked, or with a party at home). */
 export function cmdCaptainDismiss(code: string) {
   return call<CaptainDismissed>('cmdCaptainDismiss', [code])
+}
+
+/** 0533: a captain's next rank of an upgrade, for HONOR BADGES. */
+export function cmdCaptainUpgrade(code: string, upgrade: string) {
+  return call<CaptainUpgraded>('cmdCaptainUpgrade', [code, upgrade])
 }
 
 /** 0157 — seat a captain you keep in a cabin of one of your ships (`seat` null: the server's picker),

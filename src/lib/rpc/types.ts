@@ -1395,6 +1395,7 @@ export interface YourCaptain extends CaptainCard {
   can_change: boolean
   /** 0527/0528 (absent while the works are dark): her works, and the land party she leads (null: none). */
   works?: CaptainWork[]
+  upgrades?: CaptainUpgrade[]
   party?: number | null
   levels: CaptainLevel[]
   homesick: { days: number; line: string } | null
@@ -1497,6 +1498,9 @@ export interface CaptainWork {
   time_pct: number
   crew_pct: number
   forage: number | null
+  /** 0533 (absent while the badges are dark): her upgrades' share of what her crew carries and of her party's attack. */
+  carry_pct?: number
+  attack_pct?: number
 }
 
 /** 0529 — the company's captain places (`world.captains().places`, absent while dark). `next`: null past the last place; `open` false: not priced yet, no figure served. */
@@ -1507,6 +1511,27 @@ export interface CaptainPlaces {
     | { place: number; open: false }
     | { place: number; open: true; total_level: number; reputation: number; ducats: number; have: { total_level: number; reputation: number; ducats: number } }
     | null
+}
+
+/** 0533 — one upgrade of one of your captains (`world.captains().upgrades`, absent while the badges are dark): `cost` is the next rank's price in HONOR BADGES, null at the top. */
+export interface CaptainUpgrade {
+  upgrade: string
+  word: string
+  rank: number
+  top: number
+  pct: number
+  cost: number | null
+}
+
+/** 0533 — what cmd.captain_upgrade answers. */
+export interface CaptainUpgraded {
+  officer: string
+  upgrade: string
+  rank: number
+  top: number
+  cost: number
+  honor: number
+  sentence: string
 }
 
 /** 0529 — what cmd.captain_place answers. */
