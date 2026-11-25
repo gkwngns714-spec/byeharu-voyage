@@ -170,6 +170,8 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const [pricesOpen, setPricesOpen] = useState(false)
   const pressPlace = (code: string) => {
     pressCity(code)
+    // one thing over the foot of the glass at a time: a good's panel gives way to the place's prices
+    pickGood(null)
     // with an order's estimate up the press only takes the city in hand, as before: a sheet shut now would open by itself when the estimate closes
     setPricesOpen(orderPick?.fleet !== fleet.id)
   }
@@ -291,7 +293,6 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const status = <TradeStatus fleet={fleet} />
   const board = (
     <TradeBoard
-      strip={wide ? undefined : chips}
       city={city}
       docked={here}
       quay={quay}
@@ -354,10 +355,23 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   // chevron says it; docs/design/visual-overhaul-2026-11-23.md, slice 1). So the Map door carries the city it opens on at every
   // width: alone it would read "Map", the nav's own cell (tests/consistency.spec.ts: two controls never share a label).
   const cargoRow = <SummaryRow title={t('desk.cargo')} onClick={() => setPage('cargo')} data-testid="cargo-open" />
-  const mapRow = <SummaryRow title={t('shell.tab_Map')} figure={mapFigure ?? t('desk.atSea')} onClick={() => setPage('map')} data-testid="trade-map-open" />
+  const mapRow = <SummaryRow title={t('desk.bigMap')} onClick={() => setPage('map')} data-testid="trade-map-open" />
   const ordersRow = <SummaryRow title={t('desk.orders')} figure={formatInt(fleet.queue.length)} onClick={() => setPage('orders')} data-testid="command-queue" />
+  // THE MAP OF PLACES STANDS ON THE FACE (owner, 2026-11-25: "In the trade tab there should be a map"). Its box is fixed, so nothing
+  // under it moves; while the big map's page is open the box stands empty (two charts never draw at once).
+  const faceMap = (
+    <div className="mb-2 h-[260px] lg:h-[max(16rem,calc(100dvh-32rem))]" data-testid="trade-face-map-box">
+      {page !== 'map' && (
+        <TradeMap fleet={fleet} plan={null} pick={null} onClose={() => choose(null)} scrollOnPick={false} city={city} onCity={pressPlace} goTo={goTo} face />
+      )}
+    </div>
+  )
+  const prices = pricesOpen && city && !pickNow && (
+    <CityPrices city={city} docked={here} quay={quay} rows={rows} onTrade={closePage} onClose={() => setPricesOpen(false)} pane={page === null} />
+  )
   const pages = (
     <>
+      {!wide && page === null && prices}
       {page === 'cargo' && (
         <DetailPage title={t('desk.cargo')} figure={cargoFigure} onClose={() => setPage(null)} data-testid="cargo-open-page">
           {cargo}
@@ -376,9 +390,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
             goTo={goTo}
           />
           {/* the place's prices, inside the page so they stand over it; not while an order's estimate is up (its map takes no press) */}
-          {pricesOpen && city && !pickNow && (
-            <CityPrices city={city} docked={here} quay={quay} rows={rows} onTrade={closePage} onClose={() => setPricesOpen(false)} />
-          )}
+          {prices}
         </DetailPage>
       )}
       {page === 'orders' && (
@@ -408,9 +420,12 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
             <>
               {status}
               {events}
+              {faceMap}
+              <div className="mb-2 grid grid-cols-2 gap-2">
+                {cargoRow}
+                {mapRow}
+              </div>
               {chips}
-              {cargoRow}
-              {mapRow}
               {routeRow}
               {ordersRow}
               {/* last: it stands only once her best sales land, so above the doors it moved them on every change of fleet (2026-11-25) */}
@@ -424,7 +439,10 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
               {pages}
             </>
           ),
-          side: panel ? (
+          // a place's prices stand in the right pane, so they cover neither the map nor the list
+          side: prices && page === null ? (
+            <div className="h-full min-h-0">{prices}</div>
+          ) : panel ? (
             <div className="h-full min-h-0" data-testid="here-tray">
               {panel}
             </div>
@@ -455,12 +473,14 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
                   spare. The goods card is 14 px taller since its best sale's city is printed whole, and the cards' pane must
                   hold a whole row of them (TradeBoard.tsx); with the doors on one line the face still fits the glass without
                   scrolling (tests/onepage.spec.ts), with 22 px in hand. */}
+              {faceMap}
+              <div className="min-h-[12.5rem]">{board}</div>
               {events}
-              <div className="mb-2 grid grid-cols-2 gap-2">
+              <div className="my-2 grid grid-cols-2 gap-2">
                 {cargoRow}
                 {mapRow}
               </div>
-              {board}
+              {chips}
             </>
           ),
           main: (

@@ -71,10 +71,13 @@ export function TradeMap({
   city,
   onCity,
   goTo = null,
+  face = false,
 }: {
   fleet: FleetView
   /** Row 231: the last city PRESSED (map, chip strip, cargo list) and a press count — the map glides to it. */
   goTo?: { code: string; n: number } | null
+  /** It stands on the Trade tab's face, not on its page: the map of places only, in a box the face sizes. */
+  face?: boolean
   /** Row 218: the city in hand (ringed, named). */
   city: string | null
   /** Row 218: a harbour pressed on the map. */
@@ -159,6 +162,14 @@ export function TradeMap({
     return out
   }, [planMap, plan, t])
 
+  // ON THE FACE the glass is not 2:1, so it opens on the inhabited band (60 S to 75 N) as tall as the box, her place in the middle:
+  // no empty bands, and half the world at twice the size.
+  const homeLon = portByCode[docked ?? fleet.voyage?.to ?? '']?.lon ?? 0
+  const opening = useCallback(
+    (aspect: number) => ({ minLat: -60, maxLat: 75, minLon: homeLon - 67.5 * aspect, maxLon: homeLon + 67.5 * aspect }),
+    [homeLon],
+  )
+
   const onlyKey = [docked, fleet.voyage?.to ?? null, ...drawing.legs.flatMap((l) => [l.from, l.to]), ...drawing.ends]
     .filter((c): c is string => !!c)
     .filter((c, i, all) => all.indexOf(c) === i)
@@ -182,7 +193,7 @@ export function TradeMap({
   }, [pickKey, scrollOnPick])
 
   return (
-    <section ref={boxRef} className="mb-4 scroll-mt-28" data-testid="trade-map" data-cities={only ? only.join(' ') : '*'}>
+    <section ref={boxRef} className={face ? 'h-full' : 'mb-4 scroll-mt-28'} data-testid={face ? 'trade-face-map' : 'trade-map'} data-cities={only ? only.join(' ') : '*'}>
       <SmallChart
         ports={snapshot?.ports ?? []}
         // PLACES ONLY until an order is pressed (owner 2026-11-25: "showing no NPCs but only locations"): no ship is drawn
@@ -199,7 +210,8 @@ export function TradeMap({
         onPort={planMap ? undefined : onCity}
         goTo={planMap ? null : goTo}
         ariaLabel={t(planMap ? 'desk.routeChart' : pick ? 'desk.mapChart' : 'desk.citiesChart')}
-        className="aspect-[2/1] w-full"
+        opening={face ? opening : undefined}
+        className={face ? 'h-full w-full' : 'aspect-[2/1] w-full'}
       />
       {planMap && plan && <PlanLegs legs={plan.legs} speedKn={fleet.speed_kn} name={name} />}
       {pick && (

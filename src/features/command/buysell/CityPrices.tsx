@@ -20,8 +20,8 @@ import { useT } from '../../../lib/i18n'
 // (domain/market `tradeRows`). So a press asks the server once, exactly as a chip pressed does, and the sheet and the board
 // behind it can never show two prices for one good.
 //
-// WHERE IT STANDS: on a phone the bottom half of the glass (the map stays whole above it); on a wide glass the panel at the
-// right edge. It opens on a press and closes on a press; nothing on the map page moves for it.
+// WHERE IT STANDS: on a phone the bottom half of the glass (the map stays whole above it); on a wide glass the desk's right
+// pane (the big map's page: the panel at the right edge). It opens on a press and closes on a press; nothing on the map page moves for it.
 
 export function CityPrices({
   city,
@@ -30,6 +30,7 @@ export function CityPrices({
   rows,
   onTrade,
   onClose,
+  pane = false,
 }: {
   /** The place pressed (port CODE): the city in hand. */
   city: string
@@ -42,6 +43,8 @@ export function CityPrices({
   /** "Trade here": the map closes on that city's board. */
   onTrade: () => void
   onClose: () => void
+  /** On a wide glass: it stands in the desk's right pane (the face), not at the glass's edge (the big map's page). */
+  pane?: boolean
 }) {
   const t = useT()
   const wide = useWide()
@@ -61,7 +64,7 @@ export function CityPrices({
           <span className="min-w-0">{portNameOf(portByCode, city)}</span>
         </span>
       }
-      mode={wide ? 'side' : 'docked'}
+      mode={wide ? (pane ? 'pane' : 'side') : 'docked'}
       action={
         <Button variant="primary" className="w-full" onClick={onTrade} data-testid="city-prices-trade">
           {t('desk.tradeHere')}

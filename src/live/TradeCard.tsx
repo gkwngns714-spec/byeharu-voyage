@@ -242,10 +242,7 @@ function SaleBlock({
   // a size container (`@container`), so each price's mark stands only where the line has room for it (`PRICE_MARK`)
   const top = '@container flex h-[1.375rem] w-full items-baseline justify-between gap-1'
   // the line holds two lines' height where a sale can land (the Trade board); one where none ever does (the HQ Market)
-  // THREE LINES HELD (2026-11-25, lifted from desk-into-hq): a long city ("Sanlucar de Barrameda") took a line for its flag, one or
-  // two for its name and one for the profit, past the two lines held, and the whole row of cards grew when the sale landed or the
-  // fleet changed (182 against 166 px at 390). The flag now stands IN the name's first line, so a name is at most two lines, and
-  // the block holds three.
+  // THREE LINES HELD (2026-11-25): two for the city and one for the figure, whatever has landed, so a fleet changed moves no card.
   const line = `flex ${canLand ? 'min-h-[3.375rem]' : 'min-h-[1.125rem]'} w-full min-w-0 flex-wrap content-between items-center gap-x-1 text-t-caption tabular-nums`
   // the profit, the time (0351) and the day line stay together, at the right of whichever line they stand on, and WHAT DOES NOT
   // FIT GIVES WAY WHOLE, LAST FIRST: the tail is ONE line high and wraps out of sight (the row gap puts a wrapped part a full
@@ -291,7 +288,7 @@ function SaleBlock({
   const topWords = sale.top
     ? `${t('desk.alsoLoad')} ${properName('good', sale.top.good, goodByCode[sale.top.good]?.name ?? sale.top.good)} ${formatInt(sale.top.units)} ${formatPriceDelta(sale.top.profit)}`
     : null
-  const words = [`${t('desk.bestSale')}: ${sale.pays ? '' : `${t('desk.noGain')} · `}${sale.near === false ? `${t('desk.farTrip')} · ` : ''}${city} ${formatPriceDelta(sale.profit)}`, time, cost, topWords]
+  const words = [`${t('desk.bestSale')}: ${sale.pays ? '' : `${t('desk.noGain')} · `}${sale.near === false ? `${t('desk.farTrip')} · ` : ''}${city} ${formatPriceDelta(sale.profit)}`, money(sale) && t('desk.moneyHaveNeed', money(sale)!), time, cost, topWords]
     .filter(Boolean)
     .join(' · ')
   return (
@@ -312,25 +309,15 @@ function SaleBlock({
         data-spread={sale.spread}
         data-top={sale.top?.good}
       >
-        {/* 0433: the full load is beyond her purse: her purse against what it needs; the sale named is the most she can pay for.
-            NOT RED (2026-11-22 play-test): a sale she can pay for still stands, so this is a fact, not a refusal; while she sails
-            with her coin in cargo it stood red on every card and read as an error. The refusal (no sale she can pay for) is the
-            red line above. */}
-        {money(sale) !== null && (
-          <span className="shrink-0 font-medium text-ink-muted" data-testid="best-sale-money">
-            {t('desk.moneyHaveNeed', money(sale)!)}
+        {/* the flag beside the name, the name on one line or two in a box that holds two: every card is one height, and a one-line
+            name stands level with its flag, not over an empty line */}
+        <span className={`flex min-h-9 w-full min-w-0 items-center gap-1 leading-[1.125rem] ${KEEP_WORDS_CLASS}`} data-testid="best-sale-city">
+          <span className="shrink-0 empty:hidden">
+            <PortFlag code={sale.port} />
           </span>
-        )}
-        {/* 0475: in the first hour, a sale beyond the near trips is marked, not hidden (served `near` false; absent while dark) */}
-        {sale.near === false && (
-          <span className="shrink-0 font-medium text-ink-muted" data-testid="best-sale-far">
-            {t('desk.farTrip')}
+          <span className="min-w-0" data-testid="best-sale-city-name">
+            {city}
           </span>
-        )}
-        {/* the flag and the name stand together; in a card too narrow for both (산타크루스데테네리페 is 130 px, a 158-px card
-            has 142 inside) the name takes the next line whole rather than being cut */}
-        <span className={`max-w-full leading-[1.125rem] [&>*:first-child]:mr-1 [&>*:first-child]:inline-flex [&>*:first-child]:align-top ${KEEP_WORDS_CLASS}`} data-testid="best-sale-city">
-          <PortFlag code={sale.port} /> <span data-testid="best-sale-city-name">{city}</span>
         </span>
         <span className={tail}>
           <span className="shrink-0 font-semibold" data-testid="best-sale-profit">
@@ -342,9 +329,18 @@ function SaleBlock({
               ·<span className="ml-0.5">{time}</span>
             </span>
           )}
-          {/* "No gain" stands with its red figure and gives way to it: on a line of its own it made the card, and its whole row, a line
-              taller (218 against 200 px at 1440, 2026-11-25). The line's title says it too. */}
-          {money(sale) === null && !sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>}
+          {/* ONE MARK, WITH THE FIGURE (2026-11-25): "No gain", her purse against the load (0433), "far" (0475). Each took a line of its
+              own and made its whole row of cards a line taller. It gives way to the figure; the line's title says it too. */}
+          {(money(sale) !== null || !sale.pays) && (
+            <span className={`shrink-0 font-medium ${money(sale) !== null ? 'text-ink-muted' : ''}`} data-testid={money(sale) !== null ? 'best-sale-money' : undefined}>
+              {money(sale) !== null ? t('desk.moneyHaveNeed', money(sale)!) : t('desk.noGain')}
+            </span>
+          )}
+          {sale.near === false && (
+            <span className="shrink-0 font-medium text-ink-muted" data-testid="best-sale-far">
+              {t('desk.farTrip')}
+            </span>
+          )}
           {spark}
         </span>
       </span>

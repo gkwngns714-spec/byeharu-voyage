@@ -105,6 +105,7 @@ for (const size of [
       await expect(act).toBeEnabled({ timeout: 60_000 })
       await act.click()
       await expect(page.getByTestId('trade-toast')).toContainText(/^Bought 1 /, { timeout: 60_000 })
+      expect((await rect(page.getByTestId('trade-toast'))).y, 'the toast is not at the top').toBeLessThan(100)
       const mine = board.locator(`[data-testid="trade-good"][data-good="${code}"]`)
       await expect(mine.getByTestId('trade-good-aboard')).toHaveText('On board 1', { timeout: 60_000 })
       const hers = 'On board 1'
@@ -129,12 +130,19 @@ for (const size of [
       expect(await where(), 'changing the fleet back moved the face').toEqual(before)
 
       // ── THE MAP: PLACES ONLY ────────────────────────────────────────────────────────────────────
-      const door = face.getByTestId('trade-map-open')
-      expect((await rect(door)).h, 'the map door is under 44 px').toBeGreaterThanOrEqual(44)
-      await door.click()
-      const mapPage = face.getByTestId('trade-map-open-page')
-      await expect(mapPage).toBeVisible()
-      const map = mapPage.getByTestId('trade-map')
+      const mapBox = face.getByTestId('trade-face-map-box')
+      const map = face.getByTestId('trade-face-map')
+      const box0 = await rect(mapBox)
+      if (size.width === 390) {
+        expect([box0.w, box0.h], 'the phone map is not about 358 x 260').toEqual([358, 260])
+        expect(box0.y, 'the map is not under the fleet name').toBeGreaterThanOrEqual(pickerBox.y + pickerBox.h)
+        expect(box0.y + box0.h, 'the list is not under the map').toBeLessThanOrEqual((await rect(board)).y)
+      } else {
+        const b = await rect(board)
+        expect(box0.x + box0.w, 'the map is not beside the list').toBeLessThanOrEqual(b.x)
+        expect(box0.w / (box0.w + b.w), 'the map is under 40 % of the map and the list').toBeGreaterThan(0.4)
+      }
+      expect(await mapBox.evaluate((e) => e.getBoundingClientRect().bottom <= innerHeight), 'the map is not on the first screen').toBe(true)
       const chart = map.getByTestId('small-chart')
       await expect(map).toHaveAttribute('data-cities', '*')
       await expect(chart.locator(`[data-port-code="${FAR}"]`).first()).toBeAttached({ timeout: 60_000 })
@@ -170,6 +178,26 @@ for (const size of [
       expect(await noSideScroll(page), 'the page scrolls sideways with the prices open').toBe(true)
       await shot(page, `${size.width}-5-prices`)
 
+      // THE FRAME RATE of the map on this glass, panned by a mouse for 2 s (said, not held to a number: the machine is shared)
+      await sheet.getByTestId('tray-close').click()
+      await expect(sheet).toHaveCount(0)
+      const fps = page.evaluate(() => new Promise<{ n: number; worst: number }>((done) => {
+        let n = 0, worst = 0, last = performance.now()
+        const end = last + 2_000
+        const step = (at: number) => { n++; worst = Math.max(worst, at - last); last = at; if (at < end) requestAnimationFrame(step); else done({ n: n / 2, worst }) }
+        requestAnimationFrame(step)
+      }))
+      const c = await rect(chart)
+      await page.mouse.move(c.x + 60, c.y + c.h / 2)
+      await page.mouse.down()
+      for (let i = 0; i < 60; i++) { await page.mouse.move(c.x + 60 + i * 3, c.y + c.h / 2); await page.waitForTimeout(16) }
+      await page.mouse.up()
+      console.log(`FPS @${size.width} ${JSON.stringify(await fps)}`)
+      await expect(sheet, 'a drag on the map opened a place').toHaveCount(0)
+      await pressCity(page, map, FAR)
+      await expect(prices.first()).toBeVisible({ timeout: 60_000 })
+      await expect.poll(async () => { const a = await rect(chart.locator(`[data-port-code="${FAR}"]`).first()); await page.waitForTimeout(150); return JSON.stringify(a) === JSON.stringify(await rect(chart.locator(`[data-port-code="${FAR}"]`).first())) }).toBe(true)
+
       // NOTHING MOVES BY ITSELF: the sheet and the map stand where they are while the world goes on
       const still = { sheet: await rect(sheet), chart: await rect(chart), first: await rect(prices.first()) }
       await page.waitForTimeout(4_000)
@@ -178,18 +206,28 @@ for (const size of [
       // the sheet shuts by its own close; the map stays; a press opens it again
       await sheet.getByTestId('tray-close').click()
       await expect(sheet).toHaveCount(0)
-      await expect(mapPage).toBeVisible()
       await pressCity(page, map, FAR)
       await expect(prices.first()).toBeVisible({ timeout: 60_000 })
-      // (on the whole-world map of a phone the names crowd, and a second press near one may take its neighbour: whichever place the sheet names)
-      const there = (await sheet.getAttribute('data-city'))!
-      expect(there, 'the second press named her own harbour').not.toBe(home)
+      // THE SECOND PRESS IS THE SAME PLACE: on a phone "Cadiz" stands over Dublin's mark, and a press on the word opened Dublin
+      const there = FAR
+      for (let i = 0; i < 4; i++) {
+        await expect(sheet).toHaveAttribute('data-city', FAR)
+        // never under the sheet: the pressed place's mark and the sheet do not meet
+        const m = (await chart.locator(`[data-port-code="${FAR}"]`).first().boundingBox())!
+        const sh = await rect(sheet)
+        const under = m.x + m.width / 2 > sh.x && m.x + m.width / 2 < sh.x + sh.w && m.y + m.height / 2 > sh.y
+        expect(under, 'the sheet covers the pressed place').toBe(false)
+        if (i === 3) break
+        await sheet.getByTestId('tray-close').click()
+        await expect(sheet).toHaveCount(0)
+        await pressCity(page, map, FAR)
+      }
+      await expect(prices.first()).toBeVisible({ timeout: 60_000 })
 
       // ── "TRADE HERE": THE MAP CLOSES ON THAT PLACE'S BOARD, WITH THE SAME FIGURES ───────────────
       const good = (await prices.first().getAttribute('data-good'))!
       const told = (await prices.first().getByTestId('city-price-buy').innerText()).trim()
       await sheet.getByTestId('city-prices-trade').click()
-      await expect(mapPage).toHaveCount(0)
       await expect(sheet).toHaveCount(0)
       await expect(board).toHaveAttribute('data-city', there)
       await expect(board).toHaveAttribute('data-docked', 'false')
@@ -197,14 +235,11 @@ for (const size of [
       await shot(page, `${size.width}-6-board-there`)
 
       // ── HER OWN HARBOUR PRESSED: "Docked", and SELL works there as before ───────────────────────
-      await door.click()
-      await expect(mapPage).toBeVisible()
       await pressCity(page, map, home)
       await expect(sheet).toHaveAttribute('data-city', home)
       await expect(sheet.getByTestId('city-prices-where')).toHaveText('Docked')
       await expect(sheet.locator(`[data-testid="city-price"][data-good="${code}"]`)).toBeVisible({ timeout: 60_000 })
       await sheet.getByTestId('city-prices-trade').click()
-      await expect(mapPage).toHaveCount(0)
       await expect(board).toHaveAttribute('data-city', home)
       await expect(board).toHaveAttribute('data-docked', 'true')
       await mine.getByTestId('trade-sell').click()
@@ -220,3 +255,25 @@ for (const size of [
     })
   })
 }
+
+// A SECOND PRESS ON A PLACE'S NAME IS THAT PLACE (the whole world on a phone): "Cadiz" in hand stands over Dublin's mark, the same
+// longitude and 15 px north, and a press on the word opened Dublin (chart/hitTest.ts `held`).
+test.describe('the big map at 390', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+  test('a second press on the name of the place in hand is the same place', async ({ page, request, baseURL }) => {
+    test.setTimeout(300_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+    await page.goto('command')
+    await ready(page)
+    const face = page.getByTestId('desk-trade')
+    await face.getByTestId('trade-map-open').click()
+    const map = face.getByTestId('trade-map')
+    const sheet = page.getByTestId('city-prices')
+    for (let i = 0; i < 4; i++) {
+      await pressCity(page, map, FAR)
+      await expect(sheet, `press ${i + 1} on the same place named another`).toHaveAttribute('data-city', FAR)
+      await sheet.getByTestId('tray-close').click()
+      await expect(sheet).toHaveCount(0)
+    }
+  })
+})

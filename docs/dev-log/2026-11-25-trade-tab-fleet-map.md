@@ -28,6 +28,17 @@ a map, showing no NPCs but only locations, where you can click them for info –
   fleet changed and again when her best sales landed.
 - **"No gain" stands beside its red figure** (it took a line of its own and made its row of cards 18 px taller).
 
+## Second round, the same day (the map on the face)
+
+- **The map stands on the face**: a phone 358 x 260 under the fleet's name, the list under it (the face scrolls as a page now); a wide
+  glass beside the list. It opens on 60 S to 75 N round her place (no empty bands; 8 % at 390). "Big map" is the page of old, where an
+  order's estimate and a plan are drawn. Pressing a good's Buy with a sheet open, or the reverse, leaves one of the two.
+- **A second press named the neighbour (Cadiz, then Dublin)**: not a stale hit test. The name of the place in hand stood over Dublin's
+  mark and `hitTest` gives a mark under a name's letters the press. The name in hand answers first now (`held`); the test fails without it.
+- **The toast is at the top.** "No gain", short of money and "far" stand with the figure, so no card is a line taller; a one-line city
+  stands level with its flag in the two lines held.
+- Frame rate, the map panned: 60 a second, worst frame 17 ms (390 and 1440, this PC, not a real phone).
+
 ## Proof
 
 `tests/trade.tab.spec.ts`, 390 and 1440, two fleets: the name is at the top and 44 px; a row pressed changes the fleet with the
@@ -37,8 +48,7 @@ again at her own harbour through the map; nothing moves over 4 s; no sideways sc
 
 ## Not good yet
 
-- The map is one press away (the "Map" door), not on the face: a phone's Trade face has no line to spare (tests/onepage.spec.ts).
-- On a phone the whole world at 0 % is 358 x 179 px: names crowd, and a press near one can take its neighbour. Zoom first.
-- On a wide glass the sheet covers the right quarter of the map and the page's city name.
-- A card whose sale is short of money AND goes to a two-line city is still a line taller than its neighbours.
-- The lifted card height leaves an empty band in a card whose sale is one line.
+- The wide map is about 42 % of the map and the list, not 45: four cards a line need 544 px.
+- At 1440 Route, Orders and "From here" are under the left pane's scroll. On a phone the city chips, Route and Orders are too.
+- The zoom column covers the map's right edge. "Short of money" gives way to the figure on narrow cards (the title says it).
+- Names crowd round Iberia until zoomed.
