@@ -343,6 +343,192 @@
       "harbours": 18,
       "regions": 1
     },
+    "timber": {
+      "target": 385,
+      "region": "EST",
+      "harbours": 10,
+      "regions": 17
+    },
+    "bamboo": {
+      "target": 63.5,
+      "region": "KOR",
+      "harbours": 8,
+      "regions": 6
+    },
+    "rattan": {
+      "target": 1510,
+      "region": "SOU",
+      "harbours": 17,
+      "regions": 1
+    },
+    "cork": {
+      "target": 2010,
+      "region": "IBE",
+      "harbours": 11,
+      "regions": 1
+    },
+    "mangrove-poles": {
+      "target": 1185,
+      "region": "EAS",
+      "harbours": 11,
+      "regions": 1
+    },
+    "rosin": {
+      "target": 990,
+      "region": "SCA",
+      "harbours": 10,
+      "regions": 3
+    },
+    "potash": {
+      "target": 1075,
+      "region": "SCA",
+      "harbours": 10,
+      "regions": 2
+    },
+    "tar": {
+      "target": 1030,
+      "region": "SCA",
+      "harbours": 10,
+      "regions": 2
+    },
+    "pine-pitch": {
+      "target": 1070,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 1
+    },
+    "mangrove-bark": {
+      "target": 885,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 1
+    },
+    "wattle-bark": {
+      "target": 910,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 1
+    },
+    "live-oak": {
+      "target": 1420,
+      "region": "NOR",
+      "harbours": 8,
+      "regions": 1
+    },
+    "redwood": {
+      "target": 885,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 1
+    },
+    "balsa-wood": {
+      "target": 920,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 1
+    },
+    "stockholm-tar": {
+      "target": 1020,
+      "region": "SCA",
+      "harbours": 10,
+      "regions": 1
+    },
+    "cedar": {
+      "target": 1100,
+      "region": "CAR",
+      "harbours": 10,
+      "regions": 3
+    },
+    "teak": {
+      "target": 1120,
+      "region": "EST",
+      "harbours": 10,
+      "regions": 2
+    },
+    "sappanwood": {
+      "target": 1050,
+      "region": "EST",
+      "harbours": 10,
+      "regions": 2
+    },
+    "camwood": {
+      "target": 1145,
+      "region": "WST",
+      "harbours": 12,
+      "regions": 1
+    },
+    "riga-mast": {
+      "target": 1740,
+      "region": "BAL",
+      "harbours": 10,
+      "regions": 1
+    },
+    "lignum-vitae": {
+      "target": 1145,
+      "region": "CAR",
+      "harbours": 10,
+      "regions": 1
+    },
+    "alerce-timber": {
+      "target": 740,
+      "region": "PAC",
+      "harbours": 18,
+      "regions": 1
+    },
+    "huon-pine": {
+      "target": 760,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 1
+    },
+    "naval-timber": {
+      "target": 710,
+      "region": "SCA",
+      "harbours": 10,
+      "regions": 4
+    },
+    "logwood": {
+      "target": 1340,
+      "region": "CAR",
+      "harbours": 10,
+      "regions": 1
+    },
+    "brazilwood": {
+      "target": 1470,
+      "region": "STH",
+      "harbours": 7,
+      "regions": 1
+    },
+    "ebony": {
+      "target": 1100,
+      "region": "EST",
+      "harbours": 10,
+      "regions": 2
+    },
+    "mast-pine": {
+      "target": 1550,
+      "region": "NOR",
+      "harbours": 8,
+      "regions": 1
+    },
+    "kauri-timber": {
+      "target": 665,
+      "region": "OCE",
+      "harbours": 12,
+      "regions": 1
+    },
+    "sandalwood": {
+      "target": 675,
+      "region": "WIA",
+      "harbours": 13,
+      "regions": 3
+    },
+    "aloeswood": {
+      "target": 1365,
+      "region": "SOU",
+      "harbours": 17,
+      "regions": 2
+    },
     "iron-bars": {
       "target": 18,
       "region": "ADR",

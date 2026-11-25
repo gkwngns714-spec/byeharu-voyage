@@ -44,6 +44,8 @@ const MARKS: Record<string, LevelMark> = {
   evasion: { paths: ['M14.5 3.5 20.5 9.5 16 14 10 8Z', 'M10.5 12.5 6 17', 'M8 10 3.5 14.5', 'M13 15 8.5 19.5'] },
   // 0455: the land's first skill, the kit's pick (the Land tab's own mark)
   mining: { icon: 'pick' },
+  // 0531: an axe in a trunk
+  woodcutting: { paths: ['M6 20L15 8', 'M12.5 5.5c2.5-1.5 5.5-.5 7 2l-4 3.5-4.5-3z', 'M4 20h8'] },
   // 0461: an anvil on its block (Smithing, the land's first making skill)
   smithing: { paths: ['M3.5 6.5h13a4 4 0 0 0 4-2', 'M3.5 6.5c0 2 1.5 3 4 3', 'M16.5 6.5v1.5c0 1.5-1.5 2.5-3.5 2.5', 'M7.5 9.5h5.5', 'M9.5 10v5', 'M11.5 10v5', 'M6.5 15h9l1.5 4.5h-12Z'] },
 }

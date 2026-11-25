@@ -94,3 +94,31 @@ The six files over 0518 and 0519 (`rounds-log`): they cut other bodies but for t
 - **Woodcutting is not built**: no land job gathers wood. **Not tuned**: 20 hands gather 10 Sea Coal (5 rounds, stopped by the load); 30 hands raid wolves 50
   rounds. Gathering's yield a round does not grow with the crew (the crew is the stores and the load).
 - Restart (0509): nothing to add; its delete of `land_parties` takes the runs (LX_CLOSE).
+
+# 0531 `woodcutting` (dark: `land_wood_enabled`), proof 239
+
+The stack now holds `batch-0503-0509` (0499 to 0509 as amended; 0508's self-assert is the fixed one).
+
+- **All data, no function**: the skill (long curve, a gift every 5th level), its activity, 25 woods (15 s march), 31 jobs (the raw wood of the catalogue and
+  what is tapped or burned from it), the captains' work tied to it. The generator's new block (`--wood`), in its own ladder, so 0457's rows and
+  0458's finds do not move; `data/land-guard.generated.json` gains 31 figures, the other 78 are equal.
+- **The market guard**: 67 job-regions, the tightest Tar in Scandinavia at 0.999 of its hundredth. So some jobs are slow (Timber 1,285 s a turn, Bamboo 7,780 s).
+- Iberia has Timber (1) and Cork (5) at home.
+- 0534 (not deployed) now gathers any gather job of an open land skill a captain has a work for, not mining alone.
+- A first Timber trip is 642 experience: level 22 on the long curve in one trip of 2 h 9 min (Mining's clay gives 8,484). That is the frame's rule
+  (seconds times the pay), not this file's.
+
+## PROPOSAL, figures only (the owner decides; nothing is set): gathering's load
+
+Today a gathering is stopped by its load early. The market guard forbids more units an hour, so the only honest lever is HOW LONG they stay. Measured by
+the stop rule itself (proof 239, WO_LOAD):
+
+| | Sea Coal, 10 / 20 / 48 hands | Timber, 10 / 20 / 48 hands |
+|---|---|---|
+| Today (carry 1 t, 0.3 + 0.01 a hand, half stores) | 4 / 10 / 28 units in 0.3 / 0.8 / 2.3 h | 5 / 10 / 32 in 1.5 / 3.0 / 9.5 h |
+| A (carry 2 t, same eating, 35 % stores) | 12 / 26 / 76 in 1.0 / 2.2 / 6.3 h | 12 / 26 / 40 in 3.6 / 7.7 / 11.9 h |
+| **B, proposed** (carry 3 t, 0.3 + 0.02 a hand, 35 % stores) | 20 / 44 / 80 in 1.7 / 3.7 / 6.7 h | 20 / 36 / 40 in 6.0 / 10.7 / 11.9 h |
+
+Figures: `land_crew_carry` 3, `land_round_stores_crew` 0.02, and gathering's own stores at 35 % of what they carry (a constant of 0534 today: one half).
+Under B ten hands raid 60 rounds instead of 25. The bill hardly moves (1,087 for ten hands), and the hire is most of it: 20 Sea Coal does not pay for ten new
+hands on the first trip; it does when the hands are kept.
