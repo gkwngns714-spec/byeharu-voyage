@@ -26,7 +26,7 @@ select json_build_object(
                                 ('public.sea_routes(uuid,integer,numeric,jsonb)', 'e1571daa3d9c49ef5821a14aca08d084'),
                                 ('public.captain_seat_put(uuid,uuid,integer)', '29cef6872d8bc5ed40d4df386b9fdf1b'),
                                 ('public.new_house(uuid,text,text,text,text,text,text,bigint,boolean)', 'f404cfef610ebb13667bc661d0fa9e6b'),
-                                ('public.fleet_job_plan(uuid)', '982af076c14f854b1c32151a1a9d4bf2'),
+                                ('public.fleet_job_plan(uuid)', 'dd7c5aa2dc55ec44d1170f95972de881'),
                                 ('world.sea_conditions()', '17f4c8486126f9065e5a17372e2bd010'),
                                 ('cmd.refusal_line(text,jsonb)', 'ee4c71eacb18f252cd6196af413e26fc'),
                                 ('public.fleet_census(uuid)', 'c7b558643cd9abf28c5c1593ebea126a'),
