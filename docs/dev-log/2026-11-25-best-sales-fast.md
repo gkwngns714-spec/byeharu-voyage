@@ -56,3 +56,14 @@ About 37 ms of what is left is `power()` (4,500 price steps at 8 us in WASM; nat
 0536's self-assert: 14 of 15 perturbed worlds (the other is the known founding refusal). The 254-harbour sweeps ran the same bodies by hand on 0503's
 chain, before batch 2 was merged in. Proofs 07, 101, 105, 113, 134, 157, 162, 165, 175, 177, 178, 182-188, 194, 200, 62, 241 green. 190 and 191 pinned the
 text of `stores_need_days`, `best_sales` and `board_sell_memo`: each puts that text back first (amended here). Not run: `vite build`, the browser specs, PostgreSQL 17.
+
+## Is it PostgreSQL 17? (measured 2026-11-25)
+
+The chain's world (0503's, every row and body) carried into PGlite 0.3.15 (PostgreSQL 17.5) beside PGlite 0.5.5 (18.3), prod's switches lit, warm:
+Lisbon 316 ms on 18, 358 on 17; Colombo 225 / 263; Guayaquil 320 / 347. So the version is about 8 to 15 %, not 2.4 s. With 0536: 18 -> 233 / 170 / 240,
+17 -> 268 / 197 / 264. Seventeen SQL readers made plpgsql as well, on 17: 244 / 177 / 247 (about 8 % more; not in 0536).
+`force_custom_plan` on reach_passage: 0206, a pooled session's generic plan of 0205's matrix build took 8,101 ms against 268; left as it is.
+
+`stages.sql`, Lisbon, old bodies, ms (18.3 / 17.5): cpu_float 400,000: 74 / 77; cpu_numeric 100,000: 19 / 28; cpu_power 4,500: 33 / 37; 3,000 calls: 18 / 18;
+2,540 port rows: 4 / 3. whole 310 then 304 / 346 then 336; the stages' sum 296 / 332 (within 3 %): origin 66 / 83, sells 192 / 199, capacity 14 / 20, legs 12 / 14,
+half 6, amounts 3 / 4, hulls 1 / 4, offered 2. In five goods' sells: 72 quotes 31 / 37, trips 31 / 34, dock 6 / 5, tax 6 / 3, mids 5, quay 3.
