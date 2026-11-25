@@ -41,7 +41,7 @@
 -- budget: no table, no cron job, no autovacuum or fillfactor change. Lit: a near round is the Best job's rows (orders, voyages) at
 --   the Best job's pace; no new kind of row.
 -- LOCKS: one INSERT (world_config); CREATE FUNCTION x5; CREATE OR REPLACE x4 by hunks. TIME: a few seconds. BUDGET: statement_timeout
---   60 s, lock_timeout 5 s; fails above 45 s.
+--   90 s, lock_timeout 5 s; fails above 45 s.
 -- ROLLBACK (forward, owner only): QUICK, near_round_enabled false (the door refuses `within`; a job that carries it plans as the Best
 --   run). FULL: a migration reversing the six hunks (OLD texts below verbatim) and dropping the five functions.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants, volatility, definer, search path and
@@ -49,6 +49,13 @@
 --   refuses `within`, world.actions starts with the Best run and a best plan is what it was; lit, the near round stands first with
 --   its sentence and no rate, the door keeps {within, base} and holds `within` in its bounds, her plan sails within her round, a round
 --   too small to reach a sale waits at her base and sails to her base from elsewhere, and her row says what she does.
+--   THE PROBE'S PAYING SALE IS BUILT, NEVER FOUND (2026-11-25, after 0497 was refused on prod by a probe that read the live market):
+--   the first good Lisbon offers, in world.best_sales' own order (so a read its 2.5 s budget cuts still carries it), and her nearest
+--   remembered harbour that takes it; the two market rows of that good the quote reads (public.port_goods) are written inside the
+--   probe: Lisbon at the price band's floor, the harbour at its ceiling. A Best run at Lisbon therefore plans with any market (empty
+--   quays, every price at its floor, no price differing: each refused the probe before), and a sale within 1,440 miles pays. A plan
+--   compared with a plan (two time-budgeted reads) is asked again, twice at most, before it is held to differ. No real company's
+--   job is asked: the probe plans her own job (public.fleet_job_plan) and never runs the tick.
 -- VERSION: 0498 (after 0497 `jobs-never-lose`).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -80,8 +87,15 @@ declare
   v_p0        jsonb;
   v_w         jsonb;
   v_note      text := '';
+  v_good      text;
+  v_gid       uuid;
+  v_sell      text;
+  v_dest      uuid;
+  v_rq        jsonb;
+  v_same      boolean := false;
+  v_try       int;
 begin
-  perform set_config('statement_timeout', '60s', true);
+  perform set_config('statement_timeout', '90s', true);
   perform set_config('lock_timeout', '5s', true);
 
   -- ── 0. GUARD ──
@@ -340,6 +354,33 @@ $h$);
     update public.world_config set value = 'true'::jsonb where key in ('fleet_jobs_enabled', 'sea_courses_enabled', 'jobs_wait_enabled');
     perform cmd.assume_identity(c_uid);
 
+    -- THE PAYING SALE, BUILT (the header): static rows choose the pair, the market chooses nothing
+    select g.code, g.id, k.code, k.to_port into v_good, v_gid, v_sell, v_dest
+      from public.npc_known_legs(v_lis) k
+      join public.port_goods ps on ps.port_id = k.to_port
+      join public.goods g on g.id = ps.good_id
+      join public.ports pd on pd.id = k.to_port and pd.kind = 'HARBOUR'
+     where public.port_offers(v_lis, g.id)
+       and exists (select 1 from public.port_goods pl where pl.port_id = v_lis and pl.good_id = g.id)
+       and not public.culture_refuses(pd.culture, g.culture_mask)
+       and public.fleet_free_hold(v_fl) >= 20 * g.bulk
+       and k.nm <= 1440
+     order by g.code, k.nm, k.code limit 1;
+    if v_good is null then
+      raise exception '0498 self-assert FAIL: the probe found no good Lisbon offers that a remembered harbour within 1,440 miles takes (static rows, not the market)';
+    end if;
+    update public.port_goods pg set stock_target = 1000000, stock = 1000000000, affinity = 0.25, demand = 1, drift = 0, season_mod = 0,
+                                    glut = 0.5, glut_at = now(), haul = 1
+     where pg.port_id = v_lis and pg.good_id = v_gid;
+    update public.port_goods pg set stock_target = 1000000, stock = 0, affinity = 3, demand = 1, drift = 0, season_mod = 0,
+                                    glut = -0.5, glut_at = now()
+     where pg.port_id = v_dest and pg.good_id = v_gid;
+    v_rq := public.fleet_run_quote(v_me, v_fl, v_lis, v_good, v_sell, array[v_sell, 'LIS']);
+    if coalesce((v_rq->>'net')::numeric, 0) <= 0 then
+      raise exception '0498 self-assert FAIL: the probe did not build a paying run (% from LIS to %, floor against ceiling): % ; the fault is the probe''s, not the market''s',
+        v_good, v_sell, v_rq;
+    end if;
+
     -- (a) DARK: the door refuses `within`; world.actions starts with the Best run; a best job's settings and plan are what they were
     v_r := cmd.set_fleet_job(v_fl, 'best', jsonb_build_object('within', 1440));
     v_a := world.actions('fleet:' || v_fl);
@@ -355,8 +396,17 @@ $h$);
 
     -- (b) LIT: the near round first, with its sentence and no rate; the door keeps {within, base}, and holds the miles in bounds
     update public.world_config set value = 'true'::jsonb where key = 'near_round_enabled';
-    if public.fleet_job_plan(v_fl) - 'version' is distinct from v_p0 - 'version' then
-      raise exception '0498 self-assert FAIL: lit, a Best run with no `within` is planned otherwise';
+    -- two plans are two time-budgeted reads (world.best_sales, 2.5 s): a pair that differs is asked again, dark then lit, twice at most
+    for v_try in 1 .. 3 loop
+      v_p := public.fleet_job_plan(v_fl);
+      v_same := v_p - 'version' is not distinct from v_p0 - 'version';
+      exit when v_same or v_try = 3;
+      update public.world_config set value = 'false'::jsonb where key = 'near_round_enabled';
+      v_p0 := public.fleet_job_plan(v_fl);
+      update public.world_config set value = 'true'::jsonb where key = 'near_round_enabled';
+    end loop;
+    if not v_same or not (v_p0 ? 'lines') then
+      raise exception '0498 self-assert FAIL: lit, a Best run with no `within` is planned otherwise: dark % / lit %', left(v_p0::text, 300), left(v_p::text, 300);
     end if;
     v_a := world.actions('fleet:' || v_fl);
     if v_a #>> '{options,0,id}' <> 'sea:near' or v_a #>> '{options,1,id}' <> 'sea:best' or v_a #>> '{options,0,basis}' <> 'none'
@@ -384,7 +434,7 @@ $h$);
     if not (v_p ? 'lines') or public.lines_nm(v_p->'lines') > 1440 or public.lines_nm(v_p->'lines') <= 0 or (v_p #>> '{note,profit}')::numeric <= 0 then
       raise exception '0498 self-assert FAIL: a near round at Lisbon takes no paying sale within its miles: %', left(v_p::text, 400);
     end if;
-    v_note := format('at Lisbon within 1,440 nm: %s to %s, %s nm, +%s', v_p #>> '{note,good}', v_p #>> '{note,to}', round(public.lines_nm(v_p->'lines')), v_p #>> '{note,profit}');
+    v_note := format('the sale built: %s from LIS to %s; at Lisbon within 1,440 nm: %s to %s, %s nm, +%s', v_good, v_sell, v_p #>> '{note,good}', v_p #>> '{note,to}', round(public.lines_nm(v_p->'lines')), v_p #>> '{note,profit}');
 
     -- (d) A ROUND TOO SMALL TO REACH ANY SALE (its miles written past the door's floor, on her own job's row): at her base she waits
     -- as 0497 waits; from another harbour she sails to her base
