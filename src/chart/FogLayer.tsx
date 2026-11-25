@@ -6,11 +6,12 @@ import { FOG_COLS, FOG_ROWS, cellSet, type ChartFog } from './fog'
 // THE FOG ON THE GLASS (0504; ./fog.ts says what is in sight, charted and unseen).
 //
 // ONE CANVAS over the whole chart, the size of the glass, and nothing else: black where she has never been, a
-// dark veil where she has (the coast and a known city show through it, greyed), clear within sight of each of
-// her fleets. It is drawn in three strokes a frame and no more:
+// grey veil where she has (the coast and a known city show through it, greyed), clear within sight of each of
+// her fleets. It is drawn in three steps a frame and no more:
 //   1. the glass filled black;
-//   2. her charted squares cut out of it to the veil's strength: one 360 x 180 picture (a pixel a square, built
-//      only when her squares change) stretched over each copy of the sheet, smoothed, so the grey has a soft edge;
+//   2. her charted squares cut out of it and the grey veil laid there in its place: one 360 x 180 picture (a pixel
+//      a square, built only when her squares change) stretched over each copy of the sheet, smoothed, so the grey
+//      has a soft edge;
 //   3. a soft-edged circle cut clean round each fleet (an ellipse on this chart: a degree of longitude is shorter
 //      away from the equator).
 // No svg mask and no filter: a mask the size of the glass is rasterised again on every frame of a pan (the day
@@ -19,10 +20,12 @@ import { FOG_COLS, FOG_ROWS, cellSet, type ChartFog } from './fog'
 // It takes no pointer: a press goes to the chart under it, and what a press may name is the screen's list.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-/** How much of the black stays over water she has charted (the "grey map, lands partly"). */
-const VEIL = 0.62
+/** How much of the map the grey hides where she has been (the "grey map, showing lands partly (transparent)"). */
+const VEIL = 0.6
+/** The grey itself: the colour her charted squares' picture is made of. */
+const GREY = 62
 /** Where a fleet's circle starts to fade, as a share of its radius. */
-const SIGHT_SOFT_FROM = 0.82
+const SIGHT_SOFT_FROM = 0.88
 
 export function FogLayer({ fog, box, unitsPerPx }: { fog: ChartFog; box: ViewBox; unitsPerPx: number }) {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -38,7 +41,7 @@ export function FogLayer({ fog, box, unitsPerPx }: { fog: ChartFog; box: ViewBox
     const ctx = c.getContext('2d')
     if (!ctx) return null
     const img = ctx.createImageData(FOG_COLS, FOG_ROWS)
-    for (let k = 0; k < FOG_COLS * FOG_ROWS; k++) if (cellSet(fog.cells, k)) img.data[k * 4 + 3] = 255
+    for (let k = 0; k < FOG_COLS * FOG_ROWS; k++) if (cellSet(fog.cells, k)) img.data.set([GREY, GREY, GREY, 255], k * 4)
     ctx.putImageData(img, 0, 0)
     return c
   }, [fog.cells])
@@ -58,10 +61,17 @@ export function FogLayer({ fog, box, unitsPerPx }: { fog: ChartFog; box: ViewBox
     ctx.globalCompositeOperation = 'destination-out'
     const copies = sheetCopies(box)
     if (picture) {
-      ctx.globalAlpha = 1 - VEIL
       ctx.imageSmoothingEnabled = true
-      for (const k of copies) ctx.drawImage(picture, px(-CHART_WIDTH / 2 + k * CHART_WIDTH), py(-90), CHART_WIDTH / unitsPerPx, 180 / unitsPerPx)
+      const lay = () => {
+        for (const k of copies) ctx.drawImage(picture, px(-CHART_WIDTH / 2 + k * CHART_WIDTH), py(-90), CHART_WIDTH / unitsPerPx, 180 / unitsPerPx)
+      }
+      lay()
+      // added, not laid over: at a soft edge the map's share falls evenly from the grey to the black
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.globalAlpha = VEIL
+      lay()
     }
+    ctx.globalCompositeOperation = 'destination-out'
     ctx.globalAlpha = 1
     const ry = fog.sightNm / 60 / unitsPerPx
     for (const eye of fog.eyes) {

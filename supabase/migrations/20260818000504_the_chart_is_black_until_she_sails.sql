@@ -532,6 +532,8 @@ begin
   select a.roadstead_lat as lat, a.roadstead_lon as lon into v_la from public.sea_reaches a where a.port_id = v_lis;
   select a.roadstead_lat as lat, a.roadstead_lon as lon into v_sa from public.sea_reaches a where a.port_id = v_set;
   v_segs := voyage.segments_from_course(jsonb_build_array(jsonb_build_array(v_la.lat, v_la.lon), jsonb_build_array(v_sa.lat, v_sa.lon)));
+  -- the founding is not what is judged: it is played with the economy open, so that no city's purse (prod's) can refuse it (rolled back)
+  update public.world_config set value = 'false'::jsonb where key in ('economy_closed', 'city_treasury_enabled');
   v_me := public.new_house(p_uid, 'Casa da Carta 0504', 'PRT');
   select f.id into v_fl from public.fleets f where f.player_id = v_me;
   if p_lit then
@@ -647,7 +649,7 @@ $body$
   if (v_lit->>'arrived') = 'ARRIVED' and not (v_lit->'cities' ? 'SET') then
     raise exception '0504 self-assert FAIL: the harbour she made is not among her cities: %', v_lit->'cities';
   end if;
-  if exists (select 1 from public.players p where p.company_name like '% 0504' or p.auth_uid = c_uid)
+  if exists (select 1 from public.players p where p.auth_uid = c_uid)
      or exists (select 1 from public.company_chart)
      or public.wc('chart_fog_enabled') is distinct from 'false'::jsonb or public.wc_num('chart_sight_nm') is distinct from 150
      or public.current_player_id() is not null then

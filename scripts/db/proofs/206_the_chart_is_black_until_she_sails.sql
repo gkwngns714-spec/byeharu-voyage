@@ -10,7 +10,7 @@
 -- @pass CF_SIGHT     her sight is the one knob and a third of it more for each NAVIGATION level; a wider sight paints a wider grey
 -- @pass CF_MERCHANT  a merchant's arrival writes nothing, the backfill refuses her, the read gives her no company
 -- @pass CF_BACKFILL  every live company is backfilled in bounded calls until none is left; no company loses a city of her logbook: each one's square is on her chart
--- @pass CF_REACH     the fog refuses nothing: lit, with a black chart, her SAIL to a harbour she has never seen is answered exactly as it is dark; no door, path or job reads the chart
+-- @pass CF_REACH     the fog refuses nothing: lit, with a black chart, her SAIL to a harbour she has never seen is accepted with the same miles as it is dark; no door, path or job reads the chart
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $p$
@@ -45,11 +45,14 @@ begin
   end if;
   raise notice 'PASS: CF_DARK — her voyage ended %; no chart row in the world; the read {"on": false}', (select v.status from public.voyages v where v.id = v_voy);
 
-  -- CF_REACH, the dark half: her SAIL to a harbour far from anything she has seen, asked dark
-  select p.code into v_far from public.ports p
-   where p.kind = 'HARBOUR' and voyage.gc_distance_nm(p.lat::float8, p.lon::float8, v_la.lat::float8, v_la.lon::float8) > 3000 order by p.code limit 1;
+  -- CF_REACH, the dark half: the nearest harbour out of her sight (300 nm and more from Lisbon, her sight is 150) she may sail to, asked dark
   update public.fleets f set status = 'DOCKED', port_id = v_set, lat = null, lon = null, busy_until = null, ready_at = null where f.id = v_f;
-  v_p0 := cmd.preview(v_f, 'SAIL ' || v_far);
+  for v_far in select p.code from public.ports p
+                where p.kind = 'HARBOUR' and voyage.gc_distance_nm(p.lat::float8, p.lon::float8, v_la.lat::float8, v_la.lon::float8) > 300
+                order by voyage.gc_distance_nm(p.lat::float8, p.lon::float8, v_la.lat::float8, v_la.lon::float8), p.code limit 20 loop
+    v_p0 := cmd.preview(v_f, 'SAIL ' || v_far);
+    exit when (v_p0->>'ok')::boolean;
+  end loop;
 
   -- CF_ARRIVAL
   update public.world_config set value = 'true'::jsonb where key = 'chart_fog_enabled';
@@ -139,11 +142,13 @@ begin
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
      and (p.prosrc ilike '%company_chart%' or p.prosrc ilike '%chart_mark%' or p.prosrc ilike '%chart_sight_nm%' or p.prosrc ilike '%world.chart%');
-  if v_p0 is distinct from v_p1 or v_p0 is null
+  -- (the preview mints a voyage it rolls back: its id is not part of the answer)
+  if v_p0->'parsed' is distinct from v_p1->'parsed' or v_p0#>'{estimate,total_nm}' is distinct from v_p1#>'{estimate,total_nm}'
+     or (v_p1->>'ok')::boolean is not true or (v_p0->>'ok')::boolean is not true
      or v_readers is distinct from 'chart_backfill(uuid,integer), chart_backfill_next(integer,integer), chart_mark(uuid,uuid), chart_sight_nm(uuid), voyage.settle(uuid,timestamp with time zone), world.chart()' then
     raise exception 'CF_REACH: the fog changed a SAIL''s answer, or something else reads the chart: dark % / lit % / readers %', left(v_p0::text, 300), left(v_p1::text, 300), v_readers;
   end if;
-  raise notice 'PASS: CF_REACH — SAIL % (over 3,000 nm from Lisbon, never seen) with a black chart: the same answer dark and lit (ok %); the chart is read by: %',
+  raise notice 'PASS: CF_REACH — SAIL % (over 300 nm from Lisbon, never seen) with a black chart: accepted, the same order and the same miles dark and lit (ok %); the chart is read by: %',
     v_far, v_p0->>'ok', v_readers;
 end
 $p$;

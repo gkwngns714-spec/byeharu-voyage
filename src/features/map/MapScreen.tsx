@@ -953,6 +953,7 @@ function Chart({
           key={place.dest.kind === 'port' ? place.dest.code : pointToken(place.dest.at)}
           dest={place.dest}
           sea={placeSea}
+          unseen={placeGrey}
           // 0504: a city she knows but does not have in sight can be sailed to, and nothing about it is shown
           line={place.port ? (placeGrey ? t('map.fogKnown') : portLine(model, place.port, harbourRows, portNationOf(allegiance, place.port.code))) : t('map.openSea')}
           harbour={

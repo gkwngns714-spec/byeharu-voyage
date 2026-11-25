@@ -207,7 +207,8 @@ export function TradeMap({
         stops={pathStops}
         still={planMap}
         frame={frame}
-        wholeWorld={!planMap}
+        // 0504: under the fog the whole world is mostly black, so the map opens on her fleet instead
+        wholeWorld={!planMap && !fog}
         onPort={planMap ? undefined : pressCity}
         fog={fog}
         goTo={planMap ? null : goTo}
