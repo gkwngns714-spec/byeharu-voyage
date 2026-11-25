@@ -955,6 +955,30 @@ export interface HaggleOnQuay {
   at_floor: boolean
   /** "the next trade of this good at this port, or the day's end" — the server's own words. */
   spent_on: string
+  /** 0506 — present only while `bargain_total_enabled` is lit: a bargain is then a share of HER TOTAL
+   *  (5 % a win, ten tries a day), not of the spread. Absent: the fields above are the whole rule. */
+  bargain?: HaggleBargain
+}
+
+/** 0506 — `world.haggle_state`'s `bargain` key (`public.bargain_state`). Every figure is the server's. */
+export interface HaggleBargain {
+  /** What a win is a share of: her total for that trade. */
+  of: 'total'
+  /** What one won try adds, and the most ten can add, in per cent of her total. */
+  step_pct: number
+  most_pct: number
+  /** What she holds unspent now, in per cent of her total. */
+  held_pct: number
+  /** The side the day's row is on (one side a good a city a day); null before her first try. */
+  side: 'buy' | 'sell' | null
+  /** The chance of her FIRST try of a day (each later try is half the one before). */
+  first_odds: number
+  /** What her buy and her sale of this good here are multiplied by now (1 = no bargain; the other
+   *  side of a won bargain is charged it back the same day). */
+  buy_factor: number
+  sell_factor: number
+  /** The tries a standing job of this fleet may make a day (0: none, or below Negotiation 8). */
+  job_tries: number
 }
 
 export type HaggleState = HaggleAshore | HaggleOnQuay

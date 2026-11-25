@@ -146,6 +146,7 @@ export const codesDict = defineDict({
     E_KIND_ARM: 'Cannot be armed.',
     E_INVEST_MIN: 'Stake too small.',
     E_HAGGLE_SPENT: 'Already bargained here today.',
+    E_BARGAIN_SIDE: 'One side a day.',
     E_FLAGSHIP_DISABLED: 'Flagship cannot sail.',
     E_DONATE_MIN: 'Gift too small.',
     E_DAY_CAP: 'Daily limit reached.',
