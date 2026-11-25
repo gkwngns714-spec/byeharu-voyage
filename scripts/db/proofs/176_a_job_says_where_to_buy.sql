@@ -18,6 +18,7 @@ declare
   v_ports  uuid[];
   v_p      uuid;
   v_ids    uuid[];
+  v_ids0   uuid[];   -- the jobs that stood before this proof posted any
   v_now    timestamptz;
   v_n      int := 0;
   v_tight  int := 0;
@@ -34,6 +35,7 @@ begin
   update public.world_config set value = to_jsonb(1000) where key = 'hold_request_open_max';   -- room at every harbour
   v_ports := array(select p.id from public.ports p where p.kind = 'HARBOUR' order by md5(p.code) limit 30);
   v_ids := array(select t.id from public.trade_contracts t);
+  v_ids0 := v_ids;
 
   -- ── RS_REACH: at the first second of today's game day ──
   v_now := public.clock_start('game_day', world.game_day()) + interval '1 second';
@@ -75,9 +77,13 @@ begin
   raise notice 'PASS: RS_TIGHT — a minute before the day ends, % of 10 harbours posted, each within reach of the time it stands', v_tight;
 
   -- ── RS_READ ──
+  -- EVERY hold job this proof made is read: the ones posted at the day's first second (RS_REACH: they stand all day), the late ones,
+  -- and any the read posts itself at the wall clock. It was the last two alone, and RS_TIGHT rightly posts none a minute before the
+  -- day ends, so the marker hung on what the read could post NOW: nothing within reach in the last minutes of the four-hour game day
+  -- (the red of 2026-11-25; reproduced with the clock stood 120 s before the day's end, green 900 s before it).
   foreach v_p in array v_ports[1:5] loop
     for v_a in select e from jsonb_array_elements(world.contracts(v_p) -> 'contracts') e loop
-      if v_a ->> 'size' = 'hold' and (v_a ->> 'id')::uuid <> all (v_ids) then
+      if v_a ->> 'size' = 'hold' and (v_a ->> 'id')::uuid <> all (v_ids0) then
         select * into c from public.trade_contracts t where t.id = (v_a ->> 'id')::uuid;
         if c.source_port_id is not null and (v_a -> 'from' ->> 'code' is distinct from (select p.code from public.ports p where p.id = c.source_port_id)
            or v_a -> 'from' ->> 'name' is distinct from (select p.name from public.ports p where p.id = c.source_port_id)
