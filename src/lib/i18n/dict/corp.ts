@@ -68,7 +68,7 @@ export const corpDict = defineDict({
     today: 'Today',
     hourly: 'Per hour',
     noLines: 'Nothing yet',
-    // 0518 to 0534: rounds (combat, expedition), their log, wrecks and artifacts
+    // 0518 to 0535: rounds (combat, expedition), their log, wrecks and artifacts
     action: 'Action',
     trading: 'Trading',
     combat: 'Combat',

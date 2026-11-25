@@ -471,7 +471,7 @@ const TABLE = {
   worldActions: { schema: 'world', fn: 'actions', args: [{ name: 'p_worker', type: 'text' }] },
   // 0519 ROUNDS (dark: {on: false} / E_NOT_IN_USE): her fleets' runs and, for a fleet named, the works; and its two doors
   worldRounds: { schema: 'world', fn: 'rounds', args: [{ name: 'p_fleet', type: 'uuid' }] },
-  // 0534: what a round of a work would cost from a base, with a stop rule
+  // 0535: what a round of a work would cost from a base, with a stop rule
   worldRoundQuote: {
     schema: 'world',
     fn: 'round_quote',

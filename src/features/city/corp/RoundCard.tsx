@@ -3,6 +3,8 @@ import { Button, Countdown, Note, Row, SheetSection } from '../../../components/
 import { formatDucats, formatFixed, formatInt } from '../../../lib/format'
 import { useT, type TKey } from '../../../lib/i18n'
 import { cmdArtifactReport, cmdRoundHome, type Refusal, type RoundRun, type RpcResult } from '../../../lib/rpc'
+import { clearFleetJob, useAwayReport, litAway } from '../../../live/useAwayReport'
+import { useWorkEdits } from '../../../live/useWorkers'
 import { carried, litRounds, runOf, salvageOf, useRounds } from '../../../live/useRounds'
 import { useWorld } from '../../../live/worldStore'
 
@@ -70,6 +72,7 @@ export function RoundCard({ fleet, nowMs }: { fleet: string; nowMs: number }) {
   const view = useWorld((s) => s.fleets.find((f) => f.id === fleet) ?? null)
   const [busy, setBusy] = useState<'home' | 'give' | null>(null)
   const [refused, setRefused] = useState<Refusal | null>(null)
+  const job = litAway(useAwayReport().view)?.jobs.find((j) => j.fleet === fleet) ?? null
   const run = runOf(lit, fleet)
   const kept = lit?.artifacts?.kept.filter((a) => a.fleet === fleet) ?? []
   if (!lit || (!run && kept.length === 0)) return null
@@ -77,8 +80,12 @@ export function RoundCard({ fleet, nowMs }: { fleet: string; nowMs: number }) {
     setBusy(kind)
     setRefused(null)
     const r = await door()
-    if (r.ok) await refresh()
-    else setRefused(r.refusal)
+    // called home: a job of rounds is taken away with it, or the next run of the jobs would send her out again
+    if (r.ok && kind === 'home' && job?.kind === 'round') await clearFleetJob(fleet)
+    if (r.ok) {
+      useWorkEdits.getState().touch()
+      await refresh()
+    } else setRefused(r.refusal)
     setBusy(null)
   }
   return (

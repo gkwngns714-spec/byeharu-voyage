@@ -58,7 +58,7 @@ export const corpWorld = ({ courses = false, home = false, near = false, nearLow
         end $f$;
         revoke all on function world.actions(text) from public, anon;
         grant execute on function world.actions(text) to authenticated;`)
-    // `rounds`: 0518 to 0534 lit (a world without them has no such rows); every ship founded is an armed xebec, manned and stored; a run was sent 25
+    // `rounds`: 0518 to 0535 lit (a world without them has no such rows); every ship founded is an armed xebec, manned and stored; a run was sent 25
     // minutes ago (two rounds of ten done, one of fifteen); every round of an expedition finds an uncommon artifact; Lisbon's purse is full
     if (rounds)
       await pg.exec(`
@@ -66,6 +66,7 @@ export const corpWorld = ({ courses = false, home = false, near = false, nearLow
         begin
           select c.id, c.crew_required + 20, c.durability into new.class_id, new.crew, new.durability from public.ship_classes c where c.code = 'xebec';
           new.food_t := 40; new.water_t := 60;
+          new.cargo := '{"gunpowder": 30, "shot-and-ball": 30}'::jsonb;
           return new;
         end $f$;
         create trigger spec_armed before insert on public.ships for each row execute function public.spec_armed();
@@ -75,9 +76,17 @@ export const corpWorld = ({ courses = false, home = false, near = false, nearLow
           return new;
         end $f$;
         create trigger spec_sent_before before insert on public.round_runs for each row execute function public.spec_sent_before();
+        create function public.spec_tick_docked() returns trigger language plpgsql security definer set search_path = public, pg_temp as $f$
+        begin
+          call public.tick_fleet_jobs(false);
+          return null;
+        end $f$;
+        create trigger spec_tick_docked after update of status on public.fleets for each row
+          when (old.status = 'REPAIRING' and new.status = 'DOCKED') execute function public.spec_tick_docked();
+        update public.world_config set value = '0.01'::jsonb where key = 'repair_sim_hours_per_pct';
         update public.world_config set value = '[{"tier": "uncommon", "pct": 100, "gold": 400, "rp": 15}]'::jsonb where key = 'artifact_tiers';
         insert into public.port_treasury (port_id, ducats) select p.id, 50000000 from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do update set ducats = 50000000;`)
-    const keys = [...(rounds ? ['rounds_enabled', 'combat_rounds_enabled', 'expedition_rounds_enabled', 'wrecks_yield_enabled', 'artifacts_enabled', 'city_treasury_enabled', 'reputation_on', 'ship_stores_separate'] : []), ...LIT, ...(courses ? ['sea_courses_enabled'] : []), ...(home ? ['assign_home_enabled'] : []), ...(near ? ['jobs_wait_enabled', 'near_round_enabled'] : [])]
+    const keys = [...(rounds ? ['rounds_enabled', 'ammo_enabled', 'combat_rounds_enabled', 'expedition_rounds_enabled', 'wrecks_yield_enabled', 'artifacts_enabled', 'city_treasury_enabled', 'reputation_on', 'ship_stores_separate'] : []), ...LIT, ...(courses ? ['sea_courses_enabled'] : []), ...(home ? ['assign_home_enabled'] : []), ...(near ? ['jobs_wait_enabled', 'near_round_enabled'] : [])]
     if (nearLow)
       await pg.exec(`
         create function public.spec_near_low() returns trigger language plpgsql as $f$

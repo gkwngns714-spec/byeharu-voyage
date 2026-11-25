@@ -577,7 +577,7 @@ export function WorkerSheet({ worker, onClose }: { worker: string; onClose: () =
             const w = figureWord(f)
             return <Row key={f.key} label={t(w.word)} value={<span className="tabular-nums">{w.text}</span>} />
           })}
-          {last && lastAt !== null && last.ok && last.to && (
+          {last && lastAt !== null && last.ok && last.to && last.from !== last.to && (
             <Row
               label={t('corp.last')}
               value={last.profit !== undefined ? <Figure tone={last.profit < 0 ? 'danger' : 'success'} value={formatDucatsDelta(last.profit)} /> : undefined}

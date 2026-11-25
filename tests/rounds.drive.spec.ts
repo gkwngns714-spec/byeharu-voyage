@@ -3,7 +3,7 @@ import { ready, reachable } from './appReady.fixture'
 import { corpWorld } from './corpWorld.fixture'
 import { serveWorldImage } from './worldImage.fixture'
 
-// ROUNDS, DRIVEN (0518 to 0534; owner R3, R5, R6, slide 5): on the Assign sheet a fleet takes COMBAT, EXPEDITION or TRADING. Combat: a sea, what a round costs (never
+// ROUNDS, DRIVEN (0518 to 0535; owner R3, R5, R6, slide 5): on the Assign sheet a fleet takes COMBAT, EXPEDITION or TRADING. Combat: a sea, what a round costs (never
 // a chance, no RUN), the stop, repeat or home. Her sheet: the rounds, the log, what she has, Come home. Expedition: the same; its artifacts given at the capital. On an
 // image without the rounds it is skipped: the action is not drawn.
 
@@ -61,6 +61,7 @@ for (const size of [
     await expect(form).toHaveAttribute('data-kind', 'combat')
     await expect(form.getByTestId('round-cost')).toBeVisible({ timeout: 60_000 })
     expect(Number(await form.getByTestId('round-cost').getAttribute('data-hull'))).toBeGreaterThan(0)
+    expect(Number(await form.getByTestId('round-cost').getAttribute('data-ammo'))).toBeGreaterThan(0)
     for (const c of ['food', 'water', 'crew', 'ammo', 'hull']) await expect(form.locator(`[data-cost="${c}"]`)).toBeVisible()
     expect((await sheet.innerText()).toLowerCase(), 'a chance is drawn').not.toMatch(/chance|odds|win rate|run away/)
     expect(await small()).toEqual([])
@@ -96,23 +97,45 @@ for (const size of [
     const card = worker.getByTestId('round-card')
     await expect(card).toBeVisible({ timeout: 120_000 })
     await shot('7-out-sheet')
-    const state = await card.getAttribute('data-state')
-    const h0 = await card.getByTestId('round-log').evaluate((el) => el.getBoundingClientRect().height)
-    if (state === 'out') await card.getByTestId('round-home').click()
-    await expect(card).toHaveAttribute('data-state', 'home', { timeout: 120_000 })
-    await expect(card.getByTestId('round-log-line').first()).toBeVisible({ timeout: 60_000 })
-    expect(await card.getByTestId('round-log').evaluate((el) => el.getBoundingClientRect().height), 'the log changed its height').toBe(h0)
+    await expect(card).toHaveAttribute('data-state', 'out')
+    await expect(card.getByTestId('round-log-line').first(), 'the log does not move while she is out').toBeVisible({ timeout: 60_000 })
     await expect(card.getByTestId('round-log-line').first()).toContainText(/Won|Lost/)
-    await shot('8-log')
+    const h0 = await card.getByTestId('round-log').evaluate((el) => el.getBoundingClientRect().height)
     await page.goBack()
     await expect(worker).toHaveCount(0)
+    // WHILE AWAY: her run and its log
     const away = page.getByTestId('rounds-away')
     await expect(away).toBeVisible({ timeout: 120_000 })
     await away.getByTestId('rounds-away-open').click()
-    await expect(away.getByTestId('round-log')).toBeVisible()
+    await expect(away.getByTestId('round-log-line').first()).toBeVisible()
     await away.scrollIntoViewIfNeeded()
     expect(await sideways(page)).toBe(false)
-    await shot('9-away')
+    await shot('8-away')
+    // HOME: the rounds booked, what she has, her job gone (or it would send her out again)
+    await row()
+    await card.getByTestId('round-home').click()
+    await expect(card).toHaveAttribute('data-state', 'home', { timeout: 120_000 })
+    await expect(card.getByTestId('round-take')).toContainText('Gold', { timeout: 60_000 })
+    expect(await card.getByTestId('round-log').evaluate((el) => el.getBoundingClientRect().height), 'the log changed its height').toBe(h0)
+    await expect(hers).toHaveAttribute('data-state', 'idle', { timeout: 120_000 })
+    await shot('9-home')
+    await page.goBack()
+    await expect(worker).toHaveCount(0)
+
+    // WRECKS WHERE THEY ARE USED: the yard and the Forge
+    await page.goto('port')
+    await page.getByRole('tab', { name: 'Build', exact: true }).first().click()
+    await expect(page.getByTestId('port-yard').getByTestId('wrecks-line')).toBeVisible({ timeout: 60_000 })
+    expect(await sideways(page)).toBe(false)
+    await shot('9b-yard')
+    await page.goto('city')
+    await ready(page)
+    await page.getByTestId('city-building-production').click()
+    await page.getByTestId('port-production').getByRole('tab', { name: 'Recipes', exact: true }).click()
+    await expect(page.getByTestId('port-forge').getByTestId('wrecks-line')).toBeVisible({ timeout: 60_000 })
+    await shot('9c-forge')
+    await page.goto('city')
+    await ready(page)
 
     // EXPEDITION, and its artifacts at the capital
     await openSheet()
@@ -128,6 +151,7 @@ for (const size of [
     await expect(hers).toContainText('Expedition', { timeout: 120_000 })
     await row()
     await expect(card).toBeVisible({ timeout: 120_000 })
+    await expect(card).toContainText('Expedition', { timeout: 120_000 })
     if ((await card.getAttribute('data-state')) === 'out') await card.getByTestId('round-home').click()
     const give = card.getByTestId('round-give')
     await expect(give).toBeVisible({ timeout: 120_000 })

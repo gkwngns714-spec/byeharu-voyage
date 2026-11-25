@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { worldRoundQuote, worldRounds, type RoundRun, type RoundTerms, type RoundsView } from '../lib/rpc'
 import { useJobEdits } from './useAwayReport'
+import { useWorkEdits } from './useWorkers'
 import { useServedRead, type ServedRead } from './useServedRead'
 import { useWorld } from './worldStore'
 
-// THE ROUNDS, SERVED (0518 to 0534, docs/design/rounds-2026-11-25.md). One read a surface that opens (world.rounds), and one quote when she picks a work and a
+// THE ROUNDS, SERVED (0518 to 0535, docs/design/rounds-2026-11-25.md). One read a surface that opens (world.rounds), and one quote when she picks a work and a
 // sea (world.round_quote). NO FIGURE IS WORKED OUT HERE: a round's cost, the runs, the log and what she has in hand are drawn as served. Dark: {on: false}, and
 // nothing of it is drawn.
 
@@ -19,7 +20,8 @@ export function litRounds(v: RoundsView | null): LitRounds | null {
 export function useRounds(fleet: string | null, ask = true): ServedRead<RoundsView> {
   const company = useWorld((s) => s.player?.id ?? null)
   const versions = useWorld((s) => s.fleets.map((f) => `${f.id}.${f.version}`).join(','))
-  const edits = useJobEdits((s) => s.edits)
+  const jobs = useJobEdits((s) => s.edits)
+  const edits = `${jobs}.${useWorkEdits((s) => s.edits)}`
   return useServedRead<RoundsView>(ask && company !== null ? `${company}:${fleet ?? '-'}` : null, () => worldRounds(fleet), {
     question: ask && company !== null ? `${company}:${fleet ?? '-'}:${edits}:${versions}` : null,
     trigger: 0,
