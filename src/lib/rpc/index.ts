@@ -856,6 +856,11 @@ export function worldRounds(fleet: string | null): Promise<RpcResult<RoundsView>
   return call<RoundsView>('worldRounds', [fleet])
 }
 
+/** 0534: what a round would cost her from `base` with this stop rule (its fights are never served). */
+export function worldRoundQuote(fleet: string, work: string, base: string, stop: RoundStop): Promise<RpcResult<{ on: boolean; terms?: RoundTerms | null }>> {
+  return call<{ on: boolean; terms?: RoundTerms | null }>('worldRoundQuote', [fleet, work, base, stop])
+}
+
 export function cmdRoundSend(fleet: string, work: string, stop: RoundStop): Promise<RpcResult<{ ok: true; fleet: string; terms: RoundTerms }>> {
   return call<{ ok: true; fleet: string; terms: RoundTerms }>('cmdRoundSend', [fleet, work, stop])
 }

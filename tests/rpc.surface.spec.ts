@@ -1637,6 +1637,8 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // her runs and the works with what a round costs, never odds. A read. Its two doors, none taking a player id: cmd.round_send(fleet, work,
       // stop), cmd.round_home(fleet); a fleet not hers refused; dark E_NOT_IN_USE. The server lands first.
       'worldRounds', 'cmdRoundSend', 'cmdRoundHome',
+      // Pin moved deliberately 2026-11-25 with migration 0534: world.round_quote(fleet, work, base, stop) - a read; her own fleet alone; dark {on: false}.
+      'worldRoundQuote',
       // Pin moved deliberately 2026-11-25 with migration 0524 (artifacts): cmd.artifact_report(fleet) - no player id; a fleet not hers refused; dark
       // E_NOT_IN_USE; docked in her country's capital alone.
       'cmdArtifactReport',
