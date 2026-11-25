@@ -28,7 +28,12 @@ const NAMES: Record<string, string> = {
 // A new slice that re-cuts a line inside a 0353 hunk adds its line here in the same PR that edits proof 56.
 const M432 = '20260818000432_a_raided_ship_may_run.sql'
 const M433 = '20260818000433_the_server_says_have_and_need.sql'
-const RECUTS: readonly { by: string; from: string; to: string }[] = [
+const M511 = '20260818000511_riot_and_storm.sql'
+const RAIDERS = 'voyage.freeze_raiders(voyage.freeze_danger(p_segments, p_at), p_fleet)'
+const ORDERED = `voyage.freeze_order(${RAIDERS}, p_fleet)` // what 0353 made of RAIDERS
+// `bare`: the re-cut lies on both sides of 0353's hunk: [0353's new text, its old text], each held to 0353 itself; the old side gets the same
+// re-cut with 0353's wrapper taken off.
+const RECUTS: readonly { by: string; from: string; to: string; bare?: readonly [string, string] }[] = [
   {
     by: M432,
     from:
@@ -51,6 +56,8 @@ const RECUTS: readonly { by: string; from: string; to: string }[] = [
   { by: M433, from: "v_sentence := 'We paid their price and they let us pass.';", to: "v_sentence := 'Paid; let pass.';" },
   { by: M433, from: "'You get clear of them.'::text;", to: "'Got clear.'::text;" },
   { by: M433, from: "v_sentence := 'We ran, and got clear of them.';", to: "v_sentence := 'Ran; got clear.';" },
+  // 0511: what a riot and a storm take is frozen as she leaves
+  { by: M511, from: `${ORDERED}, v_total,`, to: `voyage.freeze_happenings(${ORDERED}, v_npc), v_total,`, bare: [ORDERED, RAIDERS] },
 ]
 
 test('every hunk of migration 0353 stands in proof 56 word for word, and the proof pins no body by digest', () => {
@@ -63,13 +70,16 @@ test('every hunk of migration 0353 stands in proof 56 word for word, and the pro
   const used = new Set<number>()
   const recut = (text: string) =>
     RECUTS.reduce((t, r, i) => {
-      if (!t.includes(r.from)) return t
+      const bare = (x: string) => (r.bare ? x.replaceAll(r.bare[0], r.bare[1]) : x)
+      const [from, to] = t.includes(r.from) ? [r.from, r.to] : [bare(r.from), bare(r.to)]
+      if (!t.includes(from)) return t
       used.add(i)
-      return t.replaceAll(r.from, r.to)
+      return t.replaceAll(from, to)
     }, text)
   RECUTS.forEach((r) => {
     const by = readFileSync(path.resolve('supabase', 'migrations', r.by), 'utf8').replaceAll('\r', '')
     expect(by.includes(r.from), `${r.by} does not hold the old text ${JSON.stringify(r.from)}`).toBe(true)
+    r.bare?.forEach((x) => expect(mig.includes(x), `0353 does not hold ${JSON.stringify(x)}`).toBe(true))
     expect(by.includes(r.to), `${r.by} does not hold the new text ${JSON.stringify(r.to)}`).toBe(true)
   })
   const missing = hunks.filter((h) => !proof.includes(`('${h.fn}', ${h.n}, $h$${recut(h.old)}$h$, $h$${recut(h.new)}$h$)`)).map((h) => `${h.fn} #${h.n}`)
