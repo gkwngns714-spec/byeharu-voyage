@@ -160,7 +160,7 @@ test.describe('a SAIL begins and ends in the roads, not at the quay', () => {
     // The chart is now the ONE screen that proposes a course, and it is held to the one authority.
     for (const file of ['map/useSendFleet.ts']) {
       const text = readFileSync(path.join(SRC, file), 'utf8')
-      const calls = [...text.matchAll(/proposeCourse\(([^)]*)\)/g)]
+      const calls = [...text.matchAll(/proposeCourse\(((?:[^()]|\([^()]*\))*)\)/g)]
       expect(calls.length, `${file} proposes no course at all — has it moved?`).toBeGreaterThan(0)
       for (const call of calls) {
         const args = call[1].split(',').map((s) => s.trim())

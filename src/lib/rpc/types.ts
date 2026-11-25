@@ -3873,6 +3873,8 @@ export interface RoundTerms {
   hull?: number
   min: number
   days: number
+  /** 0535: the hull, in per cent, a combat run ends under (hers, or the server's); null at sea: no limit. */
+  hull_stop?: number | null
   most: number
   why: 'food' | 'water' | 'crew' | 'rounds' | 'cap'
   level: number

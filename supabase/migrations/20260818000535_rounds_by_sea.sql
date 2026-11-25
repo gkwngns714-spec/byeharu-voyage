@@ -6,7 +6,9 @@
 --   world.rounds(fleet) gains `seas`: for a fleet of hers that lies in a harbour, each sea with the nearest harbour of it the world remembers a course to (her own sea: where
 --     she lies): {sea, name, base, nm, pirates}. `base` is what cmd.set_fleet_job {work, base} takes. No strength and no odds are served.
 --   world.round_quote(fleet, work, base, stop)   what a Send from that base would cost a round there, and the most rounds (public.round_terms, with `base` in its
---     stop: one hunk). Asked when she picks a sea or a work. The fights it plays are the Send's own (0521), never served.
+--     stop). Asked when she picks a sea or a work. The fights it plays are the Send's own (0521), never served.
+--   THE STOPS THE SERVER KEEPS WHEN NONE IS SET: the terms (both reads) say `hull_stop` beside `days` and `min`, the figure that will be kept: hers, or for a combat
+--     work round_hull_stop (0521); null: no limit. Rounds, ammo and what a job hires or provisions have no default.
 --   THE LOG WHILE SHE IS OUT: a run's card (public.round_run_card, one hunk) lists the rounds that have passed whether or not they are booked yet (public.round_log_of:
 --     the lines the settle will write, from the frozen terms), so the log moves while she works and no read writes.
 -- A read; writes nothing. ROWS: none. -- budget: none. -- retention: none.
@@ -140,6 +142,10 @@ $h$    -- 0535: in the sea of a named base (world.round_quote), else of the harb
     v_x := public.round_fights(p_fleet, coalesce((select h.sea_id from public.ports h where h.code = p_stop->>'base' and h.kind = 'HARBOUR'),
                                                  (select h.sea_id from public.fleets f join public.ports h on h.id = f.port_id where f.id = p_fleet)));
 $h$),
+  ('public.round_terms(uuid,text,jsonb)', 2,
+$h$'min', v_min, 'days', v_days, $h$,
+$h$'min', v_min, 'days', v_days, 'hull_stop', case when w.kind = 'combat' then coalesce((p_stop->>'hull')::numeric, public.wc_num('round_hull_stop')) end,   -- 0535: the figure a combat run ends under (0521's)
+                            $h$),
   ('public.round_run_card(uuid)', 1,
 $h$'log', r.log)
 $h$,
@@ -244,7 +250,7 @@ $h$);
   if clock_timestamp() - v_t0 > interval '30 seconds' then
     raise exception '0535 self-assert FAIL: the file took % (budget 30 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0535 self-assert ok: ROUNDS, BY SEA (dark). Four hunks once and reversing; no other function moved; two functions server only, one read for the signed-in company. Probe (rolled back): % seas from Lisbon; a round''s hull % here, % in another sea (%). % ms.',
+  raise notice '0535 self-assert ok: ROUNDS, BY SEA (dark). Five hunks once and reversing; no other function moved; two functions server only, one read for the signed-in company. Probe (rolled back): % seas from Lisbon; a round''s hull % here, % in another sea (%). % ms.',
     v_l->>'seas', v_l #>> '{q0,terms,hull}', v_l #>> '{q1,terms,hull}', v_l #>> '{q1,terms,kind}', round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0535;
   drop table pre_0535;

@@ -78,7 +78,7 @@ async function fullShot(page: Page, path: string, size: { width: number; height:
   await page.setViewportSize(size)
 }
 
-async function open(page: Page, size: { width: number; height: number }, home: boolean, near: { near?: boolean; nearLow?: boolean } = {}) {
+async function open(page: Page, size: { width: number; height: number }, home: boolean, near: { near?: boolean; nearLow?: boolean; clear?: boolean } = {}) {
   await serveWorldImage(page, await corpWorld({ courses: true, home, ...near }))
   await page.setViewportSize(size)
   await page.goto('city')
@@ -170,7 +170,8 @@ for (const size of SIZES) {
   test(`Assign @${size.width}: Bring home, once, where 0492's switch is lit`, async ({ page, request, baseURL }) => {
     test.setTimeout(900_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
-    await open(page, size, true)
+    // (no weather: the run to her sale is waited out by the wall clock, and a storm alone is longer than the wait)
+    await open(page, size, true, { clear: true })
     const sheet = page.getByTestId('hq-sheet-assign')
     // AT HOME the server offers no Bring home (there is nothing to bring home from home), so the sheet offers none; Once is offered
     const row0 = fleetRow(page)

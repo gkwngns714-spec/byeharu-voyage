@@ -5,6 +5,7 @@
 --
 -- @pass RS_SEAS   each sea once, the nearest base first, her own sea at 0 miles
 -- @pass RS_QUOTE  a quote before any Send; a stranger's fleet has none; dark says off
+-- @pass RS_STOP   the stops the server keeps when none is set are served (days, min, hull_stop); hers when she sets one; a work at sea has no hull stop
 -- @pass RS_LOG    the log of a run that is out is, word for word, what the settle books
 -- ══════════════════════════════════════════════════════════════════════════════════
 do $p$
@@ -43,6 +44,17 @@ begin
     raise exception 'RS_QUOTE: % / %', x, y;
   end if;
   raise notice 'PASS: RS_QUOTE - a round: food %, crew %; nothing sent', x #>> '{terms,food}', x #>> '{terms,crew}';
+
+  update public.world_config set value = 'true'::jsonb where key = 'combat_rounds_enabled';
+  y := world.round_quote(v_f, 'pirates', v_code, '{}')->'terms';
+  if (y->>'hull_stop')::numeric is distinct from public.wc_num('round_hull_stop') or (y->>'days')::numeric is distinct from 2 or (y->>'min')::int is distinct from
+       (select sum(c.crew_required)::int from public.ships s join public.ship_classes c on c.id = s.class_id where s.fleet_id = v_f)
+     or (world.round_quote(v_f, 'pirates', v_code, '{"hull": 25}') #>> '{terms,hull_stop}')::numeric is distinct from 25
+     or x #> '{terms,hull_stop}' is distinct from 'null'::jsonb
+     or (select (e #>> '{terms,hull_stop}')::numeric from jsonb_array_elements(world.rounds(v_f)->'works') e where e->>'work' = 'pirates') is distinct from public.wc_num('round_hull_stop') then
+    raise exception 'RS_STOP: % / %', x, y;
+  end if;
+  raise notice 'PASS: RS_STOP - days %, hands %, hull % per cent', y->>'days', y->>'min', y->>'hull_stop';
 
   perform public.round_send_for(v_a, v_f, 'expedition', '{"rounds": 4, "days": 0}', now() - interval '35 minutes');
   l1 := world.rounds(null) #> '{runs,0,log}';

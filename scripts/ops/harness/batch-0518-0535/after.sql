@@ -56,7 +56,7 @@ select json_build_object(
                                 ('public.wrecks_yield_on()', 'db5c385ead98244cd027264ada1ffa3d'),
                                 ('public.round_spoils(uuid,integer,integer,timestamp with time zone)', 'fe201cdfeb864e0f1a56583cf36c1904'),
                                 ('public.expedition_rounds_on()', 'c344f08319d6f807dad3b34a23c238e8'),
-                                ('public.round_terms(uuid,text,jsonb)', '6dd0b02dafca1dba733e51b197109c29'),
+                                ('public.round_terms(uuid,text,jsonb)', 'cfd702ab2d07b5f5276e5dc775a80a15'),
                                 ('public.round_settle(uuid,timestamp with time zone)', 'fe6acd6160beb138e5338ce48cf82a3b'),
                                 ('public.artifacts_on()', 'e2d15791b4627ea8e0b75103542de61f'),
                                 ('public.honor_reconciles()', '4d526bb03293a96d8b2612d88721e369'),
