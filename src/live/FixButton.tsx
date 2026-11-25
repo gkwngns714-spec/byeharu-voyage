@@ -4,7 +4,8 @@ import type { WorkerFix } from '../domain/fleet'
 import type { FleetView } from '../lib/rpc'
 import { HireNow } from './PortInn'
 import { RepairNow, type RepairQuote } from './PortShipyard'
-import { fixPressOf, isPaidFix, useFixWord, type PaidFix } from './fixPress'
+import { fixPressOf, isPaidFix, useFixWord, useWreckWord, type PaidFix } from './fixPress'
+import { WreckNow } from './WreckFix'
 import { useWorld } from './worldStore'
 
 // THE ONE PRESS THAT MENDS A REFUSAL (0499; the lead, 2026-11-25: "a worker row / stopped job whose code has a fix shows ONE button that
@@ -47,11 +48,41 @@ function PaidButton({ fix, fleet, className }: { fix: PaidFix; fleet: FleetView;
   )
 }
 
+/** A WRECK'S NEXT PRESS (0497; live/WreckFix.tsx): Sell cargo (opens the sell face on her), or Tow at the served fee with the server's
+ *  own sentence of where it takes her; a tow her purse cannot pay shows its refusal, and no press that would not act. */
+function WreckButton({ fleet, className }: { fleet: FleetView; className?: string }) {
+  const word = useWreckWord()
+  return (
+    <WreckNow fleet={fleet}>
+      {(step) => (
+        <>
+          {step.sentence && step.kind === 'tow' && (
+            <Note tone="warning" data-testid="corp-fix-tow-note">
+              {step.sentence}
+            </Note>
+          )}
+          {step.press !== null && (
+            <Button variant="primary" className={className} busy={step.busy} disabled={step.busy} onClick={step.press} data-testid="corp-fix" data-fix={step.kind} data-cost={step.fee ?? undefined}>
+              {word(step).pill}
+            </Button>
+          )}
+          {step.refusal && step.kind === 'tow' && (
+            <Note tone="danger" code={step.refusal.code} figures={step.refusal.figures} data-testid="corp-fix-refusal">
+              {step.refusal.sentence}
+            </Note>
+          )}
+        </>
+      )}
+    </WreckNow>
+  )
+}
+
 /** THE BUTTON: one, or none. `worker` is a fleet's id or the party's. */
 export function WorkerFixButton({ fix, worker, className }: { fix: WorkerFix | null; worker: string; className?: string }) {
   const word = useFixWord()
   const fleet = useWorld((s) => s.fleets.find((f) => f.id === worker) ?? null)
   if (fix === null) return null
+  if (fix === 'wreck') return fleet ? <WreckButton fleet={fleet} className={className} /> : null
   if (isPaidFix(fix)) return fleet && fleet.status === 'DOCKED' ? <PaidButton fix={fix} fleet={fleet} className={className} /> : null
   return (
     <Button variant="primary" className={className} onClick={fixPressOf(fix, worker)} data-testid="corp-fix" data-fix={fix}>

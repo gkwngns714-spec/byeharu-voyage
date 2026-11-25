@@ -299,8 +299,8 @@ test('Assign: every run the server offers is within her purse, in the order of t
 //   * "Trade nearby" is Assign's FIRST choice and the one the sheet opens on; its words are the served base's ("Trade near Lisbon");
 //     no rate is drawn (the server serves none); one world.actions request; assigned, her row says it and she sails;
 //   * a job that waits for a price is NOT shown as stopped: her row says "Prices low" with the clock to the server's next ask.
-/** 0498 is in this chain (so in the built image): without it the server serves no near round and no wait, and those two tests do not run. */
-const HAS_NEAR = readdirSync('supabase/migrations').some((f) => /^\d+0498_/.test(f))
+/** 0499 (near-round) is in this chain (so in the built image): without it the server serves no near round and no wait, and those two tests do not run. */
+const HAS_NEAR = readdirSync('supabase/migrations').some((f) => /_near_round\.sql$/.test(f))
 // NOT REGISTERED where they cannot run (no skip: CI's floor counts every registered test; the way tests/korean.paused.ts does it)
 const testNear = (HAS_NEAR ? test : () => undefined) as typeof test
 const testUnless = (HAS_NEAR ? () => undefined : test) as typeof test

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { fixOf, type WorkerFix } from '../../../domain/fleet'
+import { fixOf, wreckFix, type WorkerFix } from '../../../domain/fleet'
 import { formatDucatsDelta, formatFixed, formatInt, formatRealShort, instantMs } from '../../../lib/format'
 import { properName, translateMaybe, type TKey } from '../../../lib/i18n'
 import { worldLand, type ActionBasis, type FleetJobRow, type FleetView, type LandView, type WorkerAction as ServedAction, type WorkerRow as ServedRow } from '../../../lib/rpc'
@@ -176,9 +176,11 @@ function rowOf(w: ServedRow, fleet: FleetView | null, job: FleetJobRow | null, l
     why: w.stop ? (w.stop.sentence ?? translateMaybe('en', 'codes', w.stop.code) ?? null) : null,
     wait: w.wait && instantMs(w.wait.retry_at) !== null ? { code: w.wait.code, sentence: w.wait.sentence, retryMs: instantMs(w.wait.retry_at)! } : null,
     // the one press that mends it, from the served stop's code (`fixOf`); a repair or a hire only while she lies docked
+    // 0497: and where no code names one, the press her own served state asks for (a wreck in a port; a towed hull at a yard)
     fix: (() => {
       const press = fixOf(w.stop?.code ?? w.wait?.code)
-      return (press === 'repair' || press === 'hire') && !(w.kind === 'fleet' && fleet?.status === 'DOCKED') ? null : press
+      const mine = (press === 'repair' || press === 'hire') && !(w.kind === 'fleet' && fleet?.status === 'DOCKED') ? null : press
+      return w.kind === 'fleet' ? (wreckFix(fleet) ?? mine) : mine
     })(),
   }
 }

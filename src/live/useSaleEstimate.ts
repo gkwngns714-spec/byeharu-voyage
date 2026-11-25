@@ -20,6 +20,10 @@ export function useSaleEstimate(
   code: string | null,
   /** The units on the button (0: nothing is asked). */
   n: number,
+  /** 0497: SELL EVERYTHING SHE CARRIES OF IT is asked as the grammar's own ALL, not as its number: the server then sells what the
+   *  quay takes today (cmd.do_sell cuts ALL to the day's allowance) where the bare number is refused whole for being over it. The
+   *  owner's wreck carried 899 coral at a quay that takes 210 a day: the sell face quoted nothing and its press was refused. */
+  all = false,
 ): { preview: SaleEstimate | null; previewLoading: boolean } {
   const verbs = useWorld((s) => s.snapshot?.verbs)
   const spec = findVerb(verbs ?? [], intent === 'buy' ? 'BUY' : 'SELL')
@@ -39,9 +43,9 @@ export function useSaleEstimate(
   // be two figures. `saleEstimate` reads the keys both verbs share (`qty`, `total`, `avg_price`,
   // `haggle_saved`), the three a sale adds (`basis`, `cost`, `profit`), and since 0490 the sale's costs and its one profit
   // (`tax`, `wages`, `dock_fee`, `trip_net`), which a buy leaves null.
-  const line = spec !== undefined && code !== null && settled > 0 ? orderText(spec, { good: code, qty: String(settled) }, fleet.name) : null
+  const line = spec !== undefined && code !== null && settled > 0 ? orderText(spec, { good: code, qty: all ? 'ALL' : String(settled) }, fleet.name) : null
   const subject = spec !== undefined && code !== null ? `${fleet.id}:${intent}:${code}` : null
-  const question = line !== null ? `${settled}` : null
+  const question = line !== null ? `${all ? 'ALL' : settled}` : null
   const dryRun = useServedRead<SaleEstimate | null>(
     subject,
     async () => {

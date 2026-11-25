@@ -25,7 +25,7 @@ function fillOf(bar: Row['bar'], nowMs: number): number {
   return Math.max(0, Math.min(100, ((nowMs - bar.fromMs) / (bar.toMs - bar.fromMs)) * 100))
 }
 
-export function WorkerRow({ row, names, nowMs, onPress, pill, fixCost }: { row: Row; names: ActionNames; nowMs: number; onPress: (row: Row) => void; pill?: string; fixCost?: number | null }) {
+export function WorkerRow({ row, names, nowMs, onPress, pill, fixCost, fixKind, note }: { row: Row; names: ActionNames; nowMs: number; onPress: (row: Row) => void; pill?: string; fixCost?: number | null; /** 0497: which press the pill is, when the row's `fix` is resolved by the server (a wreck: sell | tow). */ fixKind?: string; /** 0497: words for her action's line while a press stands ("Tow to Colombo"). */ note?: string }) {
   const t = useT()
   const idle = row.state === 'idle'
   const act = idle && row.assignable
@@ -45,7 +45,7 @@ export function WorkerRow({ row, names, nowMs, onPress, pill, fixCost }: { row: 
       data-waiting={row.waiting}
       data-wait={row.wait?.code}
       data-action={row.action.kind}
-      data-fix={pill ? (row.fix ?? undefined) : undefined}
+      data-fix={pill ? (fixKind ?? row.fix ?? undefined) : undefined}
       data-fix-cost={pill && fixCost != null ? fixCost : undefined}
     >
       <span className="flex min-w-0 items-center gap-3 lg:w-[28rem] lg:shrink-0">
@@ -68,7 +68,7 @@ export function WorkerRow({ row, names, nowMs, onPress, pill, fixCost }: { row: 
             {name}
           </span>
           <span className="break-words text-t-caption leading-tight text-ink-muted" data-testid="corp-worker-action">
-            {actionWord(row.action, t, names)}
+            {note ?? actionWord(row.action, t, names)}
           </span>
         </span>
         {pill ? (

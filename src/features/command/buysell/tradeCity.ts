@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { cargoPort } from '../../../domain/fleet'
 import { boundFor } from '../../../domain/order'
 import { useWorld } from '../../../live/worldStore'
 import type { FleetView } from '../../../lib/rpc'
@@ -28,7 +29,7 @@ export function useTradeCity(fleet: FleetView): TradeCity {
   const portByCode = useWorld((s) => s.portByCode)
   const focus = useDeskGood((s) => s.focus)
   return useMemo(() => {
-    const docked = fleet.status === 'DOCKED' ? fleet.port : null
+    const docked = cargoPort(fleet)   // 0497: or the port a wreck lies in
     const dest = boundFor(fleet, (c) => portByCode[c] !== undefined) ?? fleet.voyage?.to ?? null
     const home = docked ?? dest
     const city = focus && portByCode[focus] ? focus : home
