@@ -109,6 +109,9 @@ begin
    where public.port_offers(v_lis, g.id) and exists (select 1 from public.port_goods pl where pl.port_id = v_lis and pl.good_id = g.id)
      and not public.culture_refuses(pd.culture, g.culture_mask) and public.fleet_free_hold(v_fa) >= 20 * g.bulk
    order by k.nm, g.code limit 1;
+  -- a unit is one tun (rolled back): a founding hull's hold is rolled in whole tuns, so a load of another bulk left a scrap that could be a sail's stores
+  update public.goods g set bulk = 1 where g.id = v_gid;
+  v_bulk := 1;
   update public.port_goods pg set stock_target = 1000000, stock = 1000000000 where pg.good_id = v_gid and pg.port_id = v_lis;
   update public.port_goods pg set stock_target = 1000000 where pg.good_id = v_gid and pg.port_id in (select p.id from public.ports p where p.code in (v_sell, 'CPT'));
 
