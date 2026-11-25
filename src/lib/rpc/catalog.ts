@@ -481,6 +481,8 @@ const TABLE = {
       { name: 'p_stop', type: 'jsonb' },
     ],
   },
+  // 0524: a fleet gives her artifacts to her capital (dark E_NOT_IN_USE)
+  cmdArtifactReport: { schema: 'cmd', fn: 'artifact_report', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdRoundHome: { schema: 'cmd', fn: 'round_home', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }] },
   // 0483 — COURIER CONTRACTS (dark: the doors E_NOT_IN_USE, the read {on: false})
   worldCourierContracts: { schema: 'world', fn: 'courier_contracts', args: [] },

@@ -1,6 +1,6 @@
 -- 0518 / 0519 ROUNDS, BEFORE AND AFTER. A PROD CHECK: read-only, ONE statement, the gate first.
 --   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/rounds/after.sql
--- Expect before 0518: tables 0, fns 0. After 0518: tables 2, fns 9. After 0519: fns 18 (13 more names: the doors and the read among them), client_reach 3 (the two doors
+-- Expect before 0518: tables 0, fns 0. After 0518: tables 2, fns 9. After 0519: fns 18, client_reach 3 (the two doors
 --   and the read), rounds_enabled false, on_rounds 0. LIT, 30 minutes on: on_rounds and runs grow with the Sends; the jobs' tick (job_ms) within 20 ms of before.
 -- ROLLBACK: rounds_enabled false (the owner's switch).
 begin transaction read only;

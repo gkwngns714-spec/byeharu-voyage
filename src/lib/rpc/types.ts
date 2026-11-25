@@ -3651,7 +3651,13 @@ export interface RoundRun {
 export type RoundsView =
   | { on: false }
   | { on: true; company: false }
-  | { on: true; company: true; now: string; runs: RoundRun[]; works: { work: string; kind: 'combat' | 'sea'; word: string; skill: string; level: number; open: boolean; terms: RoundTerms | null }[] }
+  | {
+      on: true
+      company: true
+      now: string
+      /** 0524: what each fleet carries home, and what a capital gives for one (null: dark). */
+      artifacts?: { tiers: { tier: string; gold: number; rp: number }[]; kept: { fleet: string; tier: 'uncommon' | 'rare' | 'very_rare'; qty: number }[] } | null
+      runs: RoundRun[]; works: { work: string; kind: 'combat' | 'sea'; word: string; skill: string; level: number; open: boolean; terms: RoundTerms | null }[] }
 
 /** 0481: what a job did last: a run it started (its note), a wait for nothing to do, or the code it stopped on. */
 export interface FleetJobLast {

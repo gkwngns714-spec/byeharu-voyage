@@ -852,6 +852,10 @@ export function cmdRoundSend(fleet: string, work: string, stop: RoundStop): Prom
   return call<{ ok: true; fleet: string; terms: RoundTerms }>('cmdRoundSend', [fleet, work, stop])
 }
 
+export function cmdArtifactReport(fleet: string): Promise<RpcResult<{ ok: true; fleet: string; artifacts: Record<string, number>; gold: number; rp: number }>> {
+  return call<{ ok: true; fleet: string; artifacts: Record<string, number>; gold: number; rp: number }>('cmdArtifactReport', [fleet])
+}
+
 export function cmdRoundHome(fleet: string): Promise<RpcResult<{ ok: true; fleet: string; rounds: number }>> {
   return call<{ ok: true; fleet: string; rounds: number }>('cmdRoundHome', [fleet])
 }
