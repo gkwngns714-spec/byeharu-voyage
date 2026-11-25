@@ -1,6 +1,6 @@
--- 0504 THE CHART IS BLACK UNTIL SHE SAILS, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
---   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/chart-fog/before-0504.sql
--- Expect: head 20260818000503; knobs 0 and table null (not applied); settle_anchor 1 and registry_anchor 1 (each hunk's OLD text is in
+-- 0526 THE CHART IS BLACK UNTIL SHE SAILS, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
+--   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/chart-fog/before-0526.sql
+-- Expect: head 20260818000525; knobs 0 and table null (not applied); settle_anchor 1 and registry_anchor 1 (each hunk's OLD text is in
 --   the live body once: 0499-0503 did not move them); needs 5 (the logbook's arrival, the skill level, the two sea functions, the home
 --   port). (The probe founds its own company with the economy
 --   open, rolled back: no purse of prod's is read or can refuse it.)

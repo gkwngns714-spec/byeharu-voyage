@@ -844,7 +844,7 @@ export function worldLogbook(): Promise<RpcResult<LogbookView>> {
   return call<LogbookView>('worldLogbook', [])
 }
 
-/** 0504: the chart for the fog: her sight in nautical miles, her charted squares, the harbours of her logbook. Dark: `{on: false}`. */
+/** 0526: the chart for the fog: her sight in nautical miles, her charted squares, the harbours of her logbook. Dark: `{on: false}`. */
 export function worldChart(): Promise<RpcResult<ChartFogView>> {
   return call<ChartFogView>('worldChart', [])
 }

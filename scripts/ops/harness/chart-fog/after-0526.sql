@@ -1,6 +1,6 @@
--- 0504 THE CHART IS BLACK UNTIL SHE SAILS, AFTER (and again after the backfill, and after the light). A PROD CHECK: read-only, ONE statement.
---   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/chart-fog/after-0504.sql
--- Expect after the deploy: head 20260818000504; switch false; sight 150; charts 0; left = companies (none backfilled yet).
+-- 0526 THE CHART IS BLACK UNTIL SHE SAILS, AFTER (and again after the backfill, and after the light). A PROD CHECK: read-only, ONE statement.
+--   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/chart-fog/after-0526.sql
+-- Expect after the deploy: head 20260818000526; switch false; sight 150; charts 0; left = companies (none backfilled yet).
 -- THE BACKFILL (the lead's, off the beat, the gate read first; it WRITES one row a company, so it is not in this file):
 --   select public.chart_backfill_next(5, 500);     -- repeat until its `left` is 0
 -- Expect after it: charts = companies, left 0, no merchant row, every row 8,100 bytes; `squares` the fewest and the most any company has.

@@ -1614,7 +1614,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-23 with migration 0478 (the logbook): world.logbook() - no argument, no player id; dark
       // {on: false}; lit her firsts. A read. Landed WITH the faces (the Logbook page and You's door, the arrival card's lines).
       'worldLogbook',
-      // Pin moved deliberately 2026-11-25 with migration 0504 (the fog): world.chart() - no argument, no player id; dark {on: false};
+      // Pin moved deliberately 2026-11-25 with migration 0526 (the fog): world.chart() - no argument, no player id; dark {on: false};
       // lit her sight, her charted squares and her logbook's harbours. A read. Landed WITH the faces (the map and the Trade map).
       'worldChart',
       // Pin moved deliberately 2026-11-23 with migration 0479 (goods mastery): world.goods_mastery() - no argument, no player id; dark

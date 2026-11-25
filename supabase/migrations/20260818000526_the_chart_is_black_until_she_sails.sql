@@ -1,6 +1,6 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- news: none (dark: nothing changes for a player until the owner lights chart_fog_enabled)
--- 0504 - THE CHART IS BLACK UNTIL SHE SAILS  (dark: the switch chart_fog_enabled, false)
+-- 0526 - THE CHART IS BLACK UNTIL SHE SAILS  (dark: the switch chart_fog_enabled, false)
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- THE OWNER (docs/design/owner-spec-2026-11-25.md): "The MAP itself will be black, and your fleet will provide a radius that will show
 --   you nearby map (cities, location etc.). The radius will be larger based on your NAVIGATION SKILL. But the location you've visited
@@ -61,7 +61,7 @@
 --   paints her course and only near it, the same course again writes nothing, sight follows the knob and her NAVIGATION level, the read
 --   serves her bitmap bit for bit, a merchant and a stranger get none; the backfill paints an old voyage, her logbook's harbours and
 --   where she lies.
--- VERSION: 0504 (0499-0503 are other slices' numbers and come first; this file cuts nothing they are known to cut).
+-- VERSION: 0526 (0499-0503 are other slices' numbers and come first; this file cuts nothing they are known to cut).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -70,7 +70,7 @@ declare
   c_server constant text[] := array['public.chart_sight_nm(uuid)', 'public.chart_paint(bytea,jsonb,numeric)', 'public.chart_mark(uuid,uuid)',
                                     'public.chart_backfill(uuid,integer)', 'public.chart_backfill_next(integer,integer)'];
   c_new    constant text[] := c_server || array['world.chart()'];
-  c_uid    constant uuid := '00000000-0504-4000-8000-000000000001';
+  c_uid    constant uuid := '00000000-0526-4000-8000-000000000001';
   c_zero   constant bytea := decode(repeat('00', 8100), 'hex');
   v_t0        timestamptz := clock_timestamp();
   v_t         timestamptz;
@@ -94,14 +94,14 @@ begin
 
   -- ── 0. GUARD ──
   if exists (select 1 from public.world_config where key in ('chart_fog_enabled', 'chart_sight_nm')) or to_regclass('public.company_chart') is not null then
-    raise exception '0504 refuses: it has been applied once';
+    raise exception '0526 refuses: it has been applied once';
   end if;
   if exists (select 1 from unnest(c_hunked) u(q) where to_regprocedure(u.q) is null)
      or to_regprocedure('public.logbook_arrival(uuid,uuid,uuid,timestamp with time zone)') is null
      or to_regprocedure('public.skill_level(uuid,text)') is null
      or to_regprocedure('voyage.gc_distance_nm(double precision,double precision,double precision,double precision)') is null
      or to_regprocedure('voyage.lon_lerp(double precision,double precision,double precision)') is null then
-    raise exception '0504 refuses: a body it cuts, the logbook (0478), the skill level (0107) or the sea''s arithmetic is not in this world';
+    raise exception '0526 refuses: a body it cuts, the logbook (0478), the skill level (0107) or the sea''s arithmetic is not in this world';
   end if;
 
   -- ── 1. THE PRE-IMAGES ──
@@ -118,9 +118,9 @@ begin
   -- ── 2. THE KNOBS ──
   insert into public.world_config (key, value, description) values
     ('chart_fog_enabled', 'false'::jsonb,
-     '0504: THE SWITCH (the owner''s). true: a company''s chart is painted at each arrival of her fleets from the voyage''s stored path (public.chart_mark, one row a company, public.company_chart) and world.chart() serves her sight, her bitmap and her logbook''s harbours, so the client draws the map black, clear within sight of her fleets and grey where she has been. false: nothing is written and the read is {"on": false}. Light it only after public.chart_backfill_next answers left 0. No door reads the chart: the fog never refuses a sail. Prices are served to everyone as before.'),
+     '0526: THE SWITCH (the owner''s). true: a company''s chart is painted at each arrival of her fleets from the voyage''s stored path (public.chart_mark, one row a company, public.company_chart) and world.chart() serves her sight, her bitmap and her logbook''s harbours, so the client draws the map black, clear within sight of her fleets and grey where she has been. false: nothing is written and the read is {"on": false}. Light it only after public.chart_backfill_next answers left 0. No door reads the chart: the fog never refuses a sail. Prices are served to everyone as before.'),
     ('chart_sight_nm', to_jsonb(150),
-     '0504: how far a company''s fleet sees, in nautical miles, at NAVIGATION level 0. Each level of NAVIGATION adds a third of it (150: 200 at level 1, 650 at level 10). The one knob of the sight (public.chart_sight_nm): the circle the client clears round each fleet, and the width of the grey she leaves behind.');
+     '0526: how far a company''s fleet sees, in nautical miles, at NAVIGATION level 0. Each level of NAVIGATION adds a third of it (150: 200 at level 1, 650 at level 10). The one knob of the sight (public.chart_sight_nm): the circle the client clears round each fleet, and the width of the grey she leaves behind.');
 
   -- ── 3. THE TABLE ──
   -- retention: none, bounded by one row a company of a fixed size (8,100 bytes); merchants keep none
@@ -131,7 +131,7 @@ begin
     updated_at    timestamptz not null default now()
   );
   comment on table public.company_chart is
-    '0504: a company''s chart, one row: `cells` is the world in 1 degree squares (360 x 180 bits, row = floor(90 - lat), col = floor(lon + 180), '
+    '0526: a company''s chart, one row: `cells` is the world in 1 degree squares (360 x 180 bits, row = floor(90 - lat), col = floor(lon + 180), '
     'bit row * 360 + col, low bit first), a set bit where she has been within sight. Written by public.chart_mark at an arrival and by '
     'public.chart_backfill once. Merchants keep none. No foreign key on purpose: one would lock public.players. Read by world.chart().';
   alter table public.company_chart enable row level security;
@@ -146,7 +146,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0504: HOW FAR HER FLEETS SEE, in nautical miles: THE ONE RULE (public.chart_mark and public.chart_backfill paint with it, world.chart()
+  -- 0526: HOW FAR HER FLEETS SEE, in nautical miles: THE ONE RULE (public.chart_mark and public.chart_backfill paint with it, world.chart()
   -- serves it, the client draws its circle and computes nothing). The knob chart_sight_nm, and a third of it more for each level of
   -- NAVIGATION (public.skill_level: 0 with no row). Never under 0, never over 3,000.
   select round(least(3000, greatest(0, coalesce(public.wc_num('chart_sight_nm'), 0))
@@ -161,7 +161,7 @@ language sql
 immutable
 set search_path = public, pg_temp
 as $body$
-  -- 0504: THE ONE PAINTER. `p_cells` (8,100 bytes; null or another length: an empty chart) with every 1 degree square set whose centre
+  -- 0526: THE ONE PAINTER. `p_cells` (8,100 bytes; null or another length: an empty chart) with every 1 degree square set whose centre
   -- lies within `p_nm` of the path, and the square under each point of the path whatever the radius. The path is a voyage's stored shape,
   -- [{a: [lat, lon], b: [lat, lon], nm}] (a point is a piece with a = b): sampled every third of the radius (at least 20 nm; at most
   -- 4,000 points a piece), placed as voyage.position places her (latitude straight, longitude the short way round: voyage.lon_lerp) and
@@ -219,7 +219,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0504: THE CHART'S ONE WRITE AT SEA, called once per arrival by voyage.settle's arrival arm (never per step, never per day). Dark: nothing
+-- 0526: THE CHART'S ONE WRITE AT SEA, called once per arrival by voyage.settle's arrival arm (never per step, never per day). Dark: nothing
 -- after one knob read. A merchant (or nobody): nothing after one players probe. Lit, a company: her row (public.company_chart) with the
 -- arrived voyage's stored path painted in at her sight today (public.chart_sight_nm, public.chart_paint); her row is locked while it is
 -- read and written, so two of her fleets arriving together both stay on the chart. A course already charted changes no bit and WRITES
@@ -266,7 +266,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0504: ONE LIVE COMPANY'S CHART, FROM WHERE SHE HAS ALREADY BEEN (the lead's, before the light; it works dark; server only). Painted at
+-- 0526: ONE LIVE COMPANY'S CHART, FROM WHERE SHE HAS ALREADY BEEN (the lead's, before the light; it works dark; server only). Painted at
 -- her sight today into her row: the stored paths of the newest `p_voyages` ARRIVED voyages of each of her fleets (by the (fleet_id, eta)
 -- index of ended voyages), a point for every harbour in her logbook (the authority for the cities she has made), for where each of her
 -- fleets lies, and for her home. Her row is stamped backfilled_at. A merchant or nobody: refused, nothing written. Run again it only
@@ -323,7 +323,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0504: THE NEXT FEW COMPANIES WITHOUT A BACKFILLED CHART (the lead's, off the beat, the gate read first; server only): each through
+-- 0526: THE NEXT FEW COMPANIES WITHOUT A BACKFILLED CHART (the lead's, off the beat, the gate read first; server only): each through
 -- public.chart_backfill, at most `p_companies` a call, in id order. Answers what it did and how many are LEFT: light chart_fog_enabled
 -- when left is 0. One row a company written, once.
 declare
@@ -352,7 +352,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0504: THE CHART, the client's one door for the fog. Dark (chart_fog_enabled false): {"on": false}, and the map is drawn whole as
+-- 0526: THE CHART, the client's one door for the fog. Dark (chart_fog_enabled false): {"on": false}, and the map is drawn whole as
 -- before. Lit, signed out or a merchant: {"on": true, "company": false}. Lit, her company: `sight_nm` (public.chart_sight_nm: the circle
 -- the client clears round each of her fleets), `rows` 180 and `cols` 360, `cells` (her bitmap in base64, null before her first arrival
 -- or backfill: bit row * 360 + col, row = floor(90 - lat), col = floor(lon + 180), low bit of each byte first), `cities` (the harbour
@@ -387,42 +387,42 @@ $body$
   revoke all on function world.chart() from public, anon;
   grant execute on function world.chart() to authenticated;
   comment on function world.chart() is
-    '0504: the chart for the fog. Dark {"on": false}. Lit, her company: sight_nm, her bitmap (cells, base64, 360 x 180 squares of 1 degree), the harbours of her logbook. A read; no argument, no player id. Prices are not gated by it.';
+    '0526: the chart for the fog. Dark {"on": false}. Lit, her company: sight_nm, her bitmap (cells, base64, 360 x 180 squares of 1 degree), the harbours of her logbook. A read; no argument, no player id. Prices are not gated by it.';
 
   -- ── 5. THE HUNKS (each OLD text once in the live body; each reverses) ──
-  create temp table hunks_0504 (fn text, ord int, old text, new text) on commit drop;
-  insert into hunks_0504 values
+  create temp table hunks_0526 (fn text, ord int, old text, new text) on commit drop;
+  insert into hunks_0526 values
   ('voyage.settle(uuid,timestamp with time zone)', 1,
 $h$      || public.logbook_arrival(f.player_id, v.origin_port_id, v.dest_port_id, v.eta));$h$,
 $h$      || public.logbook_arrival(f.player_id, v.origin_port_id, v.dest_port_id, v.eta));
-    -- 0504: the chart: the path she has just sailed is painted into her company's one row (nothing dark, for a merchant, or when it was charted already)
+    -- 0526: the chart: the path she has just sailed is painted into her company's one row (nothing dark, for a merchant, or when it was charted already)
     perform public.chart_mark(f.player_id, v.id);$h$),
   ('public.client_rpc_entry_points()', 1,
 $h$      ('world',       'logbook',               ''),$h$,
 $h$      ('world',       'logbook',               ''),
-      -- 0504: the chart for the fog (dark: {"on": false})
+      -- 0526: the chart for the fog (dark: {"on": false})
       ('world',       'chart',                 ''),$h$);
 
-  for v_h in select h.fn from hunks_0504 h group by h.fn order by h.fn loop
+  for v_h in select h.fn from hunks_0526 h group by h.fn order by h.fn loop
     v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'\r', '');
     v_pre := v_def;
-    for x in select * from hunks_0504 h where h.fn = v_h.fn order by h.ord loop
+    for x in select * from hunks_0526 h where h.fn = v_h.fn order by h.ord loop
       v_n := (length(v_def) - length(replace(v_def, x.old, ''))) / length(x.old);
       if v_n <> 1 then
-        raise exception '0504 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', x.ord, x.fn, v_n;
+        raise exception '0526 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', x.ord, x.fn, v_n;
       end if;
       v_def := replace(v_def, x.old, x.new);
     end loop;
     execute v_def;
     v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'\r', '');
-    for x in select * from hunks_0504 h where h.fn = v_h.fn order by h.ord desc loop
+    for x in select * from hunks_0526 h where h.fn = v_h.fn order by h.ord desc loop
       if (length(v_def) - length(replace(v_def, x.new, ''))) / length(x.new) <> 1 then
-        raise exception '0504 self-assert FAIL: hunk % of % is not in the new body once', x.ord, x.fn;
+        raise exception '0526 self-assert FAIL: hunk % of % is not in the new body once', x.ord, x.fn;
       end if;
       v_def := replace(v_def, x.new, x.old);
     end loop;
     if v_def <> v_pre then
-      raise exception '0504 self-assert FAIL: % does not reverse to its pre-image', v_h.fn;
+      raise exception '0526 self-assert FAIL: % does not reverse to its pre-image', v_h.fn;
     end if;
   end loop;
 
@@ -431,11 +431,11 @@ $h$      ('world',       'logbook',               ''),
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
          and p.oid <> all (array(select u.q::regprocedure::oid from unnest(c_hunked || c_new) u(q)))) <> v_fn_before then
-    raise exception '0504 self-assert FAIL: another function moved';
+    raise exception '0526 self-assert FAIL: another function moved';
   end if;
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text, ',' order by p.oid::regprocedure::text))
         from pg_proc p where p.oid = any (array(select u.q::regprocedure::oid from unnest(c_hunked) u(q)))) <> v_meta then
-    raise exception '0504 self-assert FAIL: the grants, volatility, definer, search path or owner of a hunked body moved';
+    raise exception '0526 self-assert FAIL: the grants, volatility, definer, search path or owner of a hunked body moved';
   end if;
   if exists (select 1 from unnest(c_server) u(q)
               where has_function_privilege('authenticated', u.q::regprocedure, 'execute') or has_function_privilege('anon', u.q::regprocedure, 'execute')
@@ -447,13 +447,13 @@ $h$      ('world',       'logbook',               ''),
      or (select count(*) from public.client_rpc_entry_points() e
           where (e.schema_name, e.function_name, e.arg_types) = ('world', 'chart', '')
             and e.fn is not null and has_function_privilege('authenticated', e.fn, 'execute') and not has_function_privilege('anon', e.fn, 'execute')) <> 1 then
-    raise exception '0504 self-assert FAIL: world.chart is not registered for authenticated alone, or a client reaches a server-only function or the table';
+    raise exception '0526 self-assert FAIL: world.chart is not registered for authenticated alone, or a client reaches a server-only function or the table';
   end if;
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, ''), ',' order by c.key))
         from public.world_config c where c.key not in ('chart_fog_enabled', 'chart_sight_nm')) <> v_cfg_before
      or public.wc('chart_fog_enabled') is distinct from 'false'::jsonb or public.wc_num('chart_sight_nm') is distinct from 150
      or exists (select 1 from public.company_chart) then
-    raise exception '0504 self-assert FAIL: a knob other than the two moved, the switch is not false, or a chart row was written';
+    raise exception '0526 self-assert FAIL: a knob other than the two moved, the switch is not false, or a chart row was written';
   end if;
 
   -- ── 7. THE PAINTER, on courses made by hand (no table read) ──
@@ -467,7 +467,7 @@ $h$      ('world',       'logbook',               ''),
                  where get_bit(v_a, g.k) = 1 and (abs(g.k / 360 - 51) > 4 or g.k % 360 not between 165 and 179))
      or public.chart_paint(v_a, '[{"a": [38.2, -9.4], "b": [38.2, -5.4], "nm": 190}]'::jsonb, 150) <> v_a
      or public.chart_paint(null, '[]'::jsonb, 150) <> c_zero or public.chart_paint(null, null, 150) <> c_zero then
-    raise exception '0504 self-assert FAIL: the painter does not paint a known course as its squares: % set', bit_count(v_a);
+    raise exception '0526 self-assert FAIL: the painter does not paint a known course as its squares: % set', bit_count(v_a);
   end if;
   -- (b) every square it set lies within the radius of the course (to the half degree a point is read to and the third of the radius
   --     between points), and it only ever adds
@@ -475,29 +475,29 @@ $h$      ('world',       'logbook',               ''),
               where get_bit(v_a, g.k) = 1
                 and not exists (select 1 from generate_series(0, 40) s(i)
                                  where voyage.gc_distance_nm(89.5 - g.k / 360, -179.5 + g.k % 360, 38.2, -9.4 + s.i * 0.1) <= 150 + 45)) then
-    raise exception '0504 self-assert FAIL: the painter set a square out of sight of the course';
+    raise exception '0526 self-assert FAIL: the painter set a square out of sight of the course';
   end if;
   v_b := public.chart_paint(v_a, '[{"a": [10.5, 60.5], "b": [10.5, 60.5], "nm": 0}]'::jsonb, 0);
   if bit_count(v_b) <> bit_count(v_a) + 1 or get_bit(v_b, 79 * 360 + 240) <> 1
      or exists (select 1 from generate_series(0, 64799) g(k) where get_bit(v_a, g.k) = 1 and get_bit(v_b, g.k) = 0) then
-    raise exception '0504 self-assert FAIL: a point at radius 0 is not its one square added to the chart';
+    raise exception '0526 self-assert FAIL: a point at radius 0 is not its one square added to the chart';
   end if;
   -- (c) the antimeridian, the short way round: 179.4 E to 179.4 W is one degree of water, not 359
   v_b := public.chart_paint(null, '[{"a": [0.5, 179.4], "b": [0.5, -179.4], "nm": 72}]'::jsonb, 0);
   if get_bit(v_b, 89 * 360 + 359) <> 1 or get_bit(v_b, 89 * 360 + 0) <> 1 or bit_count(v_b) > 4 then
-    raise exception '0504 self-assert FAIL: a course over the antimeridian is painted the long way round: % squares', bit_count(v_b);
+    raise exception '0526 self-assert FAIL: a course over the antimeridian is painted the long way round: % squares', bit_count(v_b);
   end if;
   -- (d) the widest sight on a long course: its cost, printed (a 5,000 nm passage at 650 nm)
   v_t := clock_timestamp();
   v_b := public.chart_paint(null, '[{"a": [35, -10], "b": [15, -60], "nm": 2800}, {"a": [15, -60], "b": [-30, -40], "nm": 2900}]'::jsonb, 650);
   v_ms_far := round(extract(epoch from clock_timestamp() - v_t) * 1000, 1);
   if get_bit(v_b, 55 * 360 + 170) <> 1 or get_bit(v_b, 119 * 360 + 140) <> 1 or get_bit(v_b, 60 * 360 + 300) <> 0 then
-    raise exception '0504 self-assert FAIL: a long course at the widest sight is not painted end to end';
+    raise exception '0526 self-assert FAIL: a long course at the widest sight is not painted end to end';
   end if;
 
   -- ── 8. THE PROBES (one scene, played dark and lit, each rolled back) ──
   execute $f$
-create function pg_temp.scene_0504(p_uid uuid, p_lit boolean)
+create function pg_temp.scene_0526(p_uid uuid, p_lit boolean)
 returns jsonb
 language plpgsql
 as $body$
@@ -534,7 +534,7 @@ begin
   v_segs := voyage.segments_from_course(jsonb_build_array(jsonb_build_array(v_la.lat, v_la.lon), jsonb_build_array(v_sa.lat, v_sa.lon)));
   -- the founding is not what is judged: it is played with the economy open, so that no city's purse (prod's) can refuse it (rolled back)
   update public.world_config set value = 'false'::jsonb where key in ('economy_closed', 'city_treasury_enabled');
-  v_me := public.new_house(p_uid, 'Casa da Carta 0504', 'PRT');
+  v_me := public.new_house(p_uid, 'Casa da Carta 0526', 'PRT');
   select f.id into v_fl from public.fleets f where f.player_id = v_me;
   if p_lit then
     update public.world_config set value = 'true'::jsonb where key in ('chart_fog_enabled', 'logbook_enabled');
@@ -615,52 +615,52 @@ $body$
 
   -- (a) DARK: her arrival writes no row; the read is {"on": false}
   begin
-    v_dark := pg_temp.scene_0504(c_uid, false);
-    raise exception using errcode = 'ZX504', message = 'PROBE_ROLLBACK_0504_DARK';
+    v_dark := pg_temp.scene_0526(c_uid, false);
+    raise exception using errcode = 'ZX504', message = 'PROBE_ROLLBACK_0526_DARK';
   exception when sqlstate 'ZX504' then null;
   end;
   if (v_dark->>'row')::boolean or v_dark->'read' is distinct from '{"on": false}'::jsonb or (v_dark->>'sight0')::numeric <> 150 then
-    raise exception '0504 self-assert FAIL: dark, an arrival wrote a chart row, the read is not {"on": false}, or the sight at level 0 is not the knob: %', v_dark;
+    raise exception '0526 self-assert FAIL: dark, an arrival wrote a chart row, the read is not {"on": false}, or the sight at level 0 is not the knob: %', v_dark;
   end if;
   -- (b) LIT
   begin
-    v_lit := pg_temp.scene_0504(c_uid, true);
-    raise exception using errcode = 'ZX504', message = 'PROBE_ROLLBACK_0504_LIT';
+    v_lit := pg_temp.scene_0526(c_uid, true);
+    raise exception using errcode = 'ZX504', message = 'PROBE_ROLLBACK_0526_LIT';
   exception when sqlstate 'ZX504' then null;
   end;
   if not (v_lit->>'row')::boolean or not (v_lit->>'ends')::boolean or (v_lit->>'stray')::int <> 0
      or (v_lit->>'squares')::int not between 2 and 200 or not (v_lit->>'served')::boolean
      or v_lit #>> '{read,on}' is distinct from 'true' or v_lit #>> '{read,company}' is distinct from 'true'
      or (v_lit #>> '{read,sight_nm}')::numeric <> 150 or (v_lit #>> '{read,rows}')::int <> 180 or (v_lit #>> '{read,cols}')::int <> 360 then
-    raise exception '0504 self-assert FAIL: lit, her arrival did not paint her course and only her course, or the read does not serve it: %', v_lit;
+    raise exception '0526 self-assert FAIL: lit, her arrival did not paint her course and only her course, or the read does not serve it: %', v_lit;
   end if;
   if not (v_lit->>'same')::boolean or not (v_lit->>'wrote')::boolean then
-    raise exception '0504 self-assert FAIL: lit, a course already charted was written again, or a new course was not added to what she had: %', v_lit;
+    raise exception '0526 self-assert FAIL: lit, a course already charted was written again, or a new course was not added to what she had: %', v_lit;
   end if;
   if (v_lit->>'sight1')::numeric <> round(150 * (3 + (v_lit->>'level')::int) / 3.0) or (v_lit->>'sight2')::numeric <> 2 * (v_lit->>'sight1')::numeric
      or ((v_lit->>'level')::int = 3 and (v_lit->>'sight1')::numeric <> 300) then
-    raise exception '0504 self-assert FAIL: her sight is not the knob and a third of it a NAVIGATION level: %', v_lit;
+    raise exception '0526 self-assert FAIL: her sight is not the knob and a third of it a NAVIGATION level: %', v_lit;
   end if;
   if not (v_lit->>'backfill_ok')::boolean or v_lit #>> '{backfill,ok}' is distinct from 'true' or (v_lit #>> '{backfill,voyages}')::int < 1
      or not (v_lit->>'npc')::boolean or (v_lit->>'rows')::int <> 0 then
-    raise exception '0504 self-assert FAIL: the backfill did not paint her old voyage and where she has been, or a merchant or another company was written: %', v_lit;
+    raise exception '0526 self-assert FAIL: the backfill did not paint her old voyage and where she has been, or a merchant or another company was written: %', v_lit;
   end if;
   -- her logbook's harbours are her cities (the logbook lit beside the chart in the scene): where she arrived is one of them
   if (v_lit->>'arrived') = 'ARRIVED' and not (v_lit->'cities' ? 'SET') then
-    raise exception '0504 self-assert FAIL: the harbour she made is not among her cities: %', v_lit->'cities';
+    raise exception '0526 self-assert FAIL: the harbour she made is not among her cities: %', v_lit->'cities';
   end if;
   if exists (select 1 from public.players p where p.auth_uid = c_uid)
      or exists (select 1 from public.company_chart)
      or public.wc('chart_fog_enabled') is distinct from 'false'::jsonb or public.wc_num('chart_sight_nm') is distinct from 150
      or public.current_player_id() is not null then
-    raise exception '0504 self-assert FAIL: the probe left something behind';
+    raise exception '0526 self-assert FAIL: the probe left something behind';
   end if;
-  drop function pg_temp.scene_0504(uuid, boolean);
+  drop function pg_temp.scene_0526(uuid, boolean);
 
   if clock_timestamp() - v_t0 > interval '45 seconds' then
-    raise exception '0504 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
+    raise exception '0526 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0504 self-assert ok: THE CHART IS BLACK UNTIL SHE SAILS (dark). 2 hunks once and reversing; no other function moved; the hunked bodies'' grants and volatility unmoved; two knobs added (the switch false, sight 150 nm), no other moved; one table (no row), five functions server only, world.chart registered for authenticated alone. The painter: four degrees at 150 nm % squares in % ms; 5,700 nm at 650 nm in % ms; the antimeridian the short way. Probes (rolled back): dark, her arrival (%) wrote no row and the read is {"on": false}; lit, her arrival (%) painted % squares, both ends, none out of sight, served bit for bit; the same course again wrote nothing; another course was added; sight % nm at level % (the knob doubled: %); cities %; the backfill %; a merchant none. Prices are served to everyone as before. % ms.',
+  raise notice '0526 self-assert ok: THE CHART IS BLACK UNTIL SHE SAILS (dark). 2 hunks once and reversing; no other function moved; the hunked bodies'' grants and volatility unmoved; two knobs added (the switch false, sight 150 nm), no other moved; one table (no row), five functions server only, world.chart registered for authenticated alone. The painter: four degrees at 150 nm % squares in % ms; 5,700 nm at 650 nm in % ms; the antimeridian the short way. Probes (rolled back): dark, her arrival (%) wrote no row and the read is {"on": false}; lit, her arrival (%) painted % squares, both ends, none out of sight, served bit for bit; the same course again wrote nothing; another course was added; sight % nm at level % (the knob doubled: %); cities %; the backfill %; a merchant none. Prices are served to everyone as before. % ms.',
     bit_count(v_a), v_ms_paint, v_ms_far, v_dark->>'arrived', v_lit->>'arrived', v_lit->>'squares', v_lit->>'sight1', v_lit->>'level', v_lit->>'sight2',
     v_lit->'cities', v_lit->'backfill', round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;

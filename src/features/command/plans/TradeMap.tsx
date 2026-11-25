@@ -91,7 +91,7 @@ export function TradeMap({
   const book = useWorld((s) => s.routes)
   const boxRef = useRef<HTMLDivElement>(null)
   const name = (code: string) => portNameOf(portByCode, code)
-  // 0504 — THE FOG (src/chart/fog.ts): a city in sight of one of her fleets is pressed for its prices, as before. A city she
+  // 0526 — THE FOG (src/chart/fog.ts): a city in sight of one of her fleets is pressed for its prices, as before. A city she
   // only knows is named, and nothing about it is shown here: she sails there from the Map. Dark: null, the map as it was.
   const fog = useCompanyFog()
   const [unseen, setUnseen] = useState<string | null>(null)
@@ -207,7 +207,7 @@ export function TradeMap({
         stops={pathStops}
         still={planMap}
         frame={frame}
-        // 0504: under the fog the whole world is mostly black, so the map opens on her fleet instead
+        // 0526: under the fog the whole world is mostly black, so the map opens on her fleet instead
         wholeWorld={!planMap && !fog}
         onPort={planMap ? undefined : pressCity}
         fog={fog}

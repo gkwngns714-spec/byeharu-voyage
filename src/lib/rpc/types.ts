@@ -3406,7 +3406,7 @@ export type LogbookView =
       reward: { rep: number; region_cut: number; kind_cut: number }
     }
 
-/** `world.chart()` (0504, the fog). Dark `{on: false}`: the map is drawn whole. Lit with no company `{on, company: false}`. Lit, hers:
+/** `world.chart()` (0526, the fog). Dark `{on: false}`: the map is drawn whole. Lit with no company `{on, company: false}`. Lit, hers:
  *  how far her fleets see, her charted squares and the harbours of her logbook. The client draws them; prices are not gated by it. */
 export type ChartFogView =
   | { on: false }

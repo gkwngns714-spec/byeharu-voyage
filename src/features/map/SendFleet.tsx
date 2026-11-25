@@ -51,7 +51,7 @@ export function SendFleet({
   /** The harbour's ships — in port and incoming (CityHarbour), built by MapScreen, which holds
    *  the harbour's read. Unused at sea. */
   harbour: ReactNode
-  /** 0504 — a city she knows but does not have in sight (src/chart/fog.ts): its name and the sending, and nothing about it. */
+  /** 0526 — a city she knows but does not have in sight (src/chart/fog.ts): its name and the sending, and nothing about it. */
   unseen?: boolean
   onClose: () => void
 }) {
