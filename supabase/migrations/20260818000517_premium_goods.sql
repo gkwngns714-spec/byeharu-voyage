@@ -6,7 +6,7 @@
 -- THE OWNER, 2026-11-25: "Some trade goods can be combined to create PREMIUM TRADE GOODS. Each PTG will be needed by one city only, and it
 --   will pay 300~500% more. PREMIUM TRADE GOODS by themselves costs more. 1 PTG linked with 1 city." Then: "3-5 times, with daily limits yes";
 --   R7 "far cities pay closer to 5 times, near cities closer to 3 times. - YES"; R8 "We already have premium trade goods no? ... if so, reuse".
--- WHAT IS ADDED: no good and no recipe. 100 of the made goods of 0280 get their one city (goods.premium_port_id, data; one good a city).
+-- WHAT IS ADDED: no good and no recipe. 67 of the made goods of 0280 get their one city (goods.premium_port_id, data; one good a city).
 -- LIT (and the economy closed with the city purses on, else nothing: an open economy would mint it):
 --   THE PAY: that city buys it from a COMPANY at 3 to 5 times its own normal price there: premium_mult_near at premium_near_nm sailed miles or
 --     fewer from the good's nearest maker (port_goods.haul_nm, 0173's one derivation from public.sea_reaches) to premium_mult_far at
@@ -24,14 +24,15 @@
 -- READ FROM ONE PLACE: public.premium_left, by THE one quote (world.quote_priced) and by the door's tally (cmd.do_sell). The sale's face, the
 --   Best cards, the boards, the day (public.run_day) and the never-lose rule (0498) ask that quote, so none is re-cut; the board's shortlist
 --   always prices the premium city. FACES: world.market rows and world.goods_forge recipes carry `premium`.
--- THE DEFAULT LIST (decided by default; the owner may reverse; NOT the deck's twelve, which were not approved): the 100 recipes whose good is
+-- THE DEFAULT LIST (decided by default; the owner may reverse; NOT the deck's twelve, which were not approved): of the 100 recipes whose good is
 --   worth most against its materials (205 of 287 are worth LESS than their materials at base; a good no city offers has no maker to measure
 --   from), the dearer the good the farther its city (500 to 12,000 miles), each city of size 3 or 5 at most once, never one that offers or
---   makes the good or whose culture refuses it. docs/dev-log/2026-11-25-premium-goods.md lists it. To move one: update goods.premium_port_id.
+--   makes the good or whose culture refuses it; less 33 everyday goods (food, drink, pantry), left off. docs/dev-log/2026-11-25-premium-goods.md lists it. To move, add or drop one: update
+--   goods.premium_port_id (null: not premium); the log keeps the 33 and their cities.
 -- DARK (as deployed): byte-identical answers.
 -- THE HUNKS (17; each once in the live body, all reverse): world.quote_priced 3, cmd.do_sell 6, world.mid_terms 1, world.good_mids 1,
 --   world.market 3, world.goods_forge 1, world.board_sell_memo 1, cmd.forge_good 1. NEW: 11 functions, server only. KNOBS: 8. NOT CHANGED: every other.
--- ROWS: 100 goods get a value; one table, public.premium_made: one row a company and good it has made (a row written a forging, none a minute).
+-- ROWS: 67 goods get a value; one table, public.premium_made: one row a company and good it has made (a row written a forging, none a minute).
 --   budget: none (no cron job, no autovacuum setting). -- retention: none, bounded by one row a company and made good (287 at most).
 -- THE TICK'S COST: no tick, no beat step. Lit: one lookup by key in a company's sale quote; in the premium city five more key reads.
 -- LOCKS: ALTER TABLE goods (one column, a reference), port_goods (two columns, no rewrite); CREATE TABLE x1; CREATE OR REPLACE x8 by hunks. Under a second.
@@ -239,31 +240,25 @@ $body$
   comment on column public.port_goods.premium_units is '0517: the units this city took at its premium on premium_day.';
   update public.goods g set premium_port_id = h.id
     from (values
-      ('cassava', 'OPO'), ('palm-sugar', 'MNL'), ('palm-wine', 'VAL'), ('mission-wine', 'OSA'), ('perry', 'STO'),
-      ('baijiu', 'HIR'), ('dried-shrimp', 'TOK'), ('pulque', 'PAN'), ('dried-squid', 'NAH'), ('doenjang', 'QUA'),
-      ('butter', 'TUN'), ('cheese', 'HAM'), ('sesame-oil', 'MRS'), ('shrimp-paste', 'YEO'), ('cider', 'NAP'),
-      ('ramie-cloth', 'GUA'), ('soy-sauce', 'BND'), ('toddy', 'MAC'), ('chianti', 'COP'), ('maple-sugar', 'DUB'),
-      ('sake', 'AYU'), ('wine', 'RIG'), ('witch-hazel', 'LON'), ('crossbows', 'BER'), ('arrack', 'NAG'),
-      ('rum', 'PLY'), ('trepang', 'INC'), ('shields', 'MLG'), ('prussian-blue', 'IZM'), ('sharks-fin', 'MUM'),
-      ('sugar', 'QUE'), ('steel-billets', 'XIA'), ('folding-fans', 'CHE'), ('attar-of-roses', 'NIN'), ('martaban-jars', 'FUK'),
-      ('guayaquil-cacao', 'SLV'), ('war-bows', 'HOO'), ('dried-abalone', 'SRT'), ('rosewater', 'STJ'), ('ramie-korea', 'KHA'),
-      ('glassware', 'BOS'), ('flanders-lace', 'JAM'), ('cacao', 'PON'), ('tapa-cloth', 'BAS'), ('lead-white', 'REC'),
-      ('worsted', 'PRT'), ('pike-heads', 'CAR'), ('palm-leaf-manuscripts', 'CAD'), ('maghreb-brass', 'ARK'), ('celadon', 'SFR'),
-      ('isinglass', 'NEW'), ('porcelain', 'BSR'), ('soconusco-cacao', 'BUS'), ('armour', 'HAV'), ('caviar', 'SGO'),
-      ('parchment', 'RIO'), ('muslin', 'ALG'), ('wootz-steel', 'BAR'), ('block-printed-books', 'CPT'), ('pandanus-mats', 'ARI'),
-      ('tea', 'ACA'), ('shot-and-ball', 'BUE'), ('coffee', 'SAK'), ('antwerp-presses', 'ZAN'), ('lace', 'ISL'),
-      ('matchlocks', 'JED'), ('saffian-leather', 'KOZ'), ('firearms', 'GYE'), ('paintings', 'MOM'), ('iznik-tiles', 'VER'),
-      ('rice-paper', 'LPA'), ('falconet', 'ADE'), ('goryeo-celadon', 'LUA'), ('korean-movable-type', 'ELM'), ('sword-blades', 'CLL'),
-      ('rocket-tubes', 'BOR'), ('cannon', 'MOC'), ('slow-match', 'HOR'), ('venetian-imprints', 'KOC'), ('zanzibar-doors', 'TAL'),
-      ('arquebus', 'COL'), ('kyoto-fans', 'FNC'), ('murano-glass', 'OLD'), ('swivel-gun', 'MUS'), ('mother-of-pearl-inlay', 'LIS'),
-      ('sutra-scrolls', 'SVQ'), ('nipa-mats', 'NAN'), ('shawls', 'VLL'), ('astrolabes', 'AMS'), ('sea-charts', 'TER'),
-      ('tapestries', 'BNT'), ('nautical-clocks', 'JAK'), ('clocks', 'BAN'), ('flemish-panels', 'MAL'), ('scroll-paintings', 'LAR'),
-      ('armillary-spheres', 'TAI'), ('italian-canvases', 'AMB'), ('globes', 'HOI'), ('portolan-charts', 'MAK'), ('ukiyo-e', 'BIL')) v(good, city)
+      ('ramie-cloth', 'GUA'), ('witch-hazel', 'LON'), ('crossbows', 'BER'), ('shields', 'MLG'), ('prussian-blue', 'IZM'),
+      ('steel-billets', 'XIA'), ('folding-fans', 'CHE'), ('attar-of-roses', 'NIN'), ('martaban-jars', 'FUK'), ('war-bows', 'HOO'),
+      ('rosewater', 'STJ'), ('ramie-korea', 'KHA'), ('glassware', 'BOS'), ('flanders-lace', 'JAM'), ('tapa-cloth', 'BAS'),
+      ('lead-white', 'REC'), ('worsted', 'PRT'), ('pike-heads', 'CAR'), ('palm-leaf-manuscripts', 'CAD'), ('maghreb-brass', 'ARK'),
+      ('celadon', 'SFR'), ('isinglass', 'NEW'), ('porcelain', 'BSR'), ('armour', 'HAV'), ('parchment', 'RIO'),
+      ('muslin', 'ALG'), ('wootz-steel', 'BAR'), ('block-printed-books', 'CPT'), ('pandanus-mats', 'ARI'), ('shot-and-ball', 'BUE'),
+      ('antwerp-presses', 'ZAN'), ('lace', 'ISL'), ('matchlocks', 'JED'), ('saffian-leather', 'KOZ'), ('firearms', 'GYE'),
+      ('paintings', 'MOM'), ('iznik-tiles', 'VER'), ('rice-paper', 'LPA'), ('falconet', 'ADE'), ('goryeo-celadon', 'LUA'),
+      ('korean-movable-type', 'ELM'), ('sword-blades', 'CLL'), ('rocket-tubes', 'BOR'), ('cannon', 'MOC'), ('slow-match', 'HOR'),
+      ('venetian-imprints', 'KOC'), ('zanzibar-doors', 'TAL'), ('arquebus', 'COL'), ('kyoto-fans', 'FNC'), ('murano-glass', 'OLD'),
+      ('swivel-gun', 'MUS'), ('mother-of-pearl-inlay', 'LIS'), ('sutra-scrolls', 'SVQ'), ('nipa-mats', 'NAN'), ('shawls', 'VLL'),
+      ('astrolabes', 'AMS'), ('sea-charts', 'TER'), ('tapestries', 'BNT'), ('nautical-clocks', 'JAK'), ('clocks', 'BAN'),
+      ('flemish-panels', 'MAL'), ('scroll-paintings', 'LAR'), ('armillary-spheres', 'TAI'), ('italian-canvases', 'AMB'), ('globes', 'HOI'),
+      ('portolan-charts', 'MAK'), ('ukiyo-e', 'BIL')) v(good, city)
     join public.ports h on h.code = v.city and h.kind = 'HARBOUR'
    where g.code = v.good and exists (select 1 from public.goods_recipes r where r.product_id = g.id)
      and exists (select 1 from public.port_goods pg where pg.port_id = h.id and pg.good_id = g.id);
-  if (select count(*) from public.goods where premium_port_id is not null) <> 100 then
-    raise exception '0517 refuses: % of the 100 goods found their city', (select count(*) from public.goods where premium_port_id is not null);
+  if (select count(*) from public.goods where premium_port_id is not null) <> 67 then
+    raise exception '0517 refuses: % of the 67 goods found their city', (select count(*) from public.goods where premium_port_id is not null);
   end if;
 
   -- ── 4. THE RULES ──
@@ -698,7 +693,7 @@ $h$);
   if clock_timestamp() - v_t0 > interval '30 seconds' then
     raise exception '0517 self-assert FAIL: the file took % (budget 30 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0517 self-assert ok: PREMIUM GOODS (dark). 17 hunks once and reversing in eight bodies; no other function moved; eleven new functions, one table server only; eight knobs (premium_goods_enabled false), no other moved; 100 goods, one city each. DARK IDENTICAL. LIT: 8 units % -> % d. (4 times at 6,250 miles; 3 near, 5 far), paid in one SELL from the city''s purse, she gained what the cities lost; 30 a day for all, then the normal price, new the next day; a purse at its floor pays none, a small one 5 units; units she did not make, another city, a purchase, a quote with no fleet, a merchant, an open economy, a city that offers it: none; the base price % -> %. % ms.',
+  raise notice '0517 self-assert ok: PREMIUM GOODS (dark). 17 hunks once and reversing in eight bodies; no other function moved; eleven new functions, one table server only; eight knobs (premium_goods_enabled false), no other moved; 67 goods, one city each. DARK IDENTICAL. LIT: 8 units % -> % d. (4 times at 6,250 miles; 3 near, 5 far), paid in one SELL from the city''s purse, she gained what the cities lost; 30 a day for all, then the normal price, new the next day; a purse at its floor pays none, a small one 5 units; units she did not make, another city, a purchase, a quote with no fleet, a merchant, an open economy, a city that offers it: none; the base price % -> %. % ms.',
     v_l #> '{q8,total}', v_l #> '{l8,total}', v_l->'mid', v_l->'lift_mid', round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0517;
   drop table pre_0517;

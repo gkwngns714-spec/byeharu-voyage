@@ -1,6 +1,6 @@
 -- 0517 PREMIUM GOODS, AFTER; ALSO THE 30-MINUTE LIT CHECK. A PROD CHECK: read-only, ONE statement, the gate first (the lead runs it).
 --   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/premium-goods/after-0517.sql
--- Expect, as deployed: head 0517; premium_goods_enabled false; new_fns 11; client_reach false; cities 100; offered_where_wanted 0; taken_today 0; made.over_sold 0.
+-- Expect, as deployed: head 0517; premium_goods_enabled false; new_fns 11; client_reach false; cities 67; offered_where_wanted 0; taken_today 0; made.over_sold 0.
 -- Lit: `most` at most 30; purses_under_0 0. ROLLBACK: premium_goods_enabled false.
 -- Bodies: board_sell_memo a0e37e672f7c0ec7649961ff5d6b64b2, do_sell 9fe5bbe2aad3207b9407ceedae5e9bd4, good_mids 0ad985218d7d8433ab9cf52f1973caee,
 --   goods_forge 65eb608342f9e8bfb9706eb7e0c11e7e, market fb2acd089346ad56b2a2d67a12b50d62, mid_terms fcf53336d03bcc4944f7c1ac4df14cdf, quote_priced 4550b703b3f65f00e810a1e571761ee1, forge_good c5035a480637c73e11312e5b13497b5d.

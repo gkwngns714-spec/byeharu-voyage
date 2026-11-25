@@ -6,7 +6,7 @@
 --   written here, so no sign hangs on the market, the dice, the companies or the world's age. Rolled back by proof.mjs.
 --
 -- @pass PG_DARK      dark (as deployed): the plain price, no premium on the Forge's recipes
--- @pass PG_LIST      the default list: 100 made goods, one city each, none offered where it is wanted; near 3, far 5, straight between
+-- @pass PG_LIST      the default list: 67 made goods, one city each, none offered where it is wanted; near 3, far 5, straight between
 -- @pass PG_FORGE     made in the Forge out of Storage (its recipe names the city and the pay) and sold there: 4 times at 6,250 miles, the quote to the coin
 -- @pass PG_MADE      units bought at a quay are paid the normal price at the same city; the Forge counts what she makes, the premium sale takes it off
 -- @pass PG_WORLD     the world's sum (players, cities, flows) is the same before and after the sale: no coin made
@@ -68,15 +68,15 @@ begin
   raise notice 'PASS: PG_DARK - 4 % at Lisbon: % d., the plain price', v_code, v_x;
 
   -- ── THE LIST ──
-  if (select count(*) from public.goods where premium_port_id is not null) <> 100
-     or (select count(distinct premium_port_id) from public.goods) <> 100
+  if (select count(*) from public.goods where premium_port_id is not null) <> 67
+     or (select count(distinct premium_port_id) from public.goods) <> 67
      or exists (select 1 from public.goods g where g.premium_port_id is not null
                  and (public.port_offers(g.premium_port_id, g.id) or not exists (select 1 from public.goods_recipes r where r.product_id = g.id)
                       or public.culture_refuses((select h.culture from public.ports h where h.id = g.premium_port_id), g.culture_mask)))
      or public.premium_mult(500) <> 3 or public.premium_mult(6250) <> 4 or public.premium_mult(12000) <> 5 or public.premium_mult(20000) <> 5 then
     raise exception 'PROOF 221 FAIL: the list or the pay by distance';
   end if;
-  raise notice 'PASS: PG_LIST - 100 made goods, one city each; 3 times at 500 miles, 4 at 6,250, 5 from 12,000';
+  raise notice 'PASS: PG_LIST - 67 made goods, one city each; 3 times at 500 miles, 4 at 6,250, 5 from 12,000';
 
   -- ── LIT: made in the Forge, sold at its city ──
   update public.goods set premium_port_id = null where premium_port_id = v_lis or id = v_g;
