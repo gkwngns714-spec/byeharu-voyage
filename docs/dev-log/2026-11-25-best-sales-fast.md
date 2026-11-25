@@ -75,7 +75,7 @@ half 6, amounts 3 / 4, hulls 1 / 4, offered 2. In five goods' sells: 72 quotes 3
 - EXPECTED PROD, scaling prod's stages by those ratios (an estimate): sells 997 -> about 770, origin 76 -> 44, the rest as it is: warm whole 1,374 -> about 1,110 ms.
 - SHARING THE WALKS of goods that weigh the same: 5 of 10 loads differ at 200,000 coin, 1 to 4 at 3,000,000 with a Barca-size hold, 7 to 10 at 5,000. After
   0536 all ten walks are about 24 ms local (about 165 prod): sharing saves none to about 85 ms on prod (5 %). Not built.
-- THE TICK: 0536's header. On PGlite, session named pg_cron: none due, a call at second 1 took 0.0 s; one due, 25.8 s (ended at second 26); proof 242. That pg_cron's
+- THE TICK: 0536's header. On PGlite, session named pg_cron: none due, a call at second 1 took 0.0 s; one due, 25.8 s (ended at second 26); proof 243. That pg_cron's
   sessions carry application_name `pg_cron` is `db-health/waits.sql`'s word, not read here: if it is another name the tick simply does not wait.
 - On batch 2's chain (0503-0509 and 0536): 508 reads, 0 differ; 187 -> 134 and 286 -> 228 ms.
 - `refusal.drive @1440` failed once in seven specs run together (repaired, her bar never on) and passed alone (1.7 m); @390 passed. Not explained: likely her one run
