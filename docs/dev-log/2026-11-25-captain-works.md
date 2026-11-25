@@ -80,3 +80,17 @@ Self-asserts 0.1 s; proof 237 6/6, 236 6/6, 235 7/7; perturb 18 worlds over all 
 
 ## Not verified
 The six files over 0518 and 0519 (`rounds-log`): they cut other bodies but for the registry, on other lines; not run together. `rpc.surface`, `vite build`.
+
+# 0534 `land-expedition` (dark: `land_expedition_enabled`), proof 238. The design's 0531, numbered after the two it stands on
+
+- **The widening of 0518**, in 0534's own tables section, and no body of 0518 to 0524 is cut for it: `round_runs.fleet_id` and `sea_id` nullable; `party_id`
+  (unique, cascade); `worker` generated as coalesce(fleet_id, party_id), the primary key; `round_runs_one_a_fleet unique (fleet_id)`, so every
+  `on conflict (fleet_id)` still works; check: exactly one of the two, and a fleet's run has its sea. `round_works.kind` may be `land`; the two land
+  works wait for `land_works_are_no_fleets` (never true), so no fleet door or list shows them. One hunk on `round_settle_due` (its return).
+- A captain, a target (a mining job or a foe), crew (10 + 2 a COMBAT level), provisions, a stop (MIN, rounds), home or repeat. One party a captain
+  (number 2 and up); party 1 stays the dig's with its exact terms.
+- Coin: hands, provisions and a day's pay to her home city; a raid's gold from the capital (LX_COIN: three purses to the coin).
+- Called home: no new round; the rounds passed are kept; they march back.
+- **Woodcutting is not built**: no land job gathers wood. **Not tuned**: 20 hands gather 10 Sea Coal (5 rounds, stopped by the load); 30 hands raid wolves 50
+  rounds. Gathering's yield a round does not grow with the crew (the crew is the stores and the load).
+- Restart (0509): nothing to add; its delete of `land_parties` takes the runs (LX_CLOSE).

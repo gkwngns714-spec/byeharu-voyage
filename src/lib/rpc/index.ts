@@ -64,6 +64,9 @@ import type {
   CaptainAshore,
   CaptainDismissed,
   CaptainPlaceOpened,
+  LandAsk,
+  LandExpeditionView,
+  LandSent,
   CaptainUpgraded,
   CaptainSkillUp,
   TraitsSet,
@@ -720,6 +723,16 @@ export function cmdCaptainDismiss(code: string) {
 /** 0533: a captain's next rank of an upgrade, for HONOR BADGES. */
 export function cmdCaptainUpgrade(code: string, upgrade: string) {
   return call<CaptainUpgraded>('cmdCaptainUpgrade', [code, upgrade])
+}
+
+/** 0534: the land expeditions; with a captain and an ask, the card of that Send. */
+export function worldLandExpedition(code: string | null = null, ask: LandAsk | null = null) {
+  return call<LandExpeditionView>('worldLandExpedition', [code, ask])
+}
+
+/** 0534: send a captain of yours on a land expedition, or call her home (null). */
+export function cmdLandExpedition(code: string, ask: LandAsk | null) {
+  return call<LandSent>('cmdLandExpedition', [code, ask])
 }
 
 /** 0157 — seat a captain you keep in a cabin of one of your ships (`seat` null: the server's picker),

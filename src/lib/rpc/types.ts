@@ -1515,6 +1515,108 @@ export interface CaptainPlaces {
     | null
 }
 
+/** 0534 — WHAT IS ASKED of a land expedition: gathering (`target` a mining job) or a raid (a foe), the hands, the provisions in tons (absent: the server's own), where it
+ *  stops and what then. */
+export interface LandAsk {
+  work: 'land_gather' | 'land_raid'
+  target: string
+  crew: number
+  stores?: number
+  stop?: { crew?: number; rounds?: number }
+  then?: 'home' | 'repeat'
+}
+
+/** 0534 — the card of one Send: a round's cost and yield, the rounds there can be and what stops them, the bill. No odds are served. */
+export interface LandCard {
+  work: string
+  target: string
+  word: string
+  level: number
+  crew: number
+  cap: number
+  min: number
+  seconds: number
+  lead: number
+  carry: number
+  stores: number
+  use: number
+  units?: number
+  xp: number
+  rp: number
+  forage: number | null
+  cost: { hands: number }
+  most: number
+  why: string
+  hire: number
+  bill: { hire: number; stores: number; wages: number }
+  total: number
+}
+
+/** 0534 — a Send the server would refuse: its code and sentence. */
+export interface LandShort {
+  short: { code?: string; error_code?: string; sentence?: string; error_message?: string; figures?: { have: number; need: number; unit: string } | null }
+}
+
+/** 0534 — one line of an expedition's log, newest last. */
+export interface LandLogLine {
+  r: number
+  at: string
+  crew: number
+  xp: number
+  gold: number
+  units: number
+  fed: boolean
+  result: number
+}
+
+/** 0534 — one party's run. */
+export interface LandRun {
+  party: number
+  captain: string | null
+  name: string | null
+  crew: number
+  stores: number
+  work: string
+  word: string | null
+  target: string
+  state: 'out' | 'home'
+  ended: string | null
+  sent_at: string
+  home_at: string
+  rounds: number
+  most: number
+  why: string
+  seconds: number
+  lead: number
+  min: number
+  then: string
+  cost: { hands: number }
+  carry: { hands?: number; xp?: number; gold?: number; rp?: number; units?: number; won?: number; paid?: number }
+  log: LandLogLine[]
+  waiting: Record<string, number>
+}
+
+/** 0534 — `world.land_expedition(code, ask)`. `on` false: dark, nothing else is served. `targets`, `cap` and `card` only with a captain named. */
+export interface LandExpeditionView {
+  on: boolean
+  company?: boolean
+  now?: string
+  raids?: boolean
+  runs?: LandRun[]
+  cap?: number
+  targets?: { work: 'land_gather' | 'land_raid'; target: string; word: string; level: number; open: boolean }[]
+  card?: LandCard | LandShort | null
+}
+
+/** 0534 — what cmd.land_expedition answers. */
+export interface LandSent {
+  officer?: string
+  rounds: number
+  home_at: string
+  paid?: number
+  sentence: string
+}
+
 /** 0533 — one upgrade of one of your captains (`world.captains().upgrades`, absent while the badges are dark): `cost` is the next rank's price in HONOR BADGES, null at the top. */
 export interface CaptainUpgrade {
   upgrade: string

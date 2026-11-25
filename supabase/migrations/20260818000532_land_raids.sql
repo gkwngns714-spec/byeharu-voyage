@@ -11,12 +11,12 @@
 --   public.land_raid_party    a party as a hull: its hands and its captain's Arms level (health, attack, accuracy under the fight's ceiling, step).
 --   public.land_raid_crew_cap the hands a company may send: 10 + 2 a COMBAT level above 1 (public.player_progress; asked at Send alone).
 --   public.land_raid_terms    WHAT A SEND FREEZES: THE ONE FIGHT (public.tick_fight, the foe set upon, the party closing) played 16 times on seeds of
---                             the Send, each result kept (won | held | beaten, the share of the party's health lost). 0531's Send calls it once.
+--                             the Send, each result kept (won | held | beaten, the share of the party's health lost). 0534's Send calls it once.
 --   public.land_raid_round    the result of round n: one of the 16, by voyage.rng on the party and the Send; the hands it costs, whole, with the
 --                             fraction carried by the dice, so booked in one go or in ten it is the same.
 --   public.land_raid_card     what a screen may show: the MEAN hands and health a round costs, what it brings. NO CHANCE OF WINNING is in it, and the
 --                             16 results are not.
--- NOT HERE: the Send, the settle, the stores, the gold (from the capital) and the badges: 0531's (land expedition), on the rounds (0518, 0519).
+-- NOT HERE: the Send, the settle, the stores, the gold (from the capital) and the badges: 0534's (land expedition), on the rounds (0518, 0519).
 --   Company COMBAT is not raised by a raid (the lead's word). Weapons and armour carried: later (land-2026-11 6.4); the party fights with its tools.
 -- ROWS: 7 data rows, 1 config row; 0 a minute. budget: no cron job, no autovacuum or fillfactor change; one data table.
 -- COST: 16 tick_fight calls a Send (measured in proof 237); a round is one draw.
@@ -25,7 +25,7 @@
 -- SELF-ASSERT: no function or knob moved; nothing dark; then a probe, rolled back, on FOES OF ITS OWN (one that cannot be lost to, one that cannot be
 --   beaten), so no knob of the sea's fight, no dice and no figure of the data is asked a sign: 16 results, the same for the same Send; a round's
 --   hands whole, never above the party's, booked in one go as in ten; the card carries no result and no chance.
--- VERSION: 0532 (0531 stands between; this file needs only 0527 to 0530).
+-- VERSION: 0532 (0534 stands between; this file needs only 0527 to 0530).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 do $m$
 declare
@@ -100,7 +100,7 @@ begin
 
   -- ── 3. THE KNOBS ──
   insert into public.world_config (key, value, description) values
-    ('land_raids_enabled', 'false'::jsonb, '0532: THE SWITCH (the owner''s). true: a land expedition may raid (0531 sends it). false: no raid is offered or fought.'),
+    ('land_raids_enabled', 'false'::jsonb, '0532: THE SWITCH (the owner''s). true: a land expedition may raid (0534 sends it). false: no raid is offered or fought.'),
     ('land_raid_crew_share', '0.15'::jsonb, '0532: the share of the partys health lost in a raid round that is hands lost for good.'),
     ('land_crew_cap', '[10, 2]'::jsonb, '0532: the hands a land expedition may take: the first figure, and the second for each COMBAT level above 1.');
 
@@ -156,7 +156,7 @@ $body$
 create function public.land_raid_terms(p_player uuid, p_foe text, p_crew int, p_captain uuid, p_seed uuid)
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp
 as $body$
--- 0532: WHAT A RAID'S SEND WOULD FREEZE (0531 calls it once a Send): {foe, word, level, have, cap, crew, crew_pct (less), xp, gold, rp, seed, fights: [[r, lost]] x 16,
+-- 0532: WHAT A RAID'S SEND WOULD FREEZE (0534 calls it once a Send): {foe, word, level, have, cap, crew, crew_pct (less), xp, gold, rp, seed, fights: [[r, lost]] x 16,
 -- short}. r: 1 won, 0 held (nothing won), -1 beaten off; lost: the share of the party's health lost. The fight is public.tick_fight, the foe set
 -- upon and the party closing (so the party breaks off as a raider does); its ends read as land-2026-11 6.3 point 5. short: the refusal a Send would
 -- meet (E_NOT_IN_USE, E_NO_SUCH_JOB, E_NEEDS_SKILL, E_CREW_SHORT, E_AT_CAPACITY), and then no fight is played. Writes nothing.
