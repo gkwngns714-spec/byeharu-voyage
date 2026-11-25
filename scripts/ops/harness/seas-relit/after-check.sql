@@ -1,5 +1,6 @@
 -- 0514 AFTER THE LIGHT, at +1, +10 and +30 minutes; read only, ONE statement. Wanted: lit true; trapped 0; failed orders by code: E_SEA_CLOSED only for legs further out;
 -- departures not near 0; beat avg under 2,000 ms, errors 0; merchants' switch as before the light.
+begin transaction read only;
 select now() as read_at, (select value from public.world_config where key = 'sea_conditions_bite') as lit,
        (select value from public.world_config where key = 'sea_conditions_bite_npc') as merchants,
        (public.seas_relit_ready() - 'rungs' - 'companies') as totals,
@@ -9,3 +10,4 @@ select now() as read_at, (select value from public.world_config where key = 'sea
        (select count(*) from public.voyages v join public.players p on p.id = v.player_id and not p.is_npc where v.departed_at >= now() - interval '30 minutes') as departures_30m,
        (select jsonb_build_object('n', count(*), 'avg_ms', round(avg(b.ms)::numeric, 1), 'errors', count(*) filter (where b.error is not null))
           from public.arrivals_beats b where b.at >= now() - interval '30 minutes') as beats;
+rollback;

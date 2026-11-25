@@ -6,8 +6,10 @@
 --   company    ONE ROW A LIVE COMPANY: Trading, Exploration, her rung (the lower), home, and each fleet: where she lies (or is bound), that sea and its rung, her wave resistance,
 --              inside (her own level and hull open that sea), way_home (home / open / pass / none), the harbours open to her, the seas kept (0510), the job's shut harbour
 -- Cost: about 80 ms a fleet once (16 fleets 1.3 s on the local world); run it with the gate green, once. Every function called is STABLE.
+begin transaction read only;
 with r as materialized (select public.seas_relit_ready() as j)
 select 1 as ord, 'table' as section, jsonb_build_object('mark', r.j->'mark', 'rungs', r.j->'rungs') as data from r
 union all select 2, 'totals', r.j - 'rungs' - 'companies' from r
 union all select 3, 'company', c.e from r cross join lateral jsonb_array_elements(r.j->'companies') c(e)
 order by 1, 3;
+rollback;
