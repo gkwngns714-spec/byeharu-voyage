@@ -9,7 +9,7 @@
 -- @pass AS3_MOVE     a merchant laid up at a harbour whose loops cannot pay (every purse but one at nothing), refused four times, asked by the waiting-asks job: her plan step moves her home to the one healthy harbour near, the open step resumes her, her lap is open and she sails (or is bound) there with cargo bought here
 -- @pass AS3_PAYS     the move's passage pays by the planner's measure (its parcels' profit after tax less its wages, stores and the dock fee, above nothing), and her house's home is the new harbour
 -- @pass AS3_STAYS    she does not move when: no harbour near is healthy (she waits, laid up, one more refusal); the knob is 0; she was refused under four times and her last lap is fresh; she moved within the hours; the minute's cap is reached; her house flies the pirate flag; her house has two ships
--- @pass AS3_RETURN   a parcel is kept at 2 % on its outlay: of the legs priced, some keep a BUY at 2 % that 5 % drops, and none keeps fewer
+-- @pass AS3_RETURN   a parcel is kept at 2 % on its outlay: of the legs priced, some keep a BUY at 2 % that 5 % drops, and none loses one that 5 % keeps
 -- @pass AS3_CARGO    a capital whose city is short 500,000 loads it on five idle ships of 100,000 in one run, and the world's money does not move
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -182,36 +182,54 @@ begin
 end
 $$;
 
--- ── AS3_RETURN ──
+-- ── AS3_RETURN ── (each good judged on its own: a kept parcel takes hold, money, the sink's purse and a line from the next, and one ware kept
+-- shuts the second pass, so with those scarce a parcel kept at 2 % can push out two kept at 5 % and a COUNT of lines proves nothing. Here
+-- nothing is scarce, no house has wares and no harbour asks: then the 5 % lines must be among the 2 % lines, to the unit, on every leg.
+-- The first forty legs, and then on until one shows a parcel between the two: which good returns 2 to 5 % is the market's dice. Rolled back.)
 do $$
 declare
   r      record;
-  v_n2   int;
-  v_n5   int;
+  v_l2   jsonb;
+  v_l5   jsonb;
   v_more int := 0;
   v_less int := 0;
   v_legs int := 0;
+  v_kept int := 0;
+  v_note text;
 begin
-  for r in
-    select nf.route_id, nf.fleet_id, s0.port_id as a, s1.port_id as b
-      from public.npc_fleets nf
-      join public.standing_route_stops s0 on s0.route_id = nf.route_id and s0.ord = 0
-      join public.standing_route_stops s1 on s1.route_id = nf.route_id and s1.ord = 1
-     order by nf.roster_ord limit 40
-  loop
-    v_legs := v_legs + 1;
-    update public.world_config set value = to_jsonb(2) where key = 'npc_min_return_pct';
-    v_n2 := (select count(*) from jsonb_array_elements(public.npc_leg_lines(r.route_id, r.a, r.b, 400, 20, 5)->'lines') l where l->>'kind' = 'BUY');
-    update public.world_config set value = to_jsonb(5) where key = 'npc_min_return_pct';
-    v_n5 := (select count(*) from jsonb_array_elements(public.npc_leg_lines(r.route_id, r.a, r.b, 400, 20, 5)->'lines') l where l->>'kind' = 'BUY');
-    if v_n2 > v_n5 then v_more := v_more + 1; end if;
-    if v_n2 < v_n5 then v_less := v_less + 1; end if;
-  end loop;
-  update public.world_config set value = to_jsonb(2) where key = 'npc_min_return_pct';
-  if v_more = 0 or v_less > 0 then
-    raise exception 'PROOF 127 FAIL: AS3_RETURN: of % legs, % keep more BUY lines at 2 %% than at 5 %%, % fewer', v_legs, v_more, v_less;
+  begin
+    update public.world_config set value = to_jsonb(1000) where key = 'npc_lines_per_stop';
+    update public.world_config set value = to_jsonb(1000000) where key = 'contract_npc_after_hours';
+    update public.npc_houses set wares = '{}';
+    update public.players set ducats = 1000000000000 where is_npc;
+    update public.port_treasury set ducats = 1000000000000;
+    for r in
+      select nf.route_id, nf.fleet_id, s0.port_id as a, s1.port_id as b
+        from public.npc_fleets nf
+        join public.standing_route_stops s0 on s0.route_id = nf.route_id and s0.ord = 0
+        join public.standing_route_stops s1 on s1.route_id = nf.route_id and s1.ord = 1
+       order by nf.roster_ord
+    loop
+      exit when v_legs >= 40 and v_more > 0;
+      v_legs := v_legs + 1;
+      update public.world_config set value = to_jsonb(2) where key = 'npc_min_return_pct';
+      v_l2 := (select coalesce(jsonb_agg(l), '[]'::jsonb) from jsonb_array_elements(public.npc_leg_lines(r.route_id, r.a, r.b, 1000000000, 20, 5)->'lines') l where l->>'kind' = 'BUY');
+      update public.world_config set value = to_jsonb(5) where key = 'npc_min_return_pct';
+      v_l5 := (select coalesce(jsonb_agg(l), '[]'::jsonb) from jsonb_array_elements(public.npc_leg_lines(r.route_id, r.a, r.b, 1000000000, 20, 5)->'lines') l where l->>'kind' = 'BUY');
+      v_kept := v_kept + jsonb_array_length(v_l5);
+      if jsonb_array_length(v_l2) > jsonb_array_length(v_l5) then v_more := v_more + 1; end if;
+      if not v_l2 @> v_l5 then
+        v_less := v_less + 1;
+        v_note := format('%s / %s', v_l2, v_l5);
+      end if;
+    end loop;
+    raise exception sqlstate 'BV127';
+  exception when sqlstate 'BV127' then null;
+  end;
+  if v_more = 0 or v_less > 0 or v_kept = 0 then
+    raise exception 'PROOF 127 FAIL: AS3_RETURN: of % legs, % keep a BUY at 2 %% that 5 %% drops, % lose a BUY that 5 %% keeps (% kept at 5 %%): %', v_legs, v_more, v_less, v_kept, v_note;
   end if;
-  raise notice 'PASS: AS3_RETURN — of % legs, % keep a BUY at 2 %% that 5 %% drops, none fewer', v_legs, v_more;
+  raise notice 'PASS: AS3_RETURN — of % legs, % keep a BUY at 2 %% that 5 %% drops; the % lines 5 %% keeps are all kept at 2 %%, to the unit', v_legs, v_more, v_kept;
 end
 $$;
 

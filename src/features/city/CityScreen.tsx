@@ -474,15 +474,20 @@ function CityFrame({
             </span>
           }
         >
-          {!hallDone && (
-            <div data-testid="city-load-host">
-              <LoadMeter steps={loadStepsFor(t, boot, hallDone)} data-testid="city-load" />
-            </div>
-          )}
-
-          {/* THE COMPANY FIRST (2026-11-24, docs/design/hq-corp-2026-11-24.md C1): the Rank strip (net per hour and why), the workers,
-              the best moves, the home Storage and the Ledger, in corp/HqCompany.tsx's one order; the city's plates stand under it. */}
-          <HqCompany port={port} />
+          {/* THE METER STANDS OVER THE PAGE, NOT IN IT (2026-11-25, "nothing on a page moves by itself"). It stood in the flow above the company
+              block, and when the hall's read answered it left and everything went up 44 px. Its holder now takes no place in the page's
+              list (`absolute`): the meter lies over the top line of the Rank strip, on that strip's own surface, and when it leaves
+              nothing under it has anywhere to go. */}
+          <div className="relative">
+            {!hallDone && (
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 rounded-tile bg-surface px-3 pt-1" data-testid="city-load-host">
+                <LoadMeter steps={loadStepsFor(t, boot, hallDone)} data-testid="city-load" />
+              </div>
+            )}
+            {/* THE COMPANY FIRST (2026-11-24, docs/design/hq-corp-2026-11-24.md C1): the Rank strip (net per hour and why), the workers,
+                the best moves, the home Storage and the Ledger, in corp/HqCompany.tsx's one order; the city's plates stand under it. */}
+            <HqCompany port={port} />
+          </div>
           {/* THE PLACES AS PLATES (2026-11-23, the visual overhaul's slice 7): each building and each door is a plate — its mark on a gold
               disc, its word, and ONE figure, a fact of that place already on this page (no plate asks a read of its own): the hall the city's
               gold, the market its tax, production the free hold of your fleets here, the port your fleets here, the inn their crew;

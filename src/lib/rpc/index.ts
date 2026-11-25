@@ -102,6 +102,8 @@ import type {
   ShipRoleSet,
   ShipRole,
   FleetJobsReport,
+  WorkerActionsView,
+  WorkersView,
   CourierContractsView,
   CourierOutcome,
   FleetJobKind,
@@ -885,6 +887,18 @@ export function cmdSeaChoose(choiceId: string, option: string): Promise<RpcResul
 /** 0481: her fleets' standing jobs and what each did since she last read this. Dark: `{on: false}`. */
 export function worldAwayReport(): Promise<RpcResult<FleetJobsReport>> {
   return call<FleetJobsReport>('worldAwayReport', [])
+}
+
+/** 0496: HQ's worker list: each of her fleets and her land party, her action in the one shape, her state, the served stamps of her
+ *  progress and coin and experience an hour. Asks no quote. No more than once in the served `ask_s`. */
+export function worldWorkers(): Promise<RpcResult<WorkersView>> {
+  return call<WorkersView>('worldWorkers', [])
+}
+
+/** 0496: one worker's options (`fleet:<uuid>` | `party:<n>`), each in the one shape, only what the server would take. It PRICES: asked
+ *  when the Assign sheet opens, never on a timer. */
+export function worldActions(worker: string): Promise<RpcResult<WorkerActionsView>> {
+  return call<WorkerActionsView>('worldActions', [worker])
 }
 
 /** 0481: give her fleet a standing job (best | fixed | land). Dark E_NOT_IN_USE; a fleet on a route E_ROUTE_TAKEN. */

@@ -154,7 +154,9 @@ test.describe('Your cargo prints Bought and Here\'s served profit', () => {
     const block = page.getByTestId('cargo-best').locator(`[data-testid="cargo-good"][data-good="${GOOD}"]`)
     // the same served basis: the dry run's at full precision, FleetView.cargo_basis to the hundredth
     await expect(block.getByTestId('cargo-good-bought')).toHaveAttribute('data-each', /\d/, { timeout: 120_000 })
-    expect(Number(await block.getByTestId('cargo-good-bought').getAttribute('data-each'))).toBeCloseTo(Number(each), 2)
+    // rounded to the hundredth is at most half a hundredth away, the half itself included (84.175 is served as 84.18)
+    const drawn = Number(await block.getByTestId('cargo-good-bought').getAttribute('data-each'))
+    expect(Math.abs(drawn - Number(each)), `${drawn} is not ${each} to the hundredth`).toBeLessThanOrEqual(0.005 + 1e-9)
     const home = (await board.getAttribute('data-city'))!
     await expect(block.locator(`[data-testid="cargo-place"][data-port="${home}"]`).getByTestId('cargo-place-profit')).toHaveText(formatPriceDelta(shown), {
       timeout: 120_000,

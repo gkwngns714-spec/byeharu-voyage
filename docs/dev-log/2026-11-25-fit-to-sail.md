@@ -160,3 +160,10 @@ has no 0500 in its image).
 - `vite build` and `tests/rpc.surface.spec.ts` were not run in THIS worktree (a build prunes the shared snapshot cache). The
   client worktree built this chain against a private copy of the cache: the browser image applies 0496-0500 and their self-asserts.
 - The ten seconds (above).
+
+## A flagship lost MID-RUN (found by refusal.drive, 2026-11-25; fixed here before the deploy)
+
+- A hull that drops to 0 between the plan and its SAIL leaves last_plan failed. The wait was written over it, and once she was
+  mended the failed-plan check stopped her on the old code with next_at still ahead: up to 10 minutes idle and "stopped".
+- Now the wait forgets last_plan (fleet_job_note hunk 2), and a plan that failed on either code does not stop a fit fleet
+  (fleet_job_plan hunk 2: mended before any run wrote the wait). 16 hunks. Proof 202 FS_MID_RUN: red on the old file, green.

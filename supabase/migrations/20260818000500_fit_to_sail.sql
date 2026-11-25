@@ -26,12 +26,13 @@
 --                                 door ask ONE rule.
 --   public.port_hires(port)       CAN CREW BE HIRED AT THIS PORT? Hands on its quay (crew_pool above 0): the fact cmd.do_hire refuses
 --                                 E_CREW_POOL by, lifted; cmd.do_hire (1 hunk) asks it here. STABLE, server only.
---   public.fleet_job_plan         (1 hunk) a docked, idle fleet that is not fit is NOT PLANNED: {wait: unfit, code, sentence}. No
+--   public.fleet_job_plan         (2 hunks) a docked, idle fleet that is not fit is NOT PLANNED: {wait: unfit, code, sentence}. No
 --                                 course is read, no leg judged, no line issued, no run counted. Short of crew where no crew can
 --                                 be hired (public.port_hires), she cannot mend it where she lies: the job STOPS on E_CREW_SHORT,
---                                 with nothing issued, and goes on once she is manned.
+--                                 with nothing issued, and goes on once she is manned. And a plan that failed on either code does
+--                                 not stop a fleet that is fit again (her flagship lost mid-run, mended before the next run).
 --   public.fleet_job_note         (2 hunks) that wait is written on her job: last {wait: <the code>, sentence}, asked again 10 minutes
---                                 on; the job is NOT stopped. And a job stopped on E_FLAGSHIP_DISABLED or E_CREW_SHORT that is
+--                                 on, and her failed plan is forgotten; the job is NOT stopped. And a job stopped on E_FLAGSHIP_DISABLED or E_CREW_SHORT that is
 --                                 asked again (she is fit now) has its stop and its failed plan lifted, whatever the new plan says.
 --   public.fleet_jobs_due         (1 hunk) a job that waits for her repair or her crew is due at the first run after it (not 10
 --                                 minutes later); a job ALREADY STOPPED on either code is due once she is fit. Neither is asked
@@ -45,7 +46,7 @@
 --                                 it waits). One key more; nothing else of the queue moves.
 --   world.workers                 NOT HUNKED: her row already serves `wait` from the job's own `last` and next_at (0498), so it reads
 --                                 wait {code: E_FLAGSHIP_DISABLED, sentence, retry_at}; a job stopped on that code reads `stop` as before.
--- THE HUNKS (15; each once in the live body, each reverses): voyage.sail_refusal x1, cmd.do_hire x1, cmd.queue x1, fleet_job_plan x1,
+-- THE HUNKS (16; each once in the live body, each reverses): voyage.sail_refusal x1, cmd.do_hire x1, cmd.queue x1, fleet_job_plan x2,
 --   fleet_job_note x2, fleet_jobs_due x1, fleet_job_set_for x1, fleet_job_open x1, tick_fleet_jobs x6. NEW: public.fleet_unfit,
 --   public.port_hires.
 -- THE TICK'S COST. The reported tick could NOT be reproduced: the same scene on the chain's world (PGlite) is 45-95 ms, cold plans
@@ -58,7 +59,7 @@
 -- budget: no table, no cron job, no autovacuum or fillfactor change.
 -- LOCKS: CREATE OR REPLACE x9 by hunks (eight functions, one procedure), CREATE FUNCTION x2. TIME: about a second. BUDGET:
 --   statement_timeout 90 s, lock_timeout 5 s; fails above 45 s.
--- ROLLBACK (forward, owner only): a migration reversing the fifteen hunks (OLD texts below verbatim) and dropping the two functions. QUICK:
+-- ROLLBACK (forward, owner only): a migration reversing the sixteen hunks (OLD texts below verbatim) and dropping the two functions. QUICK:
 --   none of its own; fleet_jobs_enabled false stops every job, as before.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants, volatility, definer, search path and
 --   owner unmoved; no knob moved; the new function STABLE and server only. THE SCENE (rolled back), before the hunks and after: a
@@ -356,6 +357,12 @@ $h$    return jsonb_build_object('wait', 'busy');
     end if;
     return jsonb_build_object('wait', 'unfit', 'code', v_s->>'code', 'sentence', v_s->>'sentence');
   end if;$h$),
+  ('public.fleet_job_plan(uuid)', 2,
+$h$    if found then
+      return jsonb_build_object('pause', coalesce(v_fail.error_code, 'E_REFUSED'), 'sentence', v_fail.error_message);$h$,
+$h$    -- 0500: a plan that failed because she could not sail is no news to a fleet that is fit (asked above): she goes on with her run
+    if found and coalesce(v_fail.error_code, 'E_REFUSED') not in ('E_FLAGSHIP_DISABLED', 'E_CREW_SHORT') then
+      return jsonb_build_object('pause', coalesce(v_fail.error_code, 'E_REFUSED'), 'sentence', v_fail.error_message);$h$),
   ('public.fleet_job_note(uuid,jsonb)', 1,
 $h$begin
   if p_plan ? 'pause' then$h$,
@@ -369,9 +376,10 @@ $h$begin
 $h$  elsif p_plan->>'wait' in ('nothing', 'unpriced', 'identity') then$h$,
 $h$  elsif p_plan->>'wait' = 'unfit' then
     -- 0500: she cannot sail: the job WAITS with the sail's code and sentence, asked again 10 minutes on, or at the first run after
-    -- her repair or her hire (public.fleet_jobs_due); it is not stopped
+    -- her repair or her hire (public.fleet_jobs_due); it is not stopped, and the plan that failed on it is forgotten with the wait (it would
+    -- stop her at that first run)
     update public.fleet_jobs
-       set next_at = now() + interval '10 minutes',
+       set next_at = now() + interval '10 minutes', last_plan = null,
            last = jsonb_build_object('at', now(), 'wait', coalesce(p_plan->>'code', 'E_FLAGSHIP_DISABLED'), 'sentence', p_plan->>'sentence')
      where fleet_id = p_fleet and paused_reason is null;
   elsif p_plan->>'wait' in ('nothing', 'unpriced', 'identity') then$h$),

@@ -244,7 +244,7 @@ jobs:
   npc-on-world:
     needs: select
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 150   # a from-zero world is 80 to 100 minutes (as build.yml)
     env:
       NEEDED: ${{ needs.select.outputs.npc_world }}
       # THE LAW (docs/CI.md): on a PR the world image comes from a cached prefix or the build fails.

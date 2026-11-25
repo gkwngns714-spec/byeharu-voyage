@@ -22,6 +22,7 @@ export const commandDict = defineDict({
     sailingTo: 'Sailing to {place}',
     milesOf: '{done} of {total}',
     noOrders: 'No orders.',
+    refusedNews: '{fleet}: {why}. The rest was cancelled.',
     dismissRefused: 'Dismiss refused order {n}',
     cancelOrder: 'Cancel order {n}',
     arrivesIn: 'arrives in {t}',
