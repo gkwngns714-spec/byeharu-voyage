@@ -30,6 +30,10 @@ test('the Inn on HQ → hire: her tile leaves the room, and the crew card leaves
   // The room turns over on the quarter hour (0119): a press across the edge is refused E_NOT_IN_THE_ROOM (captains.roster.spec.ts).
   await ready(page, { quietMs: 60_000 })
   await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: 180_000 })
+  // the board draws three cards; the Crew chip (drawn only while there is such a card) brings hers up
+  const crewChip = page.getByTestId('hq-filter-crew')
+  await expect(crewChip, 'HQ has no Crew chip: no captain is offered').toHaveCount(1, { timeout: 180_000 })
+  await crewChip.click()
   const crewCard = page.locator('[data-testid="hq-move"][data-kind="crew"]')
   await expect(crewCard, 'a fresh company has a fleet with no captain: HQ offers to hire one').toHaveCount(1, { timeout: 180_000 })
   await page.getByTestId('city-building-inn').click()
@@ -56,6 +60,8 @@ test('the Inn on HQ → hire: her tile leaves the room, and the crew card leaves
   await page.goto('city')
   await ready(page)
   await expect(page.getByTestId('hq-board')).toBeVisible({ timeout: 180_000 })
+  await expect(page.getByTestId('hq-board')).toHaveAttribute('data-source', 'served', { timeout: 180_000 })
+  await expect(crewChip, 'HQ still offers to hire a captain for the fleet she joined').toHaveCount(0, { timeout: 60_000 })
   await expect(crewCard, 'HQ still offers to hire a captain for the fleet she joined').toHaveCount(0, { timeout: 60_000 })
 })
 
@@ -66,6 +72,10 @@ test('HQ crew card (served, 0480 lit): one press hires her and the card leaves',
   await page.goto('city')
   await ready(page, { quietMs: 60_000 })
   await expect(page.getByTestId('hq-board')).toHaveAttribute('data-source', 'served', { timeout: 180_000 })
+  // the board draws three cards; the Crew chip (drawn only while there is such a card) brings hers up
+  const crewChip = page.getByTestId('hq-filter-crew')
+  await expect(crewChip, 'HQ has no Crew chip: no captain is offered').toHaveCount(1, { timeout: 180_000 })
+  await crewChip.click()
   const crewCard = page.locator('[data-testid="hq-move"][data-kind="crew"]')
   await expect(crewCard, 'the served board offers a captain for the fleet with none').toHaveCount(1, { timeout: 180_000 })
   await expect(crewCard).toHaveAttribute('data-act', 'cmd.hire_officer')

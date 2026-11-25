@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { makeLate } from './lateRead.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 
 // A WORLD WITH THE SWITCHES PRODUCTION RUNS LIT (docs/design/playable-2026-11-22.md §6; the visual overhaul's audit world), for the
@@ -27,7 +28,8 @@ const LIT = [
  *  the stored courses), and one house contract posted from Lisbon to the nearest harbour 150 miles or more away that trades its good.
  *  `race`: the country race lit (0484, nation_race_enabled), with Castile leading the first three contested harbours by code this week.
  *  `roles`: a hull's roles lit (0485, ship_roles_enabled), the first slot opening at her first hull (ship_roles_free_from 1), so the fresh
- *  company's one barca has a role to take. */
+ *  company's one barca has a role to take. `late`: these reads answer two seconds late (tests/lateRead.fixture.ts);
+ *  `also`: one more patch, run before them (a board cut to one card). */
 export async function serveHqLit(
   page: Page,
   {
@@ -36,7 +38,9 @@ export async function serveHqLit(
     contracts = false,
     race = false,
     roles = false,
-  }: { served?: boolean; jobs?: boolean; contracts?: boolean; race?: boolean; roles?: boolean } = {},
+    late = [],
+    also,
+  }: { served?: boolean; jobs?: boolean; contracts?: boolean; race?: boolean; roles?: boolean; late?: readonly string[]; also?: { name: string; sql: string } } = {},
 ): Promise<void> {
   const keys = [
     ...LIT,
@@ -48,12 +52,14 @@ export async function serveHqLit(
   ]
   await serveWorldImage(
     page,
-    await patchedWorldImage(roles && jobs ? 'hq-roles-jobs' : roles ? 'hq-roles' : race ? 'hq-race' : contracts ? 'hq-contracts' : jobs ? 'hq-jobs' : served ? 'hq-served' : 'hq-lit', async (pg) => {
+    await patchedWorldImage((late.length ? `late:${late.join(',')}:` : '') + (also ? `${also.name}:` : '') + (roles && jobs ? 'hq-roles-jobs' : roles ? 'hq-roles' : race ? 'hq-race' : contracts ? 'hq-contracts' : jobs ? 'hq-jobs' : served ? 'hq-served' : 'hq-lit'), async (pg) => {
       await pg.exec(`update public.world_config set value = 'true'::jsonb where key in (${keys.map((k) => `'${k}'`).join(', ')})`)
       await pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite'`)
       if (contracts) await pg.exec(POST_ONE_CONTRACT)
       if (race) await pg.exec(CASTILE_LEADS)
       if (roles) await pg.exec(`update public.world_config set value = to_jsonb(1) where key = 'ship_roles_free_from'`)
+      if (also) await pg.exec(also.sql)
+      for (const read of late) await makeLate(pg, read, 2)
     }),
   )
 }
