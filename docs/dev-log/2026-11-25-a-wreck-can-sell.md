@@ -32,12 +32,16 @@ coral aboard. Her queue: `SAIL BAN`, `SAIL MAL`, `SAIL MAC`, `SELL black-coral A
 - **The truth** (`public.wreck_order_refusal`, asked by `cmd.preview` and `cmd.issue`): a wreck's order that cannot run (BUY, SAIL,
   HIRE, REPAIR, or anything while she lies in no port) is refused, `E_NOT_DOCKED`, "Gaivota is wrecked: she can sell or store her
   cargo here, and nothing else until a tow and a repair". It is not queued. Her SELL's dry run is a real quote.
-- Eight hunks over six bodies, four new server-only functions, one knob.
+- **`public.quay_shows`** (one hunk) lists what she carries for a fleet that is alongside: it asked DOCKED itself, so `world.market`
+  served no row for a wreck's coral and the sell face opened empty. Found by driving the client half.
+- Nine hunks over seven bodies, four new server-only functions, one knob.
 
 ## Her queue, lit
 
-Nothing runs at the moment the switch is lit. Her next press (any order she sends) calls `cmd.advance`, which runs the
-`SELL black-coral ALL` already waiting in her queue, then her own. Proof 204 plays it: she presses Sell for one coral; the waiting
+CORRECTED after the client drive: her waiting SELL does not wait for a press. Every read of her fleet settles her and runs her
+queue (`cmd.advance`), so **the first read after the switch is lit runs the `SELL black-coral ALL` already waiting in her queue**:
+she opens the game with the day's limit sold and the coin in her purse (the drive: purse 0 -> 493,466 before any press). A press of
+hers then adds her own order after it. Proof 204 plays it: she presses Sell for one coral; the waiting
 SELL ALL sells the day's limit first, and her own one-coral order is then refused by the quay's day limit ("Day limit 0 / 1 tons").
 That second line is true but will read oddly; said plainly.
 

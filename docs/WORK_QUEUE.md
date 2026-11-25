@@ -5,6 +5,22 @@
 This block is the current state. The hand-off blocks further down (2026-11-13 and older) are history.
 
 
+**WORK ORDER FROM THE OWNER, 2026-11-25 (*"make the other pc have this info, then make it do the proper work"*). The lead builds this, in order; reread rule: `git pull` before each slice.**
+0. Read `docs/design/owner-spec-red-2026-11-25.md` in full. Stop any agent building passive slots by Trading level, `expeditions` or `hunt` as the old plan has them; keep their branches, do not delete work.
+1. Finish what is open and not contradicted: #868, #867, #866, #862, #869, `company-name`, `trade-tab-fleet-map`, `buy-tax`.
+2. `restart-company` + an HQ (capital) for every company with none (R1). The owner presses Restart; no session resets the owner's company for them.
+3. `stores-in-hold`, `seas-by-continent`, `riot-and-storm`, `pass-home`, `seas-relit` as planned (seas approved, R11). Word: Wave resistance.
+4. `management-level`; Trading gives profit % and bargain chance (R9, R10). Passive price ranges, crew and stores settings; no level locks a fleet.
+5. `premium-goods` on the existing recipes, 3 to 5 times by distance (R7, R8).
+6. `rounds` + log, then sea combat (ammo, wrecks, no RUN, no odds), sea expedition, artifacts (R3, R5, R6).
+7. `captain-works`, `land-expedition`, `honor-badge` (R4).
+8. `sea-asks-more`, section 3: hull and gear figures and the reachability proof first; dark.
+`hq-cities`: build dark, numbers are the owner's (R2). Every deploy rule, gate and after-check in CLAUDE.md stands. Anything marked default or PROPOSED: build it as data, say "decided by default".
+
+**STATE against the work order, 2026-11-25 ~05:00 UTC (this PC is the lead). PROD HEAD 0497** (`wreck-can-sell`, lit 03:20 UTC; the owner's company sold 136 coral, purse 198,131, still to be towed and repaired by the owner). Step 0: `passive-slots` (branch, built) HELD; nobody builds expeditions / hunt. Step 1: PR CONTENTS MOVED because the Actions cache lost main's worlds (owner allowed the swap; old tips under `backup/*`): **#865 was 0497 (live; #868 is its duplicate)**, **#866 = the client update** (was pages-stand-still-2 / #862 + worker figures + old refusals + wreck presses), **#867 = 0498 `jobs-never-lose`**; 0499 `near-round` = branch `stack-near-round`, 0500 `fit-to-sail` = `stack-fit-to-sail`, 0501 `cargo-at-cost`, 0502 `no-ruinous-run`, 0503 `company-name`, 0504 `chart-fog`, 0505-0507 `tax-to-thirty` / `bargain-ten` / `buy-tax`, 0508 `stores-in-hold`: all built, dark, pushed, in that order. #869 = the frozen 0473 self-assert + 150-minute builds (`frozen-0315` follows). `trade-tab-fleet-map` being reworked (the map on the tab's face). Building now (Opus; Fable is out until 29 Nov): 0509 `restart-company` + first HQs (step 2); 0510 / 0511 / 0513 / 0514 seas, riot, pass home, relit (step 3); 0515 / 0516 management-level, passive settings (step 4). Not started: steps 5 to 8. CI: one slow watcher only (the 5,000/h API quota ran out once); a closed or merged PR's saved worlds are cleared.**
+
+**OWNER, 2026-11-25 ~04:30 UTC: RED COMMENTS ON THE DECK (row 389). READ `docs/design/owner-spec-red-2026-11-25.md` BEFORE THE NEXT SLICE; it outranks the plan.** HOLD: 0509 `passive-slots` by Trading level (owner: NOPE; new level MANAGEMENT, fleets are commanded from the start); `hq-cities` numbers (owner sets them); `expeditions` and `hunt` as planned (now repeating rounds with a log). FIRST: `restart-company`. Written on PC 디폴리스; nothing built there.
+
 **UPDATE 2026-11-25 00:00 UTC: PROD HEAD IS 0496.** LIVE: #850, 0492 (lit), 0493 rate-why, #859, 0494 job-by-harbours, #860 THE NEW HQ, 0495 dividend-hourly (lit 21:52 UTC, players only; first coin after 00:37 UTC), #864 Repair / Hire crew press, 0496 workers-read. Main acceptance GREEN on 6c6f3183 and bc35eacb. OPEN in order: #865 0497 jobs-never-lose, #866 0498 near-round, 0499 fit-to-sail (branch), client `hq-figures-client`, #862 pages-stand-still-2, `desk-into-hq` (H3). Measured: a near Repeat barely earns (price, not daily_cap, binds), Trade nearby earns 2,700 to 19,700/h at 40,000 coin. A squash body carrying `[skip ci]` silently stopped main's Migrations run for 0492-0494: bv-deploy.sh now writes its own body. Owner's: relief for a company whose every ship is wrecked and purse is under the smallest repair.
 
 **UPDATE 2026-11-24: THE REMASTER (row 382): docs/design/remaster-2026-11-24.md is the one order of work. Phase 1: #850, 0492 #854, 0493 `rate-why` (building), 0494 `job-by-harbours` (row 381).**
