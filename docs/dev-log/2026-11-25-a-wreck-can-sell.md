@@ -59,9 +59,9 @@ A docked dry run of a SELL, mean of 20 in the migration's own scene: 2.60 ms bef
 answer is identical, asserted). One function call more in each cargo door (her fleet row by key, one knob read). `cmd.advance`
 asks nothing new unless her status is `UNABLE_TO_SAIL`. No job-plan path is touched.
 
-## The self-assert on worlds that are not the chain's (, a private copy of the cache)
+## The self-assert on worlds that are not the chain's (`perturb.mjs`, a private copy of the cache)
 
-The self-assert runs on production when it deploys.  applies the chain to 0496,
+The self-assert runs on production when it deploys. `scripts/ops/harness/a-wreck-can-sell/perturb.mjs` applies the chain to 0496,
 then for each of 13 worlds: perturb, run 0497 whole, roll back.
 
 - **Passes in 12:** the chain as it is; prod's switches lit; every quay at a tenth, ten times (glutted), none, and a thousand times
@@ -70,14 +70,14 @@ then for each of 13 worlds: perturb, run 0497 whole, roll back.
   other companies' wrecks, an empty fleet), alone and with prod's switches and a glut; wages owed and a dock fee on every fleet.
 - **It found one fault, fixed:** the first version RAISED when no good sold at the probe's home quay (a broke purse, missing rows),
   so the push would have been refused in such a world. Now the law is read on the quay's own refusal there: the wreck's dry run and
-  her order are refused exactly as a docked fleet's are (, ), never queued.
-- **One known refusal, not this file's:** with the economy closed and Lisbon's purse under 40,000,  itself
-  refuses (), and the probe founds its company that way, as every migration's probe does. Nothing is applied in
-  that case.  reads the two facts ().
+  her order are refused exactly as a docked fleet's are (`E_CITY_BROKE`, `E_NO_SUCH_GOOD`), never queued.
+- **One known refusal, not this file's:** with the economy closed and Lisbon's purse under 40,000, `public.new_house` itself
+  refuses (`E_NO_NEW_GOLD`), and the probe founds its company that way, as every migration's probe does. Nothing is applied in
+  that case. `before-0497.sql` reads the two facts (`founding`).
 
 ## Checked
 
-- 0497's self-assert on the snapshot at 0496: passed (268 ms). Proof 204: 6/6.
+- 0497's self-assert on the snapshot at 0496: passed (about 270 ms). Proof 204: 6/6, again after the scene was hardened.
 - Neighbouring proofs, `tsc -b`, eslint, `db.budget`, `news.lint`: see the commit.
 - The before / after reads: `scripts/ops/harness/a-wreck-can-sell/` (their selects run on the local world).
 
