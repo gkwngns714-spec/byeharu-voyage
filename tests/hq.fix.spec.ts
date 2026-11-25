@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { fixOf, jobCode } from '../src/features/city/corp/workerRows'
+import { fixOf } from '../src/domain/fleet'
+import { jobCode } from '../src/features/city/corp/workerRows'
 import type { FleetJobRow } from '../src/lib/rpc'
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════
@@ -43,18 +44,19 @@ test('the code of a job: what it stopped on, or (0499) what it waits on; a plain
   expect(jobCode(job({ state: 'stopped', paused: null }))).toBeNull()
 })
 
-test('ONE table: only workerRows.ts reads a code to pick a press, and no HQ worker file prints one', () => {
-  for (const f of ['features/city/corp/WorkerFix.tsx', 'features/city/corp/WorkerRow.tsx', 'features/city/corp/WorkerList.tsx', 'features/city/board/JobsAway.tsx']) {
+test('ONE table: only domain/fleet reads a code to pick a press, and no file that draws the press names one', () => {
+  for (const f of ['live/FixButton.tsx', 'live/fixPress.ts', 'features/city/corp/WorkerFix.tsx', 'features/city/corp/WorkerRow.tsx', 'features/city/corp/WorkerList.tsx', 'features/city/board/JobsAway.tsx', 'features/command/Queue.tsx']) {
     const code = src(f).replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
-    expect(code.match(/\bE_[A-Z_]+/g) ?? [], `${f} names a server code: the table is workerRows.ts fixOf`).toEqual([])
+    expect(code.match(/\bE_[A-Z_]+/g) ?? [], `${f} names a server code: the table is domain/fleet fixOf`).toEqual([])
   }
   // the repair's act stays the Shipyard's and the hire's the Inn's (tests/verbHomes.spec.ts): the fix draws their quotes, it does not
   // preview or issue
   expect(src('live/PortShipyard.tsx')).toContain('export function RepairNow')
   expect(src('live/PortInn.tsx')).toContain('export function HireNow')
-  expect(src('features/city/corp/WorkerFix.tsx')).not.toMatch(/useStepOrder|\bpreview\(|\bissue\(/)
-  // her row, her sheet and While away all draw the press
+  expect(src('live/FixButton.tsx')).not.toMatch(/useStepOrder|\bpreview\(|\bissue\(/)
+  // her row, her sheet, While away and her queue's note all draw the press
   expect(src('features/city/corp/WorkerList.tsx')).toContain('FixableRow')
   expect(src('features/city/corp/AssignSheet.tsx')).toContain('WorkerFixButton')
   expect(src('features/city/board/JobsAway.tsx')).toContain('WorkerFixButton')
+  expect(src('features/command/Queue.tsx')).toContain('WorkerFixButton')
 })

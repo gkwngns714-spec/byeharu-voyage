@@ -1,5 +1,5 @@
 import { Clip } from './Clip'
-import { useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { pageBodyClass, pageColumnClass } from './screenLayout'
 import { useInTray } from './trayContext'
 
@@ -69,6 +69,19 @@ export function Sheet({
   const [pinned, setPinned] = useState(false)
   const box = useRef<HTMLDivElement | null>(null)
   const head = useRef<HTMLElement | null>(null)
+  // THE BAR KEEPS THE ROOM THE LARGE TITLE HAD (2026-11-25, the owner's law: nothing on a page moves by itself). A pinned header is
+  // shorter than a large one (22 to 44 px on a page), and that difference came out of the page's flow when it pinned and went back in
+  // when it let go. Letting go happens at the top of the page, where nothing is scrolled to absorb it: every line went down by that
+  // much, by itself, a moment after the page arrived. A press made in that moment was lost (the pointer went down on a tab and came up
+  // under it: PR #863's run, tests/news.chart.spec.ts:147), and a player's page jumped under the finger on every return to the top.
+  // A spacer under the bar now holds exactly what the bar gave up: `large` is the large header's height, read as it pins, and the
+  // spacer is set to that less the bar's own height before the frame is painted. Pinned, the spacer is above the glass (the title
+  // pins only once the page has scrolled past the large header), so it is never seen; the page is one height in both states.
+  const large = useRef(0)
+  const room = useRef<HTMLDivElement | null>(null)
+  useLayoutEffect(() => {
+    if (room.current) room.current.style.height = pinned ? `${Math.max(0, large.current - (head.current?.offsetHeight ?? 0))}px` : '0px'
+  }, [pinned])
   const page = layout === 'page'
 
   return (
@@ -86,6 +99,7 @@ export function Sheet({
         // once the page is under way, and nothing in between can flutter. tests/primitives.geometry.spec.ts holds it.
         const top = e.currentTarget.scrollTop ?? 0
         const next = pinned ? top > 0 : top > (head.current?.offsetHeight ?? 0)
+        if (next && !pinned) large.current = head.current?.offsetHeight ?? 0
         if (next !== pinned) setPinned(next)
       }}
       // A PAGE IS POSITIONED (`relative`): a screen-reader label (`sr-only`, absolute, a FilterBar names its pickers with one) escapes the scroller
@@ -140,6 +154,8 @@ export function Sheet({
           {trailing !== undefined && <div className="shrink-0">{trailing}</div>}
         </header>
       )}
+      {/* what the pinned bar gave up of the large title's room (see `large` above); nothing at rest */}
+      <div ref={room} aria-hidden="true" data-sheet-pin-room="" style={{ height: 0 }} />
       {/* THE COLUMN is the glass, padded. THE PAGE (`layout="page"`) is the container of screenLayout.ts "THE PAGE":
           main | side, the side being the tray's own column. */}
       {page ? (
