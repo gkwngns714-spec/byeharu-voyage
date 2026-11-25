@@ -3559,6 +3559,14 @@ export interface FleetJobParams {
   times?: number | null
   /** 0492: the runs still to start, as served (counted down from `times`). */
   left?: number | null
+  /** 0516 (passive_settings_enabled): buy under, sell over, the crew and the days of stores to hold, stop under a profit, stop over a
+   *  damage in per cent. Absent: not set. */
+  under?: number
+  over?: number
+  crew?: number
+  days?: number
+  stop_profit?: number
+  stop_damage?: number
 }
 
 /** 0481: what a job did last: a run it started (its note), a wait for nothing to do, or the code it stopped on. */
@@ -3748,7 +3756,7 @@ export interface WorkerRow {
 /** `world.workers()` (0496). Ask no more than once in `ask_s` seconds, and once after a command or when a stamp passes. */
 export type WorkersView =
   | { company: false; workers: [] }
-  | { company: true; now: string; ask_s: number; away_cap_hours: number; workers: WorkerRow[] }
+  | { company: true; now: string; ask_s: number; away_cap_hours: number; workers: WorkerRow[]; /** 0516: a fixed job may carry settings (absent: dark). */ settings?: boolean }
 
 /** `world.actions(worker)` (0496): only what the server would take. Ask when the Assign sheet opens, never on a timer. */
 export type WorkerActionsView =

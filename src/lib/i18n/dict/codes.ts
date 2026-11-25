@@ -203,6 +203,8 @@ export const codesDict = defineDict({
     E_TOP_GRADE: 'Already top grade.',
     E_TEST: 'Probe error.',
     E_SHED_FULL: 'Storage full.',
+    E_STOP_PROFIT: 'Profit too low.',
+    E_STOP_DAMAGE: 'Hull too damaged.',
     E_LAND_OUT: 'Party is out.',
     E_LAND_HAVE: 'Already have it.',
     E_NO_SUCH_JOB: 'No such job.',

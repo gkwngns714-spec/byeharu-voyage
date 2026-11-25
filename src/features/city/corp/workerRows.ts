@@ -203,7 +203,7 @@ export function sortWorkers(rows: readonly WorkerRow[]): WorkerRow[] {
 
 /** The state's word. A job that waits for a price (0497's `low`) says so: "Prices low". */
 export function stateWord(r: Pick<WorkerRow, 'state' | 'waiting' | 'wait'>): TKey {
-  return r.state === 'idle' ? 'corp.idle' : r.state === 'stopped' ? 'corp.stopped' : r.wait?.code === 'low' ? 'corp.pricesLow' : r.waiting ? 'corp.waiting' : 'corp.working'
+  return r.state === 'idle' ? 'corp.idle' : r.state === 'stopped' ? 'corp.stopped' : r.wait?.code === 'low' ? 'corp.pricesLow' : r.wait?.code === 'range' ? 'corp.outOfRange' : r.waiting ? 'corp.waiting' : 'corp.working'
 }
 
 /** The names an action is said with: a good's, a harbour's and a land's, each the catalogue's. */
