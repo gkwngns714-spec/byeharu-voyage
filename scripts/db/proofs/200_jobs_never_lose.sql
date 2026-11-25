@@ -1,5 +1,5 @@
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 200 - JOBS NEVER LOSE  (migration 0497, dark: jobs_wait_enabled; docs/dev-log/2026-11-25-jobs-never-lose.md)
+-- PROOF 200 - JOBS NEVER LOSE  (migration 0498, dark: jobs_wait_enabled; docs/dev-log/2026-11-25-jobs-never-lose.md)
 --
 --   A fixed job that sells, and the Best job, start a run only when the server's own quote of it leaves a profit; otherwise the job
 --   waits (not stopped) and is asked again 10 minutes on. A card is priced for the units its sale's harbour takes today. The HQ board
@@ -18,7 +18,7 @@
 
 do $p$
 declare
-  c_a    constant uuid := '00000000-0497-4000-8000-0000000002a1';
+  c_a    constant uuid := '00000000-0498-4000-8000-0000000002a1';
   v_a    uuid;
   v_fa   uuid;
   v_lis  uuid;
@@ -48,9 +48,9 @@ begin
   -- THE MARKET IS PINNED (proof.pin_market, scripts/db/market-fixture.mjs: the one authority, this proof's own key) and THE SEA IS
   -- CALMED (hazard_p_max 0, as proofs 04, 11, 157, 184). Which run pays at Lisbon, and whether four times a harbour's stock sinks
   -- it, are facts of the market, and every from-zero apply deals another (with every quay empty, every price at its floor or no
-  -- price differing this proof went red, 2026-11-25; so did 0497's own probe on prod's market). A voyage's days are rolled on its
+  -- price differing this proof went red, 2026-11-25; so did 0498's own probe on prod's market). A voyage's days are rolled on its
   -- own id. The pinned market is drawn on the authored codes, the same in every world. Every assertion is as it was.
-  if (proof.pin_market('00000000-0497-4000-8000-000000000200'::uuid, 'proof-200') ->> 'nonzero')::int < 14000 then
+  if (proof.pin_market('00000000-0498-4000-8000-000000000200'::uuid, 'proof-200') ->> 'nonzero')::int < 14000 then
     raise exception 'PROOF 200: the market was not pinned';
   end if;
   update public.world_config set value = to_jsonb(0) where key = 'hazard_p_max';

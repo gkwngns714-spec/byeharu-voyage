@@ -1,6 +1,8 @@
-# 2026-11-25 — `fit-to-sail`: 0499 (a repair, no switch), proof 202
+# 2026-11-25 — `fit-to-sail`: 0500 (a repair, no switch), proof 202
 
-Stacked on `near-round` (0498). Server here; the client half is the branch `fit-client` (on `hq-join`). Nothing touched production:
+**Renumbered 2026-11-25: this file was 0499 and is 0500.** 0497 is `a-wreck-can-sell` (urgent, off main); the stack moved up by one (jobs-never-lose 0498, near-round 0499, fit-to-sail 0500). The numbers below are the new ones; the measurements were taken under the old.
+
+Stacked on `near-round` (0499). Server here; the client half is the branch `fit-client` (on `hq-join`). Nothing touched production:
 no prod read was run. No knob or switch is changed.
 
 ## The lead's prod facts (24 Nov, after 0494 went live 17:40 UTC)
@@ -61,7 +63,7 @@ One company, one fleet docked at Island of Mozambique (towed there after a ranso
   10 minutes later). A job ALREADY stopped on the code (prod's row) is due once she is fit; its stop and its failed plan are lifted
   when it is asked, whatever the new plan says (so it cannot loop on the old failed order). Neither is asked while she is unfit.
 - **The door:** `cmd.set_fleet_job` refuses a job for her: `E_FLAGSHIP_DISABLED`, "the flagship is not fit to sail".
-- **`world.workers`:** not hunked. Her row already serves `wait` from the job's `last` and `next_at` (0497): it reads
+- **`world.workers`:** not hunked. Her row already serves `wait` from the job's `last` and `next_at` (0498): it reads
   `wait {code: E_FLAGSHIP_DISABLED, sentence, retry_at}`, state `waiting`, `worker_state` wrecked. A job stopped on the code keeps
   `stop {code, sentence}`.
 - Fifteen hunks over nine bodies, two new STABLE server-only functions (with C and D above).
@@ -120,12 +122,12 @@ One company, one fleet docked at Island of Mozambique (towed there after a ranso
 
 ## Checked
 
-- 0499's self-assert on the snapshot at 0498: passed (434 ms). The scene before and after: a healthy fleet's plan identical
+- 0500's self-assert on the snapshot at 0499: passed (434 ms). The scene before and after: a healthy fleet's plan identical
   (`33139d1d`, the seven SAILs); the sail's refusal reads as it did.
-- Proof 202: 10/10 (FS_CREW, FS_NO_HANDS, FS_QUEUE_AT added). Proofs 29, 143, 150, 183, 184, 185, 186, 195, 197, 198, 199, 200, 201 pass with 0499 on the chain rebased onto `near-round` (0495-0498). Proofs 02, 05, 09, 61 and 65 (they touch crew or the queue) were NOT run: they need `proof.mjs`'s own helper schema or several statements, which this reader does not give; CI runs them. (All run one at a time through
+- Proof 202: 10/10 (FS_CREW, FS_NO_HANDS, FS_QUEUE_AT added). Proofs 29, 143, 150, 183, 184, 185, 186, 195, 197, 198, 199, 200, 201 pass with 0500 on the chain rebased onto `near-round` (0495-0499). Proofs 02, 05, 09, 61 and 65 (they touch crew or the queue) were NOT run: they need `proof.mjs`'s own helper schema or several statements, which this reader does not give; CI runs them. (All run one at a time through
   `hq-figures/q.mjs`, which writes no snapshot and prunes nothing.)
 - `tsc -b`, eslint, `db.budget`, `news.lint`: see the commit.
-- The before / after reads: `scripts/ops/harness/fit-to-sail/before-0499.sql`, `after-0499.sql` (their selects run on the local
+- The before / after reads: `scripts/ops/harness/fit-to-sail/before-0500.sql`, `after-0500.sql` (their selects run on the local
   world).
 
 ## Decided by default (the owner may reverse)
@@ -143,18 +145,18 @@ One company, one fleet docked at Island of Mozambique (towed there after a ranso
 - Both lines came in with b0247734, the `rate-why` BRANCH's own commit of 0493, which this stack (`workers-read` ->
   `jobs-never-lose` -> `near-round`) is built on. Main's 0493 is the squash 664fa466 (#856), whose `RateWhy.tsx` has neither
   (the PR fixed them before it merged), and b0247734 is not an ancestor of main.
-- So they are red on every branch of this stack and green on main; they go when the stack is rebased onto main. Nothing in 0499
+- So they are red on every branch of this stack and green on main; they go when the stack is rebased onto main. Nothing in 0500
   touches a screen.
 
 ## Driven (the client half, `fit-client`, with this migration in its world)
 
 Headless, 390 x 844 and 1440 x 900, a lit local world, the founding company with a wrecked fleet and an undermanned one, a Best job
 each: `C:\Users\gkwng\dev\fit-shots\` (the drive itself is `fit-drive.spec.ts` there; it is not a CI spec: the client branch
-has no 0499 in its image).
+has no 0500 in its image).
 
 ## Not verified
 
 - Prod: nothing was read. Whether Island of Mozambique has a shipyard on prod (it has in the chain's world, and a tow ends at one).
 - `vite build` and `tests/rpc.surface.spec.ts` were not run in THIS worktree (a build prunes the shared snapshot cache). The
-  client worktree built this chain against a private copy of the cache: the browser image applies 0496-0499 and their self-asserts.
+  client worktree built this chain against a private copy of the cache: the browser image applies 0496-0500 and their self-asserts.
 - The ten seconds (above).

@@ -1,6 +1,6 @@
--- 0498 THE NEAR ROUND, AFTER. A PROD CHECK: read-only, ONE statement. The gate first.
---   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/near-round/after-0498.sql
--- Expect: head 20260818000498; switch false (DARK: nothing changes for a player); new_fns 5; reach false (no new function callable
+-- 0499 THE NEAR ROUND, AFTER. A PROD CHECK: read-only, ONE statement. The gate first.
+--   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/near-round/after-0499.sql
+-- Expect: head 20260818000499; switch false (DARK: nothing changes for a player); new_fns 5; reach false (no new function callable
 --   by anon, authenticated or service_role); rounds 0 (no job carries `within` while dark: the door refuses it).
 -- LIT LATER (the owner's switch, never thrown here): `rounds` counts the near rounds; `waiting` those waiting for a price.
 -- ROLLBACK (forward, owner only): near_round_enabled false; or a migration reversing the six hunks and dropping the five functions.

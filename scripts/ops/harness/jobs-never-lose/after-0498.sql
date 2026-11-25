@@ -1,6 +1,6 @@
--- 0497 JOBS NEVER LOSE, AFTER. A PROD CHECK: read-only, ONE statement. The gate first.
---   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/jobs-never-lose/after-0497.sql
--- Expect: head 20260818000497; switch false (DARK: nothing changes for a player); new_fns 4; reach false (no new function callable by
+-- 0498 JOBS NEVER LOSE, AFTER. A PROD CHECK: read-only, ONE statement. The gate first.
+--   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/jobs-never-lose/after-0498.sql
+-- Expect: head 20260818000498; switch false (DARK: nothing changes for a player); new_fns 4; reach false (no new function callable by
 --   anon, authenticated or service_role); waiting 0 (no job waits `low` while dark).
 -- LIT LATER (the owner's switch, never thrown here): `waiting` then counts the jobs that wait for a price, each asked again at its
 --   next_at; none should have paused_reason set by the wait.

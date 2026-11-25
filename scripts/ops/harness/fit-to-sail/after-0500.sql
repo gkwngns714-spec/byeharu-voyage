@@ -1,6 +1,6 @@
--- 0499 FIT TO SAIL, AFTER. A PROD CHECK: read-only, ONE statement. The gate first.
---   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/fit-to-sail/after-0499.sql
--- Expect: head 20260818000499; new_fns 2; reach false (neither new function is callable by a client role); flag_rule 0, one_rule 1 and queue_at 1
+-- 0500 FIT TO SAIL, AFTER. A PROD CHECK: read-only, ONE statement. The gate first.
+--   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/fit-to-sail/after-0500.sql
+-- Expect: head 20260818000500; new_fns 2; reach false (neither new function is callable by a client role); flag_rule 0, one_rule 1 and queue_at 1
 --   (voyage.sail_refusal asks public.fleet_unfit). `waiting_unfit`: jobs that wait for a repair or for crew (last.wait
 --   E_FLAGSHIP_DISABLED or E_CREW_SHORT): each
 --   has no pending order and its runs did not move. `stopped_unfit`: jobs stopped on the code before the deploy: each stays so until

@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 202 - FIT TO SAIL  (migration 0499; docs/dev-log/2026-11-25-fit-to-sail.md)
+-- PROOF 202 - FIT TO SAIL  (migration 0500; docs/dev-log/2026-11-25-fit-to-sail.md)
 --
 --   The lead's prod facts: a company's one fleet, towed to Island of Mozambique after a ransom, her flagship's hull at 0; her land job
 --   was retried, seven SAILs issued and a run counted, the first SAIL refused E_FLAGSHIP_DISABLED, the job stopped for ever. This proof
@@ -20,7 +20,7 @@
 
 do $p$
 declare
-  c_a     constant uuid := '00000000-0499-4000-8000-0000000002a1';
+  c_a     constant uuid := '00000000-0500-4000-8000-0000000002a1';
   v_isl   uuid := (select p.id from public.ports p where p.code = 'ISL' and p.kind = 'HARBOUR');
   v_a     uuid;
   v_fa    uuid;

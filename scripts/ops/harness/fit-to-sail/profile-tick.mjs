@@ -1,4 +1,4 @@
-// WHERE A LONG JOB'S TICK GOES (0499; local PGlite only, never prod; everything rolled back).
+// WHERE A LONG JOB'S TICK GOES (0500; local PGlite only, never prod; everything rolled back).
 //   node scripts/ops/harness/fit-to-sail/profile-tick.mjs [--sea] [--wreck]
 // The reported scene (prod, 24 Nov): one company, one fleet docked at Island of Mozambique, a land job whose party lives at Lisbon: the
 // plan is seven SAILs, harbour by harbour. Prod's tick took 10,659 ms (its plan 3,055 ms). This times, on the chain's cached world with
@@ -29,7 +29,7 @@ const timed = async (label, s, p = [], n = 1) => {
 
 await db.exec('begin')
 await db.exec(`update public.world_config set value = 'true'::jsonb where key in ('fleet_jobs_enabled', 'sea_courses_enabled', 'land_enabled', 'assign_home_enabled'${SEA ? `, 'sea_conditions_bite'` : ''})`)
-const auth = '00000000-0499-4000-8000-0000000000f1'
+const auth = '00000000-0500-4000-8000-0000000000f1'
 const a = (await one(`select public.new_house($1, 'Casa do Reparo 499', 'PRT') as id`, [auth])).id
 const f = (await one(`select f.id from public.fleets f where f.player_id = $1`, [a])).id
 await db.query(`update public.players set ducats = 5000000 where id = $1`, [a])

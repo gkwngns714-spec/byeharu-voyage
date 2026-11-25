@@ -1,6 +1,6 @@
--- 0499 FIT TO SAIL, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
---   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/fit-to-sail/before-0499.sql
--- Expect: head 20260818000498; new_fns 0; hunked 9 (the nine bodies 0499 hunks are there); flag_rule 1 (voyage.sail_refusal still
+-- 0500 FIT TO SAIL, BEFORE. A PROD CHECK: read-only, ONE statement (begin read only ... rollback), the gate first.
+--   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/fit-to-sail/before-0500.sql
+-- Expect: head 20260818000499; new_fns 0; hunked 9 (the nine bodies 0500 hunks are there); flag_rule 1 (voyage.sail_refusal still
 --   reads her flagship itself: the text the hunk replaces, once). `stopped_unfit`: the jobs stopped on E_FLAGSHIP_DISABLED or
 --   E_CREW_SHORT today (the reported ones), each with the hands on her quay: after the deploy each stays stopped until her repair or
 --   her hire, then goes on by itself. `unfit_due`: jobs the next run would

@@ -422,7 +422,7 @@ test('0351: the cap authority\'s bisect is its walk, on fixed cases (public.flee
   for (const b of ['hold', 'purse', 'stock', 'daily cap']) expect([...bounds], `no case was bound by ${b}`).toContain(b)
   expect(exact, 'no case answered a count that costs her whole purse exactly').toBeGreaterThan(0)
   // who asks the cap authority: the tray's door, BUY ALL's count, a fleet lying at a quay on the routes read, the best sales, and
-  // (0492) a bring-home job's BUY when the home warehouse holds less than her hold (public.fleet_job_ends), and (0496) the options of world.actions (public.sea_actions_for), and (0497) a fixed run's quote before it starts (public.fleet_run_quote)
+  // (0492) a bring-home job's BUY when the home warehouse holds less than her hold (public.fleet_job_ends), and (0496) the options of world.actions (public.sea_actions_for), and (0498) a fixed run's quote before it starts (public.fleet_run_quote)
   const callers = (
     await db.pg.query<{ fn: string }>(
       `select n.nspname || '.' || p.proname as fn from pg_proc p join pg_namespace n on n.oid = p.pronamespace

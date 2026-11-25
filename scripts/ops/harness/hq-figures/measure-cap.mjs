@@ -1,6 +1,6 @@
 // WHAT BINDS A REPEATING TRADE? The day's allowance at three settings, over game days that turn (local PGlite only; all rolled back).
 //   node scripts/ops/harness/hq-figures/measure-cap.mjs [--fractions 0.35,0.7,1.0] [--purse 40000] [--homes PRT:LIS,NLD:AMS,PRT:VEN,PRT:GOA,JPN:NAG] [--days 3] [--leg 1800]
-// NEEDS 0497 IN THE CHAIN (run it from a worktree that has it): the jobs wait instead of losing (jobs_wait_enabled, lit here).
+// NEEDS 0498 IN THE CHAIN (run it from a worktree that has it): the jobs wait instead of losing (jobs_wait_enabled, lit here).
 // world_config.daily_cap_fraction is set INSIDE THIS ROLLED-BACK TRANSACTION ONLY. No migration changes it; it is the owner's knob.
 // The day turns as in measure-rotation.mjs: the market clock's anchor moves on a game day, every sale's mark is aged a day, and the
 // world's own public.tick_market_drift runs (stock returns, marks fade, the allowance is new).
@@ -30,7 +30,7 @@ let seq = 0
 
 async function company(nation, port) {
   seq += 1
-  const auth = `00000000-0497-4000-8000-${String(seq).padStart(12, '0')}`
+  const auth = `00000000-0498-4000-8000-${String(seq).padStart(12, '0')}`
   const a = (await one(`select public.new_house($1, $2, $3, $4) as id`, [auth, `Casa da Medida ${seq}`, nation, port])).id
   const f = (await one(`select f.id, f.port_id from public.fleets f where f.player_id = $1`, [a]))
   await db.query(`update public.players set ducats = $2 where id = $1`, [a, PURSE])
@@ -52,7 +52,7 @@ async function arrive(f) {
 }
 
 await db.exec('begin')
-if (!(await one(`select to_regprocedure('public.jobs_wait_on()') is not null as ok`)).ok) throw new Error('0497 is not in this chain: run from a worktree that has it')
+if (!(await one(`select to_regprocedure('public.jobs_wait_on()') is not null as ok`)).ok) throw new Error('0498 is not in this chain: run from a worktree that has it')
 await db.exec(`update public.world_config set value = 'true'::jsonb where key in ('fleet_jobs_enabled', 'sea_courses_enabled', 'land_enabled', 'jobs_wait_enabled')`)
 const day = Number((await one(`select public.wc_num('game_day_seconds') as s`)).s)
 const turn = Number((await one(`select world.trip_stop_seconds() as s`)).s)
