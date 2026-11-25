@@ -6,6 +6,7 @@ import { useWorld } from '../../live/worldStore'
 import { NationPicker } from '../../live/NationPicker'
 import { useT } from '../../lib/i18n'
 import { COIN } from '../../lib/format'
+import { COMPANY_NAME_MAX, companyNameToSend } from '../../domain/company'
 
 // SIGN THE BOOK — the first thing a captain on a real server ever sees, and until 2026-08-20 it
 // did not exist.
@@ -30,6 +31,9 @@ import { COIN } from '../../lib/format'
 // `unique` and `check (length(btrim(company_name)) between 3 and 24)`, and 0011 turns each of those
 // into a refusal with a sentence. Re-implementing them here would be a second authority that drifts
 // the first time the constraint changes — so the button simply asks, and prints what comes back.
+// 0503 (the owner's specification, 2026-11-25): THE NAME'S RULE is one server reading, `public.company_name_refusal`, shared with the
+// rename in Profile: letters and digits with single spaces, and not a country's, a place's, a trade good's or another company's
+// name. Its sentence is printed as it arrives. The name is only sent composed and trimmed (companyName.ts), and the field stops at 24.
 
 export function SignTheBook() {
   const t = useT()
@@ -46,7 +50,7 @@ export function SignTheBook() {
   const sign = async () => {
     setBusy(true)
     setRefusal(null)
-    const r = await cmdFoundHouse(name, nation)
+    const r = await cmdFoundHouse(companyNameToSend(name), nation)
     if (r.ok) {
       // The house exists now; the read is what makes it appear. Nothing here writes to the store.
       await refresh()
@@ -85,6 +89,7 @@ export function SignTheBook() {
           icon={null}
           id="house-name"
           value={name}
+          maxLength={COMPANY_NAME_MAX}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && name.trim() && !busy) void sign()

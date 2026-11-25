@@ -901,6 +901,12 @@ test('world.contracts() posts requests for goods a port does not sell, and cmd.f
   const port = snap.ports.find((p) => p.code === fleet.port)!
   const market = expectOk(await worldMarket(port.id))
 
+  // THE BOARD IS THIS DAY'S OWN. The chain leaves four requests at Lisbon, posted before 0285 multiplied their money by five, each to its own
+  // rounding: 20 clocks at 653.60 (13,072) under a budget of 13,070, which pays for 19. Such a row is no request of the rule asserted below (its
+  // budget is not its lot's bonus), and it is open only in a world built from zero within four game days (16 hours): main's red of
+  // 2026-11-25, 2,573 paid for the 29 units a budget of 2,660 covers. No live row is one: they lapsed days after 0285.
+  await db.pg.query('delete from public.trade_contracts')
+
   // (1) THE BOARD, wound by the read. Every field TradeRequest declares, off a real payload.
   const board = expectOk(await worldContracts(port.id))
   expect(board.port).toBe(port.code)
@@ -1738,6 +1744,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // bought with gold (FLEET or SHIP; dark, E_NOT_IN_USE, until fleet_room_bite), and A FLEET RENAMED (the caller's own, E_NO_SUCH_FLEET otherwise). None takes a player id.
       // Landed WITH the faces (src/features/fleets/FleetRoom.tsx, RenameFleet.tsx).
       'worldHouseRoom', 'cmdBuyRoom', 'cmdRenameFleet',
+      // Pin moved deliberately 2026-11-25 with migration 0503 (the owner's specification, docs/design/owner-spec-plan-2026-11-25.md A1): A COMPANY TAKES A NEW NAME. The name
+      // alone, no player id: the caller's own company (E_NO_HOUSE otherwise). Landed WITH the face (src/features/profile/RenameCompany.tsx).
+      'cmdRenameCompany',
+      // Pin moved deliberately 2026-11-25 with migration 0509 (docs/dev-log/2026-11-25-restart-company.md): THE CALLER'S COMPANY IS CLOSED AND A NEW ONE FOUNDED. Her name typed, a
+      // name, a country; no player id. Dark (E_NOT_IN_USE) until restart_enabled. Landed WITH the face (src/features/profile/RestartCompany.tsx).
+      'cmdRestartCompany',
       // Pin moved deliberately 2026-11-13 with migration 0367 (docs/ARMADA.md; owner row 323): AN ARMADA, two to six of the caller's fleets as one: the read (no arguments), and the
       // doors to form (her fleet ids and a name), disband, send on one order to a port, and that order's dry run (the real order, run and thrown away). None takes a player id:
       // each acts on the caller's own (E_NO_SUCH_FLEET, E_NO_SUCH_ARMADA otherwise). Landed WITH the faces (src/features/fleets/Armadas.tsx, src/features/map/SendArmadaRow.tsx).
