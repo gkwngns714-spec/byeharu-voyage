@@ -48,6 +48,9 @@ const premiumWorld = () =>
 const figure = (s: string) => Number(s.replace(/[^0-9.\-−]/g, '').replace('−', '-'))
 const total = async (page: Page) => figure((await page.getByTestId('good-detail-total').innerText()).split('\n')[1] ?? '')
 
+/** What a sale pays: the pinned Sells for. */
+const sells = async (page: Page) => figure(await page.getByTestId('sale-pair-sells').innerText())
+
 async function openBuy(page: Page, units: string) {
   await page.goto('command')
   await ready(page)
@@ -97,6 +100,7 @@ for (const size of SIZES) {
     await press.click()
     await expect(page.getByTestId('bargain-said')).toHaveAttribute('data-tone', 'refused', { timeout: 60_000 })
     expect((await page.getByTestId('bargain-said').innerText()).trim(), 'a refusal is not in words').toMatch(/^[A-Z].+/)
+    if (size.width === 390) expect((await page.getByTestId('bargain-said').boundingBox())!.height, 'the refusal takes more than two lines').toBeLessThanOrEqual(40)
     await page.screenshot({ path: `${OUT}/${size.width}-sell-same-day.png` })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   })
@@ -112,18 +116,16 @@ for (const size of SIZES) {
     await card.getByTestId('trade-sell').click()
     await expect(page.getByTestId('trade-profit')).toContainText(/\d/, { timeout: 60_000 })
     await page.waitForTimeout(1500)
-    const plain = await total(page)
-    // bought and sold at once she loses: the total is red, as its profit is
-    const red = await page.evaluate(() => {
-      const t = document.querySelector('[data-testid="good-detail-total"]')!
-      const colours = [...t.querySelectorAll('*')].filter((e) => e.children.length === 0 && /\d/.test(e.textContent ?? '')).map((e) => getComputedStyle(e).color)
-      return new Set(colours).size === 1 ? colours[0] : colours.join(' / ')
-    })
-    expect(red, 'the total and the profit of a loss are not one colour').not.toContain('/')
+    const plain = await sells(page)
+    // bought and sold at once she loses: the sheet's figure is that loss, with its sign and its colour
+    const last = page.getByTestId('good-detail-total')
+    await expect(last).toContainText('Loss')
+    await expect(last).toContainText(/−\d/)
+    await expect(last, 'a plus sign stands on a loss').not.toContainText('+')
     await page.screenshot({ path: `${OUT}/${size.width}-sell-loss.png` })
     await page.getByTestId('bargain-press').click()
     await expect(page.getByTestId('bargain-held')).toHaveText('Won · 5% more', { timeout: 60_000 })
-    await expect.poll(() => total(page), { timeout: 60_000 }).toBeGreaterThan(plain)
+    await expect.poll(() => sells(page), { timeout: 60_000 }).toBeGreaterThan(plain)
     await page.screenshot({ path: `${OUT}/${size.width}-sell-won.png` })
     await page.getByTestId('trade-act').click()
     await expect(page.getByTestId('trade-toast')).toContainText(/^Sold 20 /, { timeout: 60_000 })
@@ -164,7 +166,7 @@ for (const size of SIZES) {
     await card.getByTestId('trade-sell').click()
     await expect(page.getByTestId('trade-act')).toBeEnabled({ timeout: 60_000 })
     await page.waitForTimeout(1500)
-    const got = await total(page)
+    const got = await sells(page)
     const normal = figure((await page.getByTestId('good-detail-price').innerText()).split('\n').find((x) => /\d/.test(x)) ?? '')
     await page.screenshot({ path: `${OUT}/${size.width}-premium-sell.png` })
     console.log(`premium @${size.width}: one unit, price ${normal}, total ${got}`)

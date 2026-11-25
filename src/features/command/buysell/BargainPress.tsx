@@ -19,7 +19,7 @@ export function BargainPress({ fleet, goodId, code, side }: { fleet: string; goo
   const haggle = useWorld((s) => s.haggle)
   const read = useHaggleState(fleet, code)
   const [busy, setBusy] = useState(false)
-  const [said, setSaid] = useState<{ words: string; tone: 'won' | 'lost' | 'refused' } | null>(null)
+  const [said, setSaid] = useState<{ words: string; tone: 'won' | 'lost' | 'refused'; code?: string } | null>(null)
   const quay = read.state?.docked === true ? read.state : null
   const deal = quay?.bargain
   if (!quay || !deal) return null
@@ -29,7 +29,7 @@ export function BargainPress({ fleet, goodId, code, side }: { fleet: string; goo
     void haggle(fleet, goodId, side).then((r) => {
       setBusy(false)
       if (r) setSaid({ words: r.message, tone: r.won ? 'won' : 'lost' })
-      else setSaid({ words: useWorld.getState().refusal?.sentence ?? '', tone: 'refused' })
+      else setSaid({ words: useWorld.getState().refusal?.sentence ?? '', tone: 'refused', code: useWorld.getState().refusal?.code })
     })
   }
   const held = deal.held_pct > 0 && (deal.side === null || deal.side === side) ? t(side === 'buy' ? 'desk.bargainOff' : 'desk.bargainUp', { n: formatPctPoints(deal.held_pct, 0) }) : null
@@ -52,9 +52,10 @@ export function BargainPress({ fleet, goodId, code, side }: { fleet: string; goo
           </>
         )}
       </span>
-      <Button variant="secondary" className="min-h-11 shrink-0" busy={busy} busyLabel="…" disabled={busy || quay.attempts_left <= 0} onClick={press} data-testid="bargain-press">
+      {/* a day's bargain already on the other side: no press can change it today, so its reason takes the line (two lines at 390) */}
+      {said?.code !== 'E_BARGAIN_SIDE' && <Button variant="secondary" className="min-h-11 shrink-0" busy={busy} busyLabel="…" disabled={busy || quay.attempts_left <= 0} onClick={press} data-testid="bargain-press">
         {t('trade.bargain')}
-      </Button>
+      </Button>}
     </div>
   )
 }

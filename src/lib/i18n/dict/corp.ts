@@ -72,6 +72,7 @@ export const corpDict = defineDict({
     last: 'Last run',
     bestNote: 'Picked each run',
     noRun: 'No run',
+    noRunPays: 'No run pays now',
     warehouse: 'Storage',
     empty: 'Empty',
     ledger: 'Ledger',

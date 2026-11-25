@@ -203,6 +203,10 @@ function Frame({
   const trend = usePriceSeries(portId, good.good_id)
   const day = usePriceSeries(portId, good.good_id, '1d')
   const line = dayLine(day.series, side, price)
+  // SIGN AND COLOUR ARE ONE RULE (2026-11-26): a figure that can go either way is signed, green over nought and red under; a sum of coin is
+  // plain ink. A SALE'S OWN FIGURE IS WHAT IT LEAVES (Profit or Loss), and what it pays stands over it once, as Sells for: the sum stood
+  // here with a plus sign, in red on a loss.
+  const outcome = side === 'sell' && profit !== undefined ? profit : null
   const why = usePriceWhy(portId, good.good_id)
   return (
     <Tray
@@ -244,24 +248,30 @@ function Frame({
           <Row
             // the word whole (2026-11-22 second play-test: in the 1,280 desk's pane the figure and the profit left "Cost" 16 px, and it
             // stood as "Co / st"); whole, the line still fits that pane (measured 286 of 286 px, nothing past the row)
-            label={<span className="whitespace-nowrap">{total === null ? t('desk.total') : moneyWord(side === 'buy' ? 'cost' : 'total', total)}</span>}
+            label={<span className="whitespace-nowrap">{outcome !== null ? moneyWord('profit', outcome) : total === null ? t('desk.total') : moneyWord(side === 'buy' ? 'cost' : 'total', total)}</span>}
             value={
-              <span className="inline-flex items-baseline gap-2">
-                <Figure value={total === null ? '—' : moneyFigure(side === 'buy' ? 'cost' : 'total', total)} size="figure" tone={total === null ? 'faint' : profit === undefined || profit === null ? 'ink' : profit < 0 ? 'danger' : 'success'} />
-                {taxIn !== null && taxIn > 0 && (
-                  <span className="text-t-caption text-ink-muted" data-testid="buy-tax">
-                    {t('desk.taxIn', { n: formatPrice(taxIn) })}
-                  </span>
-                )}
-                {profit !== undefined && (
-                  <span className="inline-flex items-baseline gap-1" data-testid="trade-profit">
-                    <span className="text-t-caption text-ink-muted">{t('desk.profit')}</span>
-                    <span className={`font-semibold tabular-nums ${profit === null ? 'text-ink-faint' : profit >= 0 ? 'text-success' : 'text-danger'}`}>
-                      {profit !== null ? formatPriceDelta(profit) : '—'}
+              outcome !== null ? (
+                <span data-testid="trade-profit">
+                  <Figure value={moneyFigure('profit', outcome)} size="figure" tone={outcome < 0 ? 'danger' : 'success'} />
+                </span>
+              ) : (
+                <span className="inline-flex items-baseline gap-2">
+                  <Figure value={total === null ? '—' : moneyFigure(side === 'buy' ? 'cost' : 'total', total)} size="figure" tone={total === null ? 'faint' : 'ink'} />
+                  {taxIn !== null && taxIn > 0 && (
+                    <span className="text-t-caption text-ink-muted" data-testid="buy-tax">
+                      {t('desk.taxIn', { n: formatPrice(taxIn) })}
                     </span>
-                  </span>
-                )}
-              </span>
+                  )}
+                  {profit !== undefined && (
+                    <span className="inline-flex items-baseline gap-1" data-testid="trade-profit">
+                      <span className="text-t-caption text-ink-muted">{t('desk.profit')}</span>
+                      <span className={`font-semibold tabular-nums ${profit === null ? 'text-ink-faint' : profit >= 0 ? 'text-success' : 'text-danger'}`}>
+                        {profit !== null ? formatPriceDelta(profit) : '—'}
+                      </span>
+                    </span>
+                  )}
+                </span>
+              )
             }
             hairline={false}
             data-testid="good-detail-total"

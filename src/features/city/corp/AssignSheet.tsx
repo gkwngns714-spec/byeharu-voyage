@@ -286,7 +286,7 @@ function SeaAssign({ ask, fleet, view, names, haul }: { ask: AssignAsk; fleet: F
               <Step word={`${t('corp.run')}${view.at ? ` · ${names.port(view.at)}` : ''}`}>
                 {list.length === 0 ? (
                   <Note tone="neutral" data-testid="corp-assign-norun">
-                    {t('corp.noRun')}
+                    {t(losers.length > 0 ? 'corp.noRunPays' : 'corp.noRun')}
                   </Note>
                 ) : (
                   <div className="flex flex-col gap-1" data-testid="corp-assign-runs" data-end={end}>
