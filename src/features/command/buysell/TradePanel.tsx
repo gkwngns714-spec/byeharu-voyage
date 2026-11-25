@@ -151,6 +151,7 @@ function Frame({
   onChoose,
   units,
   deal,
+  taxIn = null,
   sale,
   pair,
   total,
@@ -173,8 +174,10 @@ function Frame({
   sellAt?: string | null
   /** The units row: the stepper, or why there is none. */
   units: ReactNode
-  /** 0506, 0507: the bargain's press and the tax in a purchase, under the units (docked only). */
+  /** 0506: the bargain's line, pinned over the big button (docked only). */
   deal?: ReactNode
+  /** 0507: the tax inside a purchase's cost, as the dry run counted it; null or 0: none. */
+  taxIn?: number | null
   /** 0490: a sale's lines (Bought, Sells for, the costs, Profit): above the units on a sale, under them on a buy-and-sell trip;
    *  before the chart either way. */
   sale?: ReactNode
@@ -244,7 +247,12 @@ function Frame({
             label={<span className="whitespace-nowrap">{total === null ? t('desk.total') : moneyWord(side === 'buy' ? 'cost' : 'total', total)}</span>}
             value={
               <span className="inline-flex items-baseline gap-2">
-                <Figure value={total === null ? '—' : moneyFigure(side === 'buy' ? 'cost' : 'total', total)} size="figure" tone={total === null ? 'faint' : profit !== undefined && profit !== null && profit > 0 ? 'success' : 'ink'} />
+                <Figure value={total === null ? '—' : moneyFigure(side === 'buy' ? 'cost' : 'total', total)} size="figure" tone={total === null ? 'faint' : profit === undefined || profit === null ? 'ink' : profit < 0 ? 'danger' : 'success'} />
+                {taxIn !== null && taxIn > 0 && (
+                  <span className="text-t-caption text-ink-muted" data-testid="buy-tax">
+                    {t('desk.taxIn', { n: formatPrice(taxIn) })}
+                  </span>
+                )}
                 {profit !== undefined && (
                   <span className="inline-flex items-baseline gap-1" data-testid="trade-profit">
                     <span className="text-t-caption text-ink-muted">{t('desk.profit')}</span>
@@ -258,6 +266,7 @@ function Frame({
             hairline={false}
             data-testid="good-detail-total"
           />
+          {deal}
           {button}
         </>
       }
@@ -270,6 +279,9 @@ function Frame({
       <div className={`${WRAP_ROW_CLASS} pt-1`}>
         <span className="text-t-caption text-ink-muted" data-testid="good-detail-city">
           <PortFlag code={city} /> {portNameOf(portByCode, city)}
+        </span>
+        <span className="text-t-caption tabular-nums text-ink-muted" data-testid="good-detail-aboard">
+          {t('desk.aboardLabel')} {formatInt(fleetCargoByCode(fleet)[good.code] ?? 0)}
         </span>
         <GoodKind category={good.category} rarity={good.rarity} goodClass={good.class} />
       </div>
@@ -286,7 +298,6 @@ function Frame({
         }
         data-testid="good-detail-price"
       />
-      <Row label={t('desk.aboardLabel')} value={<Figure value={formatInt(fleetCargoByCode(fleet)[good.code] ?? 0)} />} data-testid="good-detail-aboard" />
       {/* 0348: before the units (and their Max), when no sale pays */}
       {warn && (
         <Note tone="warning" className="mt-2" data-testid="trade-no-gain">
@@ -299,7 +310,6 @@ function Frame({
           and a sale's units are all she carries by default. Decided by default. A buy-and-sell trip keeps its units first. */}
       {side === 'sell' && sale}
       {units}
-      {deal}
       {side !== 'sell' && sale}
       <Chart name={good.name} trend={trend} portId={portId} goodId={good.good_id} />
       {extra}
@@ -448,15 +458,8 @@ function DockedAct({
           />
         )
       }
-      deal={
-        <>
-          {/* 0507: what of the cost is the city's tax, as the dry run counted it (nothing while it is 0) */}
-          {side === 'buy' && act.preview !== null && (act.preview.tax_total ?? 0) > 0 && (
-            <Row label={t('desk.taxIn')} value={<Figure value={formatPrice(act.preview.tax_total ?? 0)} tone={act.previewLoading ? 'faint' : 'ink'} />} data-testid="buy-tax" />
-          )}
-          {chosen > 0 && <BargainPress key={`${good.code}:${side}`} fleet={fleet.id} goodId={good.good_id} code={good.code} side={side} />}
-        </>
-      }
+      taxIn={side === 'buy' && chosen > 0 ? (act.preview?.tax_total ?? null) : null}
+      deal={chosen > 0 ? <BargainPress key={`${good.code}:${side}`} fleet={fleet.id} goodId={good.good_id} code={good.code} side={side} /> : undefined}
       sale={
         side === 'sell' && chosen > 0 ? (
             <SaleLines

@@ -130,7 +130,9 @@ export const deskDict = defineDict({
     bargainTries: '{n} / {of} tries · {odds}',
     bargainOff: '{n} off',
     bargainUp: '{n} more',
-    taxIn: 'Tax included',
+    taxIn: 'Tax {n}',
+    bargainWon: 'Won',
+    bargainNo: 'No deal',
     // THE MIRRORED SCREEN (owner row 229)
     sailBuy: 'Sail & buy',
     sailSell: 'Sail & sell',

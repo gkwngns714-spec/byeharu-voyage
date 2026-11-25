@@ -39,13 +39,23 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
   const [stop, setStop] = useState<Record<string, string>>({})
   const [then, setThen] = useState<'repeat' | 'home'>('repeat')
   const [tried, setTried] = useState<string | null>(null)
+  const takes = TAKES.filter((k) => kind === 'combat' || k !== 'ammo')
+  const stops = STOPS.filter((k) => kind === 'combat' || k !== 'hull')
   const quote = useRoundQuote(fleet.id, work?.open ? work.work : null, base)
   const terms = quote.stale ? null : (quote.view?.terms ?? null)
+  // WHAT STANDS IN A BOX IS WHAT IS SENT: a box she has not touched holds the server's own figure, where the quote serves it (her hands
+  // aboard; the least hands, the days kept and the rounds it would stop at); one it serves none for says so, and sends nothing
+  const served = (box: 'take' | 'stop', k: string): string => {
+    const n = terms === null ? undefined : box === 'take' ? (k === 'crew' ? terms.crew0 : undefined) : k === 'crew' ? terms.min : k === 'days' ? terms.days : k === 'rounds' ? terms.most : undefined
+    return n === undefined || n <= 0 ? '' : String(Math.round(n))
+  }
+  const shown = (box: 'take' | 'stop', k: string): string => (box === 'take' ? take : stop)[k] ?? served(box, k)
+  const all = (box: 'take' | 'stop', keys: readonly string[]) => numbers(Object.fromEntries(keys.map((k) => [k, shown(box, k)])))
   const choice = JSON.stringify([base, take, stop, then])
   const refusal = !pending && tried === choice ? refused : null
   const send = async () => {
     if (!work || base === null) return
-    const ok = await setFleetJob(fleet.id, 'round', { work: work.work, base, then, ...numbers(take), stop: numbers(stop) }, key)
+    const ok = await setFleetJob(fleet.id, 'round', { work: work.work, base, then, ...all('take', takes), stop: all('stop', stops) }, key)
     if (ok) onDone()
     else setTried(choice)
   }
@@ -58,8 +68,6 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
         ...(kind === 'combat' ? [{ key: 'ammo', word: 'corp.ammo' as TKey, text: small(terms.ammo ?? 0) }, { key: 'hull', word: 'corp.hull' as TKey, text: `${formatFixed((terms.hull ?? 0) * 100, 1)}%` }] : []),
       ]
     : []
-  // an empty box is the server's own rule: its figure, where this quote serves it
-  const usualStop = (k: (typeof STOPS)[number]) => (terms === null ? undefined : k === 'crew' ? formatInt(terms.min) : k === 'days' ? formatInt(terms.days) : k === 'rounds' ? formatInt(terms.most) : t('corp.notSet'))
   return (
     <div data-testid="round-assign" data-kind={kind} data-work={work?.work} data-base={base ?? undefined}>
       {shut !== null && (
@@ -92,15 +100,15 @@ export function RoundAssign({ fleet, kind, lit, names, onDone }: { fleet: FleetV
           </Step>
           <Step word={t('corp.take')}>
             <div className="grid grid-cols-3 gap-2" data-testid="round-take-boxes">
-              {TAKES.filter((k) => kind === 'combat' || k !== 'ammo').map((k) => (
-                <SettingBox key={k} word={t(TAKE_WORD[k])} value={take[k] ?? ''} onChange={(v) => setTake({ ...take, [k]: v })} usual={k === 'crew' && terms ? formatInt(terms.crew0) : t('corp.notSet')} testid={`round-take-${k}`} />
+              {takes.map((k) => (
+                <SettingBox key={k} word={t(TAKE_WORD[k])} value={shown('take', k)} onChange={(v) => setTake({ ...take, [k]: v })} usual={t('corp.notSet')} testid={`round-take-${k}`} />
               ))}
             </div>
           </Step>
           <Step word={t('corp.stopAt')}>
             <div className="grid grid-cols-2 gap-2" data-testid="round-stop-boxes">
-              {STOPS.filter((k) => kind === 'combat' || k !== 'hull').map((k) => (
-                <SettingBox key={k} word={t(STOP_WORD[k])} value={stop[k] ?? ''} onChange={(v) => setStop({ ...stop, [k]: v })} usual={usualStop(k)} testid={`round-stop-${k}`} />
+              {stops.map((k) => (
+                <SettingBox key={k} word={t(STOP_WORD[k])} value={shown('stop', k)} onChange={(v) => setStop({ ...stop, [k]: v })} usual={t('corp.notSet')} testid={`round-stop-${k}`} />
               ))}
             </div>
           </Step>

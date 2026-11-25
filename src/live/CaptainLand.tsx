@@ -376,7 +376,7 @@ export function CaptainPlacesLine({ places, honor }: { places: CaptainPlaces | u
   if (!places && honor === undefined) return null
   const next = places?.next ?? null
   return (
-    <div data-testid="captain-places" data-used={places?.used} data-places={places?.places}>
+    <div className="[grid-column:1/-1]" data-testid="captain-places" data-used={places?.used} data-places={places?.places}>
       {honor !== undefined && <Row end label={t('books.badges')} value={<Figure value={formatInt(honor)} />} data-testid="honor-balance" />}
       {places && <Row end label={t('books.places')} value={<Figure value={`${formatInt(places.used)} / ${formatInt(places.places)}`} />} hairline={next !== null} />}
       {next && !next.open && <Row end label={t('books.placeN', { n: formatInt(next.place) })} value={<span className="text-ink-muted">{t('books.placeShut')}</span>} data-testid="captain-place-shut" />}

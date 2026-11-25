@@ -41,7 +41,10 @@ export function SignTheBook() {
   const nationByCode = useWorld((s) => s.nationByCode)
   const portByCode = useWorld((s) => s.portByCode)
   const [name, setName] = useState('')
-  const [nation, setNation] = useState('PRT')
+  const [asked, setNation] = useState('PRT')
+  // the served list is the choice (`joinable`): a default it does not hold gives way to its first
+  const open = Object.values(nationByCode).filter((n) => n.joinable).sort((a, b) => a.name.localeCompare(b.name))
+  const nation = open.some((n) => n.code === asked) ? asked : (open[0]?.code ?? asked)
   const capitalCode = nationByCode[nation]?.capital ?? null
   const capital = capitalCode ? (portByCode[capitalCode]?.name ?? capitalCode) : null
   const [busy, setBusy] = useState(false)

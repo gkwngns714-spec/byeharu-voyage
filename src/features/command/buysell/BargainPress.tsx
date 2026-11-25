@@ -5,10 +5,11 @@ import { useT } from '../../../lib/i18n'
 import { useHaggleState } from '../../../live/useHaggleState'
 import { useWorld } from '../../../live/worldStore'
 
-// THE BARGAIN ON THE TRADE SHEET (0506; the owner, 2026-11-25: ten tries, each less likely, 5 % of the total a win). One line and one
-// press: the tries left and the next chance as served (`world.haggle_state`), what she holds, and Bargain (`cmd.haggle`). The total
-// under it is the dry run's, so a win is seen there. Her answer (the server's own sentence) has a line held for it: a press moves
-// nothing. Drawn only while the server serves the `bargain` key (bargain_total_enabled); dark: nothing.
+// THE BARGAIN ON THE TRADE SHEET (0506; the owner, 2026-11-25: ten tries, each less likely, 5 % of the total a win). ONE LINE, pinned with
+// the money and the big button, so a half-raised sheet on a phone shows it: what she holds, the last try's answer, the tries left and
+// the next chance as served (`world.haggle_state`), and the press (`cmd.haggle`). The total under it is the dry run's, so a win is seen
+// there. The line is as high before a try as after it. The server's own sentence is the line's title; a refusal is printed whole.
+// Drawn only while the server serves the `bargain` key (bargain_total_enabled); dark: nothing.
 
 export function BargainPress({ fleet, goodId, code, side }: { fleet: string; goodId: string; code: string; side: 'buy' | 'sell' }) {
   const t = useT()
@@ -28,21 +29,29 @@ export function BargainPress({ fleet, goodId, code, side }: { fleet: string; goo
       else setSaid({ words: useWorld.getState().refusal?.sentence ?? '', tone: 'refused' })
     })
   }
-  const spent = quay.attempts_left <= 0
+  const held = deal.held_pct > 0 && (deal.side === null || deal.side === side) ? t(side === 'buy' ? 'desk.bargainOff' : 'desk.bargainUp', { n: formatPctPoints(deal.held_pct, 0) }) : null
+  const odds = formatPctPoints(quay.next_odds_pct, quay.next_odds_pct < 10 ? 1 : 0)
   return (
-    <div className="border-t border-edge py-2" data-testid="bargain" data-left={quay.attempts_left} data-held={deal.held_pct}>
-      <div className="flex items-center justify-between gap-3">
-        <span className="min-w-0 text-t-caption tabular-nums text-ink-muted">
-          <span className="block text-t-label text-ink">{deal.held_pct > 0 ? t(side === 'buy' ? 'desk.bargainOff' : 'desk.bargainUp', { n: formatPctPoints(deal.held_pct, 0) }) : t('trade.bargain')}</span>
-          <span data-testid="bargain-tries">{t('desk.bargainTries', { n: formatInt(quay.attempts_left), of: formatInt(quay.attempts_max), odds: formatPctPoints(quay.next_odds_pct, quay.next_odds_pct < 10 ? 1 : 0) })}</span>
-        </span>
-        <Button variant="secondary" className="min-h-11 shrink-0" busy={busy} busyLabel="…" disabled={busy || spent} onClick={press} data-testid="bargain-press">
-          {t('trade.bargain')}
-        </Button>
-      </div>
-      <p className={`min-h-[2.25rem] text-t-caption ${said?.tone === 'won' ? 'text-success' : said?.tone === 'refused' ? 'text-danger' : 'text-ink-muted'}`} role="status" data-testid="bargain-said">
-        {said?.words}
-      </p>
+    <div className="flex min-h-11 items-center justify-between gap-3" data-testid="bargain" data-left={quay.attempts_left} data-held={deal.held_pct}>
+      <span className="min-w-0 text-t-caption tabular-nums" role="status" title={said?.words} data-testid="bargain-said" data-tone={said?.tone}>
+        {said?.tone === 'refused' ? (
+          <span className="text-danger">{said.words}</span>
+        ) : (
+          <>
+            {(said || held) && (
+              <span className={`block font-semibold ${said?.tone === 'lost' ? 'text-ink-muted' : 'text-success'}`} data-testid="bargain-held">
+                {[said ? t(said.tone === 'won' ? 'desk.bargainWon' : 'desk.bargainNo') : null, held].filter(Boolean).join(' · ')}
+              </span>
+            )}
+            <span className="text-ink-muted" data-testid="bargain-tries">
+              {t('desk.bargainTries', { n: formatInt(quay.attempts_left), of: formatInt(quay.attempts_max), odds })}
+            </span>
+          </>
+        )}
+      </span>
+      <Button variant="secondary" className="min-h-11 shrink-0" busy={busy} busyLabel="…" disabled={busy || quay.attempts_left <= 0} onClick={press} data-testid="bargain-press">
+        {t('trade.bargain')}
+      </Button>
     </div>
   )
 }

@@ -100,7 +100,7 @@ export function RateWhy({ board }: { board: Board }) {
         <span className="whitespace-nowrap text-t-caption text-ink-faint">{t('hq.rateLast')}</span>
       </button>
       <span className={HELD_LINE} data-testid="hq-rate-causes">
-        {top.map((l, i) => (
+        {(fresh ? [] : top).map((l, i) => (
           <span key={l.line} className="whitespace-nowrap" data-line={l.line}>
             {`${t(wordOf(l.line))} ${signed(l.total_24h)}${i < top.length - 1 ? ' ·' : ''}`}
           </span>

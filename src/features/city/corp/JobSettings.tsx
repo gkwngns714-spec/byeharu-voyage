@@ -20,9 +20,15 @@ const WORDS: Record<(typeof SETTINGS)[number]['code'], TKey> = {
 export function JobSettings({ draft, room, onChange, sells }: { draft: JobSettingsDraft; room: JobRoom; onChange: (d: JobSettingsDraft) => void; sells: boolean }) {
   const t = useT()
   const [open, setOpen] = useState(() => Object.keys(draft).length > 0)
+  // WHAT STANDS IN A BOX IS WHAT IS SENT (2026-11-25): opened, the box the server serves a figure for (her crew) holds it; a box it serves
+  // none for says so, and sends nothing
+  const toggle = () => {
+    if (!open && draft.crew === undefined && room.crew > 0) onChange({ ...draft, crew: String(room.crew) })
+    setOpen(!open)
+  }
   return (
     <div className="mb-4">
-      <FoldPress open={open} onToggle={() => setOpen(!open)} testid="corp-settings-open">
+      <FoldPress open={open} onToggle={toggle} testid="corp-settings-open">
         {t('corp.settings')}
       </FoldPress>
       {open && (
@@ -39,7 +45,7 @@ export function JobSettings({ draft, room, onChange, sells }: { draft: JobSettin
               value={draft[s.code] ?? ''}
               onChange={(v) => onChange({ ...draft, [s.code]: v })}
               mode="decimal"
-              usual={s.code === 'crew' && room.crew > 0 ? formatInt(room.crew) : t('corp.notSet')}
+              usual={t('corp.notSet')}
               testid={`corp-setting-${s.code}`}
             />
           ))}

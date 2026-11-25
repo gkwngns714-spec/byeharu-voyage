@@ -16,7 +16,7 @@ export function PremiumRows({ premium }: { premium: PremiumCity | undefined }) {
       <Row label={t('ui.premiumCity')} value={<span className="text-t-body text-ink">{premium.name}</span>} data-testid="premium-city" />
       <Row
         label={t('ui.premiumPays')}
-        value={<Figure value={`×${String(Number(premium.mult))}`} unit={t('ui.premiumLeft', { n: formatInt(Number(premium.left)) })} />}
+        value={<Figure value={`×${String(Number(premium.mult))}`} unit={Number(premium.made) <= 0 ? t('ui.premiumMake', { n: formatInt(Number(premium.per_day)) }) : t('ui.premiumLeft', { n: formatInt(Number(premium.left)) })} />}
         data-testid="premium-pays"
       />
     </>

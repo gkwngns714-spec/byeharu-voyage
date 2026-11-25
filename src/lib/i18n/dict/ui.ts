@@ -42,6 +42,7 @@ export const uiDict = defineDict({
     wanted: 'Wanted ×{mult}',
     premiumCity: 'Premium city',
     premiumPays: 'Premium',
+    premiumMake: 'make it first, {n} a day',
     premiumLeft: '{n} left',
     buy: 'buy',
     sell: 'sell',
