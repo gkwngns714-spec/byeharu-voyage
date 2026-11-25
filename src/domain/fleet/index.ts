@@ -84,4 +84,4 @@ export {
 // not about any screen that prints one (statGloss.ts's header carries the citations).
 export { SHIP_STATS, shipStatItems, type ShipStatGloss, type ShipStatKey } from './statGloss'
 export { heldMs, heldUntilMs, inBattle } from './hold'
-export { fixOf, type WorkerFix } from './fix'
+export { cargoPort, fixOf, wreckFix, type WorkerFix } from './fix'

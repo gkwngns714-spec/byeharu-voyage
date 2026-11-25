@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { DetailPage, Note, Skeleton, useBackLayer } from '../components/ui'
-import { alongsideAt, fleetCargoByCode } from '../domain/fleet'
+import { alongsideAt, cargoPort, fleetCargoByCode } from '../domain/fleet'
 import { useCommandDraft } from '../domain/order'
 import { buildingTier, hasBuilding } from '../domain/port'
 import { tradeRows } from '../domain/market'
@@ -263,14 +263,15 @@ function TradeSheet({
   const city = onBoard && sale?.port ? sale.port : ask.port
   const side = onBoard ? 'sell' : ask.side
   const cityPort = portByCode[city] ?? null
-  const here = fleet.status === 'DOCKED' && fleet.port === city
+  const here = cargoPort(fleet) === city   // 0497: docked there, or a wreck lying there (her cargo is landed where she lies)
   const quay = usePortMarket(cityPort?.id ?? null)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
   const rows = useMemo(() => tradeRows(quay.market?.goods ?? [], aboard, goodByCode), [quay.market, aboard, goodByCode])
   const row = rows.find((r) => r.code === ask.good) ?? null
 
   // a carried good the city's quay does not list is bid for by world.price_why (owner row 231)
-  const sellUnlisted = side === 'sell' && !here && row !== null && row.sell === null && row.units > 0
+  // 0497: here too (a wreck's coral at a quay that does not list coral: the server buys it there, cmd.do_sell, and the sheet drew nothing)
+  const sellUnlisted = side === 'sell' && row !== null && row.sell === null && row.units > 0
   const bid = usePriceWhy(sellUnlisted ? (cityPort?.id ?? null) : null, row?.goodId ?? null)
   const price = row ? (side === 'buy' ? row.buy : (row.sell ?? (sellUnlisted ? (bid.view?.bid ?? null) : null))) : null
   const best = useBestSales(fleet.id, fleet.version, cityPort?.id ?? null)

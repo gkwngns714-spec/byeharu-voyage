@@ -70,6 +70,8 @@ export function useTrade(
   /** THE BASKET'S DOOR (slice 2): stage this line for the chosen quantity instead of issuing it.
    *  Given by a quay with a basket; absent, the tray draws no `Add to basket`. */
   onStage?: (qty: number) => void,
+  /** 0497: the quantity is everything she carries of it: asked and sent as ALL (useSaleEstimate.ts says why). */
+  all = false,
 ): SaleControls {
   const issue = useWorld((s) => s.issue)
   // A SELECTOR RETURNS A SERVED REFERENCE, never a fresh literal: `?? []` builds a new array on
@@ -92,7 +94,7 @@ export function useTrade(
   const n = qty ?? 0
   const ready = spec !== undefined && good !== null && n > 0
 
-  const { preview, previewLoading } = useSaleEstimate(fleet, intent, good?.code ?? null, n)
+  const { preview, previewLoading } = useSaleEstimate(fleet, intent, good?.code ?? null, n, all)
 
   const send = () => {
     if (!spec || !good || !key || n <= 0 || sending) return
@@ -102,7 +104,7 @@ export function useTrade(
       // THE LINE IS COMPOSED AT ISSUE TIME AND NEVER PRINTED (§5). `orderText` walks the server's
       // own verb grammar, so there is one composer on this side of the wire — no screen writes an
       // order string, and the player never reads one.
-      const okay = await issue(fleet.id, orderText(spec, { good: good.code, qty: String(n) }, fleet.name), null)
+      const okay = await issue(fleet.id, orderText(spec, { good: good.code, qty: all ? 'ALL' : String(n) }, fleet.name), null)
       setSending(false)
       if (okay) onDone()
       else setRefused({ key, refusal: useWorld.getState().refusal })

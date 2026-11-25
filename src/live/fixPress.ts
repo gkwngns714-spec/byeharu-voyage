@@ -24,10 +24,22 @@ export function useFixWord(): (fix: WorkerFix, cost?: number | null) => string {
           : t('corp.hire')
         : fix === 'assign'
           ? t('corp.assign')
-          : t('corp.warehouse')
+          : fix === 'wreck'
+            ? t('corp.tow')
+            : t('corp.warehouse')
+}
+
+/** A wreck's press, in words (0497; live/WreckFix.tsx names the step): "Sell cargo", "Tow 14,366", "Tow"; and the line that says
+ *  where the tow goes, "Tow to Colombo". */
+export function useWreckWord(): (step: { kind: 'tow' | 'sell'; fee: number | null; to: string | null }) => { pill: string; note: string | undefined } {
+  const t = useT()
+  return (step) =>
+    step.kind === 'sell'
+      ? { pill: t('corp.sellCargo'), note: undefined }
+      : { pill: step.fee !== null ? t('corp.towFor', { n: formatDucats(step.fee) }) : t('corp.tow'), note: step.to ? t('corp.towTo', { port: step.to }) : undefined }
 }
 
 /** Assign and Storage: one press each, no read. */
-export function fixPressOf(fix: Exclude<WorkerFix, PaidFix>, worker: string): () => void {
+export function fixPressOf(fix: Exclude<WorkerFix, PaidFix | 'wreck'>, worker: string): () => void {
   return fix === 'assign' ? () => openHq({ sheet: 'assign', worker }) : () => useHqPlace.getState().openStorage()
 }
