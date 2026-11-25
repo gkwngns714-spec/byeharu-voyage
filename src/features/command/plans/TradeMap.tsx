@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { openingBounds, SmallChart, type PathStop } from '../../../chart'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { openingBounds, portFogState, SmallChart, type PathStop } from '../../../chart'
+import { useCompanyFog } from '../../../live/useChartFog'
 import { Button, Figure, Hint, Icon, Row } from '../../../components/ui'
 import { routeOfFleet } from '../../../domain/route'
 import { useGoodBoard } from '../../../live/useDesk'
@@ -90,6 +91,22 @@ export function TradeMap({
   const book = useWorld((s) => s.routes)
   const boxRef = useRef<HTMLDivElement>(null)
   const name = (code: string) => portNameOf(portByCode, code)
+  // 0504 — THE FOG (src/chart/fog.ts): a city in sight of one of her fleets is pressed for its prices, as before. A city she
+  // only knows is named, and nothing about it is shown here: she sails there from the Map. Dark: null, the map as it was.
+  const fog = useCompanyFog()
+  const [unseen, setUnseen] = useState<string | null>(null)
+  const pressCity = useCallback(
+    (code: string) => {
+      const port = portByCode[code]
+      if (fog && port && portFogState(fog, port) !== 'sight') {
+        setUnseen(code)
+        return
+      }
+      setUnseen(null)
+      onCity(code)
+    },
+    [fog, portByCode, onCity],
+  )
 
   const trips = useMemo(
     () => orderTrips(fleet, (c) => c in portByCode, (c) => c in goodByCode),
@@ -190,12 +207,19 @@ export function TradeMap({
         stops={pathStops}
         still={planMap}
         frame={frame}
-        wholeWorld={!planMap}
-        onPort={planMap ? undefined : onCity}
+        // 0504: under the fog the whole world is mostly black, so the map opens on her fleet instead
+        wholeWorld={!planMap && !fog}
+        onPort={planMap ? undefined : pressCity}
+        fog={fog}
         goTo={planMap ? null : goTo}
         ariaLabel={t(planMap ? 'desk.routeChart' : pick ? 'desk.mapChart' : 'desk.citiesChart')}
         className="aspect-[2/1] w-full"
       />
+      {fog && unseen && !planMap && !pick && (
+        <Hint data-testid="trade-map-unseen">
+          {name(unseen)} · {t('map.fogKnown')}
+        </Hint>
+      )}
       {planMap && plan && <PlanLegs legs={plan.legs} speedKn={fleet.speed_kn} name={name} />}
       {pick && (
         <OrderEstimate

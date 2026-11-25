@@ -9,7 +9,8 @@ export const foundDict = defineDict({
     yourCapital: 'your capital',
     moreTitle: 'You get',
     nameQ: 'Company name',
-    nameRule: '3–24 letters, unique.',
+    // 0503: the rule in one line (the server judges: public.company_name_refusal)
+    nameRule: '3–24 letters or digits. No symbols. Not a country, city or trade good.',
     countryQ: 'Country',
     country: 'Country',
     try: 'Try',

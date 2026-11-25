@@ -149,7 +149,7 @@ begin
   -- the door: the quote's total, in one BUY payment to the city; sold back at once: less than she paid
   v_r := cmd.do_buy(v_fl, jsonb_build_object('good', v_g, 'qty', 20));
   v_out := v_out || jsonb_build_object('paid', v_r,
-    'flows', (select jsonb_agg(jsonb_build_array(t.kind, t.ducats)) from public.treasury_flows t where t.player_id = v_pl and t.port_id = v_lis and t.kind <> 'START'),
+    'flows', (select jsonb_agg(jsonb_build_array(t.kind, t.ducats)) from public.treasury_flows t where t.player_id = v_pl and t.port_id = v_lis and t.kind not in ('START', 'FOUNDING')),
     'purse', 50000000 - (select p.ducats from public.players p where p.id = v_pl));
   v_out := v_out || jsonb_build_object('back', (select q.total from world.quote(v_lis, v_g, 20, 'sell', null, v_fl) q));
   return v_out;
