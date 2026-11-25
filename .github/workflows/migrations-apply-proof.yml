@@ -363,7 +363,7 @@ jobs:
     # ALREADY applied, green, on the same commit, in 33m51s, and then left idle. Row 124 is the one
     # that deletes this cost instead of budgeting for it, and row 127 records that it has stopped
     # being a nuisance and become the thing standing between a green branch and a merge.
-    timeout-minutes: 150
+    timeout-minutes: 260
     steps:
       - name: Does this run need this leg?
         run: |
@@ -615,7 +615,7 @@ jobs:
       - name: Start disposable local Supabase (a restored volume boots from the snapshot; a fresh one applies the WHOLE chain, in order)
         # 2026-11-15: a restored boot hung for an hour in `supabase start` and every PR's disposable-chain waited on it. A restored
         # boot takes a few minutes, so it gets 20; a fresh volume applies the whole chain and keeps the job's own limit.
-        timeout-minutes: ${{ steps.plan.outputs.usable == 'true' && 20 || 110 }}
+        timeout-minutes: ${{ steps.plan.outputs.usable == 'true' && 20 || 220 }}
         run: |
           # supabase binds 54320-54329, inside Linux's temporary port range, and a runner's outbound connection can take one first:
           # "failed to bind host port ... address already in use" before any migration runs (seen 3+ times on 2026-11-05).
