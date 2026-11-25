@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { StockGauge } from './StockGauge'
 import { Figure } from './Figure'
 import { GoodKind } from './GoodKind'
+import { PremiumRows } from './PremiumRows'
 import { PriceChart } from './PriceChart'
 import type { ChartNews } from './newsMarksModel'
 import { primarySide, primaryValue } from './priceChartModel'
@@ -137,6 +138,7 @@ export function PriceRows({
           />
         )}
       </Row>
+      <PremiumRows premium={good.premium} />
       <Row label={t('ui.range')} value={<Figure value={`${formatPriceFigure(good.range_lo)}–${formatPriceFigure(good.range_hi)}`} />} />
       <Row
         label={t('ui.inStock')}

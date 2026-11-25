@@ -185,6 +185,7 @@ export { PriceCell, TradeRow } from './TradeRow'
 //     Trend row folds between the Sparkline and the PriceChart. `PriceTrend` is the shape the
 //     history hook hands both trays (points + the served cadence).
 export { PriceRows, type PriceTrend } from './PriceRows'
+export { PremiumRows } from './PremiumRows'
 //     PRICE PAIR — both sides of one price, each under its own word: what you pay here, what you get
 //     here (owner request 178, 2026-10-20). The desk's good page draws it in its head (the city in
 //     focus) and on every row of its two ladders, so a figure beside a city is never a side the

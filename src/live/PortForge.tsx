@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  PremiumRows,
   Button,
   Clip,
   Figure,
@@ -182,6 +183,7 @@ export function PortForge({
           {goodByCode[open.product]?.class != null && (
             <Row label={t('codex.class')} value={<GoodClassMark goodClass={goodByCode[open.product]?.class} withWord />} data-testid="forge-class-row" />
           )}
+          <PremiumRows premium={open.premium} />
           {open.ingredients.map((i, idx) => (
             <Row
               key={i.good}
