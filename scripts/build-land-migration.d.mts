@@ -53,3 +53,9 @@ export const FASTEST_MAKE: Pace
 export const MAKERS: Record<string, { goods: Array<[number, string]> }>
 export function smithRows(): SmithRow[]
 export function smithBlock(): string
+
+// 0531: the wood, by the same rule, with no tool
+export const FASTEST_WOOD: Pace
+export const WOODS: Record<string, { ground: string; goods: Array<[number, string]> }>
+export function woodRows(): Array<Omit<LandRow, 'tool'>>
+export function woodBlock(): string

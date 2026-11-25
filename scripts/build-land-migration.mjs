@@ -83,6 +83,24 @@ export const MAKERS = {
   },
 }
 
+/**
+ * 0531 (WOODCUTTING; the owner, 2026-11-25: "dungeon raids, mining, woodcutting etc."): the wood of the catalogue and what is tapped or
+ * burned from it, by the level each asks. Gathered in the woods of every region the good comes from (public.goods.origin_regions). No
+ * tool yet (no axe is sold: a tool would move the guard's pace). Its own block (--wood), so 0457's rows and 0458's finds do not move.
+ */
+export const WOODS = {
+  woodcutting: {
+    ground: 'woods',
+    goods: [
+      [1, 'timber'], [1, 'bamboo'], [1, 'rattan'], [5, 'cork'], [8, 'mangrove-poles'], [10, 'rosin'], [12, 'potash'], [15, 'tar'],
+      [18, 'pine-pitch'], [20, 'mangrove-bark'], [22, 'wattle-bark'], [25, 'live-oak'], [28, 'redwood'], [30, 'balsa-wood'],
+      [33, 'stockholm-tar'], [35, 'cedar'], [38, 'teak'], [40, 'sappanwood'], [43, 'camwood'], [46, 'riga-mast'], [48, 'lignum-vitae'],
+      [50, 'alerce-timber'], [53, 'huon-pine'], [56, 'naval-timber'], [60, 'logwood'], [63, 'brazilwood'], [66, 'ebony'],
+      [70, 'mast-pine'], [74, 'kauri-timber'], [78, 'sandalwood'], [86, 'aloeswood'],
+    ],
+  },
+}
+
 /** 4.4: experience a minute of work, by the level a job asks (1-9, 10-19, ... 90-100). */
 const PAY = [5, 6, 8, 10, 12, 16, 20, 24, 32, 40]
 export const payAt = (level) => PAY[Math.min(9, Math.floor(level / 10))]
@@ -104,6 +122,9 @@ export const FASTEST = { top: 100, levelSpeedPct: 0.2, toolPct: 3, crowdMaxPct: 
  * crowd 0), land_yield_pct 100. 0461's self-assert reads the live knobs and fails if a make job is faster.
  */
 export const FASTEST_MAKE = { top: 100, levelSpeedPct: 0.2, toolPct: 0, crowdMaxPct: 0, yieldPct: 100 }
+
+/** 0531: the fastest pace of the woods: Woodcutting 100, no tool, the crowd's full chance of a second unit. */
+export const FASTEST_WOOD = { top: 100, levelSpeedPct: 0.2, toolPct: 0, crowdMaxPct: 10, yieldPct: 100 }
 
 /** A turn at the fastest pace, rounded as public.land_terms rounds it. */
 export const fastestTurn = (seconds, pace = FASTEST) =>
@@ -250,6 +271,33 @@ export function smithBlock() {
     .join('\n')
 }
 
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+// WOODCUTTING (migration 0531), BY THE SAME RULE: jobFigures at FASTEST_WOOD against the least middling target of the good's regions
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+export function woodRows() {
+  const goods = JSON.parse(readFileSync(path.join(ROOT, 'data', 'goods.json'), 'utf8')).goods
+  const byId = new Map(goods.map((g) => [g.id, g]))
+  const guard = JSON.parse(readFileSync(path.join(ROOT, 'data', 'land-guard.generated.json'), 'utf8')).goods
+  const rows = []
+  for (const [skill, ladder] of Object.entries(WOODS)) {
+    ladder.goods.forEach(([level, code], i) => {
+      const g = byId.get(code)
+      if (!g) throw new Error(`build-land-migration: no good "${code}" in data/goods.json`)
+      if (!guard[code]) throw new Error(`build-land-migration: no guard figure for "${code}" (run scripts/db/measure-land-guard.mjs)`)
+      const { seconds, xp } = jobFigures(level, (g.baseValue[0] + g.baseValue[1]) / 2, guard[code].target, FASTEST_WOOD)
+      rows.push({ code, skill, kind: 'gather', level, seconds, xp, ground: ladder.ground, ord: i + 1 })
+    })
+  }
+  return rows
+}
+
+/** The wood's VALUES block, one row a line, exactly as migration 0531 carries it. */
+export function woodBlock() {
+  return woodRows()
+    .map((r, i, all) => `      ('${r.code}', '${r.skill}', '${r.kind}', ${r.level}, ${r.seconds}, ${r.xp}, '${r.ground}', ${r.ord})${i === all.length - 1 ? '' : ','}`)
+    .join('\n')
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  process.stdout.write((process.argv.includes('--drops') ? dropsBlock() : process.argv.includes('--smith') ? smithBlock() : valuesBlock()) + '\n')
+  process.stdout.write((process.argv.includes('--drops') ? dropsBlock() : process.argv.includes('--wood') ? woodBlock() : process.argv.includes('--smith') ? smithBlock() : valuesBlock()) + '\n')
 }

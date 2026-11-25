@@ -71,7 +71,7 @@ export function PartyFace({ v }: { v: Lit }) {
   const fill = out && pr.state === 'out' && pr.u !== undefined && pr.trip ? (pr.u / pr.trip) * 100 : out ? 100 : 0
   const homeAt = pr.state === 'returning' ? pr.home_at : pr.next_home_at
   const make = !!terms?.take   // 0461: a make job, at home
-  const site = make ? v.home.name : siteWord(locale, p.region ?? v.home.region, 'mines', v.regions)
+  const site = make ? v.home.name : siteWord(locale, p.region ?? v.home.region, terms?.skill === 'woodcutting' ? 'woods' : 'mines', v.regions)
 
   const main = (
     <Card icon="mountain" title={`${t('land.party')} · ${site}`} data-testid="land-party">

@@ -106,7 +106,7 @@ begin
   select g.* into v_q from pg_temp.guard_164(v_top) g where g.kind = 'gather' order by g.share desc, g.code, g.region limit 1;
   if (select max(t.speed_pct) from public.land_tools t) <> 3 or (select count(*) from public.land_tools) <> 1
      or (public.land_terms(v_top, 'iron') ->> 'tool')::numeric <> 3 or (public.land_terms(v_top, 'iron') ->> 'have')::int <> 100
-     or v_q.share > 1 or (select count(distinct g.code) from pg_temp.guard_164(v_top) g where g.kind = 'gather') <> 57 then
+     or v_q.share > 1 or (select count(distinct g.code) from pg_temp.guard_164(v_top) g where g.kind = 'gather') <> (select count(*) from public.land_actions a where a.kind = 'gather') then
     raise exception 'proof 164 MINING_GUARD_L2: % at % is % x the hundredth, or a tool faster than the plain pick exists', v_q.code, v_q.region, round(v_q.share, 4);
   end if;
   raise notice 'PASS: MINING_GUARD_L2 - L2 makes no tool: the plain pick (3 %%) is the best; % Mining job-regions at Mining 100 with it and the crowd, the tightest % at % (% of the hundredth)',

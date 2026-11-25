@@ -61,6 +61,7 @@ const WAYS: Record<string, Way> = {
   forged: PRODUCE,
   dig: LAND,
   smith: LAND,
+  cut: LAND,
 }
 
 /** The one press for a level: its first served activity with a place that is open to her now; null when none is. */
