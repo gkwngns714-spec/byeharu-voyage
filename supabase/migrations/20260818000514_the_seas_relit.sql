@@ -1,6 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- news: none (dark: this file lights nothing; the step that lights posts its own row, public.news_update('0514', ...))
--- 0514 - THE SEAS RELIT  (dark: this file installs the one guarded step that lights 0215's sea_conditions_bite, and does not run it)
+-- 0514 - THE SEAS RELIT  (dark: this file lights nothing and posts nothing; its step posts its own news row. It installs the one guarded step that lights 0215's sea_conditions_bite, and does not run it)
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- THE OWNER, 2026-11-25: the eight rungs are "GOOD"; "hange 내파 to English" (R11): the word is Wave resistance. The spec reverses row 369 ("remove sea limits entirely",
 --   2026-11-23), so the switch is thrown again only WITH THE OWNER'S EYES ON THE RUNG TABLE: the step asks for the table's own mark, which only the read prints.
