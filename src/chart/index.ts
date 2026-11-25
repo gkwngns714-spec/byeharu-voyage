@@ -50,7 +50,6 @@ export type { PathStop } from './ShipPathLayer'
 export type { MapEventMark } from './EventMarksLayer'
 export { loopD } from './route'
 export { SmallChart } from './SmallChart'
-export { fogModel, fogPorts, inSight, knownPortsKey, portFogState, type ChartFog, type FogState } from './fog'
 // The whole-world locator inset a full-tab chart wears in a corner (its header carries the §7B
 // answers — including why it composes the chart's parts rather than `ChartCanvas` whole).
 export { Minimap } from './Minimap'

@@ -36,8 +36,8 @@ import { PARTY, actionWord, figureWord, rateWords, servedId, stateWord, useWorke
 //   the party  the jobs of the Land the server would take now (a job she has no level for is not offered), each with its served
 //              units a trip, its trip and its experience an hour.
 // A door shut for every option (`closed`: a standing route, the party out, dark) says so in the server's words, and nothing is offered.
-// A READ THAT TOOK TOO LONG (`closed` E_SLOW: the server's last resort, never a shorter list) says so in its plain words with ONE press,
-// Try again, which asks world.actions once more.
+// A READ THAT TOOK TOO LONG (`closed` E_SLOW: the server's last resort, never a shorter list) is asked again by itself, three times at
+// most, the sheet still waiting (its skeleton). Then it says so in its plain words with ONE press, Try again, which asks once more.
 // The figures and the press stand in a foot that is always there, so choosing never moves the press; while the read is on its way the
 // press waits. A refusal is the server's own words, in a place that is always there. Assigned, the sheet closes and her row shows the
 // new action.
@@ -119,6 +119,10 @@ export function AssignSheet({ ask, onClose }: { ask: AssignAsk; onClose: () => v
         ) : (
           <Note tone="neutral">{t('corp.noRun')}</Note>
         )
+      ) : read.retrying ? (
+        <div data-testid="corp-assign-waiting">
+          <Skeleton className="h-28 w-full" />
+        </div>
       ) : view.closed?.code === 'E_SLOW' ? (
         <div data-testid="corp-assign-slow">
           <Note tone="neutral" data-testid="corp-assign-closed">
