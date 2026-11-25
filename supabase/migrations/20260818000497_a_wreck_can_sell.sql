@@ -23,6 +23,9 @@
 --                                  sentence, instead of being queued to wait for ever. Null for every other fleet and order.
 --   cmd.do_sell, do_store, do_take (1 hunk each) ask public.fleet_alongside. Everything after that line is untouched: the same quote,
 --                                  tax, wages, dock fee, day limit and city purse a docked fleet's sale meets.
+--   public.quay_shows              (1 hunk) THE QUAY LISTS WHAT SHE CARRIES for a fleet that is alongside (it asked DOCKED itself): without
+--                                  it world.market served no row for a wreck's cargo, and the sell face had nothing to draw (found
+--                                  by driving the client: the press opened an empty sheet).
 --   cmd.advance                    (3 hunks) a wreck alongside runs her queue's SELL / STORE / TAKE orders in their order and
 --                                  STEPS OVER the rest without running or cancelling them (her SAILs stay pending; a tow clears
 --                                  them, as before). No standing route refills a wreck's queue.
@@ -37,9 +40,9 @@
 --   nothing new unless she is UNABLE_TO_SAIL. The notice prints a docked dry run before and after.
 -- ROWS: one world_config row. No table, no index, no cron, no beat step. 0 new rows a minute.
 -- budget: no table, no cron job, no autovacuum or fillfactor change. Lit: a wreck's sale writes the rows any sale writes.
--- LOCKS: one INSERT (world_config); CREATE FUNCTION x4; CREATE OR REPLACE x6 by hunks. TIME: about a second. BUDGET:
+-- LOCKS: one INSERT (world_config); CREATE FUNCTION x4; CREATE OR REPLACE x7 by hunks. TIME: about a second. BUDGET:
 --   statement_timeout 60 s, lock_timeout 5 s; fails above 45 s.
--- ROLLBACK (forward, owner only): QUICK, wreck_sells_enabled false. FULL: a migration reversing the eight hunks (OLD texts below
+-- ROLLBACK (forward, owner only): QUICK, wreck_sells_enabled false. FULL: a migration reversing the nine hunks (OLD texts below
 --   verbatim) and dropping the four functions.
 -- SELF-ASSERT: each hunk once and reversing; no other function moved; the hunked bodies' grants, volatility, definer, search path and
 --   owner unmoved; the new functions server only; one knob added (false), no other moved. THE PROBE (rolled back; its own company, a
@@ -53,7 +56,7 @@
 
 do $m$
 declare
-  c_hunked constant text[] := array['cmd.do_sell(uuid,jsonb)', 'cmd.do_store(uuid,jsonb)', 'cmd.do_take(uuid,jsonb)',
+  c_hunked constant text[] := array['cmd.do_sell(uuid,jsonb)', 'cmd.do_store(uuid,jsonb)', 'cmd.do_take(uuid,jsonb)', 'public.quay_shows(uuid,uuid)',
                                     'cmd.advance(uuid,timestamp with time zone)', 'cmd.preview(uuid,text,jsonb)', 'cmd.issue(uuid,text,integer,jsonb)'];
   c_new    constant text[] := array['public.wreck_sells_on()', 'public.fleet_alongside(uuid)', 'public.wreck_may(text)', 'public.wreck_order_refusal(uuid,text)'];
   c_ua     constant uuid := '00000000-0497-4000-8000-0000000000a1';
@@ -124,6 +127,7 @@ declare
   v_npc  jsonb;
   v_nf   uuid;
   v_ms   numeric;
+  v_shows boolean;
   v_t    timestamptz;
   g      record;
 begin
@@ -175,6 +179,7 @@ begin
   values (v_fl, v_pl, 1, 'SAIL CAD', 'SAIL', jsonb_build_object('dest', (select p.id from public.ports p where p.code = 'CAD')), 'pending');
   v_c0 := public.fleet_cargo_qty(v_fl, v_g);
   v_p0 := (select ducats from public.players where id = v_pl);
+  v_shows := public.quay_shows(v_port, (select x.id from public.goods x where x.code = v_g));
   v_prev := cmd.preview(v_fl, format('SELL %s 5', v_g));
   v_sell := cmd.issue(v_fl, format('SELL %s 5', v_g), null, null);
   v_c1 := public.fleet_cargo_qty(v_fl, v_g);
@@ -209,7 +214,7 @@ begin
                                 'refusal', public.wreck_order_refusal(v_nf, 'BUY'));
   end if;
   return jsonb_build_object(
-    'good', v_g, 'dock', v_dock - 'parsed' - 'fixes', 'dock_ms', v_ms,
+    'shows', v_shows, 'good', v_g, 'dock', v_dock - 'parsed' - 'fixes', 'dock_ms', v_ms,
     'prev', v_prev - 'parsed' - 'fixes', 'sell', jsonb_build_object('ok', v_sell->'ok', 'code', v_sell->'error_code', 'order', jsonb_build_object('status', v_sell #> '{order,status}')), 'sold', v_c0 - v_c1, 'coin', v_p1 - v_p0, 'orders', v_ord,
     'store', jsonb_build_object('ok', v_store->'ok', 'status', v_store #> '{order,status}', 'code', v_store->'error_code'),
     'take', jsonb_build_object('ok', v_take->'ok', 'status', v_take #> '{order,status}', 'code', v_take->'error_code'),
@@ -343,6 +348,9 @@ $h$  if f.status <> 'DOCKED' then
     raise exception 'E_NOT_DOCKED: % is % and a cargo is taken up alongside', f.name, f.status using errcode = 'P0001';$h$,
 $h$  if not public.fleet_alongside(p_fleet) then   -- 0497: DOCKED, or (lit) a wreck that lies in a port
     raise exception 'E_NOT_DOCKED: % is % and a cargo is taken up alongside', f.name, f.status using errcode = 'P0001';$h$),
+  ('public.quay_shows(uuid,uuid)', 1,
+$h$              and f.status    = 'DOCKED'$h$,
+$h$              and public.fleet_alongside(f.id)   -- 0497: DOCKED, or (lit) a wreck that lies in this port: her cargo is listed$h$),
   ('cmd.advance(uuid,timestamp with time zone)', 1,
 $h$    exit when f.status not in ('DOCKED', 'ANCHORED');   -- SAILING / ADRIFT / UNABLE_TO_SAIL: nothing can execute$h$,
 $h$    -- 0497: A WRECK ALONGSIDE RUNS HER CARGO ORDERS (public.fleet_alongside: lit, a player's UNABLE_TO_SAIL fleet lying in a port);
@@ -470,6 +478,10 @@ $h$  -- 0497: a wreck's order that cannot run is refused here, never queued to w
        or (v_d2->>'sold')::numeric <> 0 or v_d2->'orders' is distinct from '["SAIL:pending", "SELL:failed"]'::jsonb then
       raise exception '0497 self-assert FAIL: lit, where her quay buys nothing the wreck''s SELL was not refused as a docked fleet''s is: %', left(v_d2::text, 1500);
     end if;
+  end if;
+  -- the quay lists what she carries (world.market's row for it: the sell face draws from that row)
+  if (v_d2->>'shows')::boolean is not true then
+    raise exception '0497 self-assert FAIL: lit, the quay does not list the cargo of a wreck lying at it';
   end if;
   -- STORE and TAKE run, or are refused by their own door for a reason that is not her state
   if v_d2 #>> '{store,status}' = 'pending' or v_d2 #>> '{take,status}' = 'pending'
