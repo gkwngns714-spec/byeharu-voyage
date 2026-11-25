@@ -35,7 +35,10 @@ for (const size of [
     // she is given a run; its sail is refused: her job stops, and her row wears Repair at the server's price
     await row.click()
     const sheet = page.getByTestId('hq-sheet-assign')
-    await sheet.getByTestId('corp-assign-run').first().click({ timeout: 180_000 })
+    // (the runs that lose are listed when asked for; a quay may have no other)
+    await expect(sheet.getByTestId('corp-assign-run').first().or(sheet.getByTestId('corp-assign-losses')).first()).toBeVisible({ timeout: 180_000 })
+    if ((await sheet.getByTestId('corp-assign-run').count()) === 0) await sheet.getByTestId('corp-assign-losses').click()
+    await sheet.getByTestId('corp-assign-run').first().click()
     await sheet.getByTestId('corp-assign-go').click()
     await expect(sheet).toHaveCount(0, { timeout: 120_000 })
     await expect(row, 'her job does not wait on the wreck with a repair to press').toHaveAttribute('data-fix', 'repair', { timeout: 180_000 })

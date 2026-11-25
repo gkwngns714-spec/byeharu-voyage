@@ -11,6 +11,9 @@ import { useWorld } from '../../../live/worldStore'
 // there. The line is as high before a try as after it. The server's own sentence is the line's title; a refusal is printed whole.
 // Drawn only while the server serves the `bargain` key (bargain_total_enabled); dark: nothing.
 
+/** The next chance in whole per cent; null under one (the server serves 0.05 for a tenth try: never "0%"). */
+const oddsWord = (n: number): string | null => (n < 1 ? null : formatPctPoints(n, 0))
+
 export function BargainPress({ fleet, goodId, code, side }: { fleet: string; goodId: string; code: string; side: 'buy' | 'sell' }) {
   const t = useT()
   const haggle = useWorld((s) => s.haggle)
@@ -30,7 +33,7 @@ export function BargainPress({ fleet, goodId, code, side }: { fleet: string; goo
     })
   }
   const held = deal.held_pct > 0 && (deal.side === null || deal.side === side) ? t(side === 'buy' ? 'desk.bargainOff' : 'desk.bargainUp', { n: formatPctPoints(deal.held_pct, 0) }) : null
-  const odds = quay.attempts_left > 0 && quay.next_odds_pct < 1 ? t('desk.bargainUnder') : formatPctPoints(quay.next_odds_pct, 0)
+  const odds = oddsWord(quay.next_odds_pct) ?? t('desk.bargainUnder')
   return (
     <div className="flex min-h-11 items-center justify-between gap-3" data-testid="bargain" data-left={quay.attempts_left} data-held={deal.held_pct}>
       <span className="min-w-0 text-t-caption tabular-nums" role="status" title={said?.words} data-testid="bargain-said" data-tone={said?.tone}>
