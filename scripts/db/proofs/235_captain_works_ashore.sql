@@ -75,15 +75,21 @@ begin
   -- CW_ONCE: two companies, the same Send, the same hours: one press against twelve
   v_trip := (v_t2->>'trip')::numeric;
   -- whole trips the away cap lets home (at least the first): both clocks read at the same instants
+  -- (the many presses are the same company's, undone: a find is drawn from the party's own id, so two companies' units may differ by one)
+  begin
   for i in 1 .. 12 loop
-    perform public.land_collect_for(v_two, t0 + make_interval(secs => (v_trip * i / 12 + case when i = 12 then 1 else 0 end)::double precision));
+    perform public.land_collect_for(v_me, t0 + make_interval(secs => (v_trip * i / 12 + case when i = 12 then 1 else 0 end)::double precision));
   end loop;
+  select coalesce(sum(ps.qty), 0) into v_g2 from public.player_storage ps where ps.player_id = v_me and ps.good_id = (v_t2->>'good')::uuid;
+  v_x2 := (select x.xp from public.level_xp x where x.player_id = v_me and x.skill = 'mining');
+  select z.xp into v_c2 from public.captain_work_xp z where z.player_officer_id = v_po and z.work = 'mining';
+  raise exception using errcode = 'ZT235', message = 'undo';
+  exception when sqlstate 'ZT235' then null;
+  end;
   perform public.land_collect_for(v_me, t0 + make_interval(secs => (v_trip + 1)::double precision));
   select coalesce(sum(ps.qty), 0) into v_g1 from public.player_storage ps where ps.player_id = v_me and ps.good_id = (v_t2->>'good')::uuid;
-  select coalesce(sum(ps.qty), 0) into v_g2 from public.player_storage ps where ps.player_id = v_two and ps.good_id = (v_t2->>'good')::uuid;
-  v_x1 := (select x.xp from public.level_xp x where x.player_id = v_me and x.skill = 'mining'); v_x2 := (select x.xp from public.level_xp x where x.player_id = v_two and x.skill = 'mining');
+  v_x1 := (select x.xp from public.level_xp x where x.player_id = v_me and x.skill = 'mining');
   select z.xp into v_c1 from public.captain_work_xp z where z.player_officer_id = v_po and z.work = 'mining';
-  select z.xp into v_c2 from public.captain_work_xp z where z.player_officer_id = v_po2 and z.work = 'mining';
   if v_x1 is null or v_x1 < 1 or v_x1 is distinct from v_x2 or v_c1 is distinct from v_c2 or v_g1 is distinct from v_g2 or v_g1 < 1 or v_c1 - (select c.xp from public.level_curves c where c.curve = 'long' and c.level = 41) < 1 then
     raise exception 'CW_ONCE: one press % goods % xp % captain; twelve % % %', v_g1, v_x1, v_c1, v_g2, v_x2, v_c2;
   end if;

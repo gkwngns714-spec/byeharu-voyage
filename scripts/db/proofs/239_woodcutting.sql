@@ -51,14 +51,19 @@ begin
   v_t := public.land_terms(v_me, 'timber');
   perform public.land_send_for(v_me, 'timber', v_at);
   perform public.land_send_for(v_two, 'timber', v_at);
-  perform public.land_collect_for(v_me, v_at + make_interval(secs => (v_t->>'trip')::double precision + 1));
+  -- (the many presses are the same company's, undone: a find is drawn from the party's own id, so two companies' units may differ by one)
+  begin
   for i in 1 .. 8 loop
-    perform public.land_collect_for(v_two, v_at + make_interval(secs => ((v_t->>'trip')::numeric * i / 8 + case when i = 8 then 1 else 0 end)::double precision));
+    perform public.land_collect_for(v_me, v_at + make_interval(secs => ((v_t->>'trip')::numeric * i / 8 + case when i = 8 then 1 else 0 end)::double precision));
   end loop;
+  select z.xp into v_x2 from public.level_xp z where z.player_id = v_me and z.skill = 'woodcutting';
+  select sum(ps.qty) into v_q2 from public.player_storage ps join public.goods g on g.id = ps.good_id where ps.player_id = v_me and g.code = 'timber';
+  raise exception using errcode = 'ZT239', message = 'undo';
+  exception when sqlstate 'ZT239' then null;
+  end;
+  perform public.land_collect_for(v_me, v_at + make_interval(secs => (v_t->>'trip')::double precision + 1));
   select z.xp into v_x1 from public.level_xp z where z.player_id = v_me and z.skill = 'woodcutting';
-  select z.xp into v_x2 from public.level_xp z where z.player_id = v_two and z.skill = 'woodcutting';
   select sum(ps.qty), max(ps.basis) into v_q1, v_q0 from public.player_storage ps join public.goods g on g.id = ps.good_id where ps.player_id = v_me and g.code = 'timber';
-  select sum(ps.qty) into v_q2 from public.player_storage ps join public.goods g on g.id = ps.good_id where ps.player_id = v_two and g.code = 'timber';
   if v_x1 is null or v_x1 <> v_x2 or v_q1 <> v_q2 or coalesce(v_q0, 0) <> 0 or exists (select 1 from public.level_xp z where z.player_id = v_me and z.skill = 'mining')
      or public.level_of('woodcutting', v_x1) < 2 then
     raise exception 'WO_TRIP: % / % xp, % / % timber at %', v_x1, v_x2, v_q1, v_q2, v_q0;
