@@ -33,3 +33,12 @@ under them too: every file applies, 219 and 220 green.
 
 0508 prepends a PROVISION line before BUY, and 0502's guard then writes its cut BUY over line 0 (the PROVISION). That is between 0502 and
 0508, on their branches; 0516 adds its lines after the guard.
+
+## 0516 too: a laden run is judged (no switch; proof 243, red per case on the body before)
+
+The review of 0504's laden run. One quote, `public.fleet_run_quote`, counts the load aboard at what she paid (as a Best card of her cargo does); a laden run is quoted
+with `jobs_wait_enabled` lit or dark and waits `low` when it does not pay. `run_guard_enabled`: her cargo is her coin, straight to the sale; by way of other harbours
+their dock fees and a storm's default must still be in hand (the run that ruined a company, 0502: proof 212 holds, its sentence is new). Bring home: a shed that holds
+exactly her load is no stop; less than it, she waits (a STORE is whole or refused). A haul whose good changed stores the old load first.
+Checked: stores in the hold (LJ_HOLD). Decided by default: goods of no known cost count as cost 0. A bring-home's load is not priced, so a token load may go home.
+With `under` set, a half-laden fleet whose price is out of range still waits `range`.

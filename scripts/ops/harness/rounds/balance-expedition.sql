@@ -1,4 +1,5 @@
 -- THE ROUNDS BALANCE: LOCAL ONLY, never production (it lights switches, founds houses and fills purses). docs/dev-log/2026-11-25-rounds-balance.md
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare v_pl uuid; f uuid; r record; k int; n int; c text; lv int; t jsonb; st numeric; hi numeric; o jsonb; b numeric; v_txt text;
 begin
