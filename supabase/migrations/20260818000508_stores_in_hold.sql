@@ -381,6 +381,10 @@ $h$);
                                     glut = 0.5, glut_at = now(), haul = 1
      where pg.port_id = v_lis and pg.good_id = v_gid;
     update public.port_goods pg set stock_target = 1000000 where pg.port_id = v_dest and pg.good_id = v_gid;
+    -- AND A UNIT IS ONE TUN (rolled back with the rest): a new hull's hold is rolled (180 to 190 t), always whole tuns, so a load in units
+    -- of another bulk left a scrap of it free, and a scrap of 0.4 t was a sail's stores: the full hold below was full, or not, by the dice
+    update public.goods g set bulk = 1 where g.id = v_gid;
+    v_bulk := 1;
     v_free := public.fleet_free_hold(v_fl);
     v_cap := public.fleet_buy_capacity(v_fl, v_gid);
     if v_cap->>'bound_by' is distinct from 'hold' or (v_cap->>'max_qty')::numeric <> floor(v_free / v_bulk) then
