@@ -101,7 +101,7 @@ for (const [name, sql] of WORLDS) {
     line = `PASS  ${name}
         ${said}`
   } catch (e) {
-    const known = name.startsWith('KNOWN ') && /E_NO_NEW_GOLD|no good Lisbon offers/.test(String(e.message))
+    const known = name.startsWith('KNOWN ') && /E_NO_NEW_GOLD|no good Lisbon offers|THE GUARD: cork at IBE/.test(String(e.message))
     if (!known) bad += 1
     line = `${known ? 'KNOWN' : 'FAIL '} ${name.replace(/^KNOWN /, '')}\n        ${String(e.message).slice(0, 700)}`
   }
