@@ -98,7 +98,7 @@ export const deskDict = defineDict({
     crewRoom: '{n} · room {max}',
     crewShort: 'Hire {n} more',
     yourShips: 'Ships',
-    waveResistance: 'Waves',
+    waveResistance: 'Wave resistance',
     reachOk: '{port} · in reach',
     legLine: '{from} → {to}',
     atSea: 'At sea',
@@ -106,7 +106,7 @@ export const deskDict = defineDict({
     // THE PLAN'S MINI ROUTE MAP (owner row 191, docs/COMMAND_REDESIGN.md §3)
     now: 'Now',
     seaTagTitle: 'Title {n}',
-    seaTagWaves: 'Waves {n}',
+    seaTagWaves: 'Wave resistance {n}',
     routeChart: 'Plan on the chart',
     // THE MAP ON TOP AND THE ORDER'S ESTIMATE (owner row 217)
     mapChart: 'Your fleet on the chart',

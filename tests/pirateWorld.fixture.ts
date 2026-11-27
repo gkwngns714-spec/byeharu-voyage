@@ -25,14 +25,13 @@ export function brethrenOpen(): Promise<Buffer> {
   return patchedWorldImage('brethren-open', light)
 }
 
-/** The Brethren open, and the local captain founded under the skull through cmd.found_house. */
+/** The Brethren open, and the local captain founded under the skull (0512: no door founds one outside Europe now; a company that is one stays). */
 export function pirateCompany(): Promise<Buffer> {
   return patchedWorldImage('pirate-company', async (pg) => {
     await light(pg)
     await pg.transaction(async (tx) => {
       await tx.query('select cmd.assume_identity($1)', [LOCAL_AUTH_UID])
-      const r = await tx.query<{ r: { ok: boolean; error_code?: string } }>(`select cmd.found_house('Skull Company', 'PIR') as r`)
-      if (!r.rows[0]?.r.ok) throw new Error(`cmd.found_house under the pirates answered ${JSON.stringify(r.rows[0]?.r)}`)
+      await tx.query(`select public.new_house($1::uuid, 'Skull Company', 'PIR', (select n.capital_port_code from public.nations n where n.code = 'PIR'))`, [LOCAL_AUTH_UID])
     })
   })
 }

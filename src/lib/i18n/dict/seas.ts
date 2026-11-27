@@ -2,8 +2,8 @@ import { defineDict } from '../define'
 
 // THE SEAS (docs/SEA_CONDITIONS_AND_REGIONS.md): a sea's name and harbours (the Codex's Seas face, the Map's Seas filter), and the
 // words of a refusal a closed sea makes (components/ui/seaWallWords.ts). The owner switched the sea limits off on 2026-11-23
-// (docs/design/hq-command-2026-11-23.md), so no screen draws what a sea asks; the wall words stand only where the server refuses.
-// A wall is HAVE / NEED and the fix in a few words (owner, 2026-11-15): `Western Ocean closed · Waves 12 / 30 · fit planking`.
+// (docs/design/hq-command-2026-11-23.md), so no screen draws what a sea asks while they are off; 0514 draws it again while they bite.
+// A wall is HAVE / NEED and the fix in a few words (owner, 2026-11-15): `Western Ocean closed · Wave resistance 12 / 30 · fit planking`.
 // A figure and its word never part at a line end (no-break spaces).
 export const seasDict = defineDict({
   en: {
@@ -12,11 +12,13 @@ export const seasDict = defineDict({
     harbours: { one: '{n} harbour', other: '{n} harbours' },
     wallHead: '{sea} closed',
     wallTitle: 'Title {have} / {need}',
-    wallWaves: 'Waves {have} / {need}',
-    wallBoth: 'Title {title} / {needTitle} · Waves {waves} / {needWaves}',
-    wallAsks: 'Title {needTitle} · Waves {needWaves}',
+    wallWaves: 'Wave resistance {have} / {need}',
+    wallBoth: 'Title {title} / {needTitle} · Wave resistance {waves} / {needWaves}',
+    wallAsks: 'Title {needTitle} · Wave resistance {needWaves}',
     fixTitle: 'Trading & Exploration {need}',
     fixWaves: 'fit planking',
+    asks: 'Level {level} · Wave resistance {waves}',
+    closed: 'Closed',
   },
   ko: {
     seas: '바다',

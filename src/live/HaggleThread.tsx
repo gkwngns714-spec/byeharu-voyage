@@ -122,7 +122,7 @@ export function HaggleThread({
         value={
           <span className="flex items-center gap-3">
             <Figure value={formatOfTotal(quay.attempts_left, quay.attempts_max)} unit={t('trade.triesLeft')} tone={read.loading ? 'faint' : 'muted'} />
-            <Figure value={formatPctPoints(quay.next_odds_pct, 0)} tone={oddsTone} />
+            <Figure value={formatPctPoints(quay.next_odds_pct, quay.next_odds_pct < 10 ? 1 : 0)} tone={oddsTone} />
           </span>
         }
       />
@@ -152,7 +152,7 @@ export function HaggleThread({
           <Row
             label={t('trade.nextTry')}
             hairline={false}
-            value={<Figure value={formatPctPoints(quay.next_odds_pct, 0)} tone={oddsTone} unit={quay.at_floor ? t('trade.atFloor') : undefined} />}
+            value={<Figure value={formatPctPoints(quay.next_odds_pct, quay.next_odds_pct < 10 ? 1 : 0)} tone={oddsTone} unit={quay.at_floor ? t('trade.atFloor') : undefined} />}
             data-testid="haggle-odds"
           >
             {/* 0161: the server's sentence when one of her captains speaks the port's language */}

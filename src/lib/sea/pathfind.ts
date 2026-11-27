@@ -332,7 +332,7 @@ export function segmentIsWater(
   tailNm = 0,
 ): boolean {
   const nm = gcNm(lat1, lon1, lat2, lon2)
-  const steps = Math.max(2, Math.ceil(nm / (nav.cellDeg * NM_PER_DEG * 0.5)))
+  const steps = Math.max(2, Math.ceil((nm * (nav.fine ?? 1)) / (nav.cellDeg * NM_PER_DEG * 0.5)))
   // An end has an approach only when it stands on land (0441).
   let headOpen = headNm > 0 && !nav.cells[rowOf(nav, lat1) * nav.cols + colOf(nav, lon1)]
   const tailOpen = tailNm > 0 && !nav.cells[rowOf(nav, lat2) * nav.cols + colOf(nav, lon2)]

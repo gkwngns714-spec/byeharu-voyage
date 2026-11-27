@@ -75,7 +75,7 @@ begin
   select zz.code, zz.name, zz.title_min, zz.wave_min into z from public.sea_zones zz where zz.title_min > 1 and zz.wave_min > 1 order by zz.ord limit 1;
   if z.code is not null then
     v_x := public.sea_refusal(1, z.wave_min - 1, array[z.code]);
-    if v_x->>'sentence' <> format('%s closed. Title 1 / %s. Waves %s / %s.', z.name, z.title_min, z.wave_min - 1, z.wave_min)
+    if v_x->>'sentence' <> format('%s closed. Title 1 / %s. Wave resistance %s / %s.', z.name, z.title_min, z.wave_min - 1, z.wave_min)
        or v_x->>'code' <> 'E_SEA_CLOSED' or (v_x->'figures'->>'needs_title')::int <> z.title_min then
       raise exception 'PROOF 134 FAIL: a closed sea is not have / need: %', v_x;
     end if;

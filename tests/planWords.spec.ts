@@ -94,7 +94,7 @@ test('lit, a city the sea closes says what the sea asks, not "too far"', () => {
   // the one wording of a closed sea (components/ui/seaWallWords.ts). These figures are a world's before 0396: it does
   // not say which ask is short, so both are printed beside both of hers and no advice is given
   // 2026-11-15 owner: shorter words (have / need)
-  expect(words).toBe('Macaronesia and the Canary Current closed \u00b7 Title\u00a01\u00a0/\u00a02 \u00b7 Waves\u00a012\u00a0/\u00a010')
+  expect(words).toBe('Macaronesia and the Canary Current closed \u00b7 Title\u00a01\u00a0/\u00a02 \u00b7 Wave resistance\u00a012\u00a0/\u00a010')
   expect(words).not.toContain('too far')
 })
 
@@ -105,7 +105,7 @@ test('lit, the server says which ask is short (0396): the wall names that one an
   )
   const hull = { ...closed, refusal: { ...closed.refusal, figures: { ...closed.refusal.figures, needs_wave: 30, short_title: false, short_wave: true } } }
   expect(reachWords({ ...noLeg, needs: null, sea: hull }, lit)).toBe(
-    'Macaronesia and the Canary Current closed \u00b7 Waves\u00a012\u00a0/\u00a030 \u00b7 fit planking',
+    'Macaronesia and the Canary Current closed \u00b7 Wave resistance\u00a012\u00a0/\u00a030 \u00b7 fit planking',
   )
 })
 
@@ -119,16 +119,16 @@ test('lit, a city closed by the reach and open by the sea is still too far', () 
   expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 }, sea: open }, lit)).toMatch(/^Too far/)
 })
 
-// 2026-11-15 owner: shorter words — what you have / what is asked (Waves 12 / 30), not a sentence
+// 2026-11-15 owner: shorter words — what you have / what is asked (Wave resistance 12 / 30), not a sentence
 test('what the seas on the way ask, with no refusal, is the route\'s most', () => {
   expect(seaAsksWords({ ...closed, needs_title: 4, needs_wave: 30, refusal: null })).toBe(
-    'Waves 30 · Title 4',
+    'Wave resistance 30 · Title 4',
   )
-  expect(seaAsksWords({ ...closed, needs_title: 4, needs_wave: 30, refusal: null }, { title: 1, wave: 12 })).toBe('Waves 12 / 30 · Title 1 / 4')
+  expect(seaAsksWords({ ...closed, needs_title: 4, needs_wave: 30, refusal: null }, { title: 1, wave: 12 })).toBe('Wave resistance 12 / 30 · Title 1 / 4')
   expect(seaAsksWords(closed)).not.toMatch(/\bnm\b|\bher\b|\bpassage\b|\bstores\b/)
 })
 
-// 2026-11-15 owner: an ask of 0 is never printed ("Setubal · Waves 12 / 0" was noise), as the map and the Codex hide it
+// 2026-11-15 owner: an ask of 0 is never printed ("Setubal · Wave resistance 12 / 0" was noise), as the map and the Codex hide it
 test('an ask of 0 is left out', () => {
   expect(seaAsksWords({ ...closed, needs_title: 2, needs_wave: 0, refusal: null }, { title: 1, wave: 12 })).toBe('Title 1 / 2')
   expect(seaAsksWords({ ...closed, needs_title: 0, needs_wave: 0, refusal: null }, { title: 1, wave: 12 })).toBe('')

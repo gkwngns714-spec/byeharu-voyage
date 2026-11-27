@@ -3,7 +3,7 @@ import type { SeaWall } from '../../lib/rpc'
 
 // A CLOSED SEA IN PLAIN WORDS — THE ONE WORDING of the sea rule's refusal, in both languages.
 //
-//   The Western Ocean closed · Waves 12 / 30 · fit planking
+//   The Western Ocean closed · Wave resistance 12 / 30 · fit planking
 //
 // HAVE / NEED and the fix in a few words (owner, 2026-11-15: "just tell me what i have, and what is required").
 //
@@ -17,8 +17,8 @@ export function seaName(locale: Locale, wall: Pick<SeaWall, 'zoneName'>): string
   return properName('sea', wall.zoneName, wall.zoneName, locale)
 }
 
-/** What the sea asks that she does not hold, as HAVE / NEED: `Title 1 / 4 · Waves 12 / 30`. */
-function seaWallAsks(locale: Locale, wall: SeaWall): string {
+/** What the sea asks that she does not hold, as HAVE / NEED: `Title 1 / 4 · Wave resistance 12 / 30`. */
+export function seaWallAsks(locale: Locale, wall: SeaWall): string {
   const out: string[] = []
   if (wall.shortTitle === null || wall.shortWave === null) {
     return wall.title !== null && wall.wave !== null

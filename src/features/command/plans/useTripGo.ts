@@ -1,3 +1,4 @@
+import { useFleetNav } from '../../../live/useFleetNav'
 import { useState } from 'react'
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { usePress } from '../../../live/usePress'
@@ -50,7 +51,7 @@ export function useTripGo({
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
-  const seaNav = useWorld((s) => s.seaNav)
+  const seaNav = useFleetNav()(fleet.id)
   const ducats = useWorld((s) => s.ducats)
   const onCreditLit = useWorld((s) => s.player?.on_credit === true)
   const issueLines = useWorld((s) => s.issueLines)

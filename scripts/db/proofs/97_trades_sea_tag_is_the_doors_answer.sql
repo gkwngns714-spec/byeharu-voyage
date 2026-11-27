@@ -51,7 +51,7 @@ begin
       perform cmd.assume_identity(c_a);
     else
       perform cmd.assume_identity(c_j);
-      v_r := cmd.found_house('Casa Etiqueta Longe 97', 'JPN');
+      v_r := jsonb_build_object('ok', true, 'nation', 'JPN', 'player_id', public.new_house(auth.uid(), 'Casa Etiqueta Longe 97', 'JPN', (select n.capital_port_code from public.nations n where n.code = 'JPN')));   -- 0512: no door founds one outside Europe now; the companies that are stay
       v_pl := (v_r ->> 'player_id')::uuid;
     end if;
     select f.id, f.port_id, p.code into v_fl, v_port, v_ocode from public.fleets f join public.ports p on p.id = f.port_id where f.player_id = v_pl;
@@ -82,8 +82,12 @@ begin
       select q.id, q.a, q.b from (select r.id, x.code as a, lead(x.code) over (partition by r.id order by x.k) as b
                                     from r97 r cross join lateral jsonb_array_elements_text(r.route) with ordinality x(code, k) where r.co = v_co) q
        where q.b is not null and q.a <> q.b),
+    -- 0513: a leg on her pass home is let through at the door (public.sea_gate), so its tag is none
+    home as materialized (select x.from_port, x.to_port from public.sea_passes((select f.player_id from public.fleets f where f.id = v_fl), null) x
+                           where public.sea_beyond((select f.player_id from public.fleets f where f.id = v_fl), v_fl)),
     door as materialized (
-      select d.a, d.b, public.sea_judge(v_title, v_wave, s.zones || public.harbour_zone(rb.port_id), fl.title_min, fl.wave_min, fl.home_title, fl.home_wave) as gate
+      select d.a, d.b, case when not exists (select 1 from home x where x.from_port = ra.port_id and x.to_port = rb.port_id)
+                            then public.sea_judge(v_title, v_wave, s.zones || public.harbour_zone(rb.port_id), fl.title_min, fl.wave_min, fl.home_title, fl.home_wave) end as gate
         from (select distinct l.a, l.b from leg l) d join public.sea_reaches ra on ra.code = d.a join public.sea_reaches rb on rb.code = d.b
         join public.sea_leg_asks s on s.from_port = ra.port_id and s.to_port = rb.port_id
        cross join (select * from public.sea_floor(v_fl, null) offset 0) fl),

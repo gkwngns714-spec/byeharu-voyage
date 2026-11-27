@@ -2,12 +2,13 @@
 -- PROOF 179 - FIRST VOYAGES  (migration 0476; docs/design/roadmap-2026-11-23.md slice 8; docs/dev-log/2026-11-23-first-voyages.md)
 --
 --   The migration's self-assert walks the chain with the purses dark. This proof plays it as production runs: the economy closed and the
---   city purses lit, so every coin a step pays leaves her capital (or her realm) and none is new; hold jobs posted at the forty harbours
---   nearest Lisbon, so the deliver step names a real one; a realm that cannot pay; and the read's cost. Rolled back by proof.mjs.
+--   city purses lit, so every coin a step pays leaves her capital (or her realm) and none is new; hold jobs planted at the harbours
+--   nearest Lisbon (never a game day's dice); a realm that cannot pay; and the read's cost. Rolled back by proof.mjs.
 --
 -- @pass FV_DARK   dark: the read is {"on": false} and pays nothing, whatever she has done
 -- @pass FV_JOB    lit, step 1: the job named is an open hold job with a source that sells its good, its trip from her capital the shortest
 --                 of every such job that fits twice in the time it stands, and its seconds a Barca's
+-- @pass FV_NONE   the same with no such job: the deliver step stands and names none (a JSON null)
 -- @pass FV_PAY    lit, purses lit: a delivered request pays step 1 from Lisbon's purse (a moved coin: her purse up, the city's down, the
 --                 same figure), its Reputation once, and hands on to the profit step
 -- @pass FV_WAIT   a realm that cannot pay: the step waits (nothing written, nothing paid, `waiting` true); paid when it can
@@ -38,6 +39,7 @@ declare
   v_sell bigint;
   v_off  uuid;
   v_n    int := 0;
+  v_x    record;
   v_ms1  numeric;
   v_ms2  numeric;
   v_at   timestamptz;
@@ -52,15 +54,27 @@ begin
   insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
   update public.port_treasury set ducats = 5000000, reserve = 0;
 
-  -- hold jobs at the forty harbours nearest Lisbon (purses dark while they post: no escrow is asked)
-  update public.world_config set value = 'false'::jsonb where key = 'city_treasury_enabled';
-  update public.world_config set value = 'true'::jsonb where key = 'hold_requests_enabled';
-  update public.world_config set value = to_jsonb(1000) where key = 'hold_request_open_max';
-  for v_p in select p.id from public.ports p join public.sea_reaches r on r.port_id = v_lis
-              where p.kind = 'HARBOUR' and p.id <> v_lis and r.reaches ? p.code
-              order by (r.reaches ->> p.code)::numeric, p.code limit 40 loop
-    v_n := v_n + public.hold_request_post(v_p, now()) + public.hold_request_post(v_p, now());
+  -- THE JOBS ARE PLANTED (a game day's dice may leave none that fits twice in its time): of the trips Lisbon - a harbour that sells a good - another harbour
+  -- that takes none of its own, the three shortest. The shortest is already out of time, the second fits, the third fits and is longer
+  update public.trade_contracts set status = 'expired' where status = 'open';
+  for v_x in
+    select distinct on (t.nm) sp.id as src, jp.id as dst, g.id as good, t.nm
+      from (select p.id, p.code, (r.reaches ->> p.code)::numeric as nm from public.ports p join public.sea_reaches r on r.port_id = v_lis
+             where p.kind = 'HARBOUR' and p.id <> v_lis and r.reaches ? p.code order by 3, 2 limit 6) sp
+      join public.sea_reaches rs on rs.port_id = sp.id
+      join public.ports jp on jp.kind = 'HARBOUR' and jp.id not in (sp.id, v_lis) and rs.reaches ? jp.code
+      cross join lateral (select sp.nm + (rs.reaches ->> jp.code)::numeric as nm) t
+      cross join lateral (select x.id from public.goods x join public.port_specialties s on s.port_id = sp.id and s.good_id = x.id order by x.code limit 1) g
+     where t.nm < 800
+     order by t.nm, sp.code, jp.code limit 3
+  loop
+    v_n := v_n + 1;
+    insert into public.trade_contracts (port_id, good_id, posted_day, seq, qty, premium_pct, mid_at_post, premium_per_unit, premium_ducats, expires_day, status, escrow, size, source_port_id)
+    values (v_x.dst, v_x.good, world.game_day() - 2, 190 + v_n, 20, 0.2, 100, 20, 400, world.game_day() + case when v_n = 1 then 0 else 2 end, 'open', 0, 'hold', v_x.src);
   end loop;
+  if v_n <> 3 then
+    raise exception 'PROOF 179 FAILED: % trips to plant, not three (static rows)', v_n;
+  end if;
 
   -- ── FV_DARK ──
   perform cmd.assume_identity(c_a);
@@ -93,10 +107,13 @@ begin
      and t.nm / public.wc_num('hold_request_speed_kn') * 3600 / public.wc_num('time_compression') * 2
          < extract(epoch from public.clock_start('game_day', c.expires_day) - now());
   if v_min is null then
-    if v_job is not null then
-      raise exception 'PROOF 179 FAILED: no job fits, yet one is named: %', v_job;
-    end if;
-    raise exception 'PROOF 179 FAILED: % hold jobs posted near Lisbon and none fits twice in its time', v_n;
+    raise exception 'PROOF 179 FAILED: % hold jobs planted near Lisbon and none fits twice in its time', v_n;
+  end if;
+  if v_min <= (select min(case when sp.id = v_lis then 0 else (rc.reaches ->> sp.code)::numeric end + (rs.reaches ->> jp.code)::numeric)
+                 from public.trade_contracts c join public.ports sp on sp.id = c.source_port_id join public.ports jp on jp.id = c.port_id
+                 join public.sea_reaches rc on rc.port_id = v_lis join public.sea_reaches rs on rs.port_id = c.source_port_id
+                where c.status = 'open' and c.size = 'hold') then
+    raise exception 'PROOF 179 FAILED: the planted job out of time is not the shortest: the scene proves nothing';
   end if;
   select * into v_c from public.trade_contracts c where c.id = (v_job ->> 'id')::uuid;
   v_nm := (case when v_c.source_port_id = v_lis then 0
@@ -110,8 +127,20 @@ begin
      or abs((v_job ->> 'sail_seconds')::numeric - v_nm / public.wc_num('hold_request_speed_kn') * 3600 / public.wc_num('time_compression')) > 1 then
     raise exception 'PROOF 179 FAILED: the job named is not the shortest open hold job from Lisbon that fits (min % nm): % / %', v_min, v_job, to_jsonb(v_c);
   end if;
-  raise notice 'PASS: FV_JOB — % hold jobs posted near Lisbon; named: % x % bought at %, delivered to %: % nm, % s for a Barca (the shortest that fits)',
+  raise notice 'PASS: FV_JOB — % hold jobs planted near Lisbon; named: % x % bought at %, delivered to %: % nm, % s for a Barca (the shortest that fits)',
     v_n, v_job ->> 'qty', v_job -> 'good' ->> 'code', v_job -> 'from' ->> 'code', v_job -> 'port' ->> 'code', v_job ->> 'nm', v_job ->> 'sail_seconds';
+
+  -- ── FV_NONE: none fits: the step stands, no job named (a JSON null, as the client reads it) ──
+  begin
+    update public.trade_contracts set status = 'expired' where status = 'open' and size = 'hold' and expires_day > world.game_day();
+    v_r := world.first_voyages();
+    if v_r ->> 'code' <> 'deliver' or (v_r ->> 'open')::boolean is not true or not (v_r ? 'job') or jsonb_typeof(v_r -> 'job') <> 'null' or public.first_voyage_job(v_b) is not null then
+      raise exception 'PROOF 179 FAILED: no job fits, yet the step names one or is gone: %', v_r;
+    end if;
+    raise notice 'PASS: FV_NONE — none fits: step % stands, job null', v_r ->> 'code';
+    raise exception using errcode = 'ZP179', message = 'undo';
+  exception when sqlstate 'ZP179' then null;
+  end;
 
   -- ── FV_COST (the deliver step: her ledger, and the hold jobs) ──
   v_at := clock_timestamp();

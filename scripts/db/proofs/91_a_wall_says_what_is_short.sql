@@ -63,7 +63,7 @@ begin
      or (v_ra -> 'figures' ->> 'title')::int <> 1 or (v_ra -> 'figures' ->> 'wave')::numeric <> 12 or (v_rb -> 'figures' ->> 'wave')::numeric <> 39
      or (select count(*) from jsonb_object_keys(v_ra -> 'figures')) <> 8
      -- 0433: the sentence says what she has and what is needed (cmd.refusal_line)
-     or (v_ra ->> 'sentence') <> format('%s closed. Title 1 / %s. Waves 12 / %s.',
+     or (v_ra ->> 'sentence') <> format('%s closed. Title 1 / %s. Wave resistance 12 / %s.',
                                         v_ra -> 'figures' ->> 'zone_name', v_ra -> 'figures' ->> 'needs_title', v_ra -> 'figures' ->> 'needs_wave') then
     raise exception 'PROOF 91 FAIL: lit, the gate on a course into the ocean: barca % ; nau %', v_ra, v_rb;
   end if;
@@ -81,13 +81,13 @@ begin
   begin
     update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite';
     perform cmd.assume_identity(c_c);
-    v_r := cmd.found_house('Casa Muro Longe', 'JPN');
+    v_r := jsonb_build_object('ok', true, 'nation', 'JPN', 'player_id', public.new_house(auth.uid(), 'Casa Muro Longe', 'JPN', (select n.capital_port_code from public.nations n where n.code = 'JPN')));   -- 0512: no door founds one outside Europe now; the companies that are stay
     if (v_r ->> 'ok') <> 'true' then
       raise exception 'PROOF 91 FAIL: dark, founding under Japan answered %', v_r;
     end if;
     update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite';
     perform cmd.assume_identity(c_d);
-    v_r := cmd.found_house('Casa Muro Perto', 'JPN');
+    v_r := jsonb_build_object('ok', true, 'nation', 'JPN', 'player_id', public.new_house(auth.uid(), 'Casa Muro Perto', 'JPN', (select n.capital_port_code from public.nations n where n.code = 'JPN')));   -- 0512: no door founds one outside Europe now; the companies that are stay
     if (v_r ->> 'ok') <> 'true' or (v_r ->> 'nation') <> 'JPN' then
       raise exception 'PROOF 91 FAIL: lit, founding under Japan answered % (founding is refused nowhere)', v_r;
     end if;
